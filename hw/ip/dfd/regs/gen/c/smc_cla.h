@@ -535,12 +535,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP0__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE0EAP0__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE0EAP0__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP0__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE0EAP0__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE0EAP0__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP0__ACTION1_bw 6
@@ -590,12 +590,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP0__UDF_bw 8
 #define DFD_CLA__CDBGNODE0EAP0__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP0__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE0EAP0__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE0EAP0__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE0EAP0__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP0__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE0EAP0__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE0EAP0__ACTION3_bw 6
@@ -604,9 +604,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -626,9 +626,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -641,12 +641,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP1__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE0EAP1__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE0EAP1__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP1__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE0EAP1__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE0EAP1__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP1__ACTION1_bw 6
@@ -696,12 +696,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP1__UDF_bw 8
 #define DFD_CLA__CDBGNODE0EAP1__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP1__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE0EAP1__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE0EAP1__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE0EAP1__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP1__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE0EAP1__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE0EAP1__ACTION3_bw 6
@@ -710,9 +710,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -732,9 +732,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -747,12 +747,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP0__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE1EAP0__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE1EAP0__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP0__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE1EAP0__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE1EAP0__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP0__ACTION1_bw 6
@@ -802,12 +802,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP0__UDF_bw 8
 #define DFD_CLA__CDBGNODE1EAP0__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP0__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE1EAP0__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE1EAP0__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE1EAP0__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP0__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE1EAP0__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE1EAP0__ACTION3_bw 6
@@ -816,9 +816,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -838,9 +838,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -853,12 +853,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP1__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE1EAP1__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE1EAP1__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP1__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE1EAP1__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE1EAP1__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP1__ACTION1_bw 6
@@ -908,12 +908,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP1__UDF_bw 8
 #define DFD_CLA__CDBGNODE1EAP1__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP1__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE1EAP1__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE1EAP1__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE1EAP1__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP1__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE1EAP1__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE1EAP1__ACTION3_bw 6
@@ -922,9 +922,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -944,9 +944,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -959,12 +959,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP0__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE2EAP0__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE2EAP0__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP0__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE2EAP0__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE2EAP0__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP0__ACTION1_bw 6
@@ -1014,12 +1014,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP0__UDF_bw 8
 #define DFD_CLA__CDBGNODE2EAP0__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP0__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE2EAP0__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE2EAP0__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE2EAP0__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP0__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE2EAP0__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE2EAP0__ACTION3_bw 6
@@ -1028,9 +1028,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -1050,9 +1050,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -1065,12 +1065,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP1__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE2EAP1__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE2EAP1__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP1__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE2EAP1__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE2EAP1__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP1__ACTION1_bw 6
@@ -1120,12 +1120,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP1__UDF_bw 8
 #define DFD_CLA__CDBGNODE2EAP1__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP1__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE2EAP1__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE2EAP1__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE2EAP1__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP1__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE2EAP1__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE2EAP1__ACTION3_bw 6
@@ -1134,9 +1134,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -1156,9 +1156,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -1171,12 +1171,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP0__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE3EAP0__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE3EAP0__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP0__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE3EAP0__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE3EAP0__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP0__ACTION1_bw 6
@@ -1226,12 +1226,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP0__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP0__UDF_bw 8
 #define DFD_CLA__CDBGNODE3EAP0__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP0__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE3EAP0__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE3EAP0__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE3EAP0__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP0__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE3EAP0__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE3EAP0__ACTION3_bw 6
@@ -1240,9 +1240,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -1262,9 +1262,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -1277,12 +1277,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP1__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE3EAP1__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE3EAP1__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP1__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE3EAP1__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE3EAP1__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP1__ACTION1_bw 6
@@ -1332,12 +1332,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP1__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP1__UDF_bw 8
 #define DFD_CLA__CDBGNODE3EAP1__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP1__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE3EAP1__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE3EAP1__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE3EAP1__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP1__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE3EAP1__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE3EAP1__ACTION3_bw 6
@@ -1346,9 +1346,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -1368,9 +1368,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -2126,12 +2126,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP2__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE0EAP2__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE0EAP2__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP2__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE0EAP2__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE0EAP2__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP2__ACTION1_bw 6
@@ -2181,12 +2181,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP2__UDF_bw 8
 #define DFD_CLA__CDBGNODE0EAP2__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP2__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE0EAP2__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE0EAP2__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE0EAP2__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP2__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE0EAP2__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE0EAP2__ACTION3_bw 6
@@ -2195,9 +2195,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -2217,9 +2217,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -2232,12 +2232,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP3__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE0EAP3__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE0EAP3__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP3__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE0EAP3__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE0EAP3__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE0EAP3__ACTION1_bw 6
@@ -2287,12 +2287,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE0EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE0EAP3__UDF_bw 8
 #define DFD_CLA__CDBGNODE0EAP3__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP3__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE0EAP3__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE0EAP3__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE0EAP3__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE0EAP3__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE0EAP3__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE0EAP3__ACTION3_bw 6
@@ -2301,9 +2301,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -2323,9 +2323,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -2338,12 +2338,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP2__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE1EAP2__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE1EAP2__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP2__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE1EAP2__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE1EAP2__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP2__ACTION1_bw 6
@@ -2393,12 +2393,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP2__UDF_bw 8
 #define DFD_CLA__CDBGNODE1EAP2__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP2__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE1EAP2__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE1EAP2__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE1EAP2__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP2__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE1EAP2__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE1EAP2__ACTION3_bw 6
@@ -2407,9 +2407,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -2429,9 +2429,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -2444,12 +2444,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP3__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE1EAP3__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE1EAP3__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP3__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE1EAP3__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE1EAP3__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE1EAP3__ACTION1_bw 6
@@ -2499,12 +2499,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE1EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE1EAP3__UDF_bw 8
 #define DFD_CLA__CDBGNODE1EAP3__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP3__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE1EAP3__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE1EAP3__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE1EAP3__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE1EAP3__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE1EAP3__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE1EAP3__ACTION3_bw 6
@@ -2513,9 +2513,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -2535,9 +2535,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -2550,12 +2550,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP2__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE2EAP2__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE2EAP2__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP2__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE2EAP2__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE2EAP2__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP2__ACTION1_bw 6
@@ -2605,12 +2605,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP2__UDF_bw 8
 #define DFD_CLA__CDBGNODE2EAP2__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP2__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE2EAP2__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE2EAP2__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE2EAP2__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP2__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE2EAP2__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE2EAP2__ACTION3_bw 6
@@ -2619,9 +2619,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -2641,9 +2641,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -2656,12 +2656,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP3__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE2EAP3__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE2EAP3__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP3__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE2EAP3__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE2EAP3__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE2EAP3__ACTION1_bw 6
@@ -2711,12 +2711,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE2EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE2EAP3__UDF_bw 8
 #define DFD_CLA__CDBGNODE2EAP3__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP3__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE2EAP3__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE2EAP3__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE2EAP3__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE2EAP3__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE2EAP3__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE2EAP3__ACTION3_bw 6
@@ -2725,9 +2725,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -2747,9 +2747,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -2762,12 +2762,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP2__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE3EAP2__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE3EAP2__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP2__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE3EAP2__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE3EAP2__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP2__ACTION1_bw 6
@@ -2817,12 +2817,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP2__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP2__UDF_bw 8
 #define DFD_CLA__CDBGNODE3EAP2__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP2__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE3EAP2__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE3EAP2__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE3EAP2__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP2__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE3EAP2__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE3EAP2__ACTION3_bw 6
@@ -2831,9 +2831,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -2853,9 +2853,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;
@@ -2868,12 +2868,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP3__DESTNODE_bp 0
 #define DFD_CLA__CDBGNODE3EAP3__DESTNODE_bw 2
 #define DFD_CLA__CDBGNODE3EAP3__DESTNODE_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP3__ACTION0_bm 0xfc
 #define DFD_CLA__CDBGNODE3EAP3__ACTION0_bp 2
 #define DFD_CLA__CDBGNODE3EAP3__ACTION0_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__ACTION0_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_bm 0x3f00
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_bp 8
 #define DFD_CLA__CDBGNODE3EAP3__ACTION1_bw 6
@@ -2923,12 +2923,12 @@ typedef union {
 #define DFD_CLA__CDBGNODE3EAP3__UDF_bp 44
 #define DFD_CLA__CDBGNODE3EAP3__UDF_bw 8
 #define DFD_CLA__CDBGNODE3EAP3__UDF_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP3__ACTION2_bm 0x3f0000000000000
 #define DFD_CLA__CDBGNODE3EAP3__ACTION2_bp 52
 #define DFD_CLA__CDBGNODE3EAP3__ACTION2_bw 6
 #define DFD_CLA__CDBGNODE3EAP3__ACTION2_reset 0x0
-// Select an Action
+// Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 #define DFD_CLA__CDBGNODE3EAP3__ACTION3_bm 0xfc00000000000000
 #define DFD_CLA__CDBGNODE3EAP3__ACTION3_bp 58
 #define DFD_CLA__CDBGNODE3EAP3__ACTION3_bw 6
@@ -2937,9 +2937,9 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Select Destination Node
         uint64_t DestNode :2;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action0 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action1 :6;
         // Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
         uint64_t LogicalOp :2;
@@ -2959,9 +2959,9 @@ typedef union {
         uint64_t EventType2 :6;
         // Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
         uint64_t Udf :8;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action2 :6;
-        // Select an Action
+        // Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
         uint64_t Action3 :6;
     } f;
     uint64_t w;

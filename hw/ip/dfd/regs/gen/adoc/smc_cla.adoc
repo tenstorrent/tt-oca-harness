@@ -401,8 +401,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -412,8 +412,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -423,8 +423,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -434,8 +434,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -445,8 +445,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -456,8 +456,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -467,8 +467,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -478,8 +478,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -489,8 +489,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -500,8 +500,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -511,8 +511,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -522,8 +522,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -533,8 +533,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -544,8 +544,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -555,8 +555,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -566,8 +566,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -894,8 +894,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -905,8 +905,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -916,8 +916,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -927,8 +927,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -938,8 +938,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -949,8 +949,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -960,8 +960,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -971,8 +971,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -982,8 +982,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -993,8 +993,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -1004,8 +1004,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -1015,8 +1015,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -1026,8 +1026,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -1037,8 +1037,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
@@ -1048,8 +1048,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| Select an Action
-| 57:52 | `Action2` | RW | 0x0 a| Select an Action
+| 63:58 | `Action3` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 57:52 | `Action2` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 51:44 | `Udf` | RW | 0x0 a| Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.
 | 43:38 | `EventType2` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
@@ -1059,8 +1059,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 27:22 | `EventType1` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 21:16 | `EventType0` | RW | 0x0 a| Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.
-| 13:8 | `Action1` | RW | 0x0 a| Select an Action
-| 7:2 | `Action0` | RW | 0x0 a| Select an Action
+| 13:8 | `Action1` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
+| 7:2 | `Action0` | RW | 0x0 a| Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 

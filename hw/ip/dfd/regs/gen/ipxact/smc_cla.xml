@@ -854,7 +854,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -866,7 +866,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -986,7 +986,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -998,7 +998,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1028,7 +1028,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1040,7 +1040,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1160,7 +1160,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1172,7 +1172,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1202,7 +1202,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1214,7 +1214,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1334,7 +1334,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1346,7 +1346,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1376,7 +1376,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1388,7 +1388,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1508,7 +1508,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1520,7 +1520,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1550,7 +1550,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1562,7 +1562,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1682,7 +1682,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1694,7 +1694,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1724,7 +1724,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1736,7 +1736,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1856,7 +1856,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1868,7 +1868,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1898,7 +1898,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1910,7 +1910,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2030,7 +2030,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2042,7 +2042,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2072,7 +2072,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2084,7 +2084,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2204,7 +2204,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2216,7 +2216,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3413,7 +3413,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3425,7 +3425,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3545,7 +3545,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3557,7 +3557,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3587,7 +3587,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3599,7 +3599,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3719,7 +3719,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3731,7 +3731,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3761,7 +3761,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3773,7 +3773,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3893,7 +3893,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3905,7 +3905,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3935,7 +3935,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3947,7 +3947,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4067,7 +4067,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4079,7 +4079,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4109,7 +4109,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4121,7 +4121,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4241,7 +4241,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4253,7 +4253,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4283,7 +4283,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4295,7 +4295,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4415,7 +4415,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4427,7 +4427,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4457,7 +4457,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4469,7 +4469,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4589,7 +4589,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4601,7 +4601,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4631,7 +4631,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4643,7 +4643,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4763,7 +4763,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4775,7 +4775,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

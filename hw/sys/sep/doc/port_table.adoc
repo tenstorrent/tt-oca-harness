@@ -129,7 +129,7 @@ endif::backend-html5[]
 
 |`sep_ras_o` |`sep_pkg::sep_ras_t` |Output |- |SEP RAS indications on the SEP clock: eFuse lifecycle differential-encoding error, CPU lockstep corruption, watchdog bark and bite (the bite synchronized from `clk_wdt_i`), ICCM and DCCM single- and double-bit ECC, Key Manager trap and recoverable faults, DMA alert and sticky register-bridge and host-integrity faults, the per-block sticky register-bridge faults (`periph_bus_err`, indexed by `periph_bus_err_e`), CSRNG and EDN fatal alerts, the aggregated crypto alert, entropy-pool fill stall and integrity error, and the token comparator redundancy fault. `iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue`, `dma_alert`, `csrng_fatal`, `edn_fatal` and `crypto_alert` are one-cycle pulses, which a consumer on another clock must stretch or pulse-synchronize; the other fields are levels. The `sep_pkg::sep_ras_t` field comments state how each one is held and cleared. |Chip-level RAS aggregation; SMU `lc_sigint_err_o` |N/A
 
-|`ext_debug_bus_o` |`logic` |Output |`[511:0]` |External debug observation bus. |Debug infrastructure |N/A
+|`ext_debug_bus_o` |`logic` |Output |`[383:0]` |External debug observation bus, 24 lanes of 16 bits; unused lanes are 0. |Debug infrastructure |N/A
 |===
 
 ifdef::backend-html5[]
