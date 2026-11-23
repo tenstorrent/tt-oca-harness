@@ -105,19 +105,21 @@ int main(void) {
     // command path.
     WRITE_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0);
 
-    uint32_t sip = token_submit(
-        SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0), EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bm,
-        SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR, SIP_TOKEN, &sip_pre, &sip_reads);
+    uint32_t sip = token_submit(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0),
+                                EFUSE_MMR__TOKEN_EOP__RMA_SIP_TOKEN_GO_bm,
+                                SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR,
+                                SIP_TOKEN, &sip_pre, &sip_reads);
     uint32_t chip = token_submit(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(0),
                                  EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm,
-                                 SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR, CHIP_TOKEN,
-                                 &chip_pre, &chip_reads);
+                                 SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR,
+                                 CHIP_TOKEN, &chip_pre, &chip_reads);
     // The second start clears the retained digest validity, so the result
     // reads idle until the new digest is compared.
-    uint32_t chip2 = token_submit(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(0),
-                                  EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm,
-                                  SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR,
-                                  CHIP_MATCH_TOKEN, &chip2_pre, &chip2_reads);
+    uint32_t chip2 =
+        token_submit(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_I_BASE_ADDR(0),
+                     EFUSE_MMR__TOKEN_EOP__RMA_CHIPLET_TOKEN_GO_bm,
+                     SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR,
+                     CHIP_MATCH_TOKEN, &chip2_pre, &chip2_reads);
     uint32_t fault = READ_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
 
     sep_scratch_wr(SCRATCH_READ_FLAGS,
