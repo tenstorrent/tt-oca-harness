@@ -1817,6 +1817,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-STALL-STICKY", "STALL_COLD_STICKY", "stall survives cold"),
         ("CHK-STALL-TRST", "STALL_TRST_CLEAR", "TRST clears stall"),
         ("CHK-STALL-REASSERT", "STALL_REASSERT_STICKY", "re-assert sticky"),
+        (
+            "CHK-FIRST-FETCH-AFTER-RELEASE",
+            "CHK-FIRST-FETCH-AFTER-RELEASE",
+            "per release leg the first ROM macro request with en=1 and wmode=0 arrives within the "
+            "declared 524288 clk_smu liveness bound after the release edge at word address 0x0000 "
+            "(byte 0xC0040000, inside 0xC0040000..0xC005FFFF); the measured latency is logged and "
+            "not graded",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "the legs ran in the order bring-up, cold+stall hold, TRST-clear release, sticky "
+            "re-assert, pad-only hold, both-sources hold, override-low release, with a "
+            "first-fetch line per leg",
+        ),
     ],
     "smu_boot_stall_vs_ic_reset_priority_test": [
         ("CHK-STALL-VS-IC", "STALL_VS_IC_RESET", "IC_RESET does not clear stall"),
@@ -4999,6 +5014,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-EXT-SMN-S4",
             "CHK-SMU-EXT-SMN-S4",
             "the SMC-side ID-width converter presents the specified 6-bit subsystem ID",
+        ),
+        (
+            "CHK-SMU-SEP-IN-ID-WIDTH",
+            "CHK-SMU-SEP-IN-ID-WIDTH",
+            "the SEP-side ID-width converter presents the 6-bit transaction ID the crossbar "
+            "is stated to present to the SEP inbound subordinate",
+        ),
+        (
+            "CHK-SMU-XBAR-OUT-ID-WIDTH",
+            "CHK-SMU-XBAR-OUT-ID-WIDTH",
+            "both ID-width converters take the 10-bit crossbar output ID the SMU datasheet states",
         ),
         (
             "CHK-SMU-INT-AGG-S1",

@@ -720,8 +720,9 @@ class smu_axi_smc_cool_reset_in_flight_test_seq:
         for e in aw:
             self._info(
                 f"OBS-G2A-ATOP-DTP: route={label} awid={e[3]} awaddr=0x{(e[4] or 0):x} "
-                f"awatop={e[8]} t={e[0]}ns; waits on an open spec question (whether the fabric "
-                "carries ATOP and how an atomic request is answered), never compared"
+                f"awatop={e[8]} t={e[0]}ns; AWATOP is 0 by the smu_axi_in boundary contract "
+                "(integrator guide, AXI boundary contract: the SMU neither refuses nor answers an "
+                "atomic); measured, never compared"
             )
         return res
 

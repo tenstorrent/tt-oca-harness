@@ -66,8 +66,9 @@ path while words reach the DRBG seed port:
 * CHK-FIFO-ENABLE-LOCKED: under the lock a write of ENABLE=1 and
   ENTROPY_CHURN_ENABLE=1 completes with a B response on the bus, both fields
   read back at the value stored before the lock, and LEVEL is still 0 after
-  more seed-port words cross. The response code of that write is logged as
-  OBS-FIFO-ENABLE-LOCKED-RESP: no specification states it.
+  more seed-port words cross. The response code of that write and the reserved
+  bits of the readback are logged as INFO-FIFO-ENABLE-LOCKED-RESP and are not
+  graded.
 * CHK-SEED-PACK-COUNT: the seed packer collects twelve words into each 384-bit
   CSRNG seed (hw/sys/sep/doc/trng.adoc). A seed push is a rise of the DRBG
   seed-queue valid, or a seed handshake followed by the valid still high on the
@@ -76,12 +77,12 @@ path while words reach the DRBG seed port:
   words faster than the packer takes them (hw/ip/drbg/doc/architecture.adoc,
   Entropy ingress and Seed Assembly), so a word offered while the packer is not
   ready is outside the stated contract: it is not counted and is logged in
-  OBS-SEED-PACK-DROP. Every window from one push
+  INFO-SEED-PACK-DROP. Every window from one push
   to the clock before the next push is graded: it holds exactly 12 accepted words,
   so no push comes before the 12th accepted word. A clock without the conditioner
   valid counts no word. The check also needs at least one graded window and no X
   or Z on a sampled port. The window from the tap start to the first push is not
-  bounded by two pushes and is not graded. OBS-SEED-PACK-DROP logs the accepted
+  bounded by two pushes and is not graded. INFO-SEED-PACK-DROP logs the accepted
   and dropped words of each closed window, and a summary with the graded window
   count and the dropped-word total.
 
@@ -137,6 +138,9 @@ CSRNG_SW_CMD_STS = sym("CSRNG_SW_CMD_STS_REG_ADDR")
 CS_STS_RDY = CSRNG.fields("SW_CMD_STS")["CMD_RDY"]["bm"]
 CS_STS_ACK = CSRNG.fields("SW_CMD_STS")["CMD_ACK"]["bm"]
 CS_STS_STS = CSRNG.fields("SW_CMD_STS")["CMD_STS"]
+# CMD_STS code SUCCESS
+# (vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/registers.md:256-271).
+STS_SUCCESS = 0
 SW_INSTANTIATE = EDN.reset("BOOT_INS_CMD")
 # SW_CMD_STS polls (one bus read each) before the software command gives up.
 SW_CMD_POLLS = 400
@@ -312,10 +316,16 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
                 "CHK-KM-SRAM",
                 "CHK-SEED-PACK-COUNT",
                 "CHK-SEED-SW",
+                "CHK-SEED-SW-STS",
             )
         else:
             cfg = SepEntropyCfg()
-            self.required_evidence = ("CHK-ALERTS-ZERO", "CHK-E2E-SCOREBOARD", "CHK-KM-SRAM")
+            self.required_evidence = (
+                "CHK-ALERTS-ZERO",
+                "CHK-E2E-SCOREBOARD",
+                "CHK-KM-SRAM",
+                "CHK-SEED-SW-STS",
+            )
         self.logger.info(
             "entropy cfg: fifo_enable=%d fifo_ctrl=0x%08x chk2_source=%s",
             cfg.fifo_enable,
@@ -527,10 +537,12 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         golden that no earlier seed took: the CSRNG seed comes only from the
         conditioner (entropy_source architecture.adoc:148). Which of those words
         the seed packer takes once an earlier seed is packed is stated nowhere,
-        so the seed bits are logged as OBS-SEED-SW-BITS, next to the next packed
+        so the seed bits are logged as INFO-SEED-SW-BITS, next to the next packed
         seed of the golden, and their position is not graded.
-        The CMD_STS code is logged, not graded: no text states the code of a
-        successful software command.
+        CHK-SEED-SW-STS: the acknowledged instantiate reports CMD_STS SUCCESS (0).
+        It is the first command on the software instance, so none of the error
+        codes applies (SW_CMD_STS.CMD_STS,
+        vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/registers.md:256-271).
         """
         before = self.drbg_sb.results["CHK3_seed"].dut_items
         self.drbg_sb.set_graded_items(CHK3_seed=before)
@@ -570,12 +582,23 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         )
         for idx, exp, act in self.drbg_sb.observed["CHK3_seed"]:
             self.logger.info(
-                "OBS-SEED-SW-BITS: seed %d act=0x%096x next_golden=%s (logged, not graded)",
+                "INFO-SEED-SW-BITS: seed %d act=0x%096x next_golden=%s (position not graded) "
+                "chk=CHK-SEED-SW",
                 idx,
                 act,
                 "none" if exp is None else f"0x{exp:096x}",
             )
-        self.logger.info("OBS-SEED-SW-STS: CMD_STS %d (logged, not graded)", sts)
+        await self._grade(
+            seq.acked and sts == STS_SUCCESS,
+            f"CHK-SEED-SW-STS FAIL: CSRNG software instantiate 0x{SW_INSTANTIATE:03x}: "
+            f"cmd_ack={int(seq.acked)} CMD_STS={sts}, expected {STS_SUCCESS} (SUCCESS)",
+        )
+        self.logger.info(
+            "CHK-SEED-SW-STS PASS: CSRNG software instantiate 0x%03x acknowledged with "
+            "CMD_STS %d (SUCCESS)",
+            SW_INSTANTIATE,
+            sts,
+        )
 
     # --- closed read path ----------------------------------------------------
     async def _open_read_path_window(self, tap: _SeedPortTap) -> dict:
@@ -663,14 +686,22 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         )
 
     async def _check_seed_pack_count(self, tap: _SeedPortTap) -> None:
-        """CHK-SEED-PACK-COUNT over the push-to-push windows; OBS-SEED-PACK-DROP per window."""
+        """CHK-SEED-PACK-COUNT over the push-to-push windows; INFO-SEED-PACK-DROP per window."""
         windows = list(tap.windows)
         xz = tap.xz
         for k, acc, drop in windows:
-            self.logger.info("OBS-SEED-PACK-DROP window=%d accepted=%d dropped=%d", k, acc, drop)
+            self.logger.info(
+                "INFO-SEED-PACK-DROP window=%d accepted=%d dropped=%d%s",
+                k,
+                acc,
+                drop,
+                " chk=CHK-SEED-PACK-COUNT" if k > 1 else "",
+            )
         graded = [(k, acc) for k, acc, _ in windows if k > 1]
         dropped = sum(drop for _, _, drop in windows)
-        self.logger.info("OBS-SEED-PACK-DROP graded=%d dropped=%d", len(graded), dropped)
+        self.logger.info(
+            "INFO-SEED-PACK-DROP graded=%d dropped=%d chk=CHK-SEED-PACK-COUNT", len(graded), dropped
+        )
         bad = [f"{k}:{acc}" for k, acc in graded if acc != SEED_WORDS]
         listing = ",".join(f"{k}:{acc}" for k, acc in graded)
         line = f"graded={len(graded)} xz={xz} words_per_seed={SEED_WORDS} windows=[{listing}]"
@@ -709,8 +740,8 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
             f"under FIPS_LOCK; expected 0x{stored:08x} both times",
         )
         self.logger.info(
-            "OBS-FIFO-ENABLE-LOCKED-RESP: B response %d for the locked FIFO_CTRL write; "
-            "reserved bits read 0x%08x (logged, not graded)",
+            "INFO-FIFO-ENABLE-LOCKED-RESP: B response %d for the locked FIFO_CTRL write; "
+            "reserved bits read 0x%08x (not graded) chk=CHK-FIFO-ENABLE-LOCKED",
             wr.resp_list[0],
             post.rdata & ~FIFO_CTRL_FIELDS & 0xFFFFFFFF,
         )

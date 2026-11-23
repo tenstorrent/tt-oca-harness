@@ -21,7 +21,7 @@
 // RXDATA in-word byte order (OpenTitan SPI_HOST "Input and Output Byte
 // Ordering"): the first byte received sits in bits 7:0 of the word in one
 // order and in bits 31:24 in the other. CHK-JEDEC fixes the order from the
-// JEDEC ID word, prints it on an OBS-SPI-BYTEORDER line, and every later
+// JEDEC ID word, prints it on an INFO-SPI-BYTEORDER line, and every later
 // register read and lane read is graded in that order. Which order the host
 // uses is not graded.
 //
@@ -387,7 +387,7 @@ int main(void) {
         sep_mbx_puts(rx_order_name());
         sep_mbx_putc('\n');
     }
-    sep_mbx_puts("OBS-SPI-BYTEORDER fw order=");
+    sep_mbx_puts("INFO-SPI-BYTEORDER fw order=");
     sep_mbx_puts(rx_order_name());
     sep_mbx_puts(" fixed_at=CHK-JEDEC\n");
 

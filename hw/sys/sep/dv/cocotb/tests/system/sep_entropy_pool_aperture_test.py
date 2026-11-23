@@ -4,14 +4,14 @@
 
 no_cpu host-AXI. The pool fills from the native EDN endpoint after the
 shared entropy bring-up. Empty-pop SLVERR is taken only after at least one
-accepted pop. Bit [36] must equal STATUS pool_low at every graded read; the
-low watermark is not stated, so the pool_low value at empty is logged only
-(OBS-POOL-LOW-EMPTY, OBS-POOL-LOW-REHIGH). CHK-POOL-FILL claims that pool_low
-clears only when pool_low and [36] read 1 together at empty; otherwise it claims
-only that both read 0 at a level above 0. Bit [37] is the first fill-stall
+accepted pop. Bit [36] must equal STATUS pool_low at every graded read. The
+low watermark is not stated; STATUS pool_low must read 1 at the empty read
+before the first fill (CTRL-POOL-CAUSE-LOW), and the value at the empty read
+after the drain is logged only (INFO-POOL-LOW-REHIGH). CHK-POOL-FILL claims
+that pool_low and [36] then clear at a level above 0. Bit [37] is the first fill-stall
 after ESRC disable plus EDN_ENABLE=False with the pool not full: the stall
 threshold is not stated, so STATUS is polled up to STALL_POLL_CAP clocks and
-the time to the flag is logged (OBS-POOL-STALL-TIME). CHK-STALL-DURATION holds
+the time to the flag is logged (INFO-POOL-STALL-TIME). CHK-STALL-DURATION holds
 the same stall STALL_THRESH * 3 clocks after the flag rose and requires [37]
 and the fill-stall cause to stay set. Drain-under-fill is not claimed.
 
@@ -32,12 +32,35 @@ refused upper-word DATA read. Each of those five classes needs at least one
 graded pair. In the stall phase two IRQ_CAUSE reads are followed by a STATUS
 read that must show the armed level.
 
-IRQ_CAUSE values: the RDL names the fields and gives no description, and no
-document states whether the register is live or latched or what bits 63:3
-read. Each value is logged only (OBS-POOL-CAUSE-EMPTY, OBS-POOL-CAUSE-IDLE,
-OBS-POOL-CAUSE-STALL, OBS-POOL-CAUSE-HELD) and no check depends on it. The
-graded part of an IRQ_CAUSE read is its OKAY response and that it does not
-move fifo_level (CHK-POOL-LEVEL-STEP).
+Queued accesses (hw/sys/sep/doc/entropy_pool.adoc:22 names the pool an AXI
+aperture, so AMBA AXI IHI 0022 applies). Three writes go out with W late and
+BREADY held, and four DATA reads with RREADY held, all with ID 0; the read leg
+adds one read every QUEUE_STEP clocks, up to QUEUED_MAX, until an AR waits at
+the pool's AXI slave port. The tap entropy_pool_axi_hs_o records the valid and
+ready nets at that port. CTRL-POOL-QUEUED: of each kind, at least three requests
+are issued and an AWVALID (ARVALID) waits with AWREADY (ARREADY) low while an
+earlier write (read) has no B (R). The fabric in front of the pool takes each B
+and R at once, so INFO-POOL-QUEUED-WAIT gives the clocks a B (R) waited with its
+ready low; a B (R) that falls before its ready in those clocks fails the check
+(IHI 0022 A3.2.1). CHK-POOL-QUEUED-RESP: the tap shows exactly one B per AW and
+one R per AR, the master gets one response per request, each write answers
+SLVERR (entropy_pool.adoc:38-39), and the reads answer in issue order (one ID):
+OKAY with the next packed word while the pool holds a word, then SLVERR
+(entropy_pool.adoc:31-33). The read leg starts in the drain at level 1
+or 2, so it has OKAY reads followed by empty reads. CHK-POOL-LEVEL-STEP grades
+the level across each leg.
+
+IRQ_CAUSE (hw/sys/sep/doc/entropy_pool.adoc:34-37; sep_entropy_pool.rdl
+IRQ_CAUSE fields pool_low and fill_stall, and the STATUS fields of the same
+names): no document states whether IRQ_CAUSE is live or latched, so only a cause
+bit whose STATUS flag reads 1 at the read before it is graded; a live and a
+latched register both read 1 there. CHK-POOL-CAUSE-LOW: at empty, before the
+first fill, STATUS pool_low reads 1 (CTRL-POOL-CAUSE-LOW) and IRQ_CAUSE pool_low
+reads 1. CHK-POOL-CAUSE-STALL: the IRQ_CAUSE read after the STATUS read that
+shows fill_stall 1 has fill_stall 1. The other IRQ_CAUSE values separate the
+live and latched readings or are reserved bits, and are logged only
+(INFO-POOL-CAUSE-IDLE, INFO-POOL-CAUSE-HELD). Every IRQ_CAUSE read also gets an
+OKAY response and does not move fifo_level (CHK-POOL-LEVEL-STEP).
 
 FCOV: the graded window (owner sep_entropy_pool_aperture_test) opens after
 CHK-POOL-LOW-HIGH, before the pool EDN capture and the entropy bring-up, so
@@ -59,8 +82,9 @@ at the end of the graded body:
   SHAPE  1 on every clock from that rise to the first clock with
          ``pool_edn_ack_o`` 1 after the EDN re-enable.
   CLEAR  0 at most STALL_RAS_CLEAR_LAG (2) clocks after that acknowledge.
-The field before the first fill (OBS-RAS-ENTROPY_FILL_STALL-BRINGUP), the rise
-delay and the fall delay (OBS-RAS-ENTROPY_FILL_STALL-DELAY) are logged only.
+The field before the first fill (INFO-RAS-ENTROPY_FILL_STALL-BRINGUP; no text states
+whether the detector counts before the first EDN acknowledge), the rise delay and the
+fall delay (INFO-RAS-ENTROPY_FILL_STALL-DELAY) are logged only.
 
 RANDCFG: extra accepted pops come from the run seed. Every seed walks the
 high-bit mirrors of the live registers (the offsets that catch a truncated
@@ -77,10 +101,12 @@ from cocotb.utils import get_sim_time
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
-from ocah_axi_vip import AxiTimingProfile
+from ocah_axi_vip import AxiTimingProfile, worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
 from seq_lib.sep_entropy_pool_seq import (
+    CAUSE_FILL_STALL,
+    CAUSE_POOL_LOW,
     FIFO_DEPTH,
     HALF_UPPER,
     IRQ_FILL_STALL,
@@ -123,6 +149,113 @@ STALL_CLEAR_CAP = 20000
 # holds "until the next acknowledge" (port_table.adoc:130, delegating to the sep_pkg
 # field comment), and the allowance covers one register stage and the sampling edge.
 STALL_RAS_CLEAR_LAG = 2
+# Queued-access legs. The write cells are the three live registers; the first
+# read burst leaves at least two empty reads after the OKAY reads of level 1 or
+# 2, and the read leg adds one read every QUEUE_STEP clocks, up to QUEUED_MAX,
+# until an AR waits at the pool port. DV-owned counts and bounds (in clocks); no
+# check depends on their values.
+QUEUED_WRITE_CELLS = (POOL_STATUS, POOL_IRQ_CAUSE, POOL_POP)
+QUEUED_READS = 4
+QUEUED_READ_LEVEL = 2
+QUEUED_MAX = 16
+QUEUE_STEP = 64
+QUEUE_HOLD = 16
+QUEUE_WAIT_CAP = 2000
+# Bit positions of each channel's valid in entropy_pool_axi_hs_o; ready is the
+# next bit (hw/sys/sep/dv/tb/sep_tb_signal_list.svh).
+POOL_HS_LSB = {"aw": 0, "w": 2, "b": 4, "ar": 6, "r": 8}
+
+
+class _PoolHsWatch:
+    """Handshakes at the pool AXI slave port, read from ``entropy_pool_axi_hs_o``.
+
+    Each ``clk_i`` sample (after ``ReadOnly``) counts a handshake per channel
+    with valid and ready both high. ``queued`` counts the samples where AWVALID
+    (ARVALID) is high, its ready low, and an earlier write (read) has no B (R).
+    ``resp_wait`` counts the samples where BVALID (RVALID) is high with its ready
+    low; ``drops`` lists each BVALID or RVALID that fell before its ready.
+    """
+
+    def __init__(self) -> None:
+        self.hs = dict.fromkeys(POOL_HS_LSB, 0)
+        self.queued = {"aw": 0, "ar": 0}
+        self.resp_wait = {"b": 0, "r": 0}
+        self.drops: list[tuple[str, int]] = []
+        self.unknown = 0
+        self.clk = 0
+        self._prev = 0
+        self._task = None
+
+    def start(self) -> _PoolHsWatch:
+        self._task = cocotb.start_soon(self._run())
+        return self
+
+    def stop(self) -> None:
+        self._task.cancel()
+
+    async def _run(self) -> None:
+        top = cocotb.top
+        while True:
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            self.clk += 1
+            raw = top.entropy_pool_axi_hs_o.value
+            if not raw.is_resolvable:
+                self.unknown += 1
+                continue
+            now = int(raw)
+            bit = {}
+            for name, lsb in POOL_HS_LSB.items():
+                bit[name] = ((now >> lsb) & 1, (now >> (lsb + 1)) & 1)
+            for req, rsp in (("aw", "b"), ("ar", "r")):
+                valid, ready = bit[req]
+                if valid and not ready and self.hs[req] > self.hs[rsp]:
+                    self.queued[req] += 1
+                valid, ready = bit[rsp]
+                lsb = POOL_HS_LSB[rsp]
+                if (self._prev >> lsb) & 1 and not (self._prev >> (lsb + 1)) & 1 and not valid:
+                    self.drops.append((rsp, self.clk))
+                if valid and not ready:
+                    self.resp_wait[rsp] += 1
+            for name, (valid, ready) in bit.items():
+                if valid and ready:
+                    self.hs[name] += 1
+            self._prev = now
+
+    async def wait_for(self, cond, what: str) -> None:
+        """Wait up to QUEUE_WAIT_CAP clocks for ``cond()``; raise naming ``what``."""
+        for _ in range(QUEUE_WAIT_CAP):
+            if cond():
+                return
+            await RisingEdge(cocotb.top.clk_i)
+        self.missing(what)
+
+    def missing(self, what: str) -> None:
+        raise AssertionError(
+            f"CTRL-MISSING POOL-QUEUED: {what} not seen "
+            f"(hs={self.hs} queued={self.queued} resp_wait={self.resp_wait})"
+        )
+
+
+async def _issue_until(evs: list, issue, cond) -> None:
+    """Add ``issue(i)`` to ``evs`` every QUEUE_STEP clocks until ``cond()`` or QUEUED_MAX."""
+    while True:
+        for _ in range(QUEUE_STEP):
+            if cond():
+                return
+            await RisingEdge(cocotb.top.clk_i)
+        if len(evs) >= QUEUED_MAX:
+            return
+        evs.append(issue(len(evs)))
+
+
+async def _wait_events(evs: list, cycles: int) -> int:
+    """Wait up to ``cycles`` clocks for every master event; return how many are set."""
+    for _ in range(cycles):
+        if all(ev.is_set() for ev in evs):
+            break
+        await RisingEdge(cocotb.top.clk_i)
+    return sum(1 for ev in evs if ev.is_set())
 
 
 async def _capture_ar_at(addr: int) -> dict[str, int]:
@@ -195,6 +328,13 @@ class _LevelStep:
         self._base = (level, issue_beats)
         self._cls = "status"
         self._pops = 0
+
+    def note_queued(self, write: bool, pops: int) -> None:
+        """Queued accesses issued past ``access``: writes, or DATA reads with ``pops`` OKAY."""
+        if not self.on or self._base is None:
+            return
+        self._pops += pops
+        self._cls = "write" if write else "pop"
 
     def stop(self) -> None:
         self.on = False
@@ -285,10 +425,11 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             fall_clk=clear,
             bound=STALL_RAS_CLEAR_LAG,
         )
-        self._ras_lines.obs(
+        self._ras_lines.info(
             "RAS-ENTROPY_FILL_STALL-DELAY",
             fall_after_ack=None if clear is None else clear - ack_clk,
             enable_to_ack=None if ack_clk is None else ack_clk - m_en.clk,
+            chk="CHK-RAS-ENTROPY_FILL_STALL-CLEAR",
         )
 
     async def _arm_not_full_no_ack(self, pool: SepEntropyPool) -> int:
@@ -448,6 +589,157 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             "first beat high" if hi_first else "first beat low",
         )
 
+    def _level_pair(self, graded0: int, cls: str, before: int, after: int, leg: str) -> None:
+        """CHK-POOL-LEVEL-STEP for a queued leg: one new graded pair of ``cls``."""
+        last = self._step.last
+        if self._step.graded != graded0 + 1 or last != (cls, before, after):
+            raise AssertionError(
+                f"CHK-POOL-LEVEL-STEP FAIL: queued {leg} leg pair {last}, expected one new "
+                f"graded pair ({cls}, {before}, {after}) (graded {graded0} -> {self._step.graded})"
+            )
+        self.logger.info(
+            "CHK-POOL-LEVEL-STEP PASS: queued %s leg, fifo_level %d -> %d, no pool EDN beat between",
+            leg,
+            before,
+            after,
+        )
+
+    def _queued_ctrl(self, part: str, watch: _PoolHsWatch, req: str, rsp: str, n: int) -> None:
+        self.logger.info(
+            "CTRL-POOL-QUEUED seen: part=%s issued=%d %s_queued_clocks=%d hs=%s",
+            part,
+            n,
+            req,
+            watch.queued[req],
+            watch.hs,
+        )
+        self.logger.info(
+            "INFO-POOL-QUEUED-WAIT: part=%s %s_wait_clocks=%d", part, rsp, watch.resp_wait[rsp]
+        )
+
+    def _queued_resp(self, part: str, watch: _PoolHsWatch, req: str, rsp: str, n: int, got: int):
+        """The tap and master counts of CHK-POOL-QUEUED-RESP for one leg."""
+        bad = []
+        if watch.hs[req] != n or watch.hs[rsp] != n:
+            bad.append(f"tap {req}={watch.hs[req]} {rsp}={watch.hs[rsp]}, expected {n} each")
+        if got != n:
+            bad.append(f"master got {got} of {n} responses in {QUEUE_WAIT_CAP} clocks")
+        if watch.drops:
+            bad.append(f"{rsp.upper()}VALID fell before its ready at clocks {watch.drops[:4]}")
+        if watch.unknown:
+            bad.append(f"tap X/Z on {watch.unknown} samples")
+        if bad:
+            raise AssertionError(f"CHK-POOL-QUEUED-RESP FAIL: part={part} " + "; ".join(bad))
+
+    async def _queued_writes(self, pool: _LevelStepPool, drv, level: int) -> None:
+        """Writes with W late and BREADY held: CTRL-POOL-QUEUED, CHK-POOL-QUEUED-RESP.
+
+        Three writes go out with W held until an AW waits at the pool port; then
+        W and BREADY are released in turn. The FIFO drain on the same master is stopped by the caller and EDN is
+        disabled, so the tap sees only these writes and the level cannot move.
+        """
+        chans = drv.channels
+        w_chan, b_chan = chans["w_delay"], chans["b_ready_delay"]
+        graded0 = self._step.graded
+        watch = _PoolHsWatch().start()
+        w_chan.pause = True
+        b_chan.pause = True
+        try:
+            cells = QUEUED_WRITE_CELLS
+            evs = [drv.init_write(addr, 0xFFFF, awid=0) for addr in cells]
+            await watch.wait_for(lambda: watch.queued["aw"] > 0, "part=write AWVALID queued")
+            await ClockCycles(cocotb.top.clk_i, QUEUE_HOLD)
+            w_chan.pause = False
+            await ClockCycles(cocotb.top.clk_i, QUEUE_HOLD)
+            b_chan.pause = False
+            got = await _wait_events(evs, QUEUE_WAIT_CAP)
+            await ClockCycles(cocotb.top.clk_i, 2)
+        finally:
+            w_chan.pause = False
+            b_chan.pause = False
+            watch.stop()
+        n = len(evs)
+        self._queued_ctrl("write", watch, "aw", "b", n)
+        self._queued_resp("write", watch, "aw", "b", n, got)
+        resps = [worst_resp(ev.data.resp) for ev in evs]
+        if any(r != RESP_SLVERR for r in resps):
+            raise AssertionError(
+                f"CHK-POOL-QUEUED-RESP FAIL: part=write bresp={resps}, expected SLVERR each"
+            )
+        self._step.note_queued(True, 0)
+        st = await pool.status()
+        self._level_pair(graded0, "write", level, pool_level(st), "write")
+        self.logger.info(
+            "CHK-POOL-QUEUED-RESP PASS: part=write %d AW, %d B on the tap, %d master responses, "
+            "bresp=%s, level %d kept",
+            watch.hs["aw"],
+            watch.hs["b"],
+            got,
+            resps,
+            level,
+        )
+
+    async def _queued_reads(self, pool: _LevelStepPool, level: int) -> None:
+        """DATA reads with RREADY held at ``level`` 1 or 2.
+
+        Four reads go out, and reads are added until an AR waits at the pool
+        port with an earlier read unanswered.
+        The reads share ID 0, so their R beats return in issue order (AMBA AXI
+        IHI 0022, transaction identifiers and ordering): the first ``level`` pop
+        the next packed words with OKAY and the rest find the pool empty and
+        answer SLVERR. The empty-read data is not graded. ESRC and EDN are
+        disabled; the FIFO drain on the same master is stopped for the leg.
+        """
+        drv = self.env.axi_agent.driver.axi.driver
+        r_chan = drv.channels["r_ready_delay"]
+        graded0 = self._step.graded
+        await self.stop_fifo_drain()
+        watch = _PoolHsWatch().start()
+        r_chan.pause = True
+        try:
+            evs = [drv.init_read(POOL_POP, arid=0) for _ in range(QUEUED_READS)]
+
+            def seen() -> bool:
+                return watch.queued["ar"] > 0
+
+            await _issue_until(evs, lambda _i: drv.init_read(POOL_POP, arid=0), seen)
+            if not seen():
+                watch.missing(f"part=read ARVALID queued after {len(evs)} reads")
+            await ClockCycles(cocotb.top.clk_i, QUEUE_HOLD)
+            r_chan.pause = False
+            got = await _wait_events(evs, QUEUE_WAIT_CAP)
+            await ClockCycles(cocotb.top.clk_i, 2)
+        finally:
+            r_chan.pause = False
+            watch.stop()
+        self.start_fifo_drain()
+        n = len(evs)
+        self._queued_ctrl("read", watch, "ar", "r", n)
+        self._queued_resp("read", watch, "ar", "r", n, got)
+        resps = [worst_resp(ev.data.resp) for ev in evs]
+        want = [RESP_OKAY] * level + [RESP_SLVERR] * (n - level)
+        if resps != want:
+            raise AssertionError(
+                f"CHK-POOL-QUEUED-RESP FAIL: part=read rresp={resps} at level {level}, "
+                f"expected {want}"
+            )
+        words = [int.from_bytes(bytes(ev.data.data), "little") for ev in evs[:level]]
+        for i, word in enumerate(words):
+            self._check_pop_word(f"queued read[{i}]", word)
+        self._step.note_queued(False, level)
+        st = await pool.status()
+        self._level_pair(graded0, "pop", level, pool_level(st), "read")
+        self.logger.info(
+            "CHK-POOL-QUEUED-RESP PASS: part=read %d AR, %d R on the tap, %d master responses, "
+            "rresp=%s at level %d, OKAY words %s each the next packed word",
+            watch.hs["ar"],
+            watch.hs["r"],
+            got,
+            resps,
+            level,
+            ",".join(f"0x{w:016x}" for w in words),
+        )
+
     async def _wait_pool_low(
         self, pool: SepEntropyPool, expect: int, *, iters: int = FILL_POLL_CAP
     ) -> int:
@@ -508,10 +800,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         ).start()
         self._ras_m0 = self._ras.mark()
 
-        # [36] high while empty, before any fill. A stuck-low source fails here.
-        # The low watermark is not stated, so pool_low at empty is logged only. The
-        # graded part is that [36] carries the STATUS pool_low flag. No text states
-        # the IRQ_CAUSE value, so it is logged only.
+        # [36] carries the STATUS pool_low flag at empty, before any fill.
         st0 = await pool.status()
         level0 = pool_level(st0)
         assert level0 == 0, f"pool not empty at reset: status=0x{st0:x}"
@@ -519,7 +808,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         irq0 = await self._irq(IRQ_POOL_LOW)
         cause0 = await pool.irq_cause()
         self.logger.info(
-            "OBS-POOL-LOW-EMPTY level=0 status=0x%x pool_low=%d irq36=%d cause=0x%x",
+            "INFO-POOL-LOW-EMPTY level=0 status=0x%x pool_low=%d irq36=%d cause=0x%x "
+            "chk=CHK-POOL-LOW-HIGH,CHK-POOL-CAUSE-LOW",
             st0,
             low0,
             irq0,
@@ -534,12 +824,29 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             irq0,
             st0,
         )
-        self.logger.info("OBS-POOL-CAUSE-EMPTY cause=0x%x status=0x%x", cause0, st0)
+        # The control is the STATUS read before the IRQ_CAUSE read: a pool_low of 0
+        # at empty leaves the cause bit ungradable, so the leaf fails on it.
+        if low0 != 1:
+            raise AssertionError(
+                f"CTRL-MISSING POOL-CAUSE-LOW: STATUS pool_low={low0} at empty "
+                f"(status=0x{st0:x}), so IRQ_CAUSE pool_low cannot be graded"
+            )
+        self.logger.info("CTRL-POOL-CAUSE-LOW seen: STATUS pool_low=1 at level 0")
+        cause_low = pool_flag(cause0, CAUSE_POOL_LOW)
+        assert cause_low == 1, (
+            f"CHK-POOL-CAUSE-LOW FAIL: IRQ_CAUSE=0x{cause0:x} pool_low={cause_low} at "
+            f"empty after STATUS pool_low=1 (status=0x{st0:x}), expected 1"
+        )
+        self.logger.info(
+            "CHK-POOL-CAUSE-LOW PASS: IRQ_CAUSE=0x%x pool_low=1 at empty, STATUS=0x%x pool_low=1",
+            cause0,
+            st0,
+        )
         self._step = _LevelStep(self._pool_beats)
         pool.step = self._step
         open_graded_window(TEST, self.logger)
         try:
-            capture = await self._graded(pool, cfg, cause0, low0 == 1 and irq0 == 1)
+            capture = await self._graded(pool, cfg, cause0)
         except BaseException:
             # A failure may resume from ReadOnly, where no value can be written.
             await NextTimeStep()
@@ -556,14 +863,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self.logger.info("CHK5_pool PASS: observe-mode pool adapter beats reached the floor")
         self.logger.info("entropy-pool aperture ALL CHECKS PASS")
 
-    async def _graded(
-        self, pool: _LevelStepPool, cfg: SepEntropyPoolCfg, cause0: int, high_at_empty: bool
-    ):
-        """The graded window body: fill, refusals, stall, pops and drain to empty.
-
-        ``high_at_empty`` is True when STATUS pool_low and [36] both read 1 at
-        the empty read. Only then does CHK-POOL-FILL claim that pool_low clears.
-        """
+    async def _graded(self, pool: _LevelStepPool, cfg: SepEntropyPoolCfg, cause0: int):
+        """The graded window body: fill, refusals, stall, pops and drain to empty."""
         # Observe-mode CHK5_pool: this test owns the entropy-pool aperture
         # (0x1095_0000), not bit-exact EDN routing (that is
         # sep_esrc_e2e_smoke_test). report() still gates the >=1-beat floor; a
@@ -576,7 +877,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         st_fill = await self._wait_pool_low(pool, 0)
         m_idle = self._ras.mark()
-        self._ras_lines.obs(
+        self._ras_lines.info(
             "RAS-ENTROPY_FILL_STALL-BRINGUP",
             rises=self._ras.rises_since(self._ras_m0),
             high_clocks=self._ras.high_clocks_since(self._ras_m0),
@@ -586,30 +887,21 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self._fill_level = level_fill
         low_fill = pool_flag(st_fill, ST_POOL_LOW)
         irq_fill = await self._irq(IRQ_POOL_LOW)
-        # A clear is claimed only after pool_low and [36] read 1 together at
-        # empty. The low watermark is not stated, so a flag that reads 0 at
-        # empty is not a fault here, and the line then claims no clear.
-        claim = (
-            "pool_low and [36] read 1 at level 0, then 0"
-            if high_at_empty
-            else "no clear claimed: pool_low read 0 at level 0 (OBS-POOL-LOW-EMPTY)"
-        )
         assert level_fill > 0 and low_fill == 0 and irq_fill == 0, (
             f"CHK-POOL-FILL FAIL: fifo_level={level_fill} pool_low={low_fill} [36]={irq_fill} "
             f"(status=0x{st_fill:x}), expected fifo_level > 0 with pool_low 0 and [36] 0"
         )
         self.logger.info(
-            "CHK-POOL-FILL PASS: %s; fifo_level=%d pool_low=0 [36]=0 pool_err=0 high_at_empty=%d",
-            claim,
+            "CHK-POOL-FILL PASS: pool_low and [36] read 1 at level 0, then 0; fifo_level=%d "
+            "pool_low=0 [36]=0 pool_err=0",
             level_fill,
-            int(high_at_empty),
         )
         self.logger.info("CHK-POOL-LOW-LOW PASS: [36]=0 at level=%d", level_fill)
         await self._check_low_edge(st_fill)
 
         cause = await pool.irq_cause()
         self.logger.info(
-            "OBS-POOL-CAUSE-IDLE cause=0x%x empty_cause=0x%x status=0x%x",
+            "INFO-POOL-CAUSE-IDLE cause=0x%x empty_cause=0x%x status=0x%x",
             cause,
             cause0,
             st_fill,
@@ -741,6 +1033,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 w_cyc,
                 level_room,
             )
+        await self._queued_writes(pool, drv, level_room)
         self.start_fifo_drain()
 
         # The stall threshold is not stated: poll STATUS until fill_stall reads 1, up
@@ -761,12 +1054,13 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             rises=len(ras_rises),
             polled_clocks=waited,
         )
-        self._ras_lines.obs(
+        self._ras_lines.info(
             "RAS-ENTROPY_FILL_STALL-DELAY",
             rise_after_edn_disable=ras_rises[0] - m_dis.clk if ras_rises else None,
         )
         self.logger.info(
-            "OBS-POOL-STALL-TIME ns=%d polled_clocks=%d fill_stall=%d level=%d",
+            "INFO-POOL-STALL-TIME ns=%d polled_clocks=%d fill_stall=%d level=%d "
+            "chk=CHK-STALL-ASSERT",
             get_sim_time("ns") - t_stall0,
             waited,
             fill_stall,
@@ -785,7 +1079,16 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             pool_level(st_stall),
         )
         cause_stall = await pool.irq_cause()
-        self.logger.info("OBS-POOL-CAUSE-STALL cause=0x%x status=0x%x", cause_stall, st_stall)
+        stall_cause = pool_flag(cause_stall, CAUSE_FILL_STALL)
+        assert stall_cause == 1, (
+            f"CHK-POOL-CAUSE-STALL FAIL: IRQ_CAUSE=0x{cause_stall:x} fill_stall={stall_cause} "
+            f"after STATUS fill_stall=1 (status=0x{st_stall:x}), expected 1"
+        )
+        self.logger.info(
+            "CHK-POOL-CAUSE-STALL PASS: IRQ_CAUSE=0x%x fill_stall=1 after STATUS=0x%x fill_stall=1",
+            cause_stall,
+            st_stall,
+        )
 
         # The flag reports a fill request that is still outstanding, so holding the
         # same stall for STALL_THRESH * 3 more clocks (a DV-chosen hold) must leave
@@ -802,7 +1105,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             STALL_THRESH * 3,
         )
         cause_held = await pool.irq_cause()
-        self.logger.info("OBS-POOL-CAUSE-HELD cause=0x%x", cause_held)
+        self.logger.info("INFO-POOL-CAUSE-HELD cause=0x%x", cause_held)
 
         # Stall phase: EDN is disabled and the pool is not full, so no fill can
         # enter. The two IRQ_CAUSE reads above must leave fifo_level at the armed
@@ -868,6 +1171,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
 
         # Drain to empty so the empty-pop SLVERR is a real empty, not a race.
+        # The queued read leg runs once, at the first drain level of 1 or 2.
+        queued_reads = False
         drain_iters = 0
         drain_mark = len(self._edge_trace)
         while True:
@@ -875,11 +1180,20 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             level = await self._check_low_edge(st_drain)
             if level == 0:
                 break
+            if not queued_reads and level <= QUEUED_READ_LEVEL:
+                await self._queued_reads(pool, level)
+                queued_reads = True
+                continue
             pop = await pool.access(POOL_POP)
             assert pop.resp_code == RESP_OKAY, f"drain pop resp={pop.resp_code} while level>0"
             self._check_pop_word(f"drain[{drain_iters}]", pop.rdata)
             drain_iters += 1
             assert drain_iters <= FIFO_DEPTH + 2, "drain did not empty"
+        if not queued_reads:
+            raise AssertionError(
+                "CTRL-MISSING POOL-QUEUED: part=read, the drain never read a level of "
+                f"1 to {QUEUED_READ_LEVEL}, so the queued read leg did not run"
+            )
         self.logger.info(
             "CHK-POOL-LOW-EDGE PASS: aggregate [36] tracked status pool_low "
             "on %d status reads down to empty",
@@ -896,7 +1210,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         drain = self._edge_trace[drain_mark:]
         first_low = next((lv for lv, lo in drain if lo == 1), None)
         self.logger.info(
-            "OBS-POOL-LOW-LEVEL drain_first_low_level=%s fill_clear_level=%d "
+            "INFO-POOL-LOW-LEVEL drain_first_low_level=%s fill_clear_level=%d "
             "fill_last_low_level=%s drain_trace=%s",
             first_low,
             self._fill_level,
@@ -907,7 +1221,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # (CHK-POOL-LOW-EDGE); the pool_low value at empty is not stated.
         st_empty = await pool.status()
         self.logger.info(
-            "OBS-POOL-LOW-REHIGH level=%d pool_low=%d irq36=%d",
+            "INFO-POOL-LOW-REHIGH level=%d pool_low=%d irq36=%d",
             pool_level(st_empty),
             pool_flag(st_empty, ST_POOL_LOW),
             await self._irq(IRQ_POOL_LOW),

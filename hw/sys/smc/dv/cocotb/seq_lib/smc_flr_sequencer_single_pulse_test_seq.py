@@ -3,9 +3,10 @@
 """The FLR cool pulse on the BP_COOL_RESET_N_O pad and the ISOLATE_REQ_VIS levels.
 
 ``clk_rst.adoc`` "Isolation Connections": the FLR cool reset also drives the open-drain
-``BP_COOL_RESET_N_O`` pad, GPIO 62, which pulls the line low while the reset is asserted and
-leaves it undriven otherwise. "Timing and Recovery": ``ISOLATE_REQ_VIS`` reports synchronized
-pin and cool-reset levels; it is not an isolation-completion handshake.
+``BP_COOL_RESET_N_O`` pad (the Cool Reset Out entry of the integrator pad table), which pulls the
+line low while the reset is asserted and leaves it undriven otherwise. "Timing and Recovery":
+``ISOLATE_REQ_VIS`` reports synchronized pin and cool-reset levels; it is not an
+isolation-completion handshake.
 
 Every probe is sampled on ``clk_ref_i`` rises: ``tb_rst_cool_from_flr`` (``rst_cool_no``) and
 ``tb_core2pad_en_o`` and ``tb_core2pad_o`` at the Cool Reset Out index of the integrator pad
@@ -62,7 +63,7 @@ _IN_HOLD_READ_NS = 5_000
 FLR_IDLE, FLR_COUNT_DOWN, FLR_EQUAL_ZERO = 0, 1, 2
 FLR_NAME = {0: "IDLE", 1: "COUNT_DOWN", 2: "EQUAL_ZERO"}
 
-CHK_PAD62 = "CHK-COOL-RESET-PAD62-OPEN-DRAIN"
+CHK_PAD = "CHK-COOL-RESET-PAD-OPEN-DRAIN"
 CHK_VIS = "CHK-ISOLATE-VIS-LIVE-LEVELS"
 
 
@@ -84,7 +85,7 @@ COOL_RESET_OUT_PAD = _pad_index("Cool Reset Out")
 
 
 class RefMon:
-    """clk_ref_i sampler of the FLR request edge, counter state, rst_cool_no and pad 62.
+    """clk_ref_i sampler of the FLR edge, counter state, rst_cool_no and the cool-reset-out pad.
 
     A second sampler on clk_smc_i counts falls of the warm smc-clock reset, so a leg armed
     before its request edge sees the warm reset the cool pulse causes.
@@ -289,7 +290,7 @@ class SmcFlrLegSeq(SmcCsrSeq):
 
 
 class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
-    """A short and a long FLR leg; pad 62 on every sample, ISOLATE_REQ_VIS around them."""
+    """Two FLR legs; the cool-reset-out pad on every sample, ISOLATE_REQ_VIS around them."""
 
     def __init__(self, name: str = "smc_flr_sequencer_single_pulse_test_seq") -> None:
         super().__init__(name)
@@ -352,11 +353,11 @@ class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
 
         pad = self.pad
         assert pad["driven"] >= FLR_M + LONG_M and pad["released"] >= FLR_N, (
-            f"{CHK_PAD62} FAIL: pad {COOL_RESET_OUT_PAD} driven on {pad['driven']} and released on "
+            f"{CHK_PAD} FAIL: pad {COOL_RESET_OUT_PAD} driven on {pad['driven']} and released on "
             f"{pad['released']} clk_ref_i samples; too few to compare"
         )
         assert pad["mismatch"] == 0 and pad["data_high"] == 0, (
-            f"{CHK_PAD62} FAIL: pad {COOL_RESET_OUT_PAD} output enable differed from the inverted "
+            f"{CHK_PAD} FAIL: pad {COOL_RESET_OUT_PAD} output enable differed from the inverted "
             f"rst_cool_no on {pad['mismatch']} of {pad['samples']} clk_ref_i samples and drove 1 on "
             f"{pad['data_high']} of {pad['driven']} enabled samples"
         )
@@ -365,7 +366,7 @@ class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
             "edges); over %d clk_ref_i samples tb_core2pad_en_o[%d] equalled the inverted "
             "rst_cool_no on every sample (%d mismatches), was 1 on %d samples with "
             "tb_core2pad_o[%d]=0 on all of them (%d high), and was 0 on %d samples",
-            CHK_PAD62,
+            CHK_PAD,
             short["N"],
             short["M"],
             short["pre"],

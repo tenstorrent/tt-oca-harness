@@ -299,7 +299,7 @@ def draw_plan(seed: int) -> Plan:
         if size_c % SLOT_WORDS:
             break
     key_c = _key(rng, size_c)
-    residue_j = rng.randrange(size_c % SLOT_WORDS, SLOT_WORDS)
+    residue_j = size_c % SLOT_WORDS
     residue_bit = rng.randrange(0, 32)
     # CPU-line leg.
     cpu_src = rng.choice(ORDER)

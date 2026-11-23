@@ -11,10 +11,10 @@ changes no field and resets no domain; their read value is logged only.
 
 Leg B. For each domain a ``SW_RESET_N`` assert first isolates the paths of the
 table of paths isolated before each software reset. Accepted host transactions
-drain. Host accesses that arrive after the request complete with SLVERR, and a
-4-byte read returns ``0x1501A7ED``. The reset asserts only after every path of
-the domain reports isolated, and a write of 1 releases reset and isolation
-together. The Key Manager mailbox, the eFuse wrapper host port, the lifecycle
+drain. Host accesses first presented after the request rises complete with
+SLVERR, and a 4-byte read returns ``0x1501A7ED``. The reset asserts only after
+every path of the domain reports isolated, and a write of 1 releases reset and
+isolation together. The Key Manager mailbox, the eFuse wrapper host port, the lifecycle
 controller, the entropy pool and the external TRNG window have no isolate stage
 and answer as in the memory map while a domain is isolated.
 
@@ -46,6 +46,9 @@ pass the leaf puts host transactions in flight on the path of the victim. For
 OTBN and AES the first host transaction is placed from measured latencies
 (``CAL-DRAIN``) so that the host isolate stage accepts it one clock before the
 isolate request rises, and the master holds RREADY low until the request rises.
+When the isolate request of D reads 1, the leaf issues one more 4-byte read
+and one more 4-byte write of the probe of D, so the stage first sees them after
+the rise.
 Leg C runs after leg B with the POKE Key Manager image. For each destination,
 in an order drawn from its own seeded stream, the image stores the drawn
 non-zero words of KEY_SHARE0 and KEY_SHARE1 (the generated
@@ -62,8 +65,9 @@ taps: ``ip_rst_n[0]`` (``km_gated_rst_n_probe_o``) and the 14-bit isolate
 request and isolate-complete vectors (``crypto_isolate_req_probe_o``,
 ``crypto_isolated_probe_o``), read in the bench index of
 ``env/sep_reset_taps.py``, and the slave-side handshakes of the 14 isolate
-stages (``iso_slv_{aw,ar,b,r}_hs_probe_o``, ``iso_slv_{b,r}resp_probe_o``). The handshakes of ``s_axi`` are sampled on the same
-clock as the taps. Leg C also samples the Key Manager key-path AW channel
+stages (``iso_slv_{aw,ar,b,r}_hs_probe_o``, ``iso_slv_{b,r}resp_probe_o``,
+``iso_slv_{ar,aw}_valid_probe_o``). The handshakes of ``s_axi`` and its AWVALID and
+AWID are sampled on the same clock as the taps. Leg C also samples the Key Manager key-path AW channel
 (``km_key_aw_{valid,ready}_o``, KM-BUS) and reads the POKE results through
 ``km_sram_probe_o`` (KM-RESULT).
 
@@ -75,7 +79,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-SUBSET-COVER  the partition drops every one of the six taps at least once.
   CHK-SWRST-RSVD    after each write with bits 63:7 set a response arrives and
                     the 64-bit readback answers OKAY with bits 6:0 equal to the
-                    written fields (bits 63:7 are logged as ``OBS-SWRST-RSVD``).
+                    written fields.
                     For the earlier writes of a one-write-per-domain step, every
                     field of bits 6:0 is graded on its isolate request and
                     engine reset taps: each tap moves once per write that
@@ -111,12 +115,50 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     request has its response there before ``ip_rst_n[D]``
                     falls (the others log ``INFO-ISO-DRAIN``). The ``s_axi``
                     arrival of the same responses is logged as
-                    ``OBS-ISO-DRAIN-SAXI``.
+                    ``INFO-ISO-DRAIN-SAXI``, and each host transaction as
+                    ``INFO-HOST-TXN``.
+  CHK-ISO-DRAIN-RESP OTBN, AES: at the slave side of the host isolate stage
+                    of D, each transaction before the isolated window is
+                    PRE (stage handshake before the isolate request rise),
+                    POST (a transaction whose own first AR or AW valid at
+                    the stage is after the rise) or AMBIGUOUS (first presented at or before the
+                    rise, stage handshake at or after it). The normal
+                    response is OKAY, and for a read its data under the
+                    probe mask is the armed value of the probe of D, which
+                    every host write of the pass writes. A PRE transaction
+                    gets the normal response. A POST transaction gets
+                    SLVERR, with ``0x1501A7ED`` for a read; a write is
+                    graded on its B code, since the same address answers
+                    OKAY before the rise. An AMBIGUOUS transaction gets one
+                    whole answer (SLVERR with ``0x1501A7ED`` for a read, or
+                    the normal response), and a normal response comes at
+                    the stage before the host isolate-complete bit of D
+                    rises and before ``ip_rst_n[D]`` falls. Per channel,
+                    in order of first presentation (stage AR or AW valid),
+                    every
+                    transaction after one that got the isolate answer
+                    gets the isolate answer too. The
+                    AMBIGUOUS transactions are also logged with both clocks
+                    as ``INFO-ISO-DRAIN-WINDOW``. A pass with no PRE or no
+                    POST transaction fails; the read and the write issued
+                    after the request reads 1 reach POST on every seed.
+                    Stage response codes come from the slave-side tap; read
+                    data from the host read. The other domains log
+                    ``INFO-ISO-DRAIN-RESP``.
+  CHK-ISO-DRAIN-POST HMAC, KMAC, Adams Bridge, TRNG: the POST and order terms
+                    of CHK-ISO-DRAIN-RESP, which hold on every host path. A
+                    POST write counts only after a write to the probe of D
+                    answered OKAY before a rise in the leaf, since the write is
+                    graded on its B code alone. A pass with no counted POST
+                    transaction logs
+                    ``INFO-ISO-DRAIN-POST``; reach depends on the seed, and
+                    ``INFO-ISO-DRAIN-POST-REACH`` counts the graded passes
+                    per domain at the end of the leaf.
   CHK-ISO-ACK-AFTER-DRAIN OTBN, AES: the host isolate-complete bit of D rises
                     on a later clock than the last slave-side response of
                     the transactions the stage accepted before the request
-                    (the others log ``INFO-ISO-ACK-AFTER-DRAIN``). The response
-                    code and the ``s_axi`` arrival stay logged only.
+                    (the others log ``INFO-ISO-ACK-AFTER-DRAIN``). The ``s_axi``
+                    arrival stays logged only.
   CHK-ISO-PATHS     the isolate requests that rise from the baseline equal the
                     table set of the victims written.
   CHK-ISO-KEY-DRAIN leg C, every destination: every key-share write that the
@@ -320,6 +362,9 @@ KEY_BEAT_LIST_BOUND = 200_000  # POKE list to SYNC or DONE
 N_VALUES = 4
 HOST_IDS = (1, 2, 3, 4)
 SW_ID = 0
+# The read and the write issued after the isolate request of D reads 1.
+POST_RD_ID, POST_WR_ID = 5, 6
+TXN_IDS = (*HOST_IDS, POST_RD_ID, POST_WR_ID)
 
 SIZES = (1, 2, 4, 8)
 _SIZE_CODE = {1: 0, 2: 1, 4: 2, 8: 3}
@@ -533,7 +578,10 @@ class IsoSlvLog:
 
     Reads ``iso_slv_{aw,ar,b,r}_hs_probe_o`` and the response codes on every rising
     edge of ``clk_i`` in the read-only phase and drives nothing. A handshake is one
-    clock with valid and ready high, so every high clock is recorded. ``clk`` counts
+    clock with valid and ready high, so every high clock is recorded. On the same
+    edges it records the clocks on which ``iso_slv_ar_valid_probe_o`` or
+    ``iso_slv_aw_valid_probe_o`` is high and the clocks and AWID on which
+    ``s_axi_awvalid`` is high. ``clk`` counts
     the sampled edges from ``start``. While ``km_on`` is set it also records, per
     clock, the Key Manager key-path ports whose AW is valid and not ready
     (``km_key_aw_{valid,ready}_o``, port i = bench stage 8 + i).
@@ -545,6 +593,9 @@ class IsoSlvLog:
         self.dut = dut
         self.clk = 0
         self.ev: list[tuple[int, str, int, int]] = []  # (clk, ch, bench stage, resp)
+        self.arv: list[tuple[int, int]] = []  # (clk, stages with AR valid high)
+        self.awsv: list[tuple[int, int]] = []  # (clk, stages with AW valid high)
+        self.awv: list[tuple[int, int]] = []  # (clk, s_axi AWID) while AWVALID is high
         self.km_on = False
         self.km_wait: dict[int, int] = {}  # clk -> ports with AW valid and not ready
         self._task = None
@@ -557,6 +608,20 @@ class IsoSlvLog:
             await RisingEdge(d.clk_i)
             await ReadOnly()
             self.clk += 1
+            arv, awsv = d.iso_slv_ar_valid_probe_o.value, d.iso_slv_aw_valid_probe_o.value
+            awv = d.s_axi_awvalid.value
+            if not (arv.is_resolvable and awsv.is_resolvable and awv.is_resolvable):
+                raise AssertionError(
+                    "iso_slv_ar_valid_probe_o/iso_slv_aw_valid_probe_o/s_axi_awvalid "
+                    f"is X/Z at clock {self.clk}"
+                )
+            if int(arv):
+                self.arv.append((self.clk, int(arv)))
+            if int(awsv):
+                self.awsv.append((self.clk, int(awsv)))
+            if int(awv):
+                awid = d.s_axi_awid.value
+                self.awv.append((self.clk, int(awid) if awid.is_resolvable else -1))
             for ch in self.CH:
                 v = sig[ch].value
                 if not v.is_resolvable:
@@ -599,6 +664,19 @@ class IsoSlvLog:
             out[ch].append(tc)
             if ch in ("b", "r"):
                 out[f"{ch}resp"].append(RESP_NAME.get(code, code))
+        return out
+
+    def valid_clks(self, ch: str, start: int, stages: int, off: int) -> set[int]:
+        """Tap clocks after ``start`` on which the ``ch`` valid of one of ``stages`` is high."""
+        rec = self.arv if ch == "ar" else self.awsv
+        return {c - off for c, v in rec if c - off > start and v & stages}
+
+    def aw_first(self, start: int, off: int) -> dict[int, int]:
+        """First tap clock after ``start`` with ``s_axi_awvalid`` high, per AWID."""
+        out: dict[int, int] = {}
+        for c, awid in self.awv:
+            if c - off > start:
+                out.setdefault(awid, c - off)
         return out
 
     def km_aw_waiting(self, tap_clk: int, port: int, off: int) -> bool:
@@ -701,6 +779,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         "CHK-ISO-PAIR",
         "CHK-ISO-ORDER",
         "CHK-ISO-DRAIN",
+        "CHK-ISO-DRAIN-RESP",
         "CHK-ISO-PATHS",
         "CHK-ISO-ACK-AFTER-DRAIN",
         "CHK-ISO-WR-SLVERR",
@@ -828,6 +907,8 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         self.isolog = IsoSlvLog(dut).start()
         self.taps.log_map(self.logger)
         self.late_fail: list[str] = []
+        self.post_reach: dict[str, int] = {"hmac": 0, "kmac": 0, "abr": 0, "trng": 0}
+        self.wr_okay: set[str] = set()  # domains whose probe write answered OKAY
         self.pd = SepResetProbeDriver(self)
         self.axi = self.env.axi_agent.driver.axi
         self.hold = SepAxiReadyHold(self, "s_axi")
@@ -862,6 +943,10 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await self.taps.stop()
             await self.chan.stop()
             await self.isolog.stop()
+        self.logger.info(
+            "INFO-ISO-DRAIN-POST-REACH: graded passes per domain %s",
+            " ".join(f"{k}={v}" for k, v in self.post_reach.items()),
+        )
         if self.late_fail:
             raise AssertionError("; ".join(self.late_fail))
         self.result_pass(TEST, self.seed, self.k)
@@ -934,9 +1019,6 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 f"leg=rsvd shape={shape} n=1 writes responses=1 (resp={RESP_NAME[seq.resp_code]}) "
                 f"hi=0x{hi:x} written_fields=0b{fields:07b} readback_fields=0b{rb & SW_FIELDS:07b} "
                 f"readback_resp=OKAY",
-            )
-            self.logger.info(
-                "OBS-SWRST-RSVD: leg=rsvd shape=%s bits63:7=0x%x", shape, rb >> RSVD_LSB
             )
         await RisingEdge(cocotb.top.clk_i)
         cycles = self.taps.ip_rst[1].clk - m["ip_rst_1"].clk
@@ -1095,12 +1177,6 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 f"responses={len(codes)} ({','.join(RESP_NAME.get(c, str(c)) for c in codes)}) "
                 f"hi={his} written_fields=0b{self.sw:07b} readback_fields=0b{rb & SW_FIELDS:07b}"
                 f"{effect}",
-            )
-            self.logger.info(
-                "OBS-SWRST-RSVD: leg=subset step=%d phase=%s bits63:7=0x%x",
-                st.idx,
-                phase,
-                rb >> RSVD_LSB,
             )
             for d in st.doms:
                 await self._wait_ip(IPRST[d], level, f"step {st.idx} {phase} {d}")
@@ -1324,6 +1400,18 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
                 raise AssertionError(f"pass={pd.name}: isolate request of {d} never rose")
             self.hold.release("r")
             await FallingEdge(dut.clk_i)
+            # One read and one write of the probe of D, issued after the isolate
+            # request of D reads 1: the stage first sees them after the rise, so
+            # each gets the isolate answer (CHK-ISO-DRAIN-RESP, POST).
+            ev = self.axi.init_read(address=probe.addr, length=4, size=2, arid=POST_RD_ID)
+            host_evs.append(("rd", POST_RD_ID, ev))
+            ev = self.axi.init_write(
+                address=probe.addr,
+                data=self.armed[probe.name].to_bytes(4, "little"),
+                size=2,
+                awid=POST_WR_ID,
+            )
+            host_evs.append(("wr", POST_WR_ID, ev))
         # Step 8: every accepted transaction completes; the resets assert.
         for op, tid, ev in host_evs:
             for _ in range(DRAIN_BOUND):
@@ -1338,7 +1426,9 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             await self._wait_ip(IPRST[v], 0, f"pass={pd.name} {v} reset")
         fall = {v: view.ip_fall(IPRST[v]) for v in victims}
         # Step 9: the isolated window.
+        win_start = view.cyc
         win = await self._window(pd)
+        win["start_cyc"] = win_start
         # Step 10: hold, release in the order of the pass, wait for the rise.
         while view.cyc < fall[d] + pd.hold:
             await RisingEdge(dut.clk_i)
@@ -1440,15 +1530,16 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
         # CHK-ISO-DRAIN / INFO-ISO-DRAIN, from the s_axi handshakes.
         reqrise = view.req_rise(HOST_MASK[d])
         acc: dict[int, int] = {}
-        for c, i, _ in view.beats("ar", HOST_IDS) + view.beats("aw", HOST_IDS):
+        for c, i, _ in view.beats("ar", TXN_IDS) + view.beats("aw", TXN_IDS):
             acc.setdefault(i, c)
         done: dict[int, tuple[int, int]] = {}
-        for c, i, r in view.beats("r", HOST_IDS) + view.beats("b", HOST_IDS):
+        for c, i, r in view.beats("r", TXN_IDS) + view.beats("b", TXN_IDS):
             done.setdefault(i, (c, r))
+        graded = d in ("otbn", "aes")
         for op, tid, _ in host_evs:
             c, r = done.get(tid, (None, None))
             self.logger.info(
-                "OBS-HOST-TXN: pass=%s op=%s id=%d accept_cycle=%s resp_cycle=%s resp=%s",
+                "INFO-HOST-TXN: pass=%s op=%s id=%d accept_cycle=%s resp_cycle=%s resp=%s",
                 name,
                 op,
                 tid,
@@ -1458,7 +1549,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             )
         # s_axi view of the same transactions, for information only.
         self.logger.info(
-            "OBS-ISO-DRAIN-SAXI: dom=%s pass=%s accepted=%d resp_cycles=%s iso_req_cycle=%s "
+            "INFO-ISO-DRAIN-SAXI: dom=%s pass=%s accepted=%d resp_cycles=%s iso_req_cycle=%s "
             "rst_assert_cycle=%s",
             d,
             name,
@@ -1496,6 +1587,160 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             self._chk("CHK-ISO-DRAIN", completed == accepted, vals)
         else:
             self.logger.info("INFO-ISO-DRAIN: %s", vals)
+        # CHK-ISO-DRAIN-RESP / INFO-ISO-DRAIN-RESP (reset_controller.adoc, Isolation
+        # and Reset Sequencing, steps 2 and 3). Each stage transaction is PRE (stage
+        # handshake before the request rise), POST (a transaction whose own first
+        # AR or AW valid at the stage is after the rise)
+        # or AMBIGUOUS (first presented at or before the rise, stage handshake at or
+        # after it). PRE gets the normal response; POST always gets the isolate
+        # answer. AMBIGUOUS gets either the whole isolate answer or the normal
+        # response, and the normal response comes at the stage before the host isolate-complete rise of D and
+        # before ip_rst_n[D] falls. Per channel, once a transaction gets the isolate
+        # answer, every later-presented one does too. Only host transactions reach
+        # the stage before the isolated window; the k-th stage read (write) is the
+        # k-th host read (write) in s_axi AR (AW) handshake order. The normal
+        # response is OKAY, and for a read the probe of D holds its armed value
+        # under the probe mask: the pass arms it, and every host write of the pass
+        # writes that value.
+        slverr = RESP_NAME[RESP_SLVERR]
+        okay = RESP_NAME[RESP_OKAY]
+        probe = PROBES_B[d][0]
+        rd_exp = self.armed[probe.name] & probe.mask
+        mark = view.m["iso_req"].clk
+        host_rd = sorted(
+            ((acc[tid], ev) for op, tid, ev in host_evs if op == "rd" and tid in acc),
+            key=lambda x: x[0],
+        )
+        host_wr = sorted((acc[tid], tid) for op, tid, _ in host_evs if op == "wr" and tid in acc)
+        rdata = [int.from_bytes(bytes(ev.data)[:4], "little") for _, ev in host_rd]
+        aw_first = self.isolog.aw_first(mark, self.iso_off)
+        wr_first = [aw_first.get(tid) for _, tid in host_wr]
+        valid = {
+            ch: self.isolog.valid_clks(ch, mark, HOST_MASK[d], self.iso_off) for ch in ("ar", "aw")
+        }
+        host_ack = view.ack_rise(HOST_MASK[d], first_write - 1)
+        n_rd = sum(1 for op, *_ in host_evs if op == "rd")
+        n_wr = len(host_evs) - n_rd
+        stg_r = [c for c in st["ar"] if c < win["start_cyc"]]
+        stg_w = [c for c in st["aw"] if c < win["start_cyc"]]
+        mapped = (
+            len(stg_r) == len(host_rd) == n_rd
+            and len(stg_w) == len(host_wr) == n_wr
+            and None not in wr_first
+        )
+
+        # Valid can stay high across back-to-back transactions: one is first
+        # presented after the previous stage handshake on its channel.
+        def first_valid(hs: list[int], ch: str) -> list[int]:
+            out, prev = [], mark
+            for c in hs:
+                f = c
+                while f - 1 > prev and f - 1 in valid[ch]:
+                    f -= 1
+                out.append(f)
+                prev = c
+            return out
+
+        # (first presented, stage handshake, stage response clock, cell text,
+        #  isolate answer, normal response) per stage transaction.
+        txns = []
+        stage_only_post = 0
+        for k, (c, f) in enumerate(zip(stg_r, first_valid(stg_r, "ar"))):
+            code = st["rresp"][k] if k < len(st["rresp"]) else "none"
+            rsp = st["r"][k] if k < len(st["r"]) else None
+            data = rdata[k] if k < len(rdata) else None
+            txt = f"rd:valid={f}:hs={c}:resp_cycle={rsp}:{code}:" + (
+                "none" if data is None else f"0x{data:08x}"
+            )
+            iso = code == slverr and data == ISO_DATA
+            normal = code == okay and data is not None and (data & probe.mask) == rd_exp
+            txns.append((f, c, rsp, txt, iso, normal))
+        for k, (c, f) in enumerate(zip(stg_w, first_valid(stg_w, "aw"))):
+            sf = wr_first[k] if k < len(wr_first) else None
+            code = st["bresp"][k] if k < len(st["bresp"]) else "none"
+            rsp = st["b"][k] if k < len(st["b"]) else None
+            txt = f"wr:valid={f}:saxi_valid={sf}:hs={c}:resp_cycle={rsp}:{code}"
+            stage_only_post += sf is not None and sf <= reqrise < f
+            txns.append((f, c, rsp, txt, code == slverr, code == okay))
+        txns.sort(key=lambda t: t[1])
+        pre, amb, post, bad = [], [], [], []
+        for f, c, rsp, txt, iso, normal in txns:
+            if txt.startswith("wr:") and normal and f <= reqrise:
+                self.wr_okay.add(d)
+            if c < reqrise:
+                pre.append(txt)
+                ok = normal or not graded
+            elif f > reqrise:
+                post.append(txt)
+                ok = iso
+            else:
+                amb.append(txt)
+                drained = (
+                    rsp is not None and host_ack is not None and rsp < host_ack and rsp < fall[d]
+                )
+                ok = not graded or iso or (normal and drained)
+            if not ok:
+                bad.append(txt)
+        # Order of first presentation at the stage.
+        for ch in ("rd:", "wr:"):
+            seq = sorted((t for t in txns if t[3].startswith(ch)), key=lambda t: (t[0], t[1]))
+            first_iso = None
+            for _, _, _, txt, iso, _ in seq:
+                if first_iso is None:
+                    first_iso = txt if iso else None
+                elif not iso:
+                    bad.append(f"order:{txt}:after:{first_iso}")
+        cells = (
+            [f"pre:{t}" for t in pre]
+            + [f"ambiguous:{t}" for t in amb]
+            + [f"post:{t}" for t in post]
+        )
+        self.logger.info(
+            "INFO-ISO-DRAIN-WINDOW: dom=%s pass=%s iso_req_cycle=%s host_ack_rise_cycle=%s "
+            "rst_assert_cycle=%s count=%d cells=[%s]",
+            d,
+            name,
+            reqrise,
+            host_ack,
+            fall[d],
+            len(amb),
+            ",".join(amb),
+        )
+        vals = (
+            f"dom={d} pass={name} iso_req_cycle={reqrise} host_ack_rise_cycle={host_ack} "
+            f"rst_assert_cycle={fall[d]} window_start_cycle={win['start_cyc']} "
+            f"host_rd={n_rd} host_wr={n_wr} stage_rd={len(stg_r)} stage_wr={len(stg_w)} "
+            f"mapped={int(mapped)} pre_count={len(pre)} ambiguous_count={len(amb)} "
+            f"post_count={len(post)} wr_post_saxi_before_rise={stage_only_post} cells=[{','.join(cells)}] "
+            f"mismatched=[{','.join(bad)}] graded_terms={'all' if graded else 'post,order'} "
+            "wr_graded_on=bresp "
+            f"rd_exp=0x{rd_exp:08x} rd_mask=0x{probe.mask:08x} "
+            f"exp=pre:OKAY+rd_exp,"
+            f"ambiguous:SLVERR+0x{ISO_DATA:08X}|OKAY+rd_exp_before_ack_and_rst,"
+            f"post:SLVERR+0x{ISO_DATA:08X},"
+            "order:isolate_answer_on_every_later_txn_per_channel"
+        )
+        if graded:
+            self._chk(
+                "CHK-ISO-DRAIN-RESP",
+                mapped and len(pre) >= 1 and len(post) >= 1 and not bad,
+                vals,
+            )
+        else:
+            self.logger.info("INFO-ISO-DRAIN-RESP: %s", vals)
+            # CHK-ISO-DRAIN-POST: the POST and order terms, which hold on every
+            # host path, on the domains whose PRE and AMBIGUOUS terms are logged.
+            # A POST write is graded on its B code alone, so it counts only once a
+            # write to the probe of D has answered OKAY before a rise in this leaf.
+            counted = [t for t in post if t.startswith("rd:") or d in self.wr_okay]
+            vals += f" wr_okay_seen={int(d in self.wr_okay)} post_counted={len(counted)}"
+            if counted:
+                self._chk("CHK-ISO-DRAIN-POST", mapped and not bad, vals)
+                self.post_reach[d] += 1
+            elif bad:
+                self._chk("CHK-ISO-DRAIN-POST", False, vals)
+            else:
+                self.logger.info("INFO-ISO-DRAIN-POST: not reached: %s", vals)
         # CHK-ISO-ORDER / CTRL-ISO-ORDER (single-victim passes).
         ack_hi = {v: view.ack_rise(TABLE[v] & ~baseline, first_write - 1) for v in pd.victims}
         host_hi = {v: view.ack_rise(HOST_MASK[v], first_write - 1) for v in pd.victims}
@@ -1568,7 +1813,7 @@ class sep_sw_reset_isolation_matrix_test(sep_base_test):
             )
             probe_ok = all(ok for v in pd.victims for ok, _ in post_ok[v])
             self.logger.info(
-                "OBS-ISO-PAIR-ORDER: victims=%s falls=%s rises=%s",
+                "INFO-ISO-PAIR-ORDER: victims=%s falls=%s rises=%s",
                 ",".join(pd.victims),
                 ",".join(str(fall[v]) for v in pd.victims),
                 ",".join(str(rel[v][1]) for v in pd.victims),

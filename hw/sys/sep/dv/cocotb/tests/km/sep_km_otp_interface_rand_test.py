@@ -30,9 +30,10 @@ Checks (anchor):
                          OTP_DEMOTION_STATE = 0xA, each group {~demote, demote})
   CHK-OTP-LOCK           zero read of every field in m_w | m_c, staged read of
                          the rest, write-one-to-set lock registers (POKE readback)
-  OBS-OTP-LOCK-RESP      the response flags of each read of a read-locked field
-                         (``km_csr.rdl:818`` states the zero data, not the
-                         response code; POKE flags)
+  INFO-OTP-LOCK-RESP     the response flags of each read of a read-locked field
+                         (``km_csr.rdl:818`` states the zero data, which
+                         CHK-OTP-LOCK grades for the value and complement words,
+                         not the response code; POKE flags)
   CHK-OTP-HANDOVER-MASK  control=1: OTP_READ_LOCK = 0x03C (POKE readback)
   CHK-OTP-TM             secure test boot: secrets 0 / all ones, public and
                          life-cycle words kept, OTP_SIGINT quiet (POKE readback,
@@ -67,8 +68,9 @@ Checks (anchor):
                          the two lock registers, OTP_CHANGE_STATUS and IRQ_STATUS
                          read 0 in every readout (RDL ``rsvd`` R 0x0)
 
-Logged only (no verdict): ``OBS-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a single-rail
-flip, not stated).
+Logged only (no verdict): ``INFO-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a
+single-rail flip, not stated; the sticky OTP_SIGINT of the same flip is graded by
+CHK-OTP-SIG).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on an ``INFO-DRAW`` line.
@@ -418,7 +420,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         dut.rst_ni.value = 1
         pre_sense = cocotb.start_soon(self._sample_presense())
         await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
-        self.chk.obs("OTP-PRESENSE", boot=boot, **(await pre_sense))
+        self.chk.info("OTP-PRESENSE", boot=boot, **(await pre_sense))
         rel = await self._wait_sep_reset_release()
         self.cfg.reset_done.set()
         await ReadOnly()
@@ -511,7 +513,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     def _bad_under(self, ro: Readout, eff: int) -> list[str]:
         """Response problems of a readout under the effective lock ``eff``.
 
-        OBS-OTP-LOCK-RESP: the response of a read of a read-locked field. The RDL
+        INFO-OTP-LOCK-RESP: the response of a read of a read-locked field. The RDL
         states only the data (``hw/ip/key_manager/regs/km_csr.rdl:818``: "Returns
         zero when the field's bit is set in either OTP_READ_LOCK or
         OTP_READ_LOCK_COLD"), not the response code, so the code is logged and the
@@ -531,7 +533,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
                 for slot in locked
                 if slot in ro.slot_resp
             ]
-            self.chk.obs(
+            self.chk.info(
                 "OTP-LOCK-RESP",
                 readout=ro.label,
                 eff=f"0x{eff:03x}",
@@ -984,7 +986,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         leg.w1c_irq = v["w1c_sig"] if single else v["w1c_irq"]
         leg.pre_rd, leg.post_rd = v.get("pre_rd"), v.get("post_rd")
         if single:
-            self.chk.obs(
+            self.chk.info(
                 "OTP-SIG-CHANGE",
                 leg=label,
                 change=_h(leg.change),

@@ -26,10 +26,10 @@ FLR_SEQUENCER_MIN_CSR_ACCESSES = 23
 
 @pyuvm.test()
 class smc_flr_sequencer_single_pulse_test(smc_base_test):
-    """Pad 62 follows the FLR cool reset open-drain; ISOLATE_REQ_VIS follows the pin."""
+    """The cool-reset-out pad follows the FLR cool reset; ISOLATE_REQ_VIS follows the pin."""
 
     required_evidence = (
-        "CHK-COOL-RESET-PAD62-OPEN-DRAIN",
+        "CHK-COOL-RESET-PAD-OPEN-DRAIN",
         "CHK-ISOLATE-VIS-LIVE-LEVELS",
     )
     min_evidence = 2

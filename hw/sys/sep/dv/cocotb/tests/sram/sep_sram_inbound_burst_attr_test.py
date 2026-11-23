@@ -36,6 +36,8 @@ equals the byte model.
 
 CHK-SRAM-IN-STRB: on the overlay's first and last beats, the strobed bytes
 hold the overlay and the unstrobed bytes keep the burst data (AXI4 A3.4.3).
+A beat the overlay covers whole is skipped; a seed with no partial-strobe beat
+fails (CTRL-MISSING SRAM-IN-STRB).
 
 CHK-SRAM-IN-XPATH: the CPU-LSU master reads the burst's first, last and two
 seeded beats back equal to the model, so the inbound writes landed at the
@@ -74,10 +76,13 @@ label of ``sep_sram_access_cg.cp_xmaster_pair`` (``set_sram_access_pass``).
 
 Logged, not graded: after the cross-master legs, one SRAM word in the window takes an
 exclusive read and then a write with AWLOCK 1 and the same ID and address. No
-SEP document states the result. CTRL-SRAM-IN-ATTR: the AR handshake of the
-read and the AW handshake of the write on the m_axi port carried lock 1, the
-drawn ID and the word address. OBS-SRAM-IN-EXCL-WR logs the response of each
-access and the word before and after, read by the CPU-LSU master. The
+SEP document states whether the SRAM target has an exclusive monitor, and AXI4
+(Arm IHI 0022) gives a different result for each case: OKAY with the write
+landed without one, EXOKAY or OKAY with no write with one. CTRL-SRAM-IN-ATTR:
+the AR handshake of the read and the AW handshake of the write on the m_axi
+port carried lock 1, the drawn ID and the word address. INFO-SRAM-IN-EXCL-WR
+logs the response of each access and the word before and after, read by the
+CPU-LSU master. The
 cross-master legs and this leg run in the coverage window of this leaf.
 
 CHK-SRAM-CONC-DATA: after the coverage window closes, one inbound INCR burst
@@ -315,6 +320,13 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
             len(cfg.cases),
             self.n["rd_beats"],
         )
+        if self.n["strb"] == 0:
+            msg = (
+                f"CTRL-MISSING SRAM-IN-STRB: no overlay of the {len(cfg.cases)} cases "
+                "ended inside a beat, so no partial-strobe beat was graded"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         self.logger.info(
             "CHK-SRAM-IN-STRB PASS: %d partial-strobe overlay beats kept the "
             "unstrobed bytes and took the strobed ones",
@@ -519,7 +531,7 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         set_open_value_leg_pass(None, self.logger)
         self.logger.info(
-            "OBS-SRAM-IN-EXCL-WR addr=0x%08x id=0x%x excl_read_resp=%s rdata=%s "
+            "INFO-SRAM-IN-EXCL-WR addr=0x%08x id=0x%x excl_read_resp=%s rdata=%s "
             "write_resp=%s bid=%s wdata=%s before=%s after=%s",
             word,
             axi_id,

@@ -74,6 +74,21 @@ tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
+# EL2 firmware reads one OTP word through the eFuse read interface, submits a
+# matching SiP RMA token, then a non-matching and a matching chiplet RMA token; the
+# leaf grades the published words. Real fuse sense of a committed preload image.
+name = "sep_efuse_el2_fw_mmio_test"
+module = "efuse.sep_efuse_el2_fw_mmio_test"
+firmware = "efuse_el2_fw_mmio_test"
+seed = 1
+timeout_sec = 900
+tags = ["efuse", "token", "mux", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_el2_fw_mmio.toml",
+]
+
+[[tests]]
 # eFuse program x write-lock on SPARE0..SPARE8 (never LC_STATE). RAND-REP.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
@@ -492,6 +507,39 @@ args = [
 ]
 
 [[tests]]
+# Same module with enable 1, start RMA_SIP and the script SIP then CHIPLET pinned:
+# the plan comes from plan seed 9, and the preload is that plan's t=0 image. The
+# leaf reaches the CHIPLET match after the leg-A reset.
+name = "sep_efuse_transient_rma_rand_test_rma_sip"
+module = "efuse.sep_efuse_transient_rma_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=rma_sip",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_transient_rma_rma_sip.toml",
+]
+
+[[tests]]
+# Same module with enable 1 and start PROD pinned: the plan comes from plan seed 27,
+# and the preload is that plan's t=0 image. The leaf runs leg S.
+name = "sep_efuse_transient_rma_rand_test_legs"
+module = "efuse.sep_efuse_transient_rma_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["efuse", "lcc", "rma", "rand_rep", "subsystem", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=legs",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_transient_rma_legs.toml",
+]
+
+[[tests]]
 # Token match, mismatch shapes, hold, channel independence, no reset of the token
 # arrays, and retention of a SEC_DIS match over cold reset. VCS only: the no-reset check
 # needs X on unreset flops. RAND-REP.
@@ -523,7 +571,7 @@ target = "lsu_stub_all_live"
 name = "sep_efuse_interface_status_rand_test"
 module = "efuse.sep_efuse_interface_status_rand_test"
 seed = 1
-# No reseed: every run walks the eight cases; the seed selects only order, slots and values.
+# No reseed: every run walks the nine cases; the seed selects only order, slots and values.
 timeout_sec = 900
 tags = ["efuse", "interface", "rand_rep", "subsystem", "sep_spec_log", "lcc_gate_checks", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
@@ -571,6 +619,22 @@ target = "lsu_stub_all_live"
 args = [
   "+sep_pin_cell=single",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lock_slot_single.toml",
+]
+
+[[tests]]
+# Same module with the exempt image pinned: the plan comes from plan seed 44, which
+# draws the program of an LC_STATE bit, and the preload is that plan's t=0 image.
+name = "sep_efuse_lock_slot_matrix_rand_test_exempt"
+module = "efuse.sep_efuse_lock_slot_matrix_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "grades_spec_km_efuse_scan"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=exempt",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lock_slot_exempt.toml",
 ]
 
 [[tests]]
