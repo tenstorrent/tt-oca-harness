@@ -45,7 +45,7 @@ module efuse_shadow_regs
 
     parameter type efuse_addr_t = logic,  // Fuse bit-address type.
     parameter type efuse_data_t = logic,  // Fuse data-word type.
-    parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+    parameter type efuse_word_counter_t = logic,  // Fuse read word-count type.
     parameter type fuse_command_req_t = logic,  // Fuse-command request type.
     parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
@@ -84,9 +84,8 @@ module efuse_shadow_regs
                                                                   // write.
 
     output efuse_apb_resp_t                     apb_resp_o,  // APB response; errors with 0xBADCAB1E
-                                                             // before fuse sensing completes or
-                                                             // beyond the shadow file, and returns
-                                                             // 0xBADCAB1E without an error for a
+                                                             // before fuse sensing completes,
+                                                             // beyond the shadow file, or for a
                                                              // locked access.
 
     output logic                                fuse_sense_done_o,  // Set once the sense read has returned a
@@ -116,8 +115,10 @@ module efuse_shadow_regs
     output logic                                is_read_locked_o,  // High when the APB address
                                                                    // falls in a read-locked field.
 
-    output logic                                locked_field_access_interrupt_o  // High during an APB access to the
+    output logic                                locked_field_access_interrupt_o, // High during an APB access to the
                                                                                  // MAP window that a lock blocks.
+    output logic [1:0]                          sense_state_debug_o  // Fuse sense FSM state: 0 idle, 1 read,
+                                                                     // 2 wait, 3 finished.
 );
 
   localparam fuse_command_req_t FuseCommandReqDefault = '0;
@@ -288,7 +289,7 @@ module efuse_shadow_regs
   // APB Access
   ////////////////////////////////////////////////////////////////////////////
 
-  // An access phase to a locked field completes at once with 0xBADCAB1E and no error, and
+  // An access phase to a locked field completes at once with an error and 0xBADCAB1E, and
   // touches no storage. Every other access phase is a shadow-register access, answered from
   // apb_resp_q.
   logic apb_access_phase;
@@ -310,8 +311,9 @@ module efuse_shadow_regs
     apb_resp_o.prdata  = efuse_data_t'(0);
     apb_resp_o.pslverr = 1'b0;
     if (write_blocked || read_blocked) begin
-      apb_resp_o.pready = 1'b1;
-      apb_resp_o.prdata = efuse_data_t'(32'hbadcab1e);
+      apb_resp_o.pready  = 1'b1;
+      apb_resp_o.pslverr = 1'b1;
+      apb_resp_o.prdata  = efuse_data_t'(32'hbadcab1e);
     end else if (shadow_reg_access) begin
       apb_resp_o = apb_resp_q;
     end
@@ -386,7 +388,6 @@ module efuse_shadow_regs
     end
   end
 
-  efuse_word_counter_t current_word_num_q, current_word_num_d;
   efuse_word_counter_t words_received_q, words_received_d;
   fuse_command_req_t fuse_command_req_d;
 
@@ -465,10 +466,11 @@ module efuse_shadow_regs
 
   efuse_sense_state_e efuse_sense_state_d, efuse_sense_state_q;
 
+  assign sense_state_debug_o = 2'(efuse_sense_state_q);
+
     always_comb begin
         efuse_sense_state_d = efuse_sense_state_q;
         words_received_d = words_received_q;
-        current_word_num_d = current_word_num_q;
         fuse_command_req_d = fuse_command_req_o;
 
         unique case (efuse_sense_state_q)
@@ -476,15 +478,13 @@ module efuse_shadow_regs
                 if (rst_ni) begin
                     efuse_sense_state_d = ST_READ;
                     words_received_d = '0;
-                    current_word_num_d = '0;
                 end
             end
 
             ST_READ: begin
-                // .address is a bit address. current_word_num_q is always 0 here, so it is also
-                // bit 0 of word 0.
-                fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
-                fuse_command_req_d.access_length_words =
+                // Sensing reads the whole bank from bit 0.
+                fuse_command_req_d.address = '0;
+                fuse_command_req_d.read_word_count =
                     efuse_word_counter_t'(NumShadowWords);
                 fuse_command_req_d.valid = 1'b1;
                 fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
@@ -500,7 +500,6 @@ module efuse_shadow_regs
                         efuse_sense_state_d = ST_FINISHED;
                     end else begin
                         words_received_d = words_received_q + efuse_word_counter_t'(1);
-                        current_word_num_d = current_word_num_q + efuse_word_counter_t'(1);
                     end
                 end
 
@@ -518,7 +517,6 @@ module efuse_shadow_regs
     end
 
     `OCAH_FF(efuse_sense_state_q, efuse_sense_state_d, ST_IDLE, clk_i, rst_ni)
-    `OCAH_FF(current_word_num_q, current_word_num_d, '0, clk_i, rst_ni)
     `OCAH_FF(words_received_q, words_received_d, efuse_word_counter_t'(0), clk_i, rst_ni)
     `OCAH_FF(fuse_command_req_o, fuse_command_req_d, FuseCommandReqDefault, clk_i, rst_ni)
 
@@ -627,8 +625,8 @@ module efuse_shadow_regs
       end else if (!shadow_reg_access) begin : transient_rma_en
         if (HAS_LC_STATE) begin
           if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
-            priority if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
-                         !chiplet_state_change_completed_n0_scan) begin
+            if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
+                !chiplet_state_change_completed_n0_scan) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;

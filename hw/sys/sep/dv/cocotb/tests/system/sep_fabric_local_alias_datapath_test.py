@@ -25,7 +25,7 @@ window after the gated read, puts exactly one AR at that address on the port
 The cacheable flag that ``fabric.adoc`` lists per region is not checked
 here: this bench has no observable on the outbound cache bits.
 
-OBS-DBG-AR logs ``ext_debug_bus_o[207:192]`` after reads in two regions with
+INFO-DBG-AR logs ``ext_debug_bus_o[207:192]`` after reads in two regions with
 the write held, and after a write in the second region, without a verdict: no
 document or RDL defines what the debug bus carries in that lane.
 
@@ -200,7 +200,7 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             dest_data,
         )
 
-        await self._obs_dbg_ar(alias, cfg)
+        await self._info_dbg_ar(alias, cfg)
 
         self.logger.info(
             "local-alias config: region=%d of %d src=0x%08x dest=0x%08x seed %d",
@@ -258,8 +258,8 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         bits = getattr(v, "binstr", None) or str(v)
         return bits[len(bits) - DBG_LANE_MSB - 1 : len(bits) - DBG_LANE_LSB]
 
-    async def _obs_dbg_ar(self, alias: SepLocalAlias, cfg: SepLocalAliasCfg) -> None:
-        """OBS-DBG-AR: the lane after reads in two regions and after a write."""
+    async def _info_dbg_ar(self, alias: SepLocalAlias, cfg: SepLocalAliasCfg) -> None:
+        """INFO-DBG-AR: the lane after reads in two regions and after a write."""
         sib = SepLocalAliasCfg(cfg.seed, sibling_of=cfg)
         self.logger.info("local-alias debug: second window %s", sib.summary())
         await alias.program(cfg)
@@ -308,7 +308,7 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         await self.start_seq(rd)
         assert rd.resp_ok, f"CHK-OFFSET FAIL: remapped 0x{sib.access_addr:08x} resp not OKAY"
         self.logger.info(
-            "OBS-DBG-AR: write region=%d read region=%d lane=%s read region=%d lane=%s "
+            "INFO-DBG-AR: write region=%d read region=%d lane=%s read region=%d lane=%s "
             "write region=%d read region=%d lane=%s",
             cfg.region,
             cfg.region,

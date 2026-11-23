@@ -38,6 +38,21 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    write, or for a native error.
 * CHK-SRC17, CHK-IDLE-BAND  source 17 and the band above 43 stay 0 with
                    ``meie`` and ``meipl`` armed; live source 24 reads 1.
+* CHK-SRC39        vector bit 38 (source 39, the entropy pool pointer fault)
+                   is 0 with no X on every clock from the reset release to
+                   the end on which ``STATUS.pool_error`` of the entropy pool
+                   reads 0 (``hw/sys/sep/doc/interrupts.adoc``, source 39: tied
+                   to zero; ``hw/sys/sep/doc/entropy_pool.adoc``: the PIC line
+                   follows ``pool_error``; both readings give 0 there).
+                   ``CTRL-POOL-ERROR``: the number of those clocks; 0 clocks,
+                   an X on ``pool_error`` on any clock, or ``pool_error`` = 1
+                   on any clock fails the leaf. The leaf injects no pool
+                   fault, and ``pool_error`` reports only a FIFO integrity
+                   fault (``entropy_pool.adoc``; RDL ``STATUS.pool_error``).
+                   ``pool_error`` is read every clock by a monitor-only
+                   hierarchy read of the status word the pool returns on a
+                   ``STATUS`` read (``hw/sys/sep/rtl/sep_entropy_fifo.sv``,
+                   ``status_word``), at the field position of the RDL export.
 * CHK-SLOTLESS     an AES encryption, an OTP read and a life-cycle controller
                    read move no vector bit; the AES output-valid flag rises,
                    DATA_OUT equals the FIPS-197 C.1 ciphertext and the AES
@@ -83,19 +98,38 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 * CHK-EXT-IN       one (two) asserted boundary bits show as one (two) pending
                    sources above 43, the assigned sources stay at their
                    baseline, and the band drops at the release.
+* CHK-GW-L2E       an event source held at its active level in level mode
+                   switches to edge mode with the input asserted; ``meip``
+                   reads 1 once the input settles in edge mode, 1 after a
+                   ``meigwclr`` write with the input still asserted, 1 after
+                   the input drops with no clear, and 0 after the next
+                   ``meigwclr`` write (VeeR EL2 PRM
+                   ``docs/source/interrupts.md:68-69``: no edge detection, an
+                   input at the active level stays reported as pending after
+                   the IP latch is cleared; ``:59-60``:
+                   the IP flop holds until firmware clears it; ``:144``: the
+                   ``meigwclr`` write clears it). ``meip`` read at once after
+                   the switch, before any clear, is logged on the same line and
+                   not graded (``:144`` tells firmware to clear the IP bit after
+                   a type change). Control: ``CTRL-GW-LVL2EDGE`` (``meip``
+                   reads 1 and ``meigwctrl`` reads level before the switch,
+                   edge after it) and ``CTRL-GW-L2E-DROP`` (on the
+                   ``pic_rd_data_probe_o`` copies of the ``settled``,
+                   ``held_after_clr`` and ``released`` meip reads, the source
+                   line on ``sep_internal_interrupts_probe_o`` reads 1, 1 and
+                   0, with no rise between the first and the last, and the
+                   copied meip bits equal the firmware values; CHK-GW-L2E is
+                   not logged without it).
 
-Open-value legs (logged, not graded; each has a control that fails the leaf):
+Logged, not graded, out of contract: ``INFO-GWCLR-RACE``, a one-clock pulse
+on the drawn boundary input in the clock of the ``meigwclr`` write to its
+source, and one and two clocks before it (``CTRL-GWCLR-RACE``: in each attempt
+the pin pulse lies 0, 1 or 2 clocks before the write on ``pic_wr_probe_o``):
+``meip`` after the write. PRM ``interrupts.md:75-76`` allows a request shorter
+than two PIC clocks to be dropped.
 
-* ``OBS-GW-EL``       an event source held at its active level in level mode
-                   (``CTRL-GW-LVL2EDGE``: ``meip`` reads 1 and ``meigwctrl``
-                   reads level before the switch, edge after it) switches to
-                   edge mode with the input asserted: ``meip`` after the
-                   switch, after the input drops and after ``meigwclr``.
-* ``OBS-GWCLR-RACE``  a one-clock pulse on the drawn boundary input in the
-                   clock of the ``meigwclr`` write to its source, and one and
-                   two clocks before it (``CTRL-GWCLR-RACE``: in each attempt
-                   the pin pulse lies 0, 1 or 2 clocks before the write on
-                   ``pic_wr_probe_o``): ``meip`` after the write.
+Open-value leg (logged, not graded; its control fails the leaf):
+
 * ``OBS-DMA-ALERT-INTEG`` the DMA alert receiver pair forced to one drawn value
                    on both wires (``dma_alert_inject_i``; ``CTRL-DMA-ALERT-INJ``:
                    the pair reads that value while the input is 1): vector
@@ -132,9 +166,15 @@ if any failed:
   and ``pr0``..``pr1`` when the pair holds no kind k; at least one rise in
   ``aw<k>``..``ae<k>``; every high run there is one clock; exactly one rise
   there ("ALERT_TEST sends one").
+* CHK-RAS-ENTROPY_POOL_ERR-IDLE  the ``entropy_pool_err`` level is 0 with no X
+  on every clock that CHK-SRC39 grades (``port_table.adoc:130`` and the
+  ``sep_ras_t`` field comment it delegates to: always 0; the level follows
+  ``pool_error``).
 
-Logged, not graded: ``OBS-RAS-<FIELD>-DELAY`` (clocks from the opening mark to
-the first rise, and the pulse count), ``OBS-RAS-DMA_ALERT-MODE2`` (the field
+``INFO-RAS-<FIELD>-DELAY`` logs the clocks from the opening mark to the first
+rise, and the pulse count: not graded; no open specification question.
+
+Logged, not graded: ``OBS-RAS-DMA_ALERT-MODE2`` (the field
 under the alert pair force: the rise after the first forced clock, the high
 clocks to the release mark ``di1`` and any fall before it; ``port_table.adoc:130``
 calls ``dma_alert`` a one-cycle pulse, while the ``sep_ras_t`` field comment it
@@ -145,10 +185,15 @@ pulses can be adjacent) and
 ``INFO-RAS-CRYPTO_ALERT-MODE2`` (no crypto alert pair force and no crypto EDN
 adapter fault in this leaf).
 
-Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
-masked in every compare), ``OBS-SRC34``, ``OBS-SRC-SHAPE`` (the high clocks
+Logged, not graded: ``INFO-IDLE-UNSTATED`` (sources 13, 15, 16, 37 and 38,
+masked in every compare; source 39 is masked in the same compares and graded
+by CHK-SRC39), ``OBS-SRC34``, ``INFO-SRC-SHAPE`` (the high clocks
 and rises of each source line over the single-source walk, and the source 12
-latency and shape) and the boundary source index. Bench records:
+latency and shape; no specification states the shape of a source line, except
+that source 33 pulses per crypto alert, which CHK-ALERT-AGG grades for each
+alert kind) and ``INFO-EXT-INDEX`` (the boundary source index; no
+specification states which bit of ``extintsrc_req_i`` drives which source).
+Bench records:
 ``INFO-GWCLR-LEVEL`` (the LL cells, whose input is at the inactive level
 during the meigwclr write, so the write has nothing to show) and
 ``INFO-FIFO-EMPTY`` (the KMAC ``INTR_STATE`` read-back; its bits are graded
@@ -197,7 +242,7 @@ from env.sep_pic_map import (
     VEC_GRADED,
     assigned_masked,
     boundary_pending,
-    idle_unstated_line,
+    idle_unstated_values,
     meip_idle_mask_words,
     meip_masked,
     meip_words,
@@ -207,7 +252,7 @@ from env.sep_pic_map import (
 from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import AES, CSRNG, HMAC, KMAC, sym
+from sep_reg_meta import AES, CSRNG, HMAC, KMAC, RegBlock, sym
 
 _TEST = "sep_pic_pending_map_walk_rand_test"
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -290,6 +335,14 @@ RAS_HALVES = {
     "csrng_fatal": ("IDLE", "RISE", "SHAPE", "TEST"),
     "edn_fatal": ("IDLE", "RISE", "SHAPE", "TEST"),
 }
+
+# PIC source 39 (entropy pool pointer fault) and its sep_ras_o level, graded on
+# every clock on which STATUS.pool_error reads 0. The status word is the value
+# the pool returns on a STATUS read; it is read by hierarchy, monitor only.
+SRC_POOL_ERR = 39
+RAS_POOL_ERR = "entropy_pool_err"
+POOL_ERROR = RegBlock("SEP_ENTROPY_POOL").field_mask("STATUS", "pool_error")
+POOL_STATUS_PATH = ("u_dut", "u_sep", "u_entropy_fifo", "status_word")
 
 # Status fields of the idle window and the KMAC fifo_empty state (register export).
 HMAC_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
@@ -429,6 +482,13 @@ class WalkCfg:
         return CELLS[self.gw_cell[GW_SRCS.index(src)]]
 
 
+def idle_unstated_line(vec: int | None = None, words=None) -> str:
+    """``INFO-IDLE-UNSTATED LOG ...`` without source 39, which CHK-SRC39 grades."""
+    vals = idle_unstated_values(vec, words)
+    vals.pop(f"src{SRC_POOL_ERR}")
+    return "INFO-IDLE-UNSTATED LOG " + " ".join(f"{k}={v}" for k, v in vals.items())
+
+
 def _value_bits(sig) -> tuple[int, int]:
     """(value with X/Z read as 0, mask of the X/Z bits) of a vector signal."""
     v = sig.value
@@ -467,6 +527,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         "CHK-ALERT-NONE",
         "CHK-ALERT-NATIVE",
         "CHK-SRC17",
+        "CHK-SRC39",
         "CHK-IDLE-BAND",
         "CHK-SLOTLESS",
         "CHK-ALERT-MEIP",
@@ -481,7 +542,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         "CHK-GWCLR-VALUE",
         "CHK-GW-NONVAC",
         "CHK-EXT-IN",
+        "CHK-GW-L2E",
         *(f"CHK-RAS-{f.upper()}-{h}" for f, halves in RAS_HALVES.items() for h in halves),
+        f"CHK-RAS-{RAS_POOL_ERR.upper()}-IDLE",
         "CHK-FW-IDENTITY",
         "CHK-FW-CONSOLE",
     )
@@ -639,24 +702,84 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.slot_rec[op] = (*rec, live)
 
     async def _rd_tap(self) -> None:
-        """Copies of the PIC read data at every PIC read (pic_rd_data_probe_o)."""
-        sig = self.dut.pic_rd_data_probe_o
+        """Copies of the PIC read data at every PIC read (pic_rd_data_probe_o).
+
+        Each copy also carries the source vector (``sep_internal_interrupts_probe_o``)
+        and the ``vec_all`` watcher clock of the same sample.
+        """
+        sig, vec = self.dut.pic_rd_data_probe_o, self.dut.sep_internal_interrupts_probe_o
         while True:
             await RisingEdge(self.dut.clk_i)
             await ReadOnly()
-            v = sig.value
-            if v.is_resolvable:
-                iv = int(v)
-                if (iv >> 47) & 1:
-                    self.rd_caps.append(
-                        (len(self.con.lines), (iv >> 32) & 0x7FFF, iv & 0xFFFF_FFFF, 0)
-                    )
-                continue
             val, xm = _value_bits(sig)
             if (val >> 47) & 1 and not (xm >> 47) & 1:
                 self.rd_caps.append(
-                    (len(self.con.lines), (val >> 32) & 0x7FFF, val & 0xFFFF_FFFF, xm & 0xFFFF_FFFF)
+                    (
+                        len(self.con.lines),
+                        (val >> 32) & 0x7FFF,
+                        val & 0xFFFF_FFFF,
+                        xm & 0xFFFF_FFFF,
+                        _value_bits(vec),
+                        self.wv.clk,
+                    )
                 )
+
+    async def _pool_err_tap(self) -> None:
+        """Per clock: ``STATUS.pool_error``, vector bit 38 and the ``entropy_pool_err`` level.
+
+        Vector bit 38 and the RAS level are counted only on clocks where
+        ``pool_error`` reads 0; a clock with ``pool_error`` X or 1 is counted
+        apart, and CTRL-POOL-ERROR fails on it.
+        """
+        status = self.pool_status
+        vec = self.dut.sep_internal_interrupts_probe_o
+        ras = self.dut.sep_ras_probe_o
+        vb, rb = vec_bit(SRC_POOL_ERR), ras_bit(RAS_POOL_ERR)
+        pe = self.pool_err
+        while True:
+            await RisingEdge(self.dut.clk_i)
+            await ReadOnly()
+            st, sxm = _value_bits(status)
+            if sxm & POOL_ERROR:
+                pe["pool_error_x"] += 1
+                continue
+            if st & POOL_ERROR:
+                pe["pool_error_1"] += 1
+                continue
+            pe["clk"] += 1
+            v, vxm = _value_bits(vec)
+            r, rxm = _value_bits(ras)
+            pe["src39_high"] += (v >> vb) & 1
+            pe["src39_x"] += (vxm >> vb) & 1
+            pe["ras_high"] += (r >> rb) & 1
+            pe["ras_x"] += (rxm >> rb) & 1
+
+    def _chk_pool_err_idle(self) -> None:
+        """CTRL-POOL-ERROR, CHK-RAS-ENTROPY_POOL_ERR-IDLE and CHK-SRC39."""
+        pe = self.pool_err
+        ctrl = (
+            f"pool_error0_clk={pe['clk']} pool_error1_clk={pe['pool_error_1']} "
+            f"pool_error_x_clk={pe['pool_error_x']}"
+        )
+        if pe["clk"] == 0 or pe["pool_error_x"] or pe["pool_error_1"]:
+            raise AssertionError(f"CTRL-POOL-ERROR FAIL seed={self.wc.seed} {ctrl}")
+        self.logger.info("CTRL-POOL-ERROR seed=%d %s", self.wc.seed, ctrl)
+        self._ras(
+            pe["ras_high"] == 0 and pe["ras_x"] == 0,
+            RAS_POOL_ERR,
+            "IDLE",
+            window="release..end",
+            pool_error0_clk=pe["clk"],
+            high_clk=pe["ras_high"],
+            x_clk=pe["ras_x"],
+        )
+        self._check(
+            pe["src39_high"] == 0 and pe["src39_x"] == 0,
+            "CHK-SRC39",
+            f"window=release..end pool_error0_clk={pe['clk']} "
+            f"vec_bit{vec_bit(SRC_POOL_ERR)}_high_clk={pe['src39_high']} "
+            f"vec_bit{vec_bit(SRC_POOL_ERR)}_x_clk={pe['src39_x']}",
+        )
 
     async def _gwclr_tap(self) -> None:
         """Count the PIC writes at each meigwclr entry on ``pic_wr_probe_o``, one per clock."""
@@ -688,7 +811,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
     def _taps(self, line_idx: int) -> dict[int, tuple[int, int]]:
         """The last PIC read-data copy per meip word before console line ``line_idx``."""
         out: dict[int, tuple[int, int]] = {}
-        for li, addr, data, xm in self.rd_caps:
+        for li, addr, data, xm, *_ in self.rd_caps:
             if li == line_idx and MEIP0_OFF <= addr < MEIP0_OFF + MEIP_STRIDE * MEIP_WORDS:
                 out[(addr - MEIP0_OFF) // MEIP_STRIDE] = (data, xm)
         return out
@@ -804,8 +927,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"exp0=0x{exp[0]:08x} exp1=0x{exp[1]:08x} "
                 f"rsvd_idle=0x{got[0] & idle[0]:08x},0x{got[1] & idle[1]:08x}",
             )
-        # No spec states whether a source line is a pulse or a level, so the
-        # shape of each line over the single-source walk is logged.
+        # No spec states the shape of a source line over the single-source
+        # walk; the source 33 pulse per crypto alert is graded by CHK-ALERT-AGG.
         m0, m1 = self._mark("s0")[4], self._mark("s1")[4]
         for kv in singles:
             src = int(kv["src"])
@@ -814,7 +937,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             high = m1.high[bit] - m0.high[bit]
             rises = m1.rises[bit] - m0.rises[bit]
             self.logger.info(
-                "OBS-SRC-SHAPE LOG src=%d high_clk=%d rises=%d shape=%s",
+                "INFO-SRC-SHAPE LOG src=%d high_clk=%d rises=%d shape=%s",
                 src,
                 high,
                 rises,
@@ -1010,7 +1133,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         lat = (rises[0] - self._mark("d1")[0].clk) if rises else -1
         shape = "pulse" if self._mark("d2")[2] == 0 else "level"
         self.logger.info(
-            "OBS-SRC-SHAPE LOG src=12 kind=dma_alert high_clk=%d shape=%s latency_clk=%d",
+            "INFO-SRC-SHAPE LOG src=12 kind=dma_alert high_clk=%d shape=%s latency_clk=%d",
             hc,
             shape,
             lat,
@@ -1283,7 +1406,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             rel = boundary_pending(off)
             same = assigned_masked(on) == base_a and assigned_masked(off) == base_a
             live = all((w[0] >> SRC_CTRL) & 1 for w in (base, on, off))
-            self.logger.info("OBS-EXT-INDEX LOG bits_asserted=%d pending_sources=%s", n, pend)
+            self.logger.info("INFO-EXT-INDEX LOG bits_asserted=%d pending_sources=%s", n, pend)
             self._check(
                 ok0 and len(pend) == n and same and not rel and live,
                 "CHK-EXT-IN",
@@ -1344,7 +1467,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             exp_width=1,
             bad_width=bad_w or "none",
         )
-        self.ras_chk.obs(
+        self.ras_chk.info(
             f"RAS-{field.upper()}-DELAY",
             windows=rise,
             open_to_first_rise_clk=delays,
@@ -1379,7 +1502,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
 
     def _chk_ras(self) -> None:
-        """The CHK-RAS-<FIELD>-<HALF> checks of ``RAS_HALVES``, then the OBS-RAS lines.
+        """The CHK-RAS-<FIELD>-<HALF> checks of ``RAS_HALVES``, then the INFO-RAS and OBS-RAS lines.
 
         Each IDLE half covers every window of the leaf in which the cited text
         sends nothing on that field: the DMA alert is source 12 and no crypto
@@ -1459,7 +1582,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
 
     def _leg_gw_level_to_edge(self) -> None:
         seed, src = self.wc.seed, GW_SRCS[self.wc.l2e]
-        recs = [kv for _, kv in self._lines("GWL2E")]
+        hits = self._lines("GWL2E")
+        recs = [kv for _, kv in hits]
         r = recs[0] if len(recs) == 1 else {}
         reach = (
             int(r.get("src", -1)) == src,
@@ -1474,14 +1598,45 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         if reach != (True, 1, 0, 1):
             raise AssertionError(f"CTRL-MISSING GW-LVL2EDGE: {body}")
         self.logger.info("CTRL-GW-LVL2EDGE LOG %s", body)
-        self.logger.info(
-            "OBS-GW-EL LOG src=%d after_switch=%d settled=%d released=%d after_clr=%d",
-            src,
-            int(r["after"]),
-            int(r["settled"]),
-            int(r["released"]),
-            int(r["after_clr"]),
+        keys = ("settled", "held_after_clr", "released", "after_clr")
+        got = tuple(int(r[k]) for k in keys)
+        self._ctrl_gw_l2e_drop(hits[0][0], src, got)
+        self._check(
+            got == (1, 1, 1, 0),
+            "CHK-GW-L2E",
+            " ".join(f"{k}={v}" for k, v in zip(keys, got))
+            + f" want=(1, 1, 1, 0) after_switch={int(r['after'])}",
         )
+
+    def _ctrl_gw_l2e_drop(self, line_idx: int, src: int, got: tuple[int, ...]) -> None:
+        """CTRL-GW-L2E-DROP: the source line is high at ``settled`` and ``held_after_clr``, low at ``released``.
+
+        The firmware reads the source's meip word six times before the GWL2E
+        line (before, after, settled, held_after_clr, released, after_clr);
+        the tap copies of the third to fifth reads carry the firmware's values
+        and the source vector of the same clock. Between the third and the
+        fifth the line has no rise.
+        """
+        addr = MEIP0_OFF + MEIP_STRIDE * (src // 32)
+        caps = [c for c in self.rd_caps if c[0] == line_idx and c[1] == addr]
+        vb, sb = vec_bit(src), src % 32
+        body = f"seed={self.wc.seed} src={src} vec_bit={vb} meip_reads={len(caps)}"
+        if len(caps) < 6:
+            raise AssertionError(f"CTRL-MISSING GW-L2E-DROP: {body}")
+        reads = caps[-4:-1]
+        clks = tuple(c[5] for c in reads)
+        rises = [c for c in self.wv.bits[f"v{vb}"].rises if clks[0] < c <= clks[2]]
+        line = tuple((c[4][0] >> vb) & 1 for c in reads)
+        meip = tuple((c[2] >> sb) & 1 for c in reads)
+        x_free = not any((c[4][1] >> vb) & 1 or (c[3] >> sb) & 1 for c in reads)
+        body += (
+            f" line_at_settled={line[0]} line_at_held={line[1]} line_at_released={line[2]} "
+            f"rises_between={len(rises)} tap_meip={meip} fw_meip={got[:3]} "
+            f"read_clks={clks} x_free={int(x_free)}"
+        )
+        if line != (1, 1, 0) or rises or meip != got[:3] or not x_free:
+            raise AssertionError(f"CTRL-MISSING GW-L2E-DROP: {body}")
+        self.logger.info("CTRL-GW-L2E-DROP LOG %s", body)
 
     def _leg_gwclr_race(self) -> None:
         seed = self.wc.seed
@@ -1513,7 +1668,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 self.race_d,
             )
             self.logger.info(
-                "OBS-GWCLR-RACE LOG src=%d wr_minus_pulse=%d pulse_clk=%d gwclr_wr_clk=%d "
+                "INFO-GWCLR-RACE LOG src=%d wr_minus_pulse=%d pulse_clk=%d gwclr_wr_clk=%d "
                 "before=%d after=%d",
                 src,
                 wr - pulse,
@@ -1617,6 +1772,16 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.wr = SepBitWatch(
             self.dut.sep_ras_probe_o, {f: ras_bit(f) for f in RAS_FIELDS}, name="sep_ras"
         )
+        self.pool_status = self.dut
+        for name in POOL_STATUS_PATH:
+            h = getattr(self.pool_status, name, None)
+            if h is None:
+                raise AssertionError(
+                    f"CTRL-MISSING POOL-ERROR seed={c.seed} the build exposes no "
+                    f"{'.'.join(POOL_STATUS_PATH)}"
+                )
+            self.pool_status = h
+        self.pool_err: Counter = Counter()
         tasks = []
 
         async def _after_release() -> None:
@@ -1627,6 +1792,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             self.wr.start()
             tasks.append(cocotb.start_soon(self._rd_tap()))
             tasks.append(cocotb.start_soon(self._gwclr_tap()))
+            tasks.append(cocotb.start_soon(self._pool_err_tap()))
 
         self.sb.expected_line = _BANNER
         self.con = SepFwConsole(self, graded_test=_TEST).start()
@@ -1656,7 +1822,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             )
         finally:
             await self.con.stop()
-            noise.cancel()
+            await noise.stop()
             for t in tasks:
                 t.cancel()
             await self.w.stop()
@@ -1672,6 +1838,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             if not r.name.startswith("CHK-"):
                 self.logger.info("%s (firmware)", r.text)
         self._chk_ras()
+        self._chk_pool_err_idle()
         self._check_params()
         self._chk_base()
         self._chk_vector()
@@ -1712,6 +1879,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             "CHK-ALERT-NONE": 1,
             "CHK-ALERT-NATIVE": len(NATIVE),
             "CHK-SRC17": 1,
+            "CHK-SRC39": 1,
             "CHK-IDLE-BAND": 1,
             "CHK-SLOTLESS": 3,
             "CHK-ALERT-MEIP": 1,
@@ -1738,4 +1906,4 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             raise AssertionError(
                 f"{len(self.ras_chk.fails)} RAS check(s) failed: " + "; ".join(self.ras_chk.fails)
             )
-        self.result_pass(_TEST, c.seed, len(want))
+        self.result_pass(_TEST, c.seed, len(want) + 1)

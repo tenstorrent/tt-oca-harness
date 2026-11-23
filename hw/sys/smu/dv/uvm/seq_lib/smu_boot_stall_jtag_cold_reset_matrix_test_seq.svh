@@ -91,8 +91,8 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     run_override_masks_pad();
     run_timeout_inventory(ChkTimeoutPaths, ExpectedTimeoutPaths);
 
-    mark_step("PASS", "scenario complete");
     finalize_evidence();
+    mark_step("END", "scenario complete");
   endtask
 
   // S1: TAP reset; the bring-up sense done and the fuse reset released.

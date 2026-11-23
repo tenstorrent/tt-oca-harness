@@ -15,7 +15,7 @@ from there moves both bits. After each zeroize it grades READY alone: READY set,
 and VALID, ERROR and MSG_STREAM_READY clear (CHK-ABR-ZEROIZE-READY).
 
 No document states how long the zeroize takes, so the leaf measures it and logs
-the result without grading it (``OBS-ABR-ZEROIZE-CYCLES``). The engine-side count
+the result without grading it (``INFO-ABR-ZEROIZE-CYCLES``). The engine-side count
 runs from the first clk_i edge on which the zeroize request is high to the first
 on which the sequencer is back at RESET (``abr_zeroize_ready_probe_o``); the
 bus-side count runs from the ZEROIZE write's completion to the first STATUS read,
@@ -146,7 +146,7 @@ class sep_abr_zeroize_latency_test(sep_base_test):
             "CHK-ABR-ZEROIZE-READY PASS: state=%s STATUS=0x%08x after ZEROIZE", state, st
         )
         self.logger.info(
-            "OBS-ABR-ZEROIZE-CYCLES: state=%s engine=%d bus=%s first=%s",
+            "INFO-ABR-ZEROIZE-CYCLES: state=%s engine=%d bus=%s first=%s",
             state,
             engine,
             "unseen" if bus is None else bus,

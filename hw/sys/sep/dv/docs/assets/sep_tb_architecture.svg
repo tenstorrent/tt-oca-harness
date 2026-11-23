@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1270" height="880" viewBox="0 0 1270 880" role="img" aria-labelledby="title desc">
+  <title id="title">SEP testbench architecture</title>
+  <desc id="desc">Agents drive sep_wrapper through the CPU load/store port, the SMN inbound port, the SPI pads, JTAG, clock and reset, entropy noise and backdoor image loads. Monitors tap those paths and the internal fabric, and an analysis path carries what they observe to the scoreboards, which compare it with goldens and decide the verdict.</desc>
+<style>
+.sh{fill:#2b2118}
+.dut{fill:#efe2c4;stroke:#2b2118;stroke-width:2.5}
+.dtt{font-weight:700;font-size:16px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#2b2118;letter-spacing:.02em}
+.dts{font-weight:700;font-size:12px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#d9622b}
+.blk{fill:#fbf3e0;stroke:#2b2118;stroke-width:2}
+.bt{font-weight:700;font-size:14px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#2b2118}
+.bs2{font-weight:400;font-size:10.5px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#5a4632}
+.bar{fill:#e8b84a;stroke:#2b2118;stroke-width:2}
+.bart{font-weight:700;font-size:13px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#2b2118;letter-spacing:.06em}
+.chip{fill:#2b2118;stroke:none}
+.chipt{font-weight:700;font-size:10.5px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#fbf3e0}
+.chip.dsh{fill:#fbf3e0;stroke:#2b2118;stroke-width:1.2;stroke-dasharray:3 2}
+.chip.dsh + .chipt{fill:#2b2118}
+.stim{fill:#a9d5cb;stroke:#2b2118;stroke-width:2}
+.mon{fill:#f2d27e;stroke:#2b2118;stroke-width:2}
+.mdl{fill:#e3cfa9;stroke:#2b2118;stroke-width:2}
+.chk{fill:#f3ab80;stroke:#2b2118;stroke-width:2}
+.gold{fill:#fbf3e0;stroke:#2b2118;stroke-width:2}
+.dsh{stroke-dasharray:6 3}
+.vd{fill:#d9622b;stroke:#2b2118;stroke-width:2}
+.vt{font-weight:700;font-size:15px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#fbf3e0;letter-spacing:.08em}
+.vs{font-weight:700;font-size:10.5px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#fbf3e0}
+.nt{font-weight:700;font-size:12px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#2b2118}
+.ns{font-weight:400;font-size:10.5px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#5a4632}
+.lbl{font-weight:400;font-size:10.5px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#5a4632}
+.lbl2{font-weight:400;font-size:10px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#5a4632}
+.lg{font-weight:400;font-size:11.5px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#2b2118}
+.w,.w2{fill:none;stroke:#2b2118;stroke-width:2}
+.w3{fill:none;stroke:#2f7f7a;stroke-width:1.8;stroke-dasharray:5 3}
+.an{fill:none;stroke:#d9622b;stroke-width:2.2;stroke-dasharray:9 5}
+.dot{fill:#2f7f7a;stroke:#2b2118;stroke-width:1}
+.ahf{fill:#2b2118}
+.bm{fill:#2b2118}.bmt{font-weight:700;font-size:11px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#fbf3e0}
+.bs{fill:#fbf3e0;stroke:#2b2118;stroke-width:1.6}.bst{font-weight:700;font-size:11px;font-family:'Space Mono','DejaVu Sans Mono',Menlo,Consolas,monospace;fill:#2b2118}
+</style>
+<rect width="1270" height="880" fill="#f3e9d2"/>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahf"/></marker></defs>
+<rect x="306" y="116" width="620" height="460" rx="8" class="sh"/>
+<rect x="300" y="110" width="620" height="460" rx="8" class="dut"/>
+<text x="316" y="134" class="dtt" text-anchor="start">sep_wrapper</text>
+<text x="428" y="134" class="dts" text-anchor="start">DUT</text>
+<rect x="324" y="164" width="135" height="92" rx="3" class="sh"/>
+<rect x="320" y="160" width="135" height="92" rx="3" class="blk"/>
+<rect x="328" y="167" width="33.6" height="17" rx="8" class="chip"/>
+<text x="344.8" y="179.5" class="chipt" text-anchor="middle">cpu</text>
+<text x="387.5" y="205" class="bt" text-anchor="middle">VeeR EL2</text>
+<text x="387.5" y="222" class="bs2" text-anchor="middle">CPU · PIC</text>
+<rect x="472" y="164" width="145" height="92" rx="3" class="sh"/>
+<rect x="468" y="160" width="145" height="92" rx="3" class="blk"/>
+<rect x="476" y="167" width="55.2" height="17" rx="8" class="chip"/>
+<text x="503.6" y="179.5" class="chipt" text-anchor="middle">memory</text>
+<rect x="536.2" y="167" width="55.2" height="17" rx="8" class="chip dsh"/>
+<text x="563.8000000000001" y="179.5" class="chipt" text-anchor="middle">rom_fw</text>
+<text x="540.5" y="205" class="bt" text-anchor="middle">Memories</text>
+<text x="540.5" y="222" class="bs2" text-anchor="middle">boot ROM · SRAM</text>
+<text x="540.5" y="237" class="bs2" text-anchor="middle">ICCM / DCCM</text>
+<rect x="630" y="164" width="150" height="92" rx="3" class="sh"/>
+<rect x="626" y="160" width="150" height="92" rx="3" class="blk"/>
+<rect x="634" y="167" width="55.2" height="17" rx="8" class="chip"/>
+<text x="661.6" y="179.5" class="chipt" text-anchor="middle">crypto</text>
+<text x="701.0" y="205" class="bt" text-anchor="middle">Crypto</text>
+<text x="701.0" y="222" class="bs2" text-anchor="middle">TRNG · DRBG · AES</text>
+<text x="701.0" y="237" class="bs2" text-anchor="middle">HMAC · KMAC · OTBN</text>
+<rect x="793" y="164" width="111" height="92" rx="3" class="sh"/>
+<rect x="789" y="160" width="111" height="92" rx="3" class="blk"/>
+<rect x="797" y="167" width="26.4" height="17" rx="8" class="chip"/>
+<text x="810.2" y="179.5" class="chipt" text-anchor="middle">km</text>
+<text x="844.5" y="205" class="bt" text-anchor="middle">Key Manager</text>
+<text x="844.5" y="222" class="bs2" text-anchor="middle">KM ROM / SRAM</text>
+<rect x="324" y="294" width="580" height="30" rx="5" class="sh"/>
+<rect x="320" y="290" width="580" height="30" rx="5" class="bar"/>
+<text x="610" y="310" class="bart" text-anchor="middle">Local AXI4 interconnect</text>
+<polyline points="387,252 387,290" class="w2" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<polyline points="540,252 540,290" class="w2" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<polyline points="701,252 701,290" class="w2" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<polyline points="844,252 844,290" class="w2" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<rect x="324" y="364" width="130" height="80" rx="3" class="sh"/>
+<rect x="320" y="360" width="130" height="80" rx="3" class="blk"/>
+<rect x="328" y="367" width="33.6" height="17" rx="8" class="chip"/>
+<text x="344.8" y="379.5" class="chipt" text-anchor="middle">spi</text>
+<text x="385.0" y="405" class="bt" text-anchor="middle">SPI host</text>
+<text x="385.0" y="422" class="bs2" text-anchor="middle">OpenTitan SPI</text>
+<rect x="469" y="364" width="270" height="80" rx="3" class="sh"/>
+<rect x="465" y="360" width="270" height="80" rx="3" class="blk"/>
+<rect x="473" y="367" width="55.2" height="17" rx="8" class="chip"/>
+<text x="500.6" y="379.5" class="chipt" text-anchor="middle">system</text>
+<text x="600.0" y="405" class="bt" text-anchor="middle">System interface</text>
+<text x="600.0" y="422" class="bs2" text-anchor="middle">filters · mailbox · DMA · WDT · reset</text>
+<rect x="754" y="364" width="150" height="80" rx="3" class="sh"/>
+<rect x="750" y="360" width="150" height="80" rx="3" class="blk"/>
+<rect x="758" y="367" width="76.8" height="17" rx="8" class="chip"/>
+<text x="796.4" y="379.5" class="chipt" text-anchor="middle">efuse_lcc</text>
+<text x="825.0" y="405" class="bt" text-anchor="middle">eFuse · LC ctrl</text>
+<text x="825.0" y="422" class="bs2" text-anchor="middle">shadow · lifecycle</text>
+<polyline points="385,320 385,360" class="w2" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<polyline points="600,320 600,360" class="w2" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<polyline points="825,320 825,360" class="w2" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<rect x="754" y="484" width="150" height="50" rx="5" class="sh"/>
+<rect x="750" y="480" width="150" height="50" rx="5" class="mdl dsh"/>
+<text x="825" y="501" class="nt" text-anchor="middle">efuse_bank_model</text>
+<text x="825" y="518" class="ns" text-anchor="middle">DV model</text>
+<polyline points="825,440 825,480" class="w2" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="833" y="466" class="lbl" text-anchor="start">fuse bank</text>
+<rect x="378" y="242" width="18" height="18" rx="4" class="bm"/>
+<text x="387" y="255" class="bmt" text-anchor="middle">M</text>
+<rect x="314" y="26" width="150" height="46" rx="3" class="sh"/>
+<rect x="310" y="22" width="150" height="46" rx="3" class="mon"/>
+<text x="385.0" y="43.0" class="nt" text-anchor="middle">CPU trace monitor</text>
+<text x="385.0" y="58.0" class="ns" text-anchor="middle">retire ports</text>
+<polyline points="387,160 387,68" class="w" marker-end="url(#ah)"/>
+<rect x="480" y="26" width="140" height="46" rx="3" class="sh"/>
+<rect x="476" y="22" width="140" height="46" rx="3" class="stim"/>
+<text x="546.0" y="43.0" class="nt" text-anchor="middle">Image loader</text>
+<text x="546.0" y="58.0" class="ns" text-anchor="middle">tb_backdoor_mem</text>
+<polyline points="546,68 546,160" class="w" marker-end="url(#ah)"/>
+<text x="552" y="96" class="lbl" text-anchor="start">ROM · SRAM · TCM</text>
+<rect x="630" y="26" width="110" height="46" rx="3" class="sh"/>
+<rect x="626" y="22" width="110" height="46" rx="3" class="stim"/>
+<text x="681.0" y="43.0" class="nt" text-anchor="middle">Noise driver</text>
+<text x="681.0" y="58.0" class="ns" text-anchor="middle">ESRC input</text>
+<polyline points="681,68 681,160" class="w" marker-end="url(#ah)"/>
+<rect x="754" y="26" width="130" height="46" rx="3" class="sh"/>
+<rect x="750" y="22" width="130" height="46" rx="3" class="mon"/>
+<text x="815.0" y="43.0" class="nt" text-anchor="middle">ESRC SHA tap</text>
+<text x="815.0" y="58.0" class="ns" text-anchor="middle">entropy datapath</text>
+<polyline points="762,160 762,68" class="w" marker-end="url(#ah)"/>
+<rect x="54" y="122" width="150" height="40" rx="3" class="sh"/>
+<rect x="50" y="118" width="150" height="40" rx="3" class="stim"/>
+<text x="125.0" y="143.0" class="nt" text-anchor="middle">Clock · reset gen</text>
+<polyline points="200,138 300,138" class="w" marker-end="url(#ah)"/>
+<text x="222" y="130" class="lbl" text-anchor="start">clk · rst</text>
+<rect x="54" y="180" width="150" height="40" rx="3" class="sh"/>
+<rect x="50" y="176" width="150" height="40" rx="3" class="stim"/>
+<text x="125.0" y="201.0" class="nt" text-anchor="middle">JTAG DMI</text>
+<polyline points="200,196 320,196" class="w" marker-end="url(#ah)"/>
+<text x="222" y="190" class="lbl" text-anchor="start">TAP</text>
+<rect x="54" y="234" width="150" height="46" rx="3" class="sh"/>
+<rect x="50" y="230" width="150" height="46" rx="3" class="stim"/>
+<text x="125.0" y="251.0" class="nt" text-anchor="middle">SepAxiAgent</text>
+<text x="125.0" y="266.0" class="ns" text-anchor="middle">s_axi</text>
+<rect x="191" y="244" width="18" height="18" rx="4" class="bm"/>
+<text x="200" y="257" class="bmt" text-anchor="middle">M</text>
+<polyline points="209,253 320,253" class="w" marker-end="url(#ah)"/>
+<text x="232" y="247" class="lbl" text-anchor="start">LSU port</text>
+<text x="232" y="268" class="lbl2" text-anchor="start">(no_cpu)</text>
+<circle cx="218" cy="253" r="3.6" class="dot"/>
+<polyline points="218,253 218,316 200,316" class="w3" marker-end="url(#ah)"/>
+<rect x="54" y="300" width="150" height="40" rx="3" class="sh"/>
+<rect x="50" y="296" width="150" height="40" rx="3" class="mon"/>
+<text x="125.0" y="321.0" class="nt" text-anchor="middle">SepAxiMonitor</text>
+<rect x="54" y="388" width="150" height="46" rx="3" class="sh"/>
+<rect x="50" y="384" width="150" height="46" rx="3" class="stim"/>
+<text x="125.0" y="405.0" class="nt" text-anchor="middle">OcahSpiFlash</text>
+<text x="125.0" y="420.0" class="ns" text-anchor="middle">flash BFM</text>
+<polyline points="200,407 320,407" class="w" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text x="232" y="401" class="lbl" text-anchor="start">SPI pads</text>
+<circle cx="218" cy="407" r="3.6" class="dot"/>
+<polyline points="218,407 218,472 200,472" class="w3" marker-end="url(#ah)"/>
+<rect x="54" y="456" width="150" height="40" rx="3" class="sh"/>
+<rect x="50" y="452" width="150" height="40" rx="3" class="mon"/>
+<text x="125.0" y="477.0" class="nt" text-anchor="middle">SPI wire monitor</text>
+<rect x="459" y="620" width="140" height="46" rx="3" class="sh"/>
+<rect x="455" y="616" width="140" height="46" rx="3" class="stim"/>
+<text x="525.0" y="637.0" class="nt" text-anchor="middle">SepAxiAgent</text>
+<text x="525.0" y="652.0" class="ns" text-anchor="middle">m_axi</text>
+<rect x="516" y="607" width="18" height="18" rx="4" class="bm"/>
+<text x="525" y="620" class="bmt" text-anchor="middle">M</text>
+<rect x="516" y="431" width="18" height="18" rx="4" class="bs"/>
+<text x="525" y="444" class="bst" text-anchor="middle">S</text>
+<polyline points="525,607 525,449" class="w" marker-end="url(#ah)"/>
+<text x="531" y="470" class="lbl" text-anchor="start">SMN inbound</text>
+<circle cx="525" cy="592" r="3.6" class="dot"/>
+<polyline points="525,592 395,592 395,616" class="w3" marker-end="url(#ah)"/>
+<rect x="334" y="620" width="110" height="40" rx="3" class="sh"/>
+<rect x="330" y="616" width="110" height="40" rx="3" class="mon"/>
+<text x="385.0" y="641.0" class="nt" text-anchor="middle">SepAxiMonitor</text>
+<rect x="681" y="431" width="18" height="18" rx="4" class="bm"/>
+<text x="690" y="444" class="bmt" text-anchor="middle">M</text>
+<rect x="629" y="620" width="130" height="46" rx="3" class="sh"/>
+<rect x="625" y="616" width="130" height="46" rx="3" class="mdl"/>
+<text x="690.0" y="637.0" class="nt" text-anchor="middle">sep_outbound_mbx</text>
+<text x="690.0" y="652.0" class="ns" text-anchor="middle">console · PASS</text>
+<rect x="681" y="607" width="18" height="18" rx="4" class="bs"/>
+<text x="690" y="620" class="bst" text-anchor="middle">S</text>
+<polyline points="690,449 690,607" class="w" marker-end="url(#ah)"/>
+<text x="696" y="470" class="lbl" text-anchor="start">outbound AXI</text>
+<circle cx="690" cy="592" r="3.6" class="dot"/>
+<polyline points="690,592 845,592 845,616" class="w3" marker-end="url(#ah)"/>
+<rect x="784" y="620" width="130" height="40" rx="3" class="sh"/>
+<rect x="780" y="616" width="130" height="40" rx="3" class="mon"/>
+<text x="845.0" y="641.0" class="nt" text-anchor="middle">Mailbox decoder</text>
+<rect x="954" y="289" width="134" height="40" rx="3" class="sh"/>
+<rect x="950" y="285" width="134" height="40" rx="3" class="mon"/>
+<text x="1017.0" y="310.0" class="nt" text-anchor="middle">Fabric / DMA taps</text>
+<circle cx="900" cy="305" r="3.6" class="dot"/>
+<polyline points="900,305 950,305" class="w3" marker-end="url(#ah)"/>
+<rect x="954" y="504" width="134" height="46" rx="3" class="sh"/>
+<rect x="950" y="500" width="134" height="46" rx="3" class="mon"/>
+<text x="1017.0" y="521.0" class="nt" text-anchor="middle">sep_fcov</text>
+<text x="1017.0" y="536.0" class="ns" text-anchor="middle">covergroups (VCS)</text>
+<circle cx="920" cy="523" r="3.6" class="dot"/>
+<polyline points="920,523 950,523" class="w3" marker-end="url(#ah)"/>
+<polyline points="30,253 50,253" class="an"/>
+<polyline points="30,316 50,316" class="an"/>
+<polyline points="30,407 50,407" class="an"/>
+<polyline points="30,472 50,472" class="an"/>
+<polyline points="30,253 30,740 1094,740 1094,120" class="an"/>
+<polyline points="385,656 385,740" class="an"/>
+<polyline points="845,656 845,740" class="an"/>
+<polyline points="385,22 385,12 1094,12 1094,120" class="an"/>
+<polyline points="815,22 815,12" class="an"/>
+<polyline points="1084,305 1094,305" class="an"/>
+<text x="560" y="734" class="lbl" text-anchor="start">analysis path: items, records, probe samples</text>
+<rect x="1114" y="124" width="145" height="46" rx="3" class="sh"/>
+<rect x="1110" y="120" width="145" height="46" rx="3" class="chk"/>
+<text x="1182.5" y="141.0" class="nt" text-anchor="middle">SepScoreboard</text>
+<text x="1182.5" y="156.0" class="ns" text-anchor="middle">s_axi items</text>
+<polyline points="1094,143 1110,143" class="w" marker-end="url(#ah)"/>
+<rect x="1114" y="186" width="145" height="46" rx="3" class="sh"/>
+<rect x="1110" y="182" width="145" height="46" rx="3" class="chk"/>
+<text x="1182.5" y="203.0" class="nt" text-anchor="middle">SepBootScoreboard</text>
+<text x="1182.5" y="218.0" class="ns" text-anchor="middle">trace · mailbox</text>
+<polyline points="1094,205 1110,205" class="w" marker-end="url(#ah)"/>
+<rect x="1114" y="248" width="145" height="46" rx="3" class="sh"/>
+<rect x="1110" y="244" width="145" height="46" rx="3" class="chk"/>
+<text x="1182.5" y="265.0" class="nt" text-anchor="middle">SepDrbgScoreboard</text>
+<text x="1182.5" y="280.0" class="ns" text-anchor="middle">DRBG · SHA taps</text>
+<polyline points="1094,267 1110,267" class="w" marker-end="url(#ah)"/>
+<rect x="1114" y="310" width="145" height="46" rx="3" class="sh"/>
+<rect x="1110" y="306" width="145" height="46" rx="3" class="chk"/>
+<text x="1182.5" y="327.0" class="nt" text-anchor="middle">SepSpiScoreboard</text>
+<text x="1182.5" y="342.0" class="ns" text-anchor="middle">wire · flash</text>
+<polyline points="1094,329 1110,329" class="w" marker-end="url(#ah)"/>
+<rect x="1114" y="394" width="145" height="96" rx="5" class="sh"/>
+<rect x="1110" y="390" width="145" height="96" rx="5" class="gold dsh"/>
+<text x="1182.5" y="410" class="nt" text-anchor="middle">Goldens</text>
+<text x="1182.5" y="430" class="ns" text-anchor="middle">AES · HMAC · KMAC</text>
+<text x="1182.5" y="447" class="ns" text-anchor="middle">CTR-DRBG · entropy</text>
+<text x="1182.5" y="464" class="ns" text-anchor="middle">LCC · mailbox · ISA</text>
+<polyline points="1182.5,390 1182.5,352" class="w" marker-end="url(#ah)"/>
+<text x="1188.5" y="376" class="lbl" text-anchor="start">expected</text>
+<rect x="1114" y="564" width="145" height="56" rx="6" class="sh"/>
+<rect x="1110" y="560" width="145" height="56" rx="6" class="vd"/>
+<text x="1182.5" y="584" class="vt" text-anchor="middle">Verdict</text>
+<text x="1182.5" y="602" class="vs" text-anchor="middle">CHK- → results.xml</text>
+<polyline points="1255,143 1263,143" class="w"/>
+<polyline points="1255,205 1263,205" class="w"/>
+<polyline points="1255,267 1263,267" class="w"/>
+<polyline points="1255,329 1263,329" class="w"/>
+<polyline points="1263,143 1263,588 1255,588" class="w" marker-end="url(#ah)"/>
+<rect x="44" y="794" width="22" height="14" rx="3" class="sh"/>
+<rect x="40" y="790" width="22" height="14" rx="3" class="stim"/>
+<text x="70" y="801" class="lg" text-anchor="start">Stimulus / driver</text>
+<rect x="217.2" y="794" width="22" height="14" rx="3" class="sh"/>
+<rect x="213.2" y="790" width="22" height="14" rx="3" class="mdl"/>
+<text x="243.2" y="801" class="lg" text-anchor="start">Bench model</text>
+<rect x="344.79999999999995" y="794" width="22" height="14" rx="3" class="sh"/>
+<rect x="340.79999999999995" y="790" width="22" height="14" rx="3" class="mon"/>
+<text x="370.79999999999995" y="801" class="lg" text-anchor="start">Monitor / tap</text>
+<rect x="487.59999999999997" y="794" width="22" height="14" rx="3" class="sh"/>
+<rect x="483.59999999999997" y="790" width="22" height="14" rx="3" class="chk"/>
+<text x="513.5999999999999" y="801" class="lg" text-anchor="start">Checker</text>
+<rect x="584.8" y="794" width="22" height="14" rx="3" class="sh"/>
+<rect x="580.8" y="790" width="22" height="14" rx="3" class="blk"/>
+<text x="610.8" y="801" class="lg" text-anchor="start">DUT block</text>
+<rect x="693.1999999999999" y="789" width="55.2" height="17" rx="8" class="chip"/>
+<text x="720.8" y="801.5" class="chipt" text-anchor="middle">bucket</text>
+<text x="763.1999999999999" y="801" class="lg" text-anchor="start">testlist bucket</text>
+<rect x="893.1999999999999" y="788" width="18" height="18" rx="4" class="bm"/>
+<text x="902.1999999999999" y="801" class="bmt" text-anchor="middle">M</text>
+<rect x="915.1999999999999" y="788" width="18" height="18" rx="4" class="bs"/>
+<text x="924.1999999999999" y="801" class="bst" text-anchor="middle">S</text>
+<text x="941.1999999999999" y="801" class="lg" text-anchor="start">AXI manager / subordinate</text>
+<polyline points="40,824 80,824" class="w" marker-end="url(#ah)"/>
+<text x="90" y="828" class="lg" text-anchor="start">drive / data</text>
+<circle cx="220" cy="824" r="3.6" class="dot"/>
+<polyline points="220,824 260,824" class="w3" marker-end="url(#ah)"/>
+<text x="270" y="828" class="lg" text-anchor="start">tap (observe only)</text>
+<polyline points="420,824 460,824" class="an"/>
+<text x="470" y="828" class="lg" text-anchor="start">analysis path to checkers</text>
+</svg>

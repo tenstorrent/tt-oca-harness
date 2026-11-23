@@ -3,7 +3,7 @@
 """At TEST_DEV, JTAG accesses of the eFuse windows that PROD denies return OKAY.
 
 ``sep_efuse_jtag_axil_el2_cpu_mux_test`` senses PROD, where the JTAG port
-may reach the MMR token block and must be refused (SLVERR or DECERR) on
+may reach the MMR token block and must be refused (SLVERR) on
 the shadow map and on ``EFUSE_PROGRAM_CTRL``. This leaf senses TEST_DEV,
 which is not a restricted lifecycle state, and reads those same two
 windows. OKAY here and a refusal there is the per-window gate.

@@ -240,8 +240,9 @@ void rom_chiplet_dbg_policy(uint32_t lc_state) {
     // both force FEAT_CTRL bits to 1, which would read as "debug enabled" on a
     // part whose fuses disable it.
     //
-    // A read-locked field returns a sentinel instead of its value, so a lock on
-    // either vector means the ROM cannot see that debug is open.
+    // A read of a read-locked field completes with a bus error and a sentinel
+    // instead of its value, so a lock on either vector means the ROM cannot see
+    // that debug is open.
     uint32_t locks = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR);
     bool disabled = (locks & (SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bm |
                               SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bm)) != 0u;

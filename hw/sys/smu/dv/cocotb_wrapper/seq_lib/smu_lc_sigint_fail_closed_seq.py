@@ -33,7 +33,7 @@ S1, legal pair: ``lc_sigint_err_o`` is 0 and ``lc_state_o`` carries the TEST_DEV
 S2, pinned window (n rail of bit 0, hold 0): once ``lc_state_o`` carries 0xE0,
     ``lc_sigint_err_o`` is 1, the three SMC OTP accesses of S3 are refused and the SEP OTP read
     of SPARE0 returns SUCCESS with the S1 pattern while ``lc_sigint_err_o`` is still 1; with the
-    input driven 0 again the S4 operations return as in S4, so the refused write did not land.
+    input driven 0 again the S4 operations return as in S1, so the refused write did not land.
 S3, drawn broken pair: once ``lc_state_o`` and the SMC's LC_STATE input -- the forced net, so
     a precondition rather than a check -- carry the broken pair, ``lc_sigint_err_o`` is 1; an
     SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, a write of a second pattern to it is
@@ -188,25 +188,32 @@ class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):
         )
         self.steps["S1"] = True
 
-        await self._raise(jtag, PINNED_INJECT, PINNED_BROKEN, PINNED_LABEL)
-        await self._sep_open(jtag, PINNED_LABEL)
-        await self._release(jtag, PINNED_LABEL)
-        self.steps["S2"] = True
+        # smu_lc_sigint_cg counts the hold from the gate's rise to the drive of
+        # 0, so no await sits between the raise and the hold.
+        try:
+            await self._raise(jtag, PINNED_INJECT, PINNED_BROKEN, PINNED_LABEL)
+            await self._sep_open(jtag, PINNED_LABEL)
+            self.dut.tb_fcov_gate.value = 1
+            await self._release(jtag, PINNED_LABEL)
+            self.steps["S2"] = True
 
-        await self._raise(jtag, self.inject, self.broken, self.drawn)
-        await self._sep_open(jtag, self.drawn)
-        self.steps["S3"] = True
+            await self._raise(jtag, self.inject, self.broken, self.drawn)
+            await self._sep_open(jtag, self.drawn)
+            self.steps["S3"] = True
 
-        if self.hold:
-            await ClockCycles(self.dut.clk_smu_i, self.hold)
-        sb.expect_eq(
-            f"lc_sigint_err_o still 1 at the end of the hold {self.drawn}",
-            self._rd("lc_sigint_err_o"),
-            1,
-            evidence="CHK-LC-SIGINT-RAISED",
-        )
-        await self._release(jtag, self.drawn)
-        self.steps["S4"] = True
+            self.dut.tb_fcov_gate.value = 1
+            if self.hold:
+                await ClockCycles(self.dut.clk_smu_i, self.hold)
+            sb.expect_eq(
+                f"lc_sigint_err_o still 1 at the end of the hold {self.drawn}",
+                self._rd("lc_sigint_err_o"),
+                1,
+                evidence="CHK-LC-SIGINT-RAISED",
+            )
+            await self._release(jtag, self.drawn)
+            self.steps["S4"] = True
+        finally:
+            self.dut.tb_fcov_gate.value = 0
 
     async def _raise(self, jtag, inject: int, broken: int, label: str) -> None:
         """Break the pair; grade lc_sigint_err_o and the three SMC OTP refusals."""
@@ -269,6 +276,7 @@ class smu_lc_sigint_fail_closed_seq(smu_otp_prod_error_resp_seq):
         """Drive the input 0; grade the legal pair and the S1 values read back."""
         sb = self.test.env.scoreboard
         await self._set_inject(0, LC_TEST_DEV)
+        self.dut.tb_fcov_gate.value = 0
         pins = self._lc_pins()
         ops = (
             await self._otp_op(jtag, SMC_OTP, J2A_OP_READ, SMC_EFUSE_SPARE0),

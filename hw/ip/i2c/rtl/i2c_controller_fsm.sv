@@ -74,7 +74,8 @@ module i2c_controller_fsm
   output logic                                      event_scl_interference_o, // Other device forcing SCL low.
   output logic                                      event_stretch_timeout_o, // Target stretches clock past max time.
   output logic                                      event_sda_unstable_o, // SDA is not constant during an SCL pulse.
-  output logic                                      event_cmd_complete_o // Command is complete.
+  output logic                                      event_cmd_complete_o, // Command is complete.
+  output logic [4:0]                                state_debug_o // Current state_e value.
 );
 
   // I2C bus clock timing variables
@@ -362,6 +363,8 @@ module i2c_controller_fsm
   } state_e;
 
   state_e state_q, state_d;
+
+  assign state_debug_o = state_q;
 
 
   // Increment the NACK timeout count if the controller is halted in IDLE and
