@@ -26,6 +26,18 @@ import logging
 
 from cocotb.triggers import ClockCycles
 
+# The register the ROM's early checks read (DFX_CTRL_STATUS_SMU_REG_ADDR in smc_rom_defs.h).
+DFX_CTRL_STATUS_SMU = 0xC000_B800
+# dfx_ctrl_status.rdl fields of that register.
+DFX_FIELDS = {
+    "mem_repair_done": 0,
+    "mem_repair_success": 1,
+    "mem_repair_abort": 2,
+    "mbist_done": 4,
+    "mbist_pass": 8,
+    "mbist_abort": 12,
+}
+
 # Written by the ROM into scratch 15 while the check is still running.
 MBIST_STATUS_IN_PROGRESS = 0x1234_5678
 
@@ -34,11 +46,47 @@ MBIST_STATUS_MEM_REPAIR_FAIL = 0xBADC_0FFE
 MBIST_STATUS_MBIST_FAIL = 0xDEAD_BEEF
 MBIST_STATUS_MBIST_TIMEOUT = 0xDEAD_C0DE
 
+# Final scratch 15 values when a bypass strap skips a check.
+MBIST_STATUS_MEM_REPAIR_BYPASSED = 0x1234_0001
+MBIST_STATUS_MEM_BIST_BYPASSED = 0x1234_0002
+
 EXPECTED_STATUS = {
     "mem_repair_fail": MBIST_STATUS_MEM_REPAIR_FAIL,
     "mbist_fail": MBIST_STATUS_MBIST_FAIL,
     "mbist_timeout": MBIST_STATUS_MBIST_TIMEOUT,
 }
+
+# The DFX_CTRL_STATUS_SMU fields each scenario's line pattern must latch.
+SCENARIO_FIELDS = {
+    "mem_repair_fail": {
+        "mem_repair_done": 1,
+        "mem_repair_success": 0,
+        "mem_repair_abort": 0,
+        "mbist_done": 1,
+        "mbist_pass": 1,
+        "mbist_abort": 0,
+    },
+    "mbist_fail": {
+        "mem_repair_done": 1,
+        "mem_repair_success": 1,
+        "mem_repair_abort": 0,
+        "mbist_done": 1,
+        "mbist_pass": 0,
+        "mbist_abort": 0,
+    },
+    "mbist_timeout": {
+        "mem_repair_done": 1,
+        "mem_repair_success": 1,
+        "mem_repair_abort": 0,
+        "mbist_done": 1,
+        "mbist_pass": 0,
+        "mbist_abort": 1,
+    },
+}
+
+
+def dfx_fields(value: int) -> dict[str, int]:
+    return {name: (value >> bit) & 1 for name, bit in DFX_FIELDS.items()}
 
 
 class SmcDftStatusDriver:
@@ -72,6 +120,7 @@ class SmcDftStatusDriver:
             self.instance,
             mem_repair_done=1,
             mem_repair_success=0 if scenario == "mem_repair_fail" else 1,
+            mem_repair_abort=0,
         )
 
         if scenario == "mbist_timeout":
@@ -87,6 +136,16 @@ class SmcDftStatusDriver:
             )
 
         self.log.info("%s reported DFT scenario %s", self.instance, scenario)
+
+    def check_status_register(self, scenario: str, value: int) -> None:
+        """Fail unless DFX_CTRL_STATUS_SMU latched exactly the scenario's line pattern."""
+        seen = dfx_fields(value)
+        if seen != SCENARIO_FIELDS[scenario]:
+            raise AssertionError(
+                f"{self.instance}: DFX_CTRL_STATUS_SMU={value:#010x} decodes to {seen}, but "
+                f"{scenario} drives {SCENARIO_FIELDS[scenario]}; the ROM would branch on lines "
+                "this test did not report"
+            )
 
     async def wait_for_status(
         self, scenario: str, scratch_addr: int, poll_iters: int, poll_cycles: int

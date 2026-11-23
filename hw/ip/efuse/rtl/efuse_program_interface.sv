@@ -66,7 +66,8 @@ module efuse_program_interface #(
                                                   // waiting for the response.
   input  fuse_command_resp_t fuse_command_resp_i,  // Filtered response to the program command.
 
-  output logic is_program_timeout_debug_o  // One-cycle pulse when a program operation times out.
+  output logic is_program_timeout_debug_o,  // One-cycle pulse when a program operation times out.
+  output logic [1:0] state_debug_o          // Program FSM state: 01 idle, 10 waiting for response.
 );
 
   localparam fuse_command_req_t FuseCommandReqDefault = '0;
@@ -86,6 +87,8 @@ module efuse_program_interface #(
 
 
   efuse_program_state_e program_state_q, program_state_d;
+
+  assign state_debug_o = program_state_q;
 
   logic program_err_q, program_err_d;
   logic program_done_q, program_done_d;

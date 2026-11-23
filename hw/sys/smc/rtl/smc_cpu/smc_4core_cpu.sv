@@ -139,6 +139,9 @@ module smc_4core_cpu (
   output logic                                            init_mem_done_o,  // High once the scratch RAM
                                                                             // zero-fill has completed or been
                                                                             // skipped.
+  output logic [2:0]                                      mem_zero_state_debug_o,  // Scratch RAM zero-fill FSM
+                                                                                   // state: 001 idle, 010 busy,
+                                                                                   // 100 done.
 
   input  logic                                            test_en_i,  // Scan test mode enable for the
                                                                       // debug clock gate and the cluster
@@ -588,6 +591,7 @@ module smc_4core_cpu (
   end
 
   assign init_mem_done_o = init_mem_complete;
+  assign mem_zero_state_debug_o = state;
 
 `ifndef SYNTHESIS
 `ifndef EMULATION
