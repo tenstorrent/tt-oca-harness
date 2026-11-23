@@ -4474,7 +4474,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Bound SEC_DIS digest tap (`sec_dis_digest_probe_o`)
 |Read-only tap
 |The SEC_DIS expected digest that `tb_top` binds to the DUT.
-|`sep_lcc_state_codeword_rand_test`, `sep_lcc_feat_ctrl_state_matrix_rand_test`, `sep_efuse_token_channel_rand_test`, `sep_efuse_token_fault_matrix_test`, `sep_efuse_secure_tm_matrix_rand_test`, `sep_sec_dis_timing_rand_test` (CHK-BIND)
+|`sep_lcc_state_codeword_rand_test`, `sep_lcc_feat_ctrl_state_matrix_rand_test`, `sep_efuse_token_channel_rand_test`, `sep_efuse_token_fault_matrix_test`, `sep_efuse_secure_tm_matrix_rand_test`, `sep_sec_dis_timing_rand_test` (CTRL-BIND)
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |`KM-VALID`
 |Read-only tap
