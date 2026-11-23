@@ -59,6 +59,12 @@ SMC_DFT_STATUS_DEFAULT = 0x0000_0113
 # boot-path selector: boot_from_spi() is `primary_chiplet && !boot_recovery`.
 STRAPS_LO_PRIMARY_CHIPLET = 1 << 25
 
+# SEP status ring in SMC SRAM (bootrom/prod/src/status_ring.c): head, tail, num_entries, entries[].
+SMC_SRAM_BASE = 0x4006_0000
+SEP_STATUS_RING_OFFSET = 0x2000
+SEP_STATUS_RING_BASE = SMC_SRAM_BASE + SEP_STATUS_RING_OFFSET
+SEP_STATUS_RING_HEADER_WORDS = 3
+
 _WORD_MASK = 0xFFFF_FFFF
 
 
@@ -149,3 +155,22 @@ def preload_smc_mem(
     if scratch8 is not None:
         mem.write32(SMC_SCRATCH8_ADDR, scratch8)
         log.info("[smc_mem] scratch[8] manifest offset = 0x%08x (+sep_smc_scratch8)", scratch8)
+
+
+def preload_sep_status_ring(
+    mem: OcahAxiSlaveSequence, *, head: int, tail: int, entries: list[int]
+) -> bytes:
+    """Publish a valid SEP status ring at SEP_STATUS_RING_OFFSET; return its byte snapshot."""
+    assert entries and 0 <= head < len(entries) and 0 <= tail < len(entries), (
+        f"ring head={head} tail={tail} must index one of {len(entries)} entries"
+    )
+    words = [head, tail, len(entries), *entries]
+    for i, word in enumerate(words):
+        mem.write32(SEP_STATUS_RING_BASE + 4 * i, word & _WORD_MASK)
+    mem.write32(SMC_SCRATCH11_ADDR, SEP_STATUS_RING_OFFSET)
+    return read_sep_status_ring(mem, len(entries))
+
+
+def read_sep_status_ring(mem: OcahAxiSlaveSequence, num_entries: int) -> bytes:
+    """Byte snapshot of the ring header and its ``num_entries`` entries."""
+    return mem.read(SEP_STATUS_RING_BASE, 4 * (SEP_STATUS_RING_HEADER_WORDS + num_entries))

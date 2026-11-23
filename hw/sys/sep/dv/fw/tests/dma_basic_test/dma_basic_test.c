@@ -17,18 +17,32 @@
 //                    a limit below the base raises base_limit_error alone; then a
 //                    full valid range is locked, one-way until reset, and a range
 //                    write is rejected.
-//   CHK-CFG-REGWEN : the config lock engages while BUSY, so a config write is
-//                    rejected; it releases when idle, and the write then lands.
+//   CHK-CFG-REGWEN : the config lock engages while BUSY, so a config write does
+//                    not land: SRC_ADDR_LO does not read the written 0xDEADBEEF
+//                    or that value advanced by up to the transfer length
+//                    (hardware also writes SRC_ADDR_LO, so no other readback is
+//                    stated; the PASS line prints it). The lock releases when
+//                    idle, and the write then lands.
 //   CHK-COPY-MODE  : data integrity per address mode with a per-mode expected
 //                    image and an untouched neighbor: INCR linear, FIXED-src
 //                    replicates, FIXED-dst overwrites one location, WRAP (chunk <
 //                    total) accumulates one copy per chunk.
+//   CHK-CHUNK-DONE : the two-chunk WRAP copy of CHK-COPY-MODE raises
+//                    STATUS.chunk_done, without done or error, after its
+//                    non-final chunk, and a write of 1 to chunk_done reads back
+//                    0 before the next GO and before the first GO. The bit after
+//                    the final chunk is logged (INFO-CHUNK-DONE-FINAL): no text
+//                    states whether the chunk that ends the transfer raises it.
 //   CHK-WIDTH      : copy integrity for 1B/2B/4B transfer widths.
 //   CHK-DONE-RW1C  : STATUS.done observed -> W1C -> reads back 0 (polled status).
 //   CHK-ERR-OPCODE : an invalid opcode raises opcode_error alone and STATUS.error;
 //                    W1C clear; a subsequent good copy recovers.
-//   CHK-ERR-ADDR   : four misaligned descriptors raise the matching ERROR_CODE
-//                    bit exclusively; a subsequent good copy recovers.
+//   CHK-ERR-ADDR   : four misaligned descriptors each raise STATUS.error and
+//                    the ERROR_CODE bit of the misaligned side, no non-address
+//                    bit and no STATUS.done; a subsequent good copy recovers.
+//                    The other address bit is logged (INFO-ERR-ADDR-OTHER): the
+//                    source and destination differ in alignment, and no text
+//                    names the bit that the same-alignment rule raises.
 //   CHK-ERR-ASID   : an unencoded ASID on src and on dst each raise asid_error
 //                    exclusively; a subsequent good copy recovers.
 //   CHK-ERR-SIZE   : an unencoded transfer width raises size_error exclusively;
@@ -131,11 +145,34 @@ static uint32_t dma_run(uint32_t src, uint32_t dst, uint32_t total, uint32_t chu
     return dma_run_asid(src, dst, total, chunk, width, src_cfg, dst_cfg, opcode, ASID_OT_BOTH);
 }
 
+// STATUS.chunk_done record of the last dma_run_chunked() call, graded by
+// chk_chunk_done(): the chunks that stopped with chunk_done and neither done nor
+// error, the STATUS reads after each write of 1 to chunk_done that still show the
+// bit, and the STATUS of the last of those reads and of the end of the transfer.
+static struct {
+    uint32_t raised;
+    uint32_t w1c_held;
+    uint32_t w1c_st;
+    uint32_t final_st;
+} chunk_obs;
+
+// Write 1 to STATUS.chunk_done and read STATUS back; a read that still shows the
+// bit is counted in chunk_obs.w1c_held.
+static void chunk_done_w1c(void) {
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__CHUNK_DONE_bm);
+    uint32_t st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    if (st & SECURE_DMA__STATUS__CHUNK_DONE_bm) {
+        chunk_obs.w1c_held++;
+        chunk_obs.w1c_st = st;
+    }
+}
+
 // Multi-chunk transfer (chunk < total). In pure memory-to-memory mode the Secure
 // DMA completes ONE chunk per GO (it raises CHUNK_DONE and drops BUSY, with no
 // LSIO handshake wired for SRAM on bare sep), so firmware paces the chunks: clear
 // CHUNK_DONE and re-GO with INITIAL_TRANSFER=0 until the final chunk raises DONE.
-// Returns the final STATUS (DONE on success, ERROR, or the last poll on timeout).
+// Returns the final STATUS (DONE on success, ERROR, or the last poll on timeout)
+// and fills chunk_obs.
 static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint32_t chunk,
                                 uint32_t width, uint32_t src_cfg, uint32_t dst_cfg,
                                 uint32_t opcode) {
@@ -150,6 +187,11 @@ static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint
     wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
     wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
 
+    chunk_obs.raised = 0;
+    chunk_obs.w1c_held = 0;
+    chunk_obs.w1c_st = 0;
+    chunk_done_w1c(); // a bit left from an earlier transfer cannot count below
+
     uint32_t st = 0;
     uint32_t initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
     for (uint32_t guard = 0; guard < 64; guard++) { // bounded chunk count
@@ -160,15 +202,16 @@ static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint
             st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         } while (!(st & (DONE_OR_ERR | SECURE_DMA__STATUS__CHUNK_DONE_bm)) && --t > 0);
         if (st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) {
-            return st; // whole transfer finished (or errored)
+            break; // whole transfer finished (or errored)
         }
         if (!(st & SECURE_DMA__STATUS__CHUNK_DONE_bm)) {
-            return st; // timed out with no progress
+            break; // timed out with no progress
         }
-        wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
-           SECURE_DMA__STATUS__CHUNK_DONE_bm); // arm the next chunk
+        chunk_obs.raised++;
+        chunk_done_w1c(); // arm the next chunk
         initial = 0;
     }
+    chunk_obs.final_st = st;
     return st;
 }
 
@@ -325,10 +368,12 @@ static int chk_cfg_regwen(void) {
         sep_mbx_putc('\n');
         e++;
     }
-    // A config write while locked must be rejected (SRC_ADDR_LO holds src_base).
+    // A config write while locked does not land. Hardware also writes
+    // SRC_ADDR_LO and advances it by at most the transfer length, so a
+    // readback in [0xDEADBEEF, 0xDEADBEEF + len] is the written value.
     wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0xDEADBEEFu);
     uint32_t after = rd(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR);
-    if (after != src_base) {
+    if ((uint32_t)(after - 0xDEADBEEFu) <= len) {
         sep_mbx_puts("FAIL: CHK-CFG-REGWEN config write not rejected while locked, got ");
         sep_mbx_puthex(after);
         sep_mbx_putc('\n');
@@ -355,8 +400,11 @@ static int chk_cfg_regwen(void) {
         e++;
     }
     if (!e) {
-        sep_mbx_puts("CHK-CFG-REGWEN PASS: locked 0x9 while BUSY (write rejected), "
-                     "unlocked 0x6 when idle (write lands)\n");
+        sep_mbx_puts("CHK-CFG-REGWEN PASS: locked 0x9 while BUSY, SRC_ADDR_LO busy readback ");
+        sep_mbx_puthex(after);
+        sep_mbx_puts(" outside the written band [0xDEADBEEF, ");
+        sep_mbx_puthex(0xDEADBEEFu + len);
+        sep_mbx_puts("]; unlocked 0x6 when idle (write lands)\n");
     }
     return e;
 }
@@ -502,6 +550,47 @@ static int run_mode(const char *tag, uint32_t total, uint32_t chunk, uint32_t sr
     return bad;
 }
 
+// ---- CHK-CHUNK-DONE: STATUS.chunk_done of the last multi-chunk copy ----
+// vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl, STATUS.CHUNK_DONE:
+// "Transfer of a single chunk is complete. Only raised for multi-chunk
+// memory-to-memory transfers.", onwrite = woclr. Each of the nchunks - 1
+// non-final chunks stops with chunk_done and neither done nor error, and each
+// write of 1 to chunk_done reads back 0.
+static int chk_chunk_done(uint32_t nchunks) {
+    int e = 0;
+    if (chunk_obs.raised != nchunks - 1u) {
+        sep_mbx_puts("FAIL: CHK-CHUNK-DONE non-final chunks with chunk_done ");
+        sep_mbx_puthex(chunk_obs.raised);
+        sep_mbx_puts(" exp ");
+        sep_mbx_puthex(nchunks - 1u);
+        sep_mbx_puts(" final status ");
+        sep_mbx_puthex(chunk_obs.final_st);
+        sep_mbx_putc('\n');
+        e++;
+    }
+    if (chunk_obs.w1c_held != 0) {
+        sep_mbx_puts("FAIL: CHK-CHUNK-DONE chunk_done still set after its write of 1 on ");
+        sep_mbx_puthex(chunk_obs.w1c_held);
+        sep_mbx_puts(" reads, status ");
+        sep_mbx_puthex(chunk_obs.w1c_st);
+        sep_mbx_putc('\n');
+        e++;
+    }
+    sep_mbx_puts("INFO-CHUNK-DONE-FINAL chunk_done=");
+    sep_mbx_puthex((chunk_obs.final_st & SECURE_DMA__STATUS__CHUNK_DONE_bm) ? 1u : 0u);
+    sep_mbx_puts(" final_status=");
+    sep_mbx_puthex(chunk_obs.final_st);
+    sep_mbx_putc('\n');
+    if (!e) {
+        sep_mbx_puts("CHK-CHUNK-DONE PASS: chunk_done on ");
+        sep_mbx_puthex(chunk_obs.raised);
+        sep_mbx_puts(" of ");
+        sep_mbx_puthex(nchunks);
+        sep_mbx_puts(" chunks without done or error; each write of 1 reads back 0\n");
+    }
+    return e;
+}
+
 // ---- CHK-COPY-MODE: per address-mode expected image + neighbor ----
 static int chk_copy_mode(void) {
     int e = 0;
@@ -549,7 +638,7 @@ static int chk_copy_mode(void) {
         sep_mbx_puts("CHK-COPY-MODE PASS: INCR linear / FIXED-src replicate / "
                      "FIXED-dst overwrite / WRAP chunk-accumulate, neighbors intact\n");
     }
-    return e;
+    return e + chk_chunk_done(2u); // the WRAP-src copy is the last multi-chunk copy
 }
 
 // ---- CHK-WIDTH: INCR copy integrity at 1B / 2B / 4B ----
@@ -631,19 +720,23 @@ static int chk_done_rw1c(void) {
 // ---- CHK-ERR-ADDR: the engine's address validation ----
 // Four cells: a transfer whose source or destination address does not meet the
 // alignment its width requires, at both the 4-byte and the 2-byte width. Each
-// cell asserts its error EXCLUSIVELY, so a fault that raises a different bit is
-// a failure rather than a pass, and a clean transfer after the four proves the
-// engine recovers. The inverted-range leg (limit below base) is NOT here: it
-// must run before chk_range_regwen closes the one-way RANGE_REGWEN lock, so it
-// lives in that function.
+// address "Must be aligned to the transfer width" (secure_dma.rdl:74, :82, :91,
+// :100), so the misaligned side's bit ("address is invalid", :336, :341) must
+// rise, and no non-address bit may. The other side is aligned to the width but
+// not to its partner, and "Source and destination address must have the same
+// alignment" (:83, :92, :101) names no bit, so the other address bit is logged
+// only. A clean transfer after the four proves the engine recovers. The
+// inverted-range leg (limit below base) is NOT here: it must run before
+// chk_range_regwen closes the one-way RANGE_REGWEN lock, so it lives in that
+// function.
+#define DMA_ADDR_ERR_BITS \
+    (SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm | SECURE_DMA__ERROR_CODE__DST_ADDR_ERROR_bm)
 static int chk_err_addr(void) {
     int e = 0;
     struct {
         const char *name;
         uint32_t src, dst, width, want;
     } cells[] = {
-        // Each address must be aligned to the transfer width, and the misaligned
-        // side raises its own error bit.
         {"src misaligned for 4B", src_base + 1u, dst_base, SEP_DMA_WIDTH_4B,
          SECURE_DMA__ERROR_CODE__SRC_ADDR_ERROR_bm},
         {"dst misaligned for 4B", src_base, dst_base + 2u, SEP_DMA_WIDTH_4B,
@@ -661,12 +754,23 @@ static int chk_err_addr(void) {
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
         uint32_t err = rd_err();
-        if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != cells[c].want) {
+        uint32_t other = DMA_ADDR_ERR_BITS & ~cells[c].want;
+        sep_mbx_puts("INFO-ERR-ADDR-OTHER LOG cell=");
+        sep_mbx_puthex(c);
+        sep_mbx_puts(" want=");
+        sep_mbx_puthex(cells[c].want);
+        sep_mbx_puts(" err=");
+        sep_mbx_puthex(err);
+        sep_mbx_puts(" other_bit=");
+        sep_mbx_putc((err & other) ? '1' : '0');
+        sep_mbx_putc('\n');
+        if (!(st & SECURE_DMA__STATUS__ERROR_bm) || !(err & cells[c].want) ||
+            (err & ~DMA_ADDR_ERR_BITS)) {
             sep_mbx_puts("FAIL: CHK-ERR-ADDR ");
             sep_mbx_puts(cells[c].name);
-            sep_mbx_puts(" expected err ");
+            sep_mbx_puts(" expected err bit ");
             sep_mbx_puthex(cells[c].want);
-            sep_mbx_puts(" got ");
+            sep_mbx_puts(" and no non-address bit, got ");
             sep_mbx_puthex(err);
             sep_mbx_puts(" status ");
             sep_mbx_puthex(st);
@@ -710,9 +814,9 @@ static int chk_err_addr(void) {
     if (!e) {
         sep_mbx_puts("CHK-ERR-ADDR PASS: 4 misaligned descriptors, covering the "
                      "source and destination alignment checks at both 4-byte and "
-                     "2-byte width, each raised exactly the expected ERROR_CODE bit "
-                     "and no other, none set STATUS.done, and the engine copied "
-                     "correctly afterwards\n");
+                     "2-byte width, each set STATUS.error and the ERROR_CODE bit of "
+                     "the misaligned side with no non-address bit, none set "
+                     "STATUS.done, and the engine copied correctly afterwards\n");
     }
     return e;
 }
@@ -842,7 +946,8 @@ static int chk_host_intg(void) {
 
     // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:67-69):
     // with the pin low again, STATUS still holds host_path_err. The testbench
-    // requires aggregator bit 41 high up to CHK-HOSTINTG-HELD.
+    // requires aggregator bit 41 high up to CHK-HOSTINTG-HELD, and the pin low on
+    // a clock after its release at this read (CTRL-HOSTINTG-HELD-PIN).
     bus = rd(status_addr);
     if (bus != host_bit) {
         sep_mbx_puts("FAIL: CHK-HOSTINTG DMA_BUS_ERR_STATUS=");

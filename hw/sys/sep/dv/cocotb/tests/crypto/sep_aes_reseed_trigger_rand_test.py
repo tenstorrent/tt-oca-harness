@@ -56,8 +56,8 @@ DATA_OUT after DATA_OUT_CLEAR has no exact form: ``aes.hjson``:909-913 states on
 read effect. A check that the value differs from the output before the clear
 fails a healthy DUT with probability 2^-128 and passes a partial clear, so it is
 not a check. The leaf logs ``INFO-BLOCKED CHK-AES-CLEAR-OUT`` and
-``OBS-AES-CLEAR-OUT`` and grades nothing there. The IV after the clear is logged
-as ``OBS-AES-CLEAR-IV``.
+``INFO-AES-CLEAR-OUT`` and grades nothing there. The IV after the clear is logged
+as ``INFO-AES-CLEAR-IV``.
 
 The count of EDN requests and acknowledges per reseed trigger is logged:
   INFO-AES-RESEED-SRC     one line per event: the AES reset pulse, the CTRL
@@ -568,9 +568,9 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
             self._info_src("data_out_clear", "clear_trial", src)
             after = await self._read_out()
         except TrialTimeout as exc:
-            self.chk.obs("AES-CLEAR-OUT", reason=f"timeout:{exc.what}", bound=exc.bound)
+            self.chk.info("AES-CLEAR-OUT", reason=f"timeout:{exc.what}", bound=exc.bound)
             return
-        self.chk.obs(
+        self.chk.info(
             "AES-CLEAR-OUT",
             before="0x" + "".join(f"{w:08x}" for w in reversed(o0)),
             after="0x" + "".join(f"{w:08x}" for w in reversed(after)),
@@ -617,7 +617,7 @@ class sep_aes_reseed_trigger_rand_test(sep_base_test):
         close_graded_window(self.logger)
         iv_ok = iv_before == iv
         self.chk.ctrl("AES-CLEAR-KEY", iv_ok, ctrl_iv_read_equal=int(iv_ok))
-        self.chk.obs(
+        self.chk.info(
             "AES-CLEAR-IV",
             iv_before="0x" + "".join(f"{w:08x}" for w in reversed(iv_before or [])),
             iv_after="0x" + "".join(f"{w:08x}" for w in reversed(iv_after or [])),

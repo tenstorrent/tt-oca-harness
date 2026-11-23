@@ -73,7 +73,7 @@ name = "sep_esrc_fips_lock_test"
 module = "crypto.sep_esrc_fips_lock_test"
 seed = 1
 timeout_sec = 900
-tags = ["entropy", "crypto", "subsystem", "sep_spec_log", "logs_open_spec_value"]
+tags = ["entropy", "crypto", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
@@ -190,8 +190,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Same-cycle dual crypto-EDN request across all four adapter clients; round-robin
-# order is not graded.
+# Same-cycle dual crypto-EDN request across all four adapter clients; the
+# round-robin rule is graded on the arbiter taps.
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1
@@ -566,8 +566,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Shard 1 of 3 of sep_esrc_health_pattern_rand_test: both pattern trials and the APT enable leg. The regression runs the shards; the
-# shards together grade every check of the whole leaf (env/sep_shard.py).
+# Shard 1 of 3 of sep_esrc_health_pattern_rand_test: both pattern trials and the APT enable leg, then the window-length leg and the
+# reset-window leg. The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_health_pattern_rand_test_shard1"
 module = "crypto.sep_esrc_health_pattern_rand_test"
 seed = 1
@@ -579,8 +579,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
 
 [[tests]]
-# Shard 2 of 3 of sep_esrc_health_pattern_rand_test: the repetition enable leg and the limit trials. The regression runs the shards; the
-# shards together grade every check of the whole leaf (env/sep_shard.py).
+# Shard 2 of 3 of sep_esrc_health_pattern_rand_test: the repetition enable leg and the limit trials (the Markov-high trial also grades
+# the Markov-high failure counters). The regression runs the shards; the shards together grade every check of the whole leaf
+# (env/sep_shard.py).
 name = "sep_esrc_health_pattern_rand_test_shard2"
 module = "crypto.sep_esrc_health_pattern_rand_test"
 seed = 1
@@ -599,7 +600,7 @@ module = "crypto.sep_esrc_health_pattern_rand_test"
 seed = 1
 # No reseed: every run drives the fixed stuck patterns; the seed selects only the clean noise before the window.
 timeout_sec = 7200
-tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem", "sep_spec_log", "logs_open_spec_value", "sep_spec_chk_crypto_entropy"]
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem", "sep_spec_log", "sep_spec_chk_crypto_entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=3"]
@@ -717,7 +718,7 @@ module = "crypto.sep_esrc_fifo_flow_rand_test"
 seed = 1
 reseed = 1
 timeout_sec = 1800
-tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem", "sep_spec_log"]
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
@@ -770,7 +771,7 @@ module = "crypto.sep_drbg_cmd_sequence_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 1800
-tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem", "sep_spec_log", "logs_open_spec_value", "sep_spec_chk_crypto_entropy"]
+tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem", "sep_spec_log", "sep_spec_chk_crypto_entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]

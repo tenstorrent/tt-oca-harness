@@ -244,6 +244,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 
     // Release AES from software reset before driving it.
     if (aes_init() != 0) {
+        explicit_memzero(secret, sizeof secret);
         return OCA_FAIL_DECRYPT;
     }
 

@@ -37,7 +37,7 @@ localparam int unsigned CONTROL_REG_ADDR                                        
 // Default values for registers
 //==============================================================================
 
-localparam longint unsigned GPIO_CTRL_CONTROL_REG_DEFAULT                                                         = 32'h00100002;
+localparam longint unsigned GPIO_CTRL_CONTROL_REG_DEFAULT                                                         = 32'h00000002;
 
 
 
