@@ -14,15 +14,12 @@
 // Either reset clears both sides of every ATB FIFO; atready_o stays high while the write side
 // is in reset, so beats offered then are dropped.
 // NUM_TELEMETRY_RECEIVERS must be between 1 and MaxNumTelemetryReceivers.
-// TELEMETRY_RECEIVER_BUFFER_DEPTH must be a power of two and greater than or equal to 2.
 // NumRegMaps is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
 // Each receiver's debug nibble matches telemetry_receiver's four-bit debug bus.
 
 module telemetry_receiver_wrap #(
   parameter int unsigned NUM_TELEMETRY_RECEIVERS         = 3, // Receiver instance count.
-  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 8, // Per-receiver message FIFO depth;
-                                                              // must be a power of two and >= 2.
-  parameter int unsigned TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE [NUM_TELEMETRY_RECEIVERS-1:0] = '{default: 4}, // Per-receiver max counters.
+  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 32, // Per-receiver beat FIFO depth.
 
   parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0,   // Instance 0 register-map byte base address.
   parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0,   // Per-instance register-map size in bytes; instances are
@@ -51,7 +48,7 @@ module telemetry_receiver_wrap #(
   output telemetry_receiver_wrap_pkg::axil_resp_t axil_resp_o, // Shared AXI-Lite response.
 
   input  telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0] atdata_i, // Per-receiver ATB data, in the clk_telemetry_i domain.
-  input  telemetry_receiver_pkg::atb_id_t         [NUM_TELEMETRY_RECEIVERS-1:0] atid_i, // Per-receiver ATB ID; crosses into clk_i but the receiver ignores it.
+  input  telemetry_receiver_pkg::atb_id_t         [NUM_TELEMETRY_RECEIVERS-1:0] atid_i, // Per-receiver ATB ID; crosses into clk_i and is stored with each beat.
   output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atready_o, // Per-receiver ATB ready; high while the crossing FIFO has space.
   input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atvalid_i, // Per-receiver ATB valid.
   output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afvalid_o, // Per-receiver ATB flush valid.
@@ -268,8 +265,7 @@ module telemetry_receiver_wrap #(
     `AXI_LITE_ASSIGN_RESP_STRUCT(axil_resps[i], telemetry_receiver_axil_resp)
 
     telemetry_receiver #(
-      .BUFFER_DEPTH                 (TELEMETRY_RECEIVER_BUFFER_DEPTH),
-      .MAX_NUM_COUNTERS_PER_MESSAGE (TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE[i])
+      .BUFFER_DEPTH                 (TELEMETRY_RECEIVER_BUFFER_DEPTH)
     ) u_telemetry_receiver (
       // Global Interface
       .clk_i,

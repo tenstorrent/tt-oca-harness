@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Telemetry receiver 0 ATB message capture and both flush paths."""
+"""Telemetry receiver 0 raw ATB beat capture, TELEMETRY_DATA readout and both flush paths."""
 
 from __future__ import annotations
 
@@ -12,16 +12,19 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_telemetry_atb_capture_test(smc_base_test):
-    """Capture and decode ATB messages on receiver 0, then drive both flushes."""
+    """Capture raw ATB beats on receiver 0, drain them through TELEMETRY_DATA, and flush."""
 
     required_evidence = (
-        "CHK-TELEMETRY-ATB-MESSAGE-CAPTURE",
-        "CHK-TELEMETRY-COUNTER-BYTE-MAP",
-        "CHK-TELEMETRY-COUNTER-VALIDITY",
-        "CHK-TELEMETRY-RX-FLUSH",
-        "CHK-TELEMETRY-TX-FLUSH-HANDSHAKE",
+        "CHK-TELEMETRY-RAW-CAPTURE-IN-ORDER",
+        "CHK-TELEMETRY-EMPTY-READ-NO-POP",
+        "CHK-TELEMETRY-FULL-BACKPRESSURE",
+        "CHK-TELEMETRY-BACK-TO-BACK-POP",
+        "CHK-TELEMETRY-RX-FLUSH-WHILE-FULL",
+        "CHK-TELEMETRY-THRESHOLD-BEATS",
+        "CHK-TELEMETRY-TX-FLUSH-WHILE-DRAINING",
+        "CHK-TELEMETRY-WRITE-NO-POP",
     )
-    min_evidence = 5
+    min_evidence = 8
 
     auto_protocol_vip = False
 
@@ -31,12 +34,10 @@ class smc_telemetry_atb_capture_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.DIAGNOSTIC,
             type(self).__name__,
-            # Directed stimulus floor: 4 CLOCK_GATE_CONTROL accesses, the entry
-            # STATUS read, 4 message-readback reads, the BUFFER_POP write, the
-            # two flush-request writes with their readbacks, the two
-            # TX_FLUSH CTRL reads, and one STATUS poll per buffer wait.
-            min_csr_accesses=20,
+            # Directed stimulus floor: one TELEMETRY_DATA read for each of
+            # the 41 beats of the full-FIFO drain alone.
+            min_csr_accesses=41,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="Telemetry ATB message capture plus receiver and transmitter flush",
+            details="Telemetry raw ATB beat capture plus receiver and transmitter flush",
         )

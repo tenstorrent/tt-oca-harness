@@ -34,10 +34,7 @@ package smc_config_pkg;
   //////////////////////////
 
   localparam int unsigned NumTelemetryReceivers = 3;  // MAX: 16.
-  localparam int unsigned TelemetryReceiverBufferDepth = 8;  // must be a power of two and >= 2.
-  localparam int unsigned TelemetryReceiverMaxNumCountersPerMessage[NumTelemetryReceivers-1:0] = '{
-      default: 4
-  };  // # of counters you can receive as telemetry information in one burst.
+  localparam int unsigned TelemetryReceiverBufferDepth = 32;  // ATB beats per receiver.
 
   /////////////////////
   // UART Parameters //

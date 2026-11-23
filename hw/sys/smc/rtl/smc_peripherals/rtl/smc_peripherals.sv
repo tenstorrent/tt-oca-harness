@@ -1289,7 +1289,6 @@ module smc_peripherals #(
   telemetry_receiver_wrap #(
     .NUM_TELEMETRY_RECEIVERS                            (smc_config_pkg::NumTelemetryReceivers),
     .TELEMETRY_RECEIVER_BUFFER_DEPTH                    (smc_config_pkg::TelemetryReceiverBufferDepth),
-    .TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE    (smc_config_pkg::TelemetryReceiverMaxNumCountersPerMessage),
 
     .TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0))),
     .TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE))
