@@ -6,7 +6,7 @@
 package efuse_interface_ctrl_addrmap_pkg;
 
 localparam longint unsigned EFUSE_INTERFACE_CTRL_BASE_ADDR = 64'h0;
-localparam longint unsigned EFUSE_INTERFACE_CTRL_SIZE = 64'h1C;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_SIZE = 64'h24;
 
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR = 64'h0;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR = 64'h4;
@@ -15,6 +15,8 @@ localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DA
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR = 64'h10;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR = 64'h14;
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR = 64'h18;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_BASE_ADDR = 64'h1C;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR = 64'h20;
 
 
 endpackage

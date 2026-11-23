@@ -4,7 +4,7 @@
 
 Expected-value provenance:
 
-* ``LOCKS`` -- read from ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run
+* ``HARNESS_LOCKS`` -- read from ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run
   time via ``efuse_preload_word_at`` rather than a hand-transcribed literal,
   which cannot detect the asset and the model disagreeing. That asset is what
   ``efuse_bank_model.sv`` ``$readmemh``s under the bench-wide
@@ -38,7 +38,7 @@ from .smc_addr_map import efuse_ifc_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
 
-LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
 PROG_IF_RD = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR")
 PROG_IF_RD_RESET = efuse_ifc_u32(

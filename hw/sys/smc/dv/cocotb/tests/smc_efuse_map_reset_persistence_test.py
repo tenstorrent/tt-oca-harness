@@ -5,8 +5,8 @@
 The warm reset is driven through the JTAG reset-control override.
 Sources: smu-smc.adoc (eFuse Interface), clk_rst.adoc (rst_warm_n), smc-programming.adoc (LOCKS).
 
-The image is written into the run directory during ``build_phase``: every field and LOCKS
-are 0 except the first word of SPARE[5], which holds a marker.
+The image is written into the run directory during ``build_phase``: every field and both
+LOCKS registers are 0 except the first word of SPARE_TAIL[0], which holds a marker.
 """
 
 from __future__ import annotations
