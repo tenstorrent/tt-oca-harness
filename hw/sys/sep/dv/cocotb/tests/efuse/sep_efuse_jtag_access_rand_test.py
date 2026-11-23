@@ -66,7 +66,7 @@ Mechanism and Token Submission):
                     (``hw/ip/efuse/doc/architecture.adoc:351-353``: accesses outside
                     the MMR space are blocked with an SLVERR response), and the read
                     returns the read data 0xBADCAB1E
-                    (``hw/sys/sep/doc/otp_fuse_controller.adoc:41-42, 128-131``).
+                    (``hw/sys/sep/doc/otp_fuse_controller.adoc:41-45, 128-131``).
   OBS-JTAG-SHIM-DENY-DATA  the frontdoor value of ``EFUSE_BANK_INIT_TIME`` before and
                     after the two accesses: no TT text states the shim register value
                     after a denied JTAG access.
@@ -306,7 +306,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         addresses answer SLVERR (``hw/ip/efuse/doc/architecture.adoc:351-353``: in PROD
         and RMA_SIP a SEP JTAG access outside the MMR space is blocked with an SLVERR
         response), and the JTAG read returns ``DENY_RDATA``
-        (``hw/sys/sep/doc/otp_fuse_controller.adoc:41-42, 128-131``). ``OBS-JTAG-SHIM-DENY-DATA``
+        (``hw/sys/sep/doc/otp_fuse_controller.adoc:41-45, 128-131``). ``OBS-JTAG-SHIM-DENY-DATA``
         logs the frontdoor value of ``EFUSE_BANK_INIT_TIME`` before and after.
         """
         s = self.shim_draw
