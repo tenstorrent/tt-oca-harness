@@ -77,8 +77,8 @@ WARM_RESET = reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset"
 SYNC_BM = reset_unit_u32("RESET_UNIT__SYNC_REG__SYNC_bm")
 SYNC_RESET = reset_unit_u32("RESET_UNIT__SYNC_REG__SYNC_reset")
 VIS_PIN_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bp")
-VIS_COOL_I_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_bp")
-VIS_COOL_O_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_bp")
+VIS_CAUSE_BM = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_CAUSE_bm")
+VIS_CAUSE_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_CAUSE_bp")
 COUNTER_BM = reset_unit_u32(
     "RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bm"
 )
@@ -345,15 +345,9 @@ class smu_reset_csr_access_test_seq:
             evidence="CSR_RESET_VALUES_S4",
         )
         sb.expect_eq(
-            f"ISOLATE_REQ_VIS[{VIS_COOL_I_BP}] reads 1",
-            (vis >> VIS_COOL_I_BP) & 1,
-            1,
-            evidence="CSR_RESET_VALUES_S4",
-        )
-        sb.expect_eq(
-            f"ISOLATE_REQ_VIS[{VIS_COOL_O_BP}] reads 1",
-            (vis >> VIS_COOL_O_BP) & 1,
-            1,
+            "ISOLATE_REQ_VIS cool_reset_cause reads none before any cool reset",
+            (vis & VIS_CAUSE_BM) >> VIS_CAUSE_BP,
+            0,
             evidence="CSR_RESET_VALUES_S4",
         )
         self.steps.append("S4")

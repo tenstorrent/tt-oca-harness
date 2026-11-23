@@ -5,8 +5,7 @@
 ``clk_rst.adoc`` "Isolation Connections": the FLR cool reset also drives the open-drain
 ``BP_COOL_RESET_N_O`` pad (the Cool Reset Out entry of the integrator pad table), which pulls the
 line low while the reset is asserted and leaves it undriven otherwise. "Timing and Recovery":
-``ISOLATE_REQ_VIS`` reports synchronized pin and cool-reset levels; it is not an
-isolation-completion handshake.
+``ISOLATE_REQ_VIS`` reports the synchronized pin and the cause of the most recent cool reset.
 
 Every probe is sampled on ``clk_ref_i`` rises: ``tb_rst_cool_from_flr`` (``rst_cool_no``) and
 ``tb_core2pad_en_o`` and ``tb_core2pad_o`` at the Cool Reset Out index of the integrator pad
@@ -14,7 +13,8 @@ table. Two FLR legs run, a short hold and a hold long enough for a bounded CSR r
 sample of both the pad enable must equal the inverted cool reset and the pad data must be 0
 whenever the enable is 1. ``ISOLATE_REQ_VIS`` is read with the isolation pin low and high while
 ``ISOLATE_REQ_PINEN_REG`` is 0, so the pin bit follows the pad without any isolation request;
-the cool-reset bits are read at their released level. The reset unit's register block is on the
+``cool_reset_cause`` reads none before the FLR legs and seq_timeout after them, as the
+acknowledges stay low. The reset unit's register block is on the
 primary reset, so the read made during the long hold is bounded and recorded, not graded.
 """
 
@@ -39,8 +39,9 @@ FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_
 FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
 SMC_BIT = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm")
 VIS_PIN = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bm")
-VIS_COOL_IN = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_bm")
-VIS_COOL_OUT = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_bm")
+VIS_CAUSE_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_CAUSE_bp")
+VIS_CAUSE_NONE = 0 << VIS_CAUSE_BP
+VIS_CAUSE_SEQ_TIMEOUT = 3 << VIS_CAUSE_BP
 _PAD_TABLE = _REPO / "doc" / "integrator" / "meta" / "ocah_gpio_table.csv"
 
 #: Pre-reset count and hold count of the short leg, in clk_ref_i cycles.
@@ -319,12 +320,10 @@ class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
         await self.setup()
 
         # ISOLATE_REQ_VIS follows the pin with PINEN at 0 and no isolation request.
-        vis_low = await self.csr_read("VIS_PIN_LOW", VIS_REG, expected=VIS_COOL_IN | VIS_COOL_OUT)
+        vis_low = await self.csr_read("VIS_PIN_LOW", VIS_REG, expected=VIS_CAUSE_NONE)
         drive_isolate_pin(dut, 1)
         pin_arrived = await await_skip_mem_repair(dut, 1, "isolate pin high")
-        vis_high = await self.csr_read(
-            "VIS_PIN_HIGH", VIS_REG, expected=VIS_PIN | VIS_COOL_IN | VIS_COOL_OUT
-        )
+        vis_high = await self.csr_read("VIS_PIN_HIGH", VIS_REG, expected=VIS_PIN | VIS_CAUSE_NONE)
         iso_words = []
         for _ in range(_HOLD):
             await RisingEdge(dut.clk_smc_i)
@@ -334,9 +333,7 @@ class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
         )
         drive_isolate_pin(dut, 0)
         await await_skip_mem_repair(dut, 0, "isolate pin low again")
-        vis_low_again = await self.csr_read(
-            "VIS_PIN_LOW_AGAIN", VIS_REG, expected=VIS_COOL_IN | VIS_COOL_OUT
-        )
+        vis_low_again = await self.csr_read("VIS_PIN_LOW_AGAIN", VIS_REG, expected=VIS_CAUSE_NONE)
 
         self.mon.start()
         try:
@@ -345,9 +342,7 @@ class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
         finally:
             self.mon.stop()
             dut.tb_isolate_sequence_trigger.value = 0
-        vis_after = await self.csr_read(
-            "VIS_AFTER_HOLD", VIS_REG, expected=VIS_COOL_IN | VIS_COOL_OUT
-        )
+        vis_after = await self.csr_read("VIS_AFTER_HOLD", VIS_REG, expected=VIS_CAUSE_SEQ_TIMEOUT)
         await self.clear_counters()
         drive_isolate_pin(dut, None)
 
@@ -387,7 +382,7 @@ class smc_flr_sequencer_single_pulse_test_seq(SmcFlrLegSeq):
         cocotb.log.info(
             "%s: ISOLATE_REQ_VIS read 0x%x with the pin low, 0x%x with it high (pin seen after %d "
             "rises, tb_isolate_req_o 0 on %d of %d rises with PINEN 0), 0x%x low again and 0x%x "
-            "after the FLR legs (cool_reset_n_i and cool_reset_n_o bits 1 at the released level); "
+            "after the FLR legs (cool_reset_cause none before them, seq_timeout after); "
             "the bounded read during the %d-cycle hold answered %s (register block on the primary "
             "reset, recorded not graded)",
             CHK_VIS,

@@ -33,9 +33,10 @@ class smc_external_reg_lane_test_seq extends smc_base_test_seq;
       smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_VIS_BASE_ADDR;
   localparam bit [63:0] FlrResetCounterAddr =
       smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR;
-  localparam bit [31:0] VisIdle = RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_N_I_MASK |
-      RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_N_O_MASK;
-  localparam bit [31:0] VisMask = VisIdle | RESET_UNIT_ISOLATE_REQ_VIS_ISOLATE_REQ_PIN_MASK;
+  // cool_reset_cause reads none: no cool reset precedes this test.
+  localparam bit [31:0] VisIdle = '0;
+  localparam bit [31:0] VisMask = RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_CAUSE_MASK |
+      RESET_UNIT_ISOLATE_REQ_VIS_ISOLATE_REQ_PIN_MASK;
   typedef struct {
     string name;
     bit [63:0] addr;

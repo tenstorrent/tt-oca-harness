@@ -4,7 +4,7 @@
 
 Spec: reset_unit.rdl (SS_CONFIG :11-17, locks :20-27, SS_FORCE_TO_REF_CLK :30-35, cold/warm
 reset :38-51, holds :54-86, SS_COLD_RESET_LOCK :89-96, SYNC_REG :108-113, isolation :116-145,
-ISOLATE_REQ_VIS bits 4 and 8 :159,165, FLR counters :168-181); smc.rdl:55 (smc_reset_unit at
+ISOLATE_REQ_VIS cool_reset_cause, FLR counters :168-181); smc.rdl:55 (smc_reset_unit at
 0xC000_2000);
 port_table.adoc skip_mem_repair_o, isolate_req_o and sync_irq_o rows; clk_rst.adoc:300,349-354.
 
@@ -93,18 +93,9 @@ FLR_COUNTERS = tuple(
 )
 SYNC_REG = ("SYNC_REG", _addr("SYNC_REG"), _reset("SYNC_REG", "SYNC"))
 ISOLATE_REQ_VIS_ADDR = _addr("ISOLATE_REQ_VIS")
-VIS_COMPARED = (
-    (
-        "cool_reset_n_i",
-        reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_bp"),
-        _reset("ISOLATE_REQ_VIS", "COOL_RESET_N_I"),
-    ),
-    (
-        "cool_reset_n_o",
-        reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_bp"),
-        _reset("ISOLATE_REQ_VIS", "COOL_RESET_N_O"),
-    ),
-)
+VIS_CAUSE_BM = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_CAUSE_bm")
+VIS_CAUSE_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_CAUSE_bp")
+VIS_CAUSE_RESET = _reset("ISOLATE_REQ_VIS", "COOL_RESET_CAUSE")
 
 IDLE_ISOLATE_REQ = 0x0000_0000
 IDLE_SKIP_MEM_REPAIR = 0
@@ -214,8 +205,12 @@ class smu_smc_reset_unit_state_test_seq:
         flr = self._pin("tb_isolate_sequence_trigger")
         cool = self._pin("tb_cool_reset_pin")
         if flr or cool:
-            raise AssertionError(f"idle inputs not idle: isolate_sequence_trigger={flr} cool_reset_pin={cool}")
-        self._log(f"CELL setup isolate_sequence_trigger={flr} cool_reset_pin={cool} idcode=0x{idcode:08x}")
+            raise AssertionError(
+                f"idle inputs not idle: isolate_sequence_trigger={flr} cool_reset_pin={cool}"
+            )
+        self._log(
+            f"CELL setup isolate_sequence_trigger={flr} cool_reset_pin={cool} idcode=0x{idcode:08x}"
+        )
 
         self._mark("S2", "read SS_CONFIG, locks, cold and warm reset, force-to-ref-clk")
         config_regs = (
@@ -263,9 +258,9 @@ class smu_smc_reset_unit_state_test_seq:
             "hardware-written field; logged, not compared"
         )
         sb.expect_eq(
-            "CHK-BOOT-RSTUNIT-VIS isolate_req_vis cool_reset_n_i and cool_reset_n_o bits",
-            tuple((vis >> bit) & 1 for _, bit, _ in VIS_COMPARED),
-            tuple(reset for _, _, reset in VIS_COMPARED),
+            "CHK-BOOT-RSTUNIT-VIS isolate_req_vis cool_reset_cause",
+            (vis & VIS_CAUSE_BM) >> VIS_CAUSE_BP,
+            VIS_CAUSE_RESET,
             evidence="BOOT_RSTUNIT_VIS",
         )
 
