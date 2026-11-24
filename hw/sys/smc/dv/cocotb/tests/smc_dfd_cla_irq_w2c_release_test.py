@@ -19,8 +19,12 @@ from smc_base_test import smc_base_test
 class smc_dfd_cla_irq_w2c_release_test(smc_base_test):
     """Fire the debug-interrupt action, then grade the hold and the documented release."""
 
-    required_evidence = ("CHK-CLA-IRQ-EAP-RELEASE", "CHK-CLA-IRQ-W2C-HOLD")
-    min_evidence = 2
+    required_evidence = (
+        "CHK-CLA-ACTION-CODE",
+        "CHK-CLA-IRQ-EAP-RELEASE",
+        "CHK-CLA-IRQ-W2C-HOLD",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 
