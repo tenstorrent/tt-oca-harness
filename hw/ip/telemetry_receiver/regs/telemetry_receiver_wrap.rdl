@@ -20,6 +20,9 @@ addrmap telemetry_receiver_wrap #(
 
     telemetry_receiver    telemetry_receiver[NUM_TELEMETRY_RECEIVERS]    @0x0 += 0x100;
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+`endif
 };
 
 `endif
