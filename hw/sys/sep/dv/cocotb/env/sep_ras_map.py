@@ -20,7 +20,16 @@ from typing import Any
 
 from env.sep_chk_log import _fmt
 
-PERIPH_BUS_ERR_BLOCKS: tuple[str, ...] = ("aes", "hmac", "kmac", "otbn", "csrng", "edn", "wdt")
+PERIPH_BUS_ERR_BLOCKS: tuple[str, ...] = (
+    "aes",
+    "hmac",
+    "kmac",
+    "otbn",
+    "csrng",
+    "edn",
+    "wdt",
+    "spi",
+)
 
 RAS_FIELDS: tuple[tuple[str, int], ...] = (
     ("lc_sigint_err", 1),
@@ -47,7 +56,7 @@ RAS_FIELDS: tuple[tuple[str, int], ...] = (
 
 # A packed struct puts its first declared field at the MSB, so each field's LSB
 # is the sum of the widths declared after it, and the total is $bits(sep_ras_t).
-RAS_WIDTH = 26
+RAS_WIDTH = 27
 RAS_LSB: dict[str, int] = {}
 RAS_FIELD_WIDTH: dict[str, int] = dict(RAS_FIELDS)
 _lsb = sum(w for _, w in RAS_FIELDS)
