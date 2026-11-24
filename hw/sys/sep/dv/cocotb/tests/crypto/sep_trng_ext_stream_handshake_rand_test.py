@@ -577,7 +577,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             set_xhs_pass(0, self.logger)
             close_graded_window(self.logger)
             if self.sb is not None:
-                self.sb.stop()
+                await self.sb.stop()
         await self.ext.stop()
         await self.trace.stop()
         self.chk.finish()
@@ -651,7 +651,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         """
         dut = cocotb.top
         if self.sb is not None:
-            self.sb.stop()
+            await self.sb.stop()
             self.sb = None
         await self.swrst.park("trng")
         rise = await self._wait_probe(dut.trng_reset_active_probe_o, False, "trng reset rise")
@@ -1234,7 +1234,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         close_graded_window(self.logger)
         # The plan holds the select with the bit of the stream cleared after this leg.
         await self._sel(resel)
-        self.sb.stop()
+        await self.sb.stop()
         self.sb = None
 
     async def _drain(self, i: int) -> int:
