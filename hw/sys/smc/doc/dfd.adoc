@@ -385,13 +385,16 @@ mux drives.
 The DST writes a stream of packets of 1 to 10 bytes into the sink RAM, packed
 back to back in frames. Successive `trDstRamData` reads return successive
 4-byte words of the stream, the earliest byte in bits [7:0]. Read the RAM after
-the trace stops, which completes the last frame (see Frames below).
+clearing `trDstControl.Trdstenable`, which completes the last frame (see Frames
+below).
 
 Bit 7 of the first byte of a packet gives its type: 0 for a data packet, 1
 for a support packet. Bits [6:3] of that byte are the source ID, the low four
 bits of `trDstInstFeatures.Trdstsrcid`, which resets to 0. Bit 2, packet
-lost, is 1 when an earlier packet was dropped because the RAM could not take
-it.
+lost, is 1 when an earlier packet did not reach the RAM when the DST offered
+it: the RAM could not take it, a timestamp packet took the place of a data
+packet in the same cycle, or a trace stop discarded the last sample (see
+Frames below).
 
 [[smc-dst-data-packet-table]]
 [cols="20%,80%",options="header"]
@@ -416,10 +419,14 @@ A data packet is two bytes plus one per enabled byte.
 * 3, the reset value: only the bytes that changed.
 * 2 and 4 to 7: only the packets that carry every byte regardless of format.
 
-A packet carries every byte, whatever the format, at trace start and stop,
-after a lost packet, after a timestamp packet and at each stream-count
-boundary of `Trdstsyncmode` 1. Nothing records how many cycles pass between
-data packets; only timestamp packets give elapsed time.
+A data packet carries every byte, whatever the format, when it carries the
+start or stop flag. It also carries every byte when the data packet of the
+previous cycle was lost, because the RAM could not take it or a timestamp
+packet took its place, and, with `Trdstsyncmode` at 1, when the data packet of
+the previous cycle was the first after a stream-count boundary. A timestamp
+packet in a cycle without a data packet does not force every byte. Nothing
+records how many cycles pass between data packets; only timestamp packets give
+elapsed time.
 
 [[smc-dst-support-packet-table]]
 [cols="20%,80%",options="header"]
@@ -438,12 +445,13 @@ data packets; only timestamp packets give elapsed time.
 |=======================================================================
 
 A timestamp packet is 10 bytes. A trace-information packet is 2 bytes and
-carries a start or stop flag that could not travel in a data packet. The DST
-sends a timestamp packet only while `Trdstsyncmode` is 2, once every
-2^(`Trdstsyncmax`+4)^ DST clock cycles of a running trace, and none at trace
-start. With `trDstImpl.Trdsttimestampconfig` at 0, its reset value, the
-timestamp is the external input, which SMC ties to 0; at 1 it is the CLA
-timestamp, `CDbgClaTimestamp`, which counts `time_tick`.
+carries a start or stop flag that could not travel in a data packet, such as
+the stop flag when `Trdstenable` is cleared. The DST sends a timestamp packet
+only while `Trdstsyncmode` is 2, once every 2^(`Trdstsyncmax`+4)^ DST clock
+cycles of a running trace, and none at trace start. With
+`trDstImpl.Trdsttimestampconfig` at 0, its reset value, the timestamp is the
+external input, which SMC ties to 0; at 1 it is the CLA timestamp,
+`CDbgClaTimestamp`, which counts `time_tick`.
 
 ==== Frames
 
@@ -465,9 +473,13 @@ frame; if a newer sample is ready first, the packet is dropped and the next
 packet has packet lost set. At 1 the DST closes each frame while it still has
 room for one maximum-size packet of 10 bytes, so no packet has to move.
 
-Clearing `trDstControl.Trdstenable` stops the trace: the DST sends a data
-packet with every byte and the stop flag set, then null packets and fill up to
-the end of the frame.
+Clearing `trDstControl.Trdstenable` stops the trace and completes the frame.
+The DST discards the last sample, the one that would carry the stop flag, and
+sends null packets in its place. The stop flag follows in a trace-information
+packet with packet lost set, then null packets and fill up to the end of the
+frame. A trace stop from CLA action code 5 instead sends the last sample as a
+data packet with every byte and the stop flag set, and leaves the frame open;
+clearing `Trdstenable` afterwards adds only null packets and fill.
 
 == Interrupts
 
