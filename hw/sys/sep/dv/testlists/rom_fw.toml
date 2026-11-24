@@ -4446,7 +4446,7 @@ args = [
 [[tests]]
 # HOFF-040: the MANIFEST stamp call is skipped after [S17]; the self-check halts with 0xF004.
 name = "sep_rom_gate_skip_manifest_test"
-module = "rom_fw.sep_rom_gate_skip_test"
+module = "rom_fw.sep_rom_gate_skip_manifest_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4461,7 +4461,7 @@ args = [
 [[tests]]
 # HOFF-040: the CRYPTO stamp call is skipped on a PROD secure boot over SPI; 0xF004 halt.
 name = "sep_rom_gate_skip_crypto_secure_test"
-module = "rom_fw.sep_rom_gate_skip_test"
+module = "rom_fw.sep_rom_gate_skip_crypto_secure_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4478,7 +4478,7 @@ args = [
 [[tests]]
 # HOFF-040: the CRYPTO stamp call is skipped on a boot that does not enforce secure boot; 0xF004 halt.
 name = "sep_rom_gate_skip_crypto_nonsecure_test"
-module = "rom_fw.sep_rom_gate_skip_test"
+module = "rom_fw.sep_rom_gate_skip_crypto_nonsecure_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4493,7 +4493,7 @@ args = [
 [[tests]]
 # HOFF-040: the HASH stamp call is skipped after [S17]; the self-check halts with 0xF004.
 name = "sep_rom_gate_skip_hash_test"
-module = "rom_fw.sep_rom_gate_skip_test"
+module = "rom_fw.sep_rom_gate_skip_hash_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4508,7 +4508,7 @@ args = [
 [[tests]]
 # HOFF-040: the FUSELOCK stamp call is skipped after [S17]; the self-check halts with 0xF004.
 name = "sep_rom_gate_skip_fuselock_test"
-module = "rom_fw.sep_rom_gate_skip_test"
+module = "rom_fw.sep_rom_gate_skip_fuselock_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4523,7 +4523,7 @@ args = [
 [[tests]]
 # HOFF-040: only the HASH gate_ok store is skipped while its gate_inv clear retires; 0xF004 halt.
 name = "sep_rom_gate_ok_withheld_test"
-module = "rom_fw.sep_rom_gate_skip_test"
+module = "rom_fw.sep_rom_gate_ok_withheld_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4538,7 +4538,7 @@ args = [
 [[tests]]
 # HOFF-040: only the HASH gate_inv clear is skipped while its gate_ok set retires; 0xF004 halt.
 name = "sep_rom_gate_inv_withheld_test"
-module = "rom_fw.sep_rom_gate_skip_test"
+module = "rom_fw.sep_rom_gate_inv_withheld_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4554,7 +4554,7 @@ args = [
 # HOFF-040/-050: the primary SPI slot stamps MANIFEST and fails its payload hash; the backup's
 # MANIFEST stamp is skipped and the ledger reset per attempt makes the self-check halt with 0xF004.
 name = "sep_rom_gate_failover_reset_test"
-module = "rom_fw.sep_rom_gate_failover_test"
+module = "rom_fw.sep_rom_gate_failover_reset_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4570,7 +4570,7 @@ args = [
 # HOFF-050: an ECC-consistent DCCM flip after [S23] moves bl0_state.sep_sram_manifest_addr off the
 # SRAM base; the first locus evaluation halts with 0xF004.
 name = "sep_rom_selfcheck_locus_addr_test"
-module = "rom_fw.sep_rom_selfcheck_reverify_test"
+module = "rom_fw.sep_rom_selfcheck_locus_addr_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4586,7 +4586,7 @@ args = [
 # HOFF-050: an ECC-consistent DCCM flip after [S23] pushes the validated manifest length past the
 # end of SEP SRAM; the first locus evaluation halts with 0xF004.
 name = "sep_rom_selfcheck_locus_len_test"
-module = "rom_fw.sep_rom_selfcheck_reverify_test"
+module = "rom_fw.sep_rom_selfcheck_locus_len_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4602,7 +4602,7 @@ args = [
 # HOFF-050: the [S25] lock write and the [S26] branch are skipped, FUSELOCK still stamps; the first
 # lock evaluation halts with 0xF004.
 name = "sep_rom_selfcheck_locks_unset_test"
-module = "rom_fw.sep_rom_selfcheck_reverify_test"
+module = "rom_fw.sep_rom_selfcheck_locks_unset_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4618,7 +4618,7 @@ args = [
 # HOFF-050: one iteration's evaluation and counter increment are skipped; its i+1 compare halts
 # with 0xF004 before the next evaluation and the tally.
 name = "sep_rom_selfcheck_iter_skip_test"
-module = "rom_fw.sep_rom_selfcheck_counter_test"
+module = "rom_fw.sep_rom_selfcheck_iter_skip_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4633,7 +4633,7 @@ args = [
 [[tests]]
 # HOFF-050: the check loop ends after its first iteration; the final tally halts with 0xF004.
 name = "sep_rom_selfcheck_early_exit_test"
-module = "rom_fw.sep_rom_selfcheck_counter_test"
+module = "rom_fw.sep_rom_selfcheck_early_exit_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
@@ -4649,7 +4649,7 @@ args = [
 # HOFF-050: with the locks unset, the first lock evaluation is forced to pass; the second lock
 # evaluation halts with 0xF004.
 name = "sep_rom_selfcheck_first_eval_test"
-module = "rom_fw.sep_rom_selfcheck_counter_test"
+module = "rom_fw.sep_rom_selfcheck_first_eval_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1

@@ -1496,9 +1496,11 @@ Exceptions (a closed set):
   XORs `rom_flip_mask_i` into the stored 64-bit word `rom_flip_index_i`. The
   ROM has no write path, so a changed stored bit has no frontdoor. Driver:
   `env/sep_rom_image.py`. Owners: `sep_boot_rom_aperture_sweep_test` and the gate-ledger
-  fault leaves of `rom_fw/sep_rom_gate_skip_test.py`, `sep_rom_gate_failover_test.py`,
-  `sep_rom_gate_hash_bypass_test.py`, `sep_rom_selfcheck_counter_test.py` and
-  `sep_rom_selfcheck_locks_unset_test`.
+  fault leaves `sep_rom_gate_skip_*_test`, `sep_rom_gate_ok_withheld_test`,
+  `sep_rom_gate_inv_withheld_test`, `sep_rom_gate_failover_reset_test`,
+  `sep_rom_gate_hash_bypass_test`, `sep_rom_selfcheck_locks_unset_test`,
+  `sep_rom_selfcheck_iter_skip_test`, `sep_rom_selfcheck_early_exit_test` and
+  `sep_rom_selfcheck_first_eval_test`.
 * *Runtime warm-handler deposit* — a rising edge of
   `runtime_cold_scratch7_we_i` writes `runtime_cold_scratch7_wdata_i` into
   the COLD Scratch 7 field storage, with the per-simulator mechanics of the

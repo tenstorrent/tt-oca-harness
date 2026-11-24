@@ -3158,7 +3158,7 @@ PASS record of its own.
 [[sep-rom-vplan-spec-graded]]
 ===== Leaves graded on `rom.adoc` shall sentences
 
-*Tests:* 56 entries from 32 leaf modules, all in `rom_fw.toml` and in the `rom_fw` group.
+*Tests:* 56 entries from 42 leaf modules, all in `rom_fw.toml` and in the `rom_fw` group.
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_observe_base.py` for the leaves that start from the common bring-up. The other leaves extend an existing test, keep all of its checks and add their own; the Stimulus cell names the parent.
 
@@ -3343,7 +3343,7 @@ Where the specification contradicts itself or leaves a value undefined, the leaf
 |`sep_rom_spi_retry_exhaust_test` |`CHK-FALLBACK-OR-TERMINAL` |Every frame lies in the primary or backup slot span; a MANIFEST_LOAD_START word between the last primary and the first backup frame; after the last backup frame ERROR MANIFEST_LOAD_FAILED (0x0F010213), then 0xDEADBEEF, no later frame, and a 20,000 clk halt. Spec: "a read that still fails is handled by slot fallback"; SEP-ROM-RETRY-010 "primary (`0x1000`) then backup (`0x41000`)"; SEP-ROM-RETRY-050 (b) to (d).
 |`sep_rom_spi_retry_exhaust_test` |`CHK-LOAD-START-PER-ATTEMPT` |The number of MANIFEST_LOAD_START words equals the number of slots with read frames, and each such slot has exactly one after the previous slot's last frame and before its own first frame. Spec (tbl:stage_trace, [S23]): "`MANIFEST_LOAD_START` (per attempt)".
 |`sep_rom_gate_ledger_pass_test` |`CHK-STAMP-<GATE>` |Each gate's gate_ok store and gate_inv store retire after the last ledger reset. Spec: "Four acceptance gates each record a bit in a `gate_ok` word *and* clear the same bit in a complement word `gate_inv` as they pass".
-|`sep_rom_gate_ledger_pass_test` |`CHK-LEDGER-READBACK` |DCCM holds gate_ok 0xF and gate_inv 0xFFFF_FFF0 after the boot. Spec: "`BOOT_GATE_EXPECT` is `0xF`" and "`gate_inv == ~BOOT_GATE_EXPECT` (`0xFFFF_FFF0`)".
+|`sep_rom_gate_ledger_pass_test` |`CHK-LEDGER-READBACK` |DCCM holds gate_ok 0xF and gate_inv 0xFFFF_FFF0 when the self-check starts. Spec: "`BOOT_GATE_EXPECT` is `0xF`" and "`gate_inv == ~BOOT_GATE_EXPECT` (`0xFFFF_FFF0`)".
 |`sep_rom_gate_ledger_pass_test` |`CHK-SELFCHECK-RAN` |The five checks run in table order, both tally compares retire and the self-check returns. Spec: "The checks run in this order: the ledger pair of SEP-ROM-HOFF-040, the manifest locus twice, the lock state twice — five checks."
 |`sep_rom_gate_ledger_pass_test` |`CHK-SELFCHECK-ORDER` |BL1 DMA copy return < first self-check retirement < its return < EXEC_IMAGE store < STARTING_BL1 store < first PMP write after the cold rule set. Spec: SEP-ROM-HOFF-040 "after the BL1 copy and before the `EXEC_IMAGE` and `STARTING_BL1` reports and the PMP release"; SEP-ROM-HOFF-060 "Only after the self-check passes".
 |`sep_rom_gate_ledger_pass_test` |`CHK-REACHED-BL1` |PASS verdict and the first post-mret retirement outside the Boot ROM.

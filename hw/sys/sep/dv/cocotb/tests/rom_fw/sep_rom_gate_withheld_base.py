@@ -29,7 +29,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import pyuvm
 from rom_fw.sep_rom_gate_ledger_base import (
     AFTER_S17_LINE,
     GATE_BIT,
@@ -94,44 +93,3 @@ class sep_rom_gate_withheld_base(sep_rom_gate_ledger_base):
         others = {g: self.stamps_retired(obs, g, reset_t) for g in GATES if g != self.gate}
         chk.ok("OTHER-STAMPS", all(others.values()), **others)
         self.grade_halt(obs, chk, kind="eval", check="check_ledger")
-
-
-@pyuvm.test()
-class sep_rom_gate_skip_manifest_test(sep_rom_gate_withheld_base):
-    gate = "manifest"
-
-
-@pyuvm.test()
-class sep_rom_gate_skip_crypto_secure_test(sep_rom_gate_withheld_base):
-    gate = "crypto"
-    flash_image = SECURE_FLASH_IMAGE
-    efuse_from_preload = True
-    premise_line = "RSA_VERIFY_OK"
-
-
-@pyuvm.test()
-class sep_rom_gate_skip_crypto_nonsecure_test(sep_rom_gate_withheld_base):
-    gate = "crypto"
-    premise_line = "SBOOT_OFF"
-
-
-@pyuvm.test()
-class sep_rom_gate_skip_hash_test(sep_rom_gate_withheld_base):
-    gate = "hash"
-
-
-@pyuvm.test()
-class sep_rom_gate_skip_fuselock_test(sep_rom_gate_withheld_base):
-    gate = "fuselock"
-
-
-@pyuvm.test()
-class sep_rom_gate_ok_withheld_test(sep_rom_gate_withheld_base):
-    gate = "hash"
-    part = "gate_ok"
-
-
-@pyuvm.test()
-class sep_rom_gate_inv_withheld_test(sep_rom_gate_withheld_base):
-    gate = "hash"
-    part = "gate_inv"

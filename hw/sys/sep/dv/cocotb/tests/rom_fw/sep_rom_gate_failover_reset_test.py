@@ -12,7 +12,7 @@ rom.adoc, Pre-Hand-off Self-Check (Gate Ledger):
 * SEP-ROM-HOFF-050: "Any shortfall or disagreement is fatal
   (`ROM_ERR_HANDOFF_SELFCHECK_FAILED`, `0xF004`)."
 
-The boot reads an SPI image whose primary payload digest is zeroed without resealing, so the
+The boot reads the unsigned SPI image with TOC entry 0's digest zeroed in the primary, so the
 primary attempt validates its manifest (MANIFEST stamped) and then fails the payload hash
 (MANIFEST_ERR = OCA_FAIL_PAYLOAD_HASH); failover is SPI-only, as the code decides. Once the
 primary's MANIFEST stamp has retired, the call of the MANIFEST stamp is replaced by a nop, so
@@ -43,9 +43,19 @@ class sep_rom_gate_failover_reset_test(sep_rom_gate_ledger_base):
     flash_image = os.fspath(_BUILD / "oca_non_secure_boot.bin")
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
+        # The unsigned image has no key slot, so the sealing helpers do not apply; a cleartext
+        # payload stores its TOC as is.
         assert not pm.is_encrypted(buf, "primary"), "the primary payload must be cleartext"
-        planted = pm.corrupt_toc_entry_hash(buf, "primary", 0, value=b"\x00" * 32, reseal=False)
-        self.chk.info("PRIMARY-DIGEST-ZEROED", digest=planted.hex())
+        field = pm.toc_entry_at(0) + pm.E_HASH
+        assert field + mm.DIGEST_LEN <= pm.payload_hashed_length(buf, "primary"), (
+            "payload_hash does not cover TOC entry 0's digest, so zeroing it would not fail "
+            "the primary's payload hash"
+        )
+        at = pm.payload_base(buf, "primary") + field
+        before = bytes(buf[at : at + mm.DIGEST_LEN])
+        assert any(before), "TOC entry 0's digest is already zero"
+        buf[at : at + mm.DIGEST_LEN] = bytes(mm.DIGEST_LEN)
+        self.chk.info("PRIMARY-DIGEST-ZEROED", flash_offset=f"0x{at:06x}", was=before.hex())
         return buf
 
     def site(self) -> int:

@@ -19,11 +19,12 @@ rom.adoc, Pre-Hand-off Self-Check (Gate Ledger) and Release and Jump ([S29]):
 
 The boot takes the SMC-SRAM manifest path with no fault injected. Times are retirement times
 from the trace: the return from the BL1 DMA copy, the first and last self-check retirement,
-the EXEC_IMAGE and STARTING_BL1 status stores and the first PMP CSR write after the cold rule
-set.
+the EXEC_IMAGE and STARTING_BL1 status stores (located in rom_handoff_bl1 of the loaded image)
+and the first PMP CSR write after the cold rule set.
 
 Checks: CHK-STAMP-<GATE> (both stores of each gate retired after the attempt's reset),
-CHK-LEDGER-READBACK (gate_ok and gate_inv hold 0xF and 0xFFFF_FFF0 in DCCM after the boot),
+CHK-LEDGER-READBACK (gate_ok and gate_inv hold 0xF and 0xFFFF_FFF0 in DCCM when the
+self-check starts; BL1 reuses that memory later),
 CHK-SELFCHECK-RAN (each of the five checks, both tally compares and the return retired, in
 table order), CHK-SELFCHECK-ORDER (copy return < self-check < EXEC_IMAGE < STARTING_BL1 <
 release), CHK-REACHED-BL1 (PASS verdict and the first post-mret retirement outside the ROM).
@@ -32,7 +33,7 @@ release), CHK-REACHED-BL1 (PASS verdict and the first post-mret retirement outsi
 from __future__ import annotations
 
 import pyuvm
-from env.sep_rv32_trace_decode import CSR_PMPCFG0, OP_JALR, is_store, opcode
+from env.sep_rv32_trace_decode import CSR_PMPCFG0, OP_JALR, OP_STORE, opcode
 from rom_fw.sep_rom_gate_ledger_base import (
     BOOT_GATE_EXPECT,
     CHECKS,
@@ -56,8 +57,22 @@ class sep_rom_gate_ledger_pass_test(sep_rom_gate_ledger_base):
         assert len(sites) == 1, f"rom_handoff_bl1 calls sep_dma_copy at {sites}"
         return sites[0] + 4
 
+    def status_stores(self, word: int) -> list[int]:
+        """PCs in rom_handoff_bl1 that store word to the status scratch register."""
+        return [
+            i.pc
+            for i in self.img.scan("rom_handoff_bl1")
+            if opcode(i.word) == OP_STORE and i.mem == SCRATCH_STATUS and i.value == word
+        ]
+
     def extra_watch(self) -> set[int]:
-        return {self.copy_return()}
+        stores = self.status_stores(STATUS_EXEC_IMAGE) + self.status_stores(STATUS_STARTING_BL1)
+        return {self.copy_return(), *stores}
+
+    async def inject(self, obs) -> None:
+        # BL1 reuses the DCCM, so the ledger is read when the self-check starts.
+        await self.wait_hit(obs, self.img.syms["rom_handoff_selfcheck"])
+        self.ledger_at_check = self.ledger_readback()
 
     def grade(self, obs, chk) -> None:
         img = self.img
@@ -72,12 +87,13 @@ class sep_rom_gate_ledger_pass_test(sep_rom_gate_ledger_base):
                 gate_inv_store=f"0x{inv:08x}",
                 hits=len(obs.at(ok)) + len(obs.at(inv)),
             )
-        gate_ok, gate_inv = self.ledger_readback()
+        ledger = getattr(self, "ledger_at_check", None)
+        gate_ok, gate_inv = ledger if ledger is not None else (None, None)
         chk.ok(
             "LEDGER-READBACK",
             gate_ok == BOOT_GATE_EXPECT and gate_inv == (~BOOT_GATE_EXPECT) & 0xFFFF_FFFF,
-            gate_ok=f"0x{gate_ok:08x}",
-            gate_inv=f"0x{gate_inv:08x}",
+            gate_ok=f"0x{gate_ok:08x}" if ledger else "unread",
+            gate_inv=f"0x{gate_inv:08x}" if ledger else "unread",
         )
 
         m = selfcheck_map(img)
@@ -100,14 +116,8 @@ class sep_rom_gate_ledger_pass_test(sep_rom_gate_ledger_base):
         last = ret[-1].t_ps if ret else None
 
         def status_store(word: int) -> int | None:
-            return next(
-                (
-                    r.t_ps
-                    for r in obs.retires
-                    if is_store(r.insn) and r.mem_addr == SCRATCH_STATUS and r.mem_data == word
-                ),
-                None,
-            )
+            hits = [r.t_ps for pc in self.status_stores(word) for r in obs.at(pc)]
+            return min(hits) if len(hits) == 1 else None
 
         exec_t = status_store(STATUS_EXEC_IMAGE)
         start_t = status_store(STATUS_STARTING_BL1)

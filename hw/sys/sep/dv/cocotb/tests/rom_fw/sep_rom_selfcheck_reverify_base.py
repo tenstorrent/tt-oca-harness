@@ -33,10 +33,8 @@ the halt contract with the halt at the first evaluation of the faulted check.
 
 from __future__ import annotations
 
-import pyuvm
 from env.sep_rv32_trace_decode import OP_LOAD, opcode
 from rom_fw.sep_rom_gate_ledger_base import (
-    AFTER_S17_LINE,
     AFTER_S23_LINE,
     GATES,
     INSN_NOP,
@@ -104,22 +102,6 @@ class sep_rom_locus_flip_base(sep_rom_gate_ledger_base):
         self.grade_halt(obs, chk, kind="eval", check="check_locus_first")
 
 
-@pyuvm.test()
-class sep_rom_selfcheck_locus_addr_test(sep_rom_locus_flip_base):
-    data_mask = 1 << 4
-
-    def target(self) -> int:
-        return manifest_addr_field(self.img)
-
-
-@pyuvm.test()
-class sep_rom_selfcheck_locus_len_test(sep_rom_locus_flip_base):
-    data_mask = SRAM_SIZE
-
-    def target(self) -> int:
-        return self.img.syms["g_gate_manifest_len"]
-
-
 def lock_fault_edits(rom) -> dict[int, int]:
     """Replace the [S25] lock write with a nop and make the [S26] branch take its pass path."""
     write = rom.calls("lock_fuse_secrets")
@@ -133,28 +115,3 @@ def lock_fault_edits(rom) -> dict[int, int]:
     edits = {write[0]: INSN_NOP}
     edits[branch.pc] = jump(branch.pc, branch.target) if fails_on_fall else INSN_NOP
     return edits
-
-
-@pyuvm.test()
-class sep_rom_selfcheck_locks_unset_test(sep_rom_gate_ledger_base):
-    def extra_watch(self) -> set[int]:
-        return set(lock_fault_edits(self.img))
-
-    async def inject(self, obs) -> None:
-        await self.wait_line(obs, AFTER_S17_LINE)
-        await self.patch(lock_fault_edits(self.img))
-
-    def grade(self, obs, chk) -> None:
-        edits = lock_fault_edits(self.img)
-        took = {f"0x{pc:08x}": len(self.retired_as(obs, pc, w)) for pc, w in edits.items()}
-        unset = obs.line_t("FUSE_SECRETS_NOT_LOCKED")
-        chk.ok(
-            "FAULT-TOOK-EFFECT",
-            all(took.values()) and unset is not None,
-            replaced_retired=took,
-            s26_not_locked_ps=unset if unset is not None else -1,
-        )
-        reset_t = self.last_reset_t(obs)
-        stamps = {g: self.stamps_retired(obs, g, reset_t) for g in GATES}
-        chk.ok("ALL-STAMPS", all(stamps.values()), **stamps)
-        self.grade_halt(obs, chk, kind="eval", check="check_locks_first")
