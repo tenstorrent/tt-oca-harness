@@ -10,6 +10,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.smc_cpu_trace_monitor import symbol_file_for_image
 
 # The generated register map is not an installed package.
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
@@ -40,6 +41,7 @@ from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_SCRATCH_13__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_14__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_15__REG_ADDR,
+    SMC_EFUSE_MAP_SMC_CONFIG_REG_FIELDS,
     SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_ADDR,
     SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_ADDR,
 )
@@ -103,6 +105,11 @@ SCRATCH_MANIFEST_ADDR = SMC_CPU_CTRL_SCRATCH_8__REG_ADDR
 SEP_STATUS_MANIFEST_READY_BIT = 1
 
 SCRATCH_MBIST_STATUS = SMC_CPU_CTRL_SCRATCH_15__REG_ADDR
+
+# SMC_CONFIG.dft_ignore_error, which lets the ROM continue past a failure.
+SMC_CONFIG_DFT_IGNORE_ERROR = next(
+    1 << lsb for name, lsb, *_ in SMC_EFUSE_MAP_SMC_CONFIG_REG_FIELDS if name == "dft_ignore_error"
+)
 
 # Controller only, occp_boot_sequence_status_test: the target boot mode it must find in the
 # ring, and the summary of its one drain. Must match fw/tests/occp_boot_sequence_status_test.
@@ -315,6 +322,33 @@ def payload_entry_offset(sym_path: str) -> int:
             "point is not inside the image"
         )
     return offset
+
+
+def rom_symbol_ranges(names: tuple[str, ...]) -> dict[str, tuple[int, int]]:
+    """[start, next symbol) of each named label in the staged production ROM symbols."""
+    rom = cocotb.plusargs.get("rom_bin64")
+    sym = symbol_file_for_image("rom_bin64", str(rom)) if rom is not None else None
+    if sym is None or not Path(sym).exists():
+        raise AssertionError(f"no symbol file for +rom_bin64={rom!r}; cannot locate {names}")
+    # `nm -B -n` lines, sorted by address: "<addr> <type> <name>".
+    addrs = sorted(
+        {
+            (int(parts[0], 16), parts[2])
+            for parts in (line.split() for line in Path(sym).read_text().splitlines())
+            if len(parts) >= 3
+        }
+    )
+    ranges: dict[str, tuple[int, int]] = {}
+    for idx, (addr, name) in enumerate(addrs):
+        if name in names:
+            following = [a for a, _ in addrs[idx + 1 :] if a > addr]
+            if not following:
+                raise AssertionError(f"{sym}: {name} is the last symbol; its extent is unknown")
+            ranges[name] = (addr, following[0])
+    missing = [name for name in names if name not in ranges]
+    if missing:
+        raise AssertionError(f"{sym} has no {', '.join(missing)}")
+    return ranges
 
 
 def required_plusarg(name: str, test_name: str) -> str:
