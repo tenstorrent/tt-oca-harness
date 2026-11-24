@@ -476,6 +476,16 @@
 // the SYS_OUT slave agent's fault programming, not a DUT Force / starve knob.
 `SMC_TB_OUT(logic [31:0], tb_output_axi_write_count)
 `SMC_TB_OUT(logic [31:0], tb_output_axi_read_count)
+// Accepted R beats that carried X on an unrequested byte lane of a narrow read
+// and known data on the requested ones (+smc_sys_out_r_xfill; 0 without it and
+// on a two-state simulator).
+`SMC_TB_OUT(logic [31:0], tb_output_axi_xfill_count)
+// ARs accepted while an earlier SYS_OUT read was outstanding, under
+// +smc_sys_out_r_xfill; the X fill is exact only while this stays 0.
+`SMC_TB_OUT(logic [31:0], tb_output_axi_xfill_overlap_count)
+// R beats the CPU MMIO port accepted with an unknown data bit, under
+// +smc_sys_out_r_xfill: the X-filled beats as the CPU cluster sees them.
+`SMC_TB_OUT(logic [31:0], tb_cpu_mmio_r_x_count)
 `SMC_TB_OUT(logic [55:0], tb_output_axi_last_addr)
 `SMC_TB_OUT(logic [63:0], tb_output_axi_last_wdata)
 // U6-2: SYS_OUT AXI slave response handshake for SmcOutputAxiMonitor.

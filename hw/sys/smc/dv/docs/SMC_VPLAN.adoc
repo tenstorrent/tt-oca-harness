@@ -83,8 +83,8 @@ bring-up and representative set. Phase 2 is the dense, breadth and fault set.
 Phase 3 is the residual set. Each test entry names its phase in its `*Phase*`
 field and its area in its `*Area*` field; the two ROM cards of
 <<smc-held-out-testcases>> are outside `all`, take no credit and carry
-`*Status*: held out` beside those fields, and the scenarios of its SV-UVM
-subsection carry neither field. `SMC_FCOV.adoc` keeps its own
+`*Status*: held out` beside those fields, and the scenarios of its four-state
+and SV-UVM subsections carry neither field. `SMC_FCOV.adoc` keeps its own
 organisation by collector module; a cover point does not follow the phase of
 its owning test. A tier says what a test is asked to prove. It does not say
 when the test is written. A Phase 3 entry takes credit under the rules of
@@ -56179,6 +56179,62 @@ The observation leaf of `held_out` (`smc_flr_counter_timing_obs_test`) passes to
 about it. When the ruling lands the `OBS-*` line becomes a `CHK-*` grade and the leaf joins its
 feature testlist.
 
+===== Four-state held-out scenarios
+
+Cocotb leaves whose case exists only on a four-state simulator are enrolled in
+`cpu_vcs_extended` of `testlists/holdout.toml` and run on demand with
+`--tool vcs`.
+
+[[sec-smc_cpu_mmio_narrow_read_x_lanes_test]]
+====== `smc_cpu_mmio_narrow_read_x_lanes_test`
+
+*Source Module*: `smc_cpu_mmio_narrow_read_x_lanes_test` (cocotb, firmware
+`mmio_narrow_read`, VCS only)
+
+*BFM / Model*: the SYS_OUT slave agent answers the reads from its memory;
+tb_top drives X on the unrequested R byte lanes under `+smc_sys_out_r_xfill`.
+
+*Objective*: A narrow uncached load from the CPU MMIO port retires with the
+requested bytes when the target leaves the other byte lanes of the R beat
+undriven, which AXI allows when 2^ARSIZE is narrower than the bus (a 32-bit
+target behind a 64-to-32-bit downsizer). The load response stays valid when
+an unrequested lane of the uncached beat is X; a response that goes X stops
+the core.
+
+*Test Coverage*: eight byte loads (offsets 0 to 7), four halfword loads, two
+word loads and one doubleword load of one 64-bit word at `0xB000_0000`, one
+load at a time, each followed by a `fence`.
+
+*Expectation Sources*: the word the bench preloads (`0x8877665544332211`);
+little-endian lane placement of each load.
+
+*Test Procedure*: with the cores held, preload the word in the SYS_OUT
+responder, open inbound filter 0 and outbound filter 0, and require
+`tb_output_axi_xfill_count == 0`, `tb_output_axi_xfill_overlap_count == 0` and
+`tb_cpu_mmio_r_x_count == 0`. Boot the image; it checks each load against the
+word and posts PASS. Then read the three counters.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-MMIO-NARROW-X-BOOT` |The image posted PASS: each of the 15 loads returned its requested bytes and the core kept running
+|`CHK-FW-MMIO-NARROW-X-LANES` |Exactly 14 accepted SYS_OUT R beats carried X on their unrequested lanes and known data on the requested ones, one per narrow load, no read was accepted while an earlier one was outstanding, and the CPU MMIO port accepted exactly 14 R beats with an unknown data bit, so the loads saw the case under test
+|===
+
+*Known Limitations*: one outstanding read at a time (checked: the overlap
+counter must stay 0); the X fill covers a 64-byte window and single-beat reads
+only. Cached hits and ECC errors on cached data are not exercised here.
+
+*Pass Criteria*: both checkers hold on VCS. Negative control: the same leaf
+on a DCache that ECC-checks the whole uncached beat before forming the load
+response must fail (the core stops before PASS). Enrolled only in
+`cpu_vcs_extended`, outside `all`, `hosted` and `ci`; run on demand. This card
+records what a run must show, not a pass.
+
+'''''
+
 ===== SV-UVM held-out scenarios
 
 UVM-only leaves are enrolled in scope-named groups of `testlists/holdout.toml`
@@ -58124,6 +58180,7 @@ which runs a `c_compile` stage, is run on demand with the toolchain image
 |`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_cpu_mmio_narrow_read_x_lanes_test` |`cpu_vcs_extended` |Needs a four-state simulator (X on the bus) and the RISC-V toolchain; VCS, on demand |A scheduled licensed VCS tier selects this leaf
 |`smc_wdt_core_awake_gate_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_regblock_sparse_strobe_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
 |`smc_lock_pipelined_write_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
@@ -58218,6 +58275,9 @@ point at it. SMU's record of the tests that stage SMC images is
 |plic_sanity
 |enrolled
 |`smc_fw_plic_claim_test` (`testlists/fw.toml`, `[c_build.default]`).
+|mmio_narrow_read
+|enrolled
+|`smc_cpu_mmio_narrow_read_x_lanes_test` (`testlists/holdout.toml`, `[c_build.default]`; held out of `all` on the simulator, runs as `cpu_vcs_extended` on VCS); the bench drives X on the unrequested SYS_OUT R lanes and counts the X beats at SYS_OUT and at the CPU MMIO port.
 |occp_sanity
 |enrolled
 |`smc_occp_sanity_test` (`testlists/smc_rom.toml`, `[c_build.occp_sanity]`).

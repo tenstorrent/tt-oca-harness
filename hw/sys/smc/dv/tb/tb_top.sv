@@ -1128,10 +1128,101 @@ module smc_uvm_top
         output_mem_req_n.r_ready = output_axi_req.r_ready & ~tb_output_axi_resp_hold;
         output_mem_req_n.b_ready = output_axi_req.b_ready & ~tb_output_axi_resp_hold;
     end
+    // Unrequested-lane X fill (+smc_sys_out_r_xfill, smc_cpu_mmio_narrow_read_x_lanes_test):
+    // a 32-bit target behind a 64-to-32-bit downsizer leaves the byte lanes a
+    // narrow read did not ask for undriven, which AXI allows. With the plusarg,
+    // the R beat of a single-beat narrow read inside the X-fill window gets X on
+    // every byte lane outside [addr % 8, addr % 8 + 2^size); the requested lanes
+    // keep the responder's data. The fill applies to the one outstanding read:
+    // the R beat must carry the ID of the AR that opened it.
+    // tb_output_axi_xfill_count counts the accepted R beats that went out with an
+    // unknown unrequested lane and all requested lanes known (a two-state
+    // simulator has no unknown lane and counts none); tb_output_axi_xfill_overlap_count
+    // counts ARs accepted while an earlier read was still outstanding, in which
+    // case the latched AR does not describe the R beat.
+    // tb_cpu_mmio_r_x_count counts, under the plusarg, the R beats the CPU MMIO
+    // port accepted with an unknown data bit: the X as the CPU cluster sees it,
+    // past the output fabric. Off by default.
+    localparam logic [55:0] TbSysOutXfillBase = 56'hB000_0000;
+    localparam logic [55:0] TbSysOutXfillSize = 56'h40;
+    bit          tb_sys_out_r_xfill_en;
+    logic [55:0] output_xfill_ar_addr_q;
+    logic [2:0]  output_xfill_ar_size_q;
+    logic [7:0]  output_xfill_ar_len_q;
+    logic [$bits(output_axi_req.ar.id)-1:0] output_xfill_ar_id_q;
+    logic        output_xfill_rd_pending_q;
+    logic        output_xfill_active;
+    logic        output_xfill_req_known;
+    logic        output_xfill_lane_x;
+    logic        output_xfill_ar_fire;
+    logic        output_xfill_r_last_fire;
+    initial tb_sys_out_r_xfill_en = $test$plusargs("smc_sys_out_r_xfill");
+
+    assign output_xfill_active =
+        tb_sys_out_r_xfill_en && output_xfill_rd_pending_q &&
+        (output_xfill_ar_size_q < 3'd3) && (output_xfill_ar_len_q == 8'd0) &&
+        (output_xfill_ar_addr_q >= TbSysOutXfillBase) &&
+        (output_xfill_ar_addr_q < TbSysOutXfillBase + TbSysOutXfillSize) &&
+        (output_mem_resp.r.id == output_xfill_ar_id_q);
+    assign output_xfill_ar_fire = output_axi_req.ar_valid && output_axi_resp.ar_ready;
+    assign output_xfill_r_last_fire =
+        output_axi_resp.r_valid && output_axi_req.r_ready && output_axi_resp.r.last;
+
     always_comb begin
         output_axi_resp_n         = output_mem_resp;
         output_axi_resp_n.r_valid = output_mem_resp.r_valid & ~tb_output_axi_resp_hold;
         output_axi_resp_n.b_valid = output_mem_resp.b_valid & ~tb_output_axi_resp_hold;
+        output_xfill_req_known    = 1'b1;
+        output_xfill_lane_x       = 1'b0;
+        if (output_xfill_active) begin
+            for (int lane = 0; lane < 8; lane++) begin
+                if (lane < int'(output_xfill_ar_addr_q[2:0]) ||
+                    lane >= int'(output_xfill_ar_addr_q[2:0]) + (1 << output_xfill_ar_size_q)) begin
+                    output_axi_resp_n.r.data[lane*8 +: 8] = 'x;
+                    if ($isunknown(output_axi_resp_n.r.data[lane*8 +: 8])) begin
+                        output_xfill_lane_x = 1'b1;
+                    end
+                end else if ($isunknown(output_mem_resp.r.data[lane*8 +: 8])) begin
+                    output_xfill_req_known = 1'b0;
+                end
+            end
+        end
+    end
+
+    always_ff @(posedge clk_smc or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
+            output_xfill_ar_addr_q            <= '0;
+            output_xfill_ar_size_q            <= 3'd3;
+            output_xfill_ar_len_q             <= '0;
+            output_xfill_ar_id_q              <= '0;
+            output_xfill_rd_pending_q         <= 1'b0;
+            tb_output_axi_xfill_count         <= '0;
+            tb_output_axi_xfill_overlap_count <= '0;
+            tb_cpu_mmio_r_x_count             <= '0;
+        end else begin
+            if (tb_sys_out_r_xfill_en && u_dut.u_smc.cpu_axi_mmio_port_resp.r_valid &&
+                    u_dut.u_smc.cpu_axi_mmio_port_req.r_ready &&
+                    $isunknown(u_dut.u_smc.cpu_axi_mmio_port_resp.r.data)) begin
+                tb_cpu_mmio_r_x_count <= tb_cpu_mmio_r_x_count + 32'd1;
+            end
+            if (output_xfill_ar_fire) begin
+                output_xfill_ar_addr_q    <= output_axi_req.ar.addr;
+                output_xfill_ar_size_q    <= output_axi_req.ar.size;
+                output_xfill_ar_len_q     <= output_axi_req.ar.len;
+                output_xfill_ar_id_q      <= output_axi_req.ar.id;
+                output_xfill_rd_pending_q <= 1'b1;
+                if (tb_sys_out_r_xfill_en && output_xfill_rd_pending_q &&
+                        !output_xfill_r_last_fire) begin
+                    tb_output_axi_xfill_overlap_count <= tb_output_axi_xfill_overlap_count + 32'd1;
+                end
+            end else if (output_xfill_r_last_fire) begin
+                output_xfill_rd_pending_q <= 1'b0;
+            end
+            if (output_xfill_active && output_xfill_lane_x && output_xfill_req_known &&
+                    output_axi_resp.r_valid && output_axi_req.r_ready) begin
+                tb_output_axi_xfill_count <= tb_output_axi_xfill_count + 32'd1;
+            end
+        end
     end
     assign output_axi_resp = output_axi_resp_n;
 
