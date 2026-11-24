@@ -128,12 +128,14 @@ class SmcDftStatusDriver:
     async def read_smc_config(self) -> int:
         """The instance's SMC_CONFIG eFuse shadow, read once fuse sensing completes."""
         # smc_occp_dual_defs, which every caller imports first, puts smc_reg on sys.path.
-        from smc_reg import SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+        from smc_reg import SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
 
         done = getattr(self.harness.dut, f"{self.instance}_fuse_sense_done_o")
         for _ in range(FUSE_SENSE_WAIT_CYCLES):
             if int(done.value):
-                return await self.csr.read("SMC_CONFIG", SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR)
+                return await self.csr.read(
+                    "SMC_CONFIG", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+                )
             await ClockCycles(self.clk, 1)
         raise AssertionError(
             f"{self.instance} fuse_sense_done never rose within {FUSE_SENSE_WAIT_CYCLES} cycles"
