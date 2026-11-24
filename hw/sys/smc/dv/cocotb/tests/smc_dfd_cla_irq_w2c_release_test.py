@@ -6,6 +6,7 @@ With the pair that fired the debug-interrupt action quiet, a W2C write of its
 `CDbgEapStatus` bit with `EnableEap` set clears the status and holds
 `cla_interrupt`; clearing `EnableEap` and writing the W2C bit releases it, and
 setting `EnableEap` again leaves it released (#3389, the documented sequence).
+A W2C write while the relation is still selected leaves the status at 1.
 """
 
 from __future__ import annotations
@@ -19,8 +20,12 @@ from smc_base_test import smc_base_test
 class smc_dfd_cla_irq_w2c_release_test(smc_base_test):
     """Fire the debug-interrupt action, then grade the hold and the documented release."""
 
-    required_evidence = ("CHK-CLA-IRQ-EAP-RELEASE", "CHK-CLA-IRQ-W2C-HOLD")
-    min_evidence = 2
+    required_evidence = (
+        "CHK-CLA-EAP-SET-OVER-W2C",
+        "CHK-CLA-IRQ-EAP-RELEASE",
+        "CHK-CLA-IRQ-W2C-HOLD",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 

@@ -725,8 +725,8 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             f"the memory-mode backpressure"
         )
         # The RAM data port read back to back while the resumed stream is still
-        # writing, so reads meet the sink's RAM writes. Only the pointer's first
-        # word has been written for certain, so the read pointer stays on it.
+        # writing, so reads meet the sink's RAM writes. Every read advances the
+        # read pointer by one word.
         data = sink_register("Trdstramdata")
         for step in range(_MEMORY_EXIT_READS):
             await self._write(eap, hold, f"memread{step}")
