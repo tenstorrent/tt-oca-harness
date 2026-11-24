@@ -6,8 +6,6 @@
 # RESETS
 ##########
 
-# Refer to markdowns/reset_relationships.md for the reset hierarchy and assertion sequences.
-#
 # Hierarchy-reusable: anchored paths go through cdc_inst; port resets go through
 # cdc_create_port_reset (skipped at the parent when
 # ::cdc_reset_alias maps the name onto a parent reset, created on the instance pin when
@@ -110,8 +108,8 @@ set_reset_groups \
     -name WDT_RESET_GROUP \
     -group {WDT_RESET_UNSTRETCHED_N WDT_RESET_N WDT_RESET_N_SMC_CLK}
 
-# BOOT_STALL_N: GPIO 60 drives the raw boot stall signal which is captured by 'boot_stall_sticky'.
-# This is intended to halt the regular boot process by holding fuse reset asserted until gpio 60 is deasserted.
+# BOOT_STALL_N: GPIO 57 drives the raw boot stall signal which is captured by 'boot_stall_sticky'.
+# This is intended to halt the regular boot process by holding fuse reset asserted until GPIO 57 is deasserted.
 create_reset -name BOOT_STALL_N [cdc_inst "u_smc_peripherals/boot_stall_sticky/Q"] -async -type reset -value high
 
 ############################################################

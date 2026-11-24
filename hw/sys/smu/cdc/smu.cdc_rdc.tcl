@@ -78,7 +78,7 @@ cdc_end_block
 # SEPCLK is SMU's SMUCLK, WDTCLK is SMU's SEP_WDT_CLK. Port resets map onto their
 # drivers: RST_NI <- rst_primary_smc_clk_no, DBG_RSTB_I <- powergood_stable,
 # WDT_RST_NI <- rst_wdt_n (SMC WDT_RESET_N_SMC_CLK), JTAG_TRST_N <- DTP SEP-STAP trst
-# (trst_n_combined; verify against the first flat report -- may need stap_sep_dbg_rst).
+# (trst_n_combined).
 # ---------------------------------------------------------------------------------
 if { [sizeof_collection [get_cells -quiet gen_sep.u_sep]] > 0 } {
     cdc_begin_block gen_sep.u_sep/ \
