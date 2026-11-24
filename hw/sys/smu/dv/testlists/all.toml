@@ -4352,6 +4352,24 @@ args = [
 ]
 
 [[tests]]
+name = "smu_smc_efuse_supplementary_shadow_test"
+module = "smu_smc_efuse_supplementary_shadow_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "smc", "boot", "sep", "real_rtl"]
+run_modes = ["sep_rtl_fuse_sense"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
+[[tests]]
 name = "smu_sep_fuse_sense_done_test"
 module = "smu_sep_fuse_sense_done_test"
 target = "compile_smu_chiplet"
@@ -4594,6 +4612,7 @@ tests = [
   "smu_smc_sram_init_sequence_test",
   "smu_smc_base_config_state_test",
   "smu_smc_efuse_shadow_map_readback_test",
+  "smu_smc_efuse_supplementary_shadow_test",
   "smu_smc_reset_unit_state_test",
   "smu_smc_mailbox_status_error_test",
   "smu_smc_mailbox_threshold_lane_test",
@@ -4656,7 +4675,7 @@ tests = [
   "smu_lc_disable_vector_matrix_prod_sip_sys_test",
   "smu_lc_disable_vector_matrix_prod_all_test",
 ]
-expected_count = 178
+expected_count = 179
 
 # The VCS run of record of the AXI protocol checkers in tb_wrapper_top.sv: the
 # leaves that drive the checked links, all but one of which name a checker with a
@@ -4845,6 +4864,7 @@ tests = [
   "smu_smc_sram_init_sequence_test",
   "smu_smc_base_config_state_test",
   "smu_smc_efuse_shadow_map_readback_test",
+  "smu_smc_efuse_supplementary_shadow_test",
   "smu_smc_reset_unit_state_test",
   "smu_smc_mailbox_status_error_test",
   "smu_smc_mailbox_threshold_lane_test",
@@ -4915,7 +4935,7 @@ tests = [
   "smu_axi_sep_lsu_initiator_stall_test",
   "smu_axi_sep_reset_in_flight_test",
 ]
-expected_count = 225
+expected_count = 226
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -5125,10 +5145,12 @@ args = [
   # TEST_DEV: every SEP debug path open, so the debug module's system bus can
   # open the SEP aperture.
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
-  # +smu_axi_illegal_inject: for the whole run, the checkers on smu_in, the
-  # inbound cut and the crossbar ext_in port see INCR for a WRAP with AxLEN 0
+  # +smu_axi_illegal_inject: for the whole run, the checkers on the path an
+  # external inbound request takes (smu_in, the inbound cut, the crossbar ext_in,
+  # SEP and SMC ports, both converter outputs) see INCR for a WRAP with AxLEN 0
   # or the reserved burst encoding, and the 4 KiB-page start for a 4 KiB-crossing
-  # INCR; the DUT receives the request unchanged and no other checker is masked.
+  # INCR; the DUT receives the request unchanged and forwards it unchanged,
+  # which the leaf grades itself; no other checker is masked.
   "+smu_axi_illegal_inject",
   # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
   "+axi_sva_need_smu_in",

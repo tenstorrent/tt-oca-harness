@@ -4,12 +4,14 @@
 """Turn an SMC eFuse configuration TOML into a simulator preload image.
 
 Blocks from efuse_schema.toml are concatenated in schema order, LSB first, into one
-8192-bit image; hex output is one 32-bit word per line for $readmemh.
+image the size of SMC_TOP_SMC_EFUSE_MAP_SIZE; hex output is one 32-bit word per line
+for $readmemh.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -18,11 +20,23 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - older interpreters
     import tomli as tomllib  # type: ignore[no-redef]
 
-# Must match smc_efuse_pkg::ShadowRegBits.
-EFUSE_SIZE_BITS = 8192
-EFUSE_WORD_SIZE_BITS = 32
-
 SCHEMA_PATH = Path(__file__).resolve().parent / "efuse_schema.toml"
+SMC_ADDR_H = Path(__file__).resolve().parents[2] / "regs" / "gen" / "c" / "smc_addr.h"
+
+
+def _efuse_map_bits() -> int:
+    match = re.search(
+        r"^#define\s+SMC_TOP_SMC_EFUSE_MAP_SIZE\s+(0x[0-9A-Fa-f]+)\s*$",
+        SMC_ADDR_H.read_text(encoding="utf-8"),
+        re.MULTILINE,
+    )
+    if match is None:
+        sys.exit(f"error: SMC_TOP_SMC_EFUSE_MAP_SIZE not found in {SMC_ADDR_H}")
+    return 8 * int(match.group(1), 16)
+
+
+EFUSE_SIZE_BITS = _efuse_map_bits()
+EFUSE_WORD_SIZE_BITS = 32
 
 
 def _load_toml(path: Path) -> dict:
@@ -110,7 +124,7 @@ def build_image(config: dict, schema: dict) -> int:
     if offset != EFUSE_SIZE_BITS:
         sys.exit(
             f"error: schema totals {offset} bits, expected {EFUSE_SIZE_BITS} "
-            "(smc_efuse_pkg::ShadowRegBits). Schema and "
+            "(SMC_TOP_SMC_EFUSE_MAP_SIZE). Schema and "
             "smc_efuse_map.rdl have diverged."
         )
     if locks >= (1 << lock_width):

@@ -618,8 +618,8 @@ module sep_fcov (
   input sep_efuse_pkg::efuse_axil_req_t     jtag_req_i,      // axil_sep_otp_jtag_req_i
   input sep_efuse_pkg::efuse_axil_resp_t    jtag_resp_i,     // axil_sep_otp_jtag_resp_o
   input wire                                irq_token_fault_i,  // PIC source 40 request line
-  input wire [5:0]                          tok_sip_i,       // ext_debug_bus_o[229:224]
-  input wire [5:0]                          tok_chp_i,       // ext_debug_bus_o[213:208]
+  input wire [5:0]                          tok_sip_i,       // RMA_SIP_TOKEN_MATCH status code
+  input wire [5:0]                          tok_chp_i,       // RMA_CHIPLET_TOKEN_MATCH status code
   input wire [5:0]                          tok_sdis_i,      // TOKEN_PROC sec_disable_token_match_q
   input wire [2:0]                          tok_fault_i,     // TOKEN_PROC token_match_fault_sticky_q
   input wire [2:0]                          token_go_i,      // TOKEN_PROC hash start pulses
@@ -3116,10 +3116,12 @@ module sep_fcov (
   // so the whole cross is filled by ONE seed; only the bit offset inside a
   // spare is seeded.
   //
-  // Every operation is frontdoor on EFUSE_PROGRAM_CTRL: the write carries the
-  // OTP bit index in EFUSE_ADDR plus PROGRAM_GO, and the outcome reads back as
-  // PROGRAM_DONE or PROGRAM_STATUS (the refusal).
+  // Every operation is frontdoor: EFUSE_PROGRAM_ADDR takes the OTP bit index,
+  // the EFUSE_PROGRAM_CTRL write with PROGRAM_GO starts the program of that
+  // bit, and the outcome reads back as PROGRAM_DONE or PROGRAM_STATUS (the
+  // refusal).
   localparam logic [31:0] EfuseProgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
+  localparam logic [31:0] EfuseProgAddr = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR;
   // Two lock bits per spare, and the assigned spare locks end where the RDL
   // reserved field of LOCKS_SPARE starts: 9 spares, slots 32-40
   // (otp_fuse_controller.adoc).
@@ -3141,9 +3143,11 @@ module sep_fcov (
 
   wire        efuse_prog_go = wr_ev && (aw_addr_q == EfuseProgCtrl) &&
       ((wr_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK) != 32'h0);
-  wire [15:0] efuse_prog_bit = (wr_data &
-      EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK) >>
-      EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT;
+  // Mirror of EFUSE_PROGRAM_ADDR: the bit a GO programs is the last address
+  // written before it.
+  logic [31:0] efuse_prog_addr_q;
+  wire        efuse_prog_addr_wr = wr_ev && (aw_addr_q == EfuseProgAddr);
+  wire [31:0] efuse_prog_bit = efuse_prog_addr_q;
   wire        efuse_prog_rd = rd_ev && (ar_addr_q == EfuseProgCtrl);
   wire        efuse_prog_done = efuse_prog_rd &&
       ((rd_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_MASK) != 32'h0);
@@ -3486,6 +3490,7 @@ module sep_fcov (
       feat_lo_valid_q   <= 1'b0;
       prog_pending_q    <= 1'b0;
       lock_pending_q    <= 1'b0;
+      efuse_prog_addr_q <= 32'(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT);
       wdt_bark_irq_q    <= 1'b0;
       wdt_thold_q       <= 1'b0;
       cold_valid_q      <= 1'b0;
@@ -3739,6 +3744,10 @@ module sep_fcov (
       if (m_aw_hs) m_aw_addr_q <= m_axi_awaddr_i;
       if (m_ar_hs) m_ar_addr_q <= m_axi_araddr_i;
 
+      if (efuse_prog_addr_wr) begin
+        efuse_prog_addr_q <= (wr_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK) >>
+            EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT;
+      end
       if (efuse_prog_go && prog_is_spare) begin
         prog_spare_q   <= prog_spare_idx;
         prog_locked_q  <= spare_locked_q[prog_spare_idx];
@@ -6240,8 +6249,8 @@ module sep_fcov (
   // (NS 1 for ap, the inverse of address bit 55 for smu and stee); 7 ap and
   // 8 stee with AxUSER[3:0] 0 while the LSU drove non-zero; 9 smu with a
   // source ID that is not OTHERS (0) and not the one the LSU drove; 10 DMA on
-  // smu with a source ID that is not OTHERS. SEP's ID has no stated number,
-  // so bins 9 and 10 sample its class, not a value.
+  // smu with a source ID that is not OTHERS. Bins 9 and 10 sample the class of
+  // SEP's ID, not its value 0xF; CHK-OUT-SRC-ID and CHK-CPU-SRC-ID grade it.
   covergroup sep_fabric_outbound_route_cg with function sample (
       logic [3:0] cls_dir,
       logic own_cls,
@@ -29200,8 +29209,8 @@ module sep_fcov (
     }
     cp_sm_err: coverpoint s.se iff (s.se_v) {
       bins set = {2'd0};
-      // While the integrity error persists ERR latches again whatever a write
-      // does, so a write of 0 cannot fail; the owner logs it as OBS-SM-ERR-W0.
+      // A write of 0 cannot fail while the integrity error persists (INFO-SM-ERR-CAUSE-W0);
+      // a write of 0 with no cause left is in this cell too, graded by CHK-SM-ERR-W0.
       ignore_bins w0_keeps = {2'd1};
       // A write of 1 clears ERR once the state machine error output that set it
       // is gone (CHK-SM-ERR-W1C).
@@ -32733,8 +32742,9 @@ module sep_fcov (
       if (cz_dd(edn_hw2reg_i.recov_alert_sts.csrng_ack_err)) cz_edn(7, 2'd0);
       if (cs_ack) begin
         // Code 3 samples only at a Generate acknowledge
-        // (CHK-CSRNG-UNINST-REFUSE); the owner logs the CMD_STS of its
-        // repeated Instantiate.
+        // (CHK-CSRNG-UNINST-REFUSE). The owner grades the CMD_STS of a repeated
+        // Instantiate (CHK-CSRNG-INVSEQ-STS) and of an Uninstantiate of an
+        // instantiated instance (CHK-CSRNG-UNINST-STS) outside these bins.
         case (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d)
           3'd1: cz_ccmd(3, 3'd1);
           3'd3: if (cz_cs_acmd == 4'h3) cz_ccmd(3, 3'd3);
@@ -34782,6 +34792,8 @@ module sep_fcov (
   localparam logic [31:0] EfStatus = EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR;
   localparam logic [31:0] EfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
   localparam logic [31:0] EfRdCtrl = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR;
+  localparam logic [31:0] EfPgAddr = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR;
+  localparam logic [31:0] EfRdAddr = EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_ADDR;
   localparam logic [31:0] EfPgData = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR;
   localparam logic [31:0] EfRdData = EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR;
   localparam logic [31:0] EfRdTmo = EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR;
@@ -34798,11 +34810,11 @@ module sep_fcov (
   localparam logic [31:0] EfDemote2 = SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR;
 
   // Field masks of the interface control registers (efuse_interface_ctrl.adoc).
-  localparam logic [31:0] EfPgAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK;
+  localparam logic [31:0] EfPgAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK;
   localparam logic [31:0] EfPgDataMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK;
   localparam logic [31:0] EfPgGoMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK;
   localparam logic [31:0] EfPgEnMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK;
-  localparam logic [31:0] EfRdAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK;
+  localparam logic [31:0] EfRdAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_EFUSE_ADDR_MASK;
   localparam logic [31:0] EfRdGoMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK;
   localparam logic [31:0] EfRdEnMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK;
   localparam logic [31:0] EfReqErrMask =
@@ -35115,6 +35127,10 @@ module sep_fcov (
       bins program_req_timeout_rd = {4'd7};
       bins program_if_read_data_rd = {4'd8};
       bins read_if_read_data_rd = {4'd9};
+      bins program_addr_rd = {4'd10};
+      bins program_addr_wr = {4'd11};
+      bins read_addr_rd = {4'd12};
+      bins read_addr_wr = {4'd13};
     }
     // The TOKEN_MATCH_FAULT read is not declared.
     x_token_blk_op: coverpoint s.tb iff (s.tb_v) {
@@ -35830,7 +35846,7 @@ module sep_fcov (
   endgroup
 
   typedef struct packed {
-    logic [2:0] ca;
+    logic [3:0] ca;
     logic ca_v;  // cp_case
     logic [3:0] fl;
     logic fl_v;  // cp_flags: {read_status, read_addr, program_addr, req}
@@ -35854,14 +35870,15 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_efuse_if_status_cg";
     cp_case: coverpoint s.ca iff (s.ca_v) {
-      bins pre_sense_prog = {3'd0};
-      bins read_no_enable = {3'd1};
-      bins read_oob = {3'd2};
-      bins prog_oob = {3'd3};
-      bins prog_wlocked = {3'd4};
-      bins read_rlocked = {3'd5};
-      bins both_enables = {3'd6};
-      bins prog_data0 = {3'd7};
+      bins pre_sense_prog = {4'd0};
+      bins read_no_enable = {4'd1};
+      bins read_oob = {4'd2};
+      bins prog_oob = {4'd3};
+      bins prog_wlocked = {4'd4};
+      bins read_rlocked = {4'd5};
+      bins both_enables = {4'd6};
+      bins prog_data0 = {4'd7};
+      bins prog_no_enable = {4'd9};
     }
     // Sampled for read_no_enable, read_oob, prog_oob, prog_wlocked and the
     // accepted twins.
@@ -36887,7 +36904,7 @@ module sep_fcov (
     e = '0;
     case (which)
       0: begin
-        e.ca = v[2:0];
+        e.ca = v[3:0];
         e.ca_v = 1'b1;
       end
       1: begin
@@ -37003,6 +37020,8 @@ module sep_fcov (
         EfPgTmo: if (!wr) ef_geo(5, 6'd7);
         EfPgData: if (!wr) ef_geo(5, 6'd8);
         EfRdData: if (!wr) ef_geo(5, 6'd9);
+        EfPgAddr: ef_geo(5, wr ? 6'd11 : 6'd10);
+        EfRdAddr: ef_geo(5, wr ? 6'd13 : 6'd12);
         default: ;
       endcase
       if (in_win(a, EfTokSip, EfTokChip)) ef_geo(6, wr ? 6'd1 : 6'd0);
@@ -37464,15 +37483,16 @@ module sep_fcov (
 
   // Case of a request (efuse_interface_ctrl.adoc): 0 pre_sense_prog,
   // 1 read_no_enable, 2 read_oob, 3 prog_oob, 4 prog_wlocked, 5
-  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 15 none.
+  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 9
+  // prog_no_enable (data 1, program_enable 0), 15 none.
   function automatic logic [3:0] ef_pg_case(input logic [15:0] a, input logic d, input logic en,
                                             input logic sensed);
     if (!sensed) return 4'd0;
     if (a >= 16'(EfFuseBits)) return 4'd3;
     if (ef_wlock(ef_slot_of(11'(a[12:3])))) return 4'd4;
     if (!d) return 4'd7;
-    if (en) return 4'd8;
-    return 4'd15;
+    if (!en) return 4'd9;
+    return 4'd8;
   endfunction
   function automatic logic [3:0] ef_rg_case(input logic [15:0] a, input logic en, input logic pen);
     if (!en) return 4'd1;
@@ -37482,6 +37502,13 @@ module sep_fcov (
     return 4'd8;
   endfunction
   logic [3:0] ef_pg_cs = 4'd15, ef_rg_cs = 4'd15;
+
+  // Mirrors of EFUSE_PROGRAM_ADDR and EFUSE_READ_ADDR: a go acts on the last
+  // address written before it. An address above 16 bits is out of range, so it
+  // saturates to 16'hFFFF and keeps its out-of-range case.
+  logic [31:0] ef_pg_addr_q = '0, ef_rg_addr_q = '0;
+  wire [15:0] ef_pg_addr16 = (ef_pg_addr_q > 32'h0000_FFFF) ? 16'hFFFF : 16'(ef_pg_addr_q);
+  wire [15:0] ef_rg_addr16 = (ef_rg_addr_q > 32'h0000_FFFF) ? 16'hFFFF : 16'(ef_rg_addr_q);
 
   // Window of x_case_cmd for pre_sense_prog: reset release to sense done.
   logic ef_ps_go = 1'b0, ef_ps_prog = 1'b0;
@@ -37593,11 +37620,15 @@ module sep_fcov (
       ef_rg_lock_open <= 1'b0;
       ef_rg_idle_open <= 1'b0;
       ef_rg_win_open <= 1'b0;
+      ef_pg_addr_q <= 32'(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT);
+      ef_rg_addr_q <= 32'(EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT);
     end else begin
+      if (wr_okay && (aw_addr_q == EfPgAddr)) ef_pg_addr_q <= wr_data & EfPgAddrMask;
+      if (wr_okay && (aw_addr_q == EfRdAddr)) ef_rg_addr_q <= wr_data & EfRdAddrMask;
       // Program go.
       if (ef_pg_go) begin
         ef_pg_v <= 1'b1;
-        ef_pg_addr <= 16'(wr_data & EfPgAddrMask);
+        ef_pg_addr <= ef_pg_addr16;
         ef_pg_data <= |(wr_data & EfPgDataMask);
         ef_pg_en <= |(wr_data & EfPgEnMask);
         ef_pg_sensed <= (fuse_sense_done_i === 1'b1);
@@ -37606,13 +37637,13 @@ module sep_fcov (
         ef_pg_rqe <= ef_aw_flags[0] || ef_aw_flx;
         ef_pg_clean <= !ef_aw_flx && !ef_aw_rderr && (ef_aw_flags == 3'b000);
         ef_pg_tok <= {tok_chp_i == EfCodeMatch, tok_sip_i == EfCodeMatch};
-        ef_pg_seen <= ef_aw_pcmd_v && (13'(wr_data & EfPgAddrMask) == ef_aw_pcmd_addr) &&
-            ((wr_data & EfPgAddrMask) < 32'(EfFuseBits));
-        ef_pg_pre <= ef_aw_shadow[32*(wr_data[12:5])+:32];
+        ef_pg_seen <= ef_aw_pcmd_v && (13'(ef_pg_addr_q) == ef_aw_pcmd_addr) &&
+            (ef_pg_addr_q < 32'(EfFuseBits));
+        ef_pg_pre <= ef_aw_shadow[32*(ef_pg_addr_q[12:5])+:32];
         ef_pg_lock_open <= 1'b1;
         ef_pg_idle_open <= 1'b1;
         ef_pg_cnt <= 0;
-        ef_pg_cs <= ef_pg_case(16'(wr_data & EfPgAddrMask), |(wr_data & EfPgDataMask),
+        ef_pg_cs <= ef_pg_case(ef_pg_addr16, |(wr_data & EfPgDataMask),
                                |(wr_data & EfPgEnMask), fuse_sense_done_i === 1'b1);
         if (fuse_sense_done_i !== 1'b1) ef_ps_go <= 1'b1;
       end else if (ef_pg_v) begin
@@ -37644,7 +37675,8 @@ module sep_fcov (
               end
             end else begin
               ef_ifs(0, 7'(ef_pg_cs));
-              if (ef_pg_clean) begin
+              // x_case_flags has no prog_no_enable cell: its case field is three bits.
+              if (ef_pg_clean && (ef_pg_cs != 4'd9)) begin
                 ef_ifs(2, {ef_pg_cs[2:0], ef_flags});
                 if (ef_pg_cs inside {4'd3, 4'd4}) ef_ifs(1, 7'(ef_flags));
               end
@@ -37681,7 +37713,7 @@ module sep_fcov (
       // Read go.
       if (ef_rg_go) begin
         ef_rg_v <= 1'b1;
-        ef_rg_addr <= 16'(wr_data & EfRdAddrMask);
+        ef_rg_addr <= ef_rg_addr16;
         ef_rg_en <= |(wr_data & EfRdEnMask);
         ef_rg_pen <= ef_pen_q;
         ef_rg_rqe <= ef_aw_flags[0] || ef_aw_flx;
@@ -37691,10 +37723,8 @@ module sep_fcov (
         ef_rg_idle_open <= 1'b1;
         ef_rg_win_open <= 1'b0;
         ef_rg_cnt <= 0;
-        ef_rg_cs <= ef_rg_case(16'(wr_data & EfRdAddrMask), |(wr_data & EfRdEnMask), ef_pen_q);
-        if (ef_rg_case(
-                16'(wr_data & EfRdAddrMask), |(wr_data & EfRdEnMask), ef_pen_q
-            ) == 4'd6) begin
+        ef_rg_cs <= ef_rg_case(ef_rg_addr16, |(wr_data & EfRdEnMask), ef_pen_q);
+        if (ef_rg_case(ef_rg_addr16, |(wr_data & EfRdEnMask), ef_pen_q) == 4'd6) begin
           ef_be_arm <= 1'b1;
           ef_be_rcmd <= ef_aw_rcmd_v;
         end
@@ -40130,6 +40160,7 @@ module sep_fcov (
   // eFuse program control (efuse_interface_ctrl.adoc), at its SEP address.
   localparam logic [31:0] KmEfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
   localparam logic [31:0] KmEfPgGo = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK;
+  localparam logic [31:0] KmEfPgAddr = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR;
   // DRBG sampler DATA-read states (architecture.adoc, table "Key Manager
   // DRBG sampler states"): idle, request, byte assembly, respond, timeout,
   // stream error.
@@ -40859,12 +40890,13 @@ module sep_fcov (
     // with 0xBADCAB1E)}.
     cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
       bins shadow_okay = {4'b000_0};
+      bins shadow_slverr = {4'b000_1};
       bins ctrl_okay = {4'b001_0};
       bins token_okay = {4'b010_0};
       bins gap_1141c_slverr = {4'b011_1};
       bins gap_11574_slverr = {4'b100_1};
       bins reserved_11600_slverr = {4'b101_1};
-      ignore_bins no_such_response = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
+      ignore_bins no_such_response = {4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
     }
     // {path (0 KM, 1 host), class (0 unlocked spare, 1 write-locked field, 2
     // secure test strap set)}.
@@ -43573,6 +43605,11 @@ module sep_fcov (
   logic [13:0] km_pg_cnt = '0;
   logic km_pg_host = 1'b0, km_pg_tm = 1'b0, km_pg_busy_seen = 1'b0;
   logic [2:0] km_pg_tgt = '0;
+  // Mirror of EFUSE_PROGRAM_ADDR, written by an OKAY write of the KM path or
+  // the host: a go programs the last address written before it. An address
+  // above 16 bits saturates to 16'hFFFF, which is in no field.
+  logic [31:0] km_pg_addr_q = '0;
+  wire [15:0] km_pg_addr16 = (km_pg_addr_q > 32'h0000_FFFF) ? 16'hFFFF : 16'(km_pg_addr_q);
   logic km_pg_err_seen = 1'b0;
   logic km_pg_err_aw = 1'b0;  // efuse_req_err at the start of the last KM write
   logic km_pg_err0 = 1'b0;  // efuse_req_err at the start of the go write
@@ -43616,6 +43653,13 @@ module sep_fcov (
         end
       end else km_pg_cnt <= km_pg_cnt + 14'd1;
     end
+    if (kw_ev && (kw_resp == KmOkay) &&
+        (kw_addr == KmEfCtrlBase + (KmEfPgAddr - EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)))
+      km_pg_addr_q <= (kw_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK) >>
+          EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT;
+    else if (wr_ev && (aw_addr_q == KmEfPgAddr))
+      km_pg_addr_q <= (wr_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK) >>
+          EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT;
     if (kw_ev && (kw_addr == KmEfCtrlBase + (KmEfPgCtrl - EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)) &&
         |(kw_data & KmEfPgGo)) begin
       km_pg_cnt <= 14'd1;
@@ -43626,9 +43670,7 @@ module sep_fcov (
       km_pg_busy_seen <= 1'b0;
       km_pg_err_seen <= 1'b0;
       km_pg_err0 <= km_pg_err_aw;
-      km_pg_tgt <= km_ef_target(16'((kw_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK) >>
-                                    EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT),
-                                {ef_locks_sp, ef_locks});
+      km_pg_tgt <= km_ef_target(km_pg_addr16, {ef_locks_sp, ef_locks});
     end else if (wr_ev && (aw_addr_q == KmEfPgCtrl) && |(wr_data & KmEfPgGo)) begin
       km_pg_cnt <= 14'd1;
       km_pg_host <= 1'b1;

@@ -31,6 +31,11 @@ on PR-INFLT, so the DECERR is not the filter's. The responses of the
 in-window edge reads and of the read at ``0x3FFF_FFF8`` are logged only: the
 specification states no response for those local addresses.
 
+CHK-APERTURE-PORTS: after each aperture write and its read-back, the DUT
+outputs ``sep_global_base_addr_o`` and ``sep_region_size_o`` carry the
+read-back ``SEP_GLOBAL_BASE_ADDR`` and the read-back ``SEP_REGION_SIZE``
+zero-extended to 56 bits, with no X or Z bit.
+
 Logged, not graded: after the in-window legs, SI reads and writes of the cold
 scratch word, a system register, carry a drawn AxPROT with bit 1 at the
 allow_ns of the entry and bits 0 and 2 not both 0, on a seeded stream of their
@@ -51,7 +56,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
@@ -139,6 +144,11 @@ GLOBAL_BASE_MASK = SEP_CPU_CTRL.mask("SEP_GLOBAL_BASE_ADDR")
 REGION_SIZE_MASK = SEP_CPU_CTRL.mask("SEP_REGION_SIZE")
 
 
+def _hx(value: int | None, raw) -> str:
+    """``value`` as 56-bit hex, or the raw bit string when a bit is X or Z."""
+    return f"0x{value:014x}" if value is not None else f"unknown:{raw}"
+
+
 async def _capture_si_prot(channel: str) -> int:
     """AxPROT of the next ``channel`` (``ar`` or ``aw``) handshake on the m_axi pins."""
     dut = cocotb.top
@@ -219,6 +229,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         "CHK-REBASE-XBAR-LIMIT",
         "CHK-REBASE-ABOVE",
         "CHK-REBASE-UNREACH",
+        "CHK-APERTURE-PORTS",
     )
 
     # ------------------------------------------------------------------ access
@@ -302,6 +313,33 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         if not (fb.ok and fs.ok):
             raise AssertionError(f"CTRL-APERTURE-READBACK FAIL: {line}")
         self.logger.info("CTRL-APERTURE-READBACK LOG: %s", line)
+        await self._check_aperture_ports(base, size)
+
+    async def _check_aperture_ports(self, base: int, size: int) -> None:
+        """CHK-APERTURE-PORTS: the DUT aperture outputs carry the CSR read-back.
+
+        doc/integrator/src/smu-composition.adoc:127-133: ``sep_global_base_addr_o``
+        and ``sep_region_size_o`` are 56 bits wide and come from the
+        ``SEP_GLOBAL_BASE_ADDR`` and ``SEP_REGION_SIZE`` CSRs; the 32-bit
+        ``SEP_REGION_SIZE`` is zero-extended to 56 bits. An X or Z bit fails.
+        """
+        top = cocotb.top
+        await RisingEdge(top.clk_i)
+        await ReadOnly()
+        tb = top.sep_global_base_addr_probe_o.value
+        tz = top.sep_region_size_probe_o.value
+        await NextTimeStep()
+        want_b = base & GLOBAL_BASE_MASK
+        want_z = size & REGION_SIZE_MASK
+        got_b = int(tb) if tb.is_resolvable else None
+        got_z = int(tz) if tz.is_resolvable else None
+        line = (
+            f"sep_global_base_addr_o={_hx(got_b, tb)} SEP_GLOBAL_BASE_ADDR=0x{want_b:014x} "
+            f"sep_region_size_o={_hx(got_z, tz)} SEP_REGION_SIZE=0x{want_z:014x}"
+        )
+        if got_b != want_b or got_z != want_z:
+            raise AssertionError(f"CHK-APERTURE-PORTS FAIL: {line}")
+        self.logger.info("CHK-APERTURE-PORTS PASS: %s", line)
 
     # --------------------------------------------------------------- bring-up
     async def _bring_up(self) -> None:

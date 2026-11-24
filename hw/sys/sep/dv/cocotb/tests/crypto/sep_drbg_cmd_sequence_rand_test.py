@@ -22,7 +22,7 @@ bit N - 1):
     issues no generate: "The reset value is `0`, which means no `generate` commands
     are issued." (``vendor/lowRISC/opentitan/upstream/hw/ip/edn/doc/
     theory_of_operation.md``:86). The commands it sends instead are logged only
-    (``OBS-EDN-AUTO-ZERO``).
+    (``INFO-EDN-AUTO-ZERO``).
   * Reseed after N generates (edn.adoc:107, "a ``reseed`` command is sent after
     every MAX_NUM_REQS_BETWEEN_RESEEDS number of ``generate`` commands";
     edn.adoc:258-262, the down-counter "triggering an automatic ``reseed``
@@ -43,6 +43,13 @@ bit N - 1):
     (``CMD_STAGE_INVALID_CMD_SEQ_ALERT``); a write of 0 clears it. The text
     also says the command "is ignored and CSRNG continues to operate"; it gives
     no register value that shows this, so the leaf does not grade it.
+  * That instantiate is an out-of-order command: "This happens when an
+    instantiate command is sent for a state that was already instantiated"
+    (``vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/registers.md``
+    :511-514, ``csrng.rdl``:396-398). Its acknowledge reports ``CMD_STS`` = 3,
+    "INVALID_CMD_SEQ: This error indicates that the last command was issued
+    out of sequence." (``registers.md``:268), read once ``CMD_ACK`` or the
+    command-done interrupt is 1 (``registers.md``:260-261).
   * Command header (``vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/
     theory_of_operation.md``:156-188, :211-279): "3:0 acmd", "7:4 clen",
     "11:8 flag0", "23:12 glen"; "Instantiate 0x1", "Reseed 0x2", "Generate
@@ -106,8 +113,8 @@ and, per ``CTRL`` field, six more invalid values distinct from the first (seven 
 the fourteen invalid MuBi4 values per field per seed), then the 384-bit
 additional data of the known-answer Update. The reserved
 values 0x9 to 0xd carry a defined command code in bits [2:0]; the leaf sends 0x9 on
-every seed in its last leg (no draw) and logs the result only. The checked values do
-not depend on the seed; the known-answer checks compare with the golden of the
+every seed in its last leg (no draw) and grades the result
+(``CHK-CSRNG-ACMD-HI``). The checked values do not depend on the seed; the known-answer checks compare with the golden of the
 drawn seed and the drawn Update data.
 
 The three groups run in the drawn order. Then the leaf runs, in this order, the
@@ -122,11 +129,10 @@ clean start, the bus compare replay leg and the counter-wrap leg. The counter-wr
 leg draws its seed words from its own ``SepSeededRng`` stream (the run seed XOR a
 leg salt), so the plan draws above keep their seed mapping.
 
-Only reserved values whose bits [2:0] are also reserved are graded. The text
-reserves 0x0 and 0x6 to 0xf of the 4-bit acmd field, but the OpenTitan CSRNG
-decodes bits [2:0] only, and its designers state that bit 3 is claimed for future
-use and that a reserved value gives an undefined result (lowRISC/opentitan issue
-16203). No text states the result of 0x9 to 0xd, so the 0x9 leg is an observation.
+Only reserved values whose bits [2:0] are also reserved are drawn. The text
+reserves 0x0 and 0x6 to 0xf of the 4-bit acmd field (theory_of_operation.md:157,
+:276-279), so 0x9 is a reserved value like the drawn ones, and the 0x9 leg grades
+it with the same rule.
 
 Checkers:
   CHK-EDN-BOOT   for each graded boot (AUTO_REQ_MODE true, then false) the first
@@ -144,6 +150,19 @@ Checkers:
   CHK-EDN-INVSEQ the second instantiate through EDN sets CSRNG bit 14, bit 14 still
                  reads 1 before the clear, and a write of 0 clears it. Control: bit
                  14 reads 0 after the first command.
+  CHK-EDN-INVSEQ-STS  EDN ``SW_CMD_STS.CMD_STS`` reads 3 (INVALID_CMD_SEQ) in
+                 the read that shows ``CMD_ACK`` = 1 for that second instantiate:
+                 EDN reports "the status code returned with the CSRNG application
+                 command ack" (``edn.hjson``:359-363), and CSRNG returns 3 for an
+                 instantiate to an instantiated state (``registers.md``:268,
+                 :511-514). When the first read after bit 14 does not show the
+                 ack, the leaf waits for it (bound 16 times the first ack).
+  CHK-EDN-INVSEQ-ACK-ERR  EDN ``RECOV_ALERT_STS.CSRNG_ACK_ERR`` reads 1 after
+                 that ack: "This bit is set when the CSRNG returns an
+                 acknowledgement where the status signal is non-zero."
+                 (``edn.hjson``:540-543, ``edn.rdl``:341-343). Control
+                 (``CTRL-EDN-INVSEQ-ACK-ERR``): after a write of 0 and before the
+                 second instantiate, the bit reads 0.
   CHK-CSRNG-SW   the same handshake for the CSRNG software instance (vector bit
                  23; ``CMD_RDY`` at the acknowledge logged as
                  ``INFO-CSRNG-RDY-AFTER-ACK``), and bit 14 on the second command; that command also
@@ -151,6 +170,10 @@ Checkers:
                  before it and 1 (a rise of bit 23) after it
                  (theory_of_operation.md:286, :421). Control: bit 14 reads 0
                  after the first command.
+  CHK-CSRNG-INVSEQ-STS  ``SW_CMD_STS.CMD_STS`` reads 3 (INVALID_CMD_SEQ) for
+                 that repeated software instantiate, read after
+                 ``cs_cmd_req_done`` reads 1 (``registers.md``:260-261, :268,
+                 :511-514).
   CHK-EDN-BOOT-CMD  before any write, ``BOOT_INS_CMD`` reads 0x901 and
                  ``BOOT_GEN_CMD`` 0xFFF003; decoded with the header layout, acmd
                  0x1 and 0x3, clen 0 in both, glen 0xFFF.
@@ -158,7 +181,7 @@ Checkers:
                  (INVALID_ACMD, csrng.hjson:413-416) at its ack, so the non-zero
                  ack of ``CHK-EDN-ACK-ERR`` is the stated code. ``CMD_STS`` at the
                  ack of the first EDN instantiate is logged only
-                 (``OBS-EDN-STS``): the success code is stated only for the
+                 (``INFO-EDN-STS``, not graded): the success code is stated only for the
                  sequence with ``AUTO_REQ_MODE`` = true
                  (``doc/programmer/src/sep-programming.adoc:457-462``), and this
                  leg enables EDN with ``AUTO_REQ_MODE`` = false and the endpoints
@@ -193,9 +216,17 @@ Checkers:
   CHK-CSRNG-ACMD-INV  a drawn reserved acmd sets bit 13 and acks with ``CMD_STS``
                  = 1; a write of 0 clears bit 13. Control: bit 13 reads 0 after an
                  instantiate.
-  OBS-CSRNG-ACMD-HI  after an instantiate, the reserved acmd 0x9 (word 0x909):
-                 its ``CMD_STS`` and ``RECOV_ALERT_STS`` are logged, not graded
-                 (see the 3-bit decode note above).
+  CHK-CSRNG-ACMD-HI  after an instantiate, the reserved acmd 0x9 (word 0x909,
+                 clen 0, flag0 False) acks with ``CMD_STS`` = 1 (INVALID_ACMD:
+                 "the issued application command doesn't represent a valid
+                 operation", registers.md:266) and bit 13 reads 1 ("When sending
+                 an unsupported or illegal command,
+                 `CMD_STAGE_INVALID_ACMD_ALERT` will be triggered. Furthermore,
+                 CSRNG will respond with the appropriate error status response",
+                 theory_of_operation.md:50-51; acmd 0x0 and 0x6 to 0xf "Unused and
+                 reserved", :276-279). Control (``CTRL-CSRNG-ACMD-HI``): the
+                 instantiate acks with ``CMD_STS`` = 0, and bit 13 reads 0 after a
+                 write of 0, before the 0x9 word. Values 0xa to 0xd are not sent.
   CHK-CSRNG-FLAG0  an instantiate with an invalid value in flag0 [11:8] sets
                  bit 4; after an uninstantiate and an instantiate with flag0 0x9
                  (the field back to a legal value) that acknowledges with
@@ -230,8 +261,19 @@ Checkers:
                  write of 0 to bit 14 only clears it again; bit 14 reads 0 before
                  each of the two graded instantiates; a 1 left by the
                  Uninstantiate (logged as ``raw_uni``) is cleared first by a write
-                 of 0 to bit 14 only. The ``CMD_STS`` of each Uninstantiate is
-                 logged only (``OBS-CSRNG-UNINST``).
+                 of 0 to bit 14 only. The ``CMD_STS`` of the other
+                 Uninstantiates is logged only (``INFO-CSRNG-UNINST``).
+  CHK-CSRNG-UNINST-STS  the Uninstantiate after the reserved acmd and the
+                 probe instantiate acknowledges with ``CMD_STS`` = 0 (SUCCESS).
+                 Of the codes in ``registers.md``:265-269, 0x1 is for a command
+                 that "doesn't represent a valid operation", 0x2 for entropy of a
+                 non-Generate command, 0x3 for an Uninstantiate "sent without
+                 instantiating first", and 0x4 for Generate commands only; the
+                 instance is instantiated (``CTRL-CSRNG-UNINST-RESET``, ``live``),
+                 so 0x0 is the code left. When the probe does not show the
+                 instance instantiated, the test logs ``INFO-BLOCKED`` with the
+                 reason and the leaf fails: the check is required evidence and
+                 ``CTRL-CSRNG-UNINST-RESET`` fails.
   CHK-CSRNG-RESEED-LIMIT  with ``RESEED_INTERVAL`` = K, the first Generate
                  that acks with ``CMD_STS`` = 4 is Generate K + 1, and bit 15
                  reads 1 at that ack; a write of 0 clears bit 15. K is the
@@ -314,18 +356,21 @@ Checkers:
                  (csrng.rdl:327-332, bit 0 is HW0; architecture.adoc:58, EDN is on
                  port 0). Control for both (``CTRL-CSRNG-HW-EXC``): both read 0
                  after their clear, before the command, and bit 14 rose. Its
-                 ``CMD_STS`` stays logged (``OBS-EDN-INVSEQ``), as does
-                 ``HW_EXC_STS`` after the repeated software instantiate
-                 (``OBS-CSRNG-INVSEQ``): the register names hardware instances
-                 only.
+                 ``CMD_STS`` is graded by ``CHK-EDN-INVSEQ-STS`` (these two checks
+                 print and grade ``hw_exc`` and ``hw_inst_exc``).
+                 ``HW_EXC_STS`` after the repeated software instantiate stays
+                 logged (``INFO-CSRNG-INVSEQ``): the register names hardware
+                 instances only.
   CHK-CSRNG-ACK-CLR  in the counter-wrap leg, ``CMD_ACK`` reads 0 between the
                  Instantiate header (clen 12) and its first data word ("It is set
                  to low each time a new command is written to !!CMD_REQ",
                  csrng.rdl:215). Control (``CTRL-CSRNG-ACK-CLR``): it reads 1 after
                  the Uninstantiate acknowledge, before the header. The first read
                  after a command write in the software legs stays logged
-                 (``OBS-CSRNG-ACK0``, ``OBS-EDN-ACK0``): ``CMD_ACK`` is 0 before
+                 (``INFO-CSRNG-ACK0``, ``INFO-EDN-ACK0``): ``CMD_ACK`` is 0 before
                  those writes and no text states the acknowledge latency.
+                 ``CHK-CSRNG-ACK-CLR`` and ``CHK-EDN-INST-SEED`` grade ``CMD_ACK`` = 0
+                 on legs where the acknowledge cannot come first.
   CHK-DRBG-FIPS-PROV  the FIPS/CC flag of the words follows flag0 of the
                  instance that made them. flag0 True "will render the instance
                  non-FIPS compliant until it is re-instantiated"
@@ -394,7 +439,7 @@ Checkers:
                  after a write of 1 and the flag0-True known-answer instantiate,
                  which uses "Only provided additional data" as seed
                  (theory_of_operation.md:227).
-  OBS-CSRNG-UNINST-STATE  with ``CTRL.READ_INT_STATE`` True, the 14
+  INFO-CSRNG-UNINST-STATE  with ``CTRL.READ_INT_STATE`` True, the 14
                  ``INT_STATE_VAL`` words of each ``INT_STATE_NUM`` index, before
                  and after the Uninstantiate of the second refusal leg, as a
                  non-zero flag and a digest. The Uninstantiate zeroes the instance
@@ -408,11 +453,25 @@ Checkers:
                  the first pool handshake; auto, the large-N trial from the
                  software instantiate to its last header. No text states which
                  requesting endpoint EDN serves first.
-The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``,
-``OBS-DRBG-*``). The
-``CMD_STS`` of the CSRNG instantiate stays an observation (``OBS-CSRNG-STS``): no
-sentence states that a first instantiate on the software instance succeeds.
-``OBS-CSRNG-GENBITS-GATE`` also logs the two CSRNG gate inputs at the DRBG instance
+  CHK-CSRNG-HDR-INS  in the command header leg, the first instantiate after the
+                 clean start (word 0x901, flag0 False) and the instantiate with
+                 flag0 True (0x601) after an acknowledged Uninstantiate, each ack
+                 with ``CMD_STS`` = 0. "To check whether a command was successful,
+                 wait for ... ``SW_CMD_STS.CMD_ACK`` to be high and then check the
+                 value of this field" (registers.md:257-261); 0 is "Request
+                 completed successfully." (:265), and each error code names a
+                 condition neither command meets (:266-269). flag0 True with
+                 clen 0 is a defined form: "Seed of zero is used"
+                 (theory_of_operation.md:226). The instantiate with flag0 0x9
+                 after the invalid-flag0 instantiate is logged
+                 (``INFO-CSRNG-HDR-INS``); ``CHK-CSRNG-FLAG0`` grades its status.
+  CHK-CSRNG-STS  in the CSRNG software leg, the first instantiate (0x901) after
+                 the clean start acks with ``CMD_STS`` = 0, by the same code table
+                 (registers.md:257-269).
+Values with no stated golden are logged only (``INFO-EDN-*``, ``INFO-CSRNG-*``,
+``INFO-DRBG-*``). ``INFO-DRBG-SEED-INGRESS`` logs the ESRC words the seed packer
+accepts and drops: no SEP text states the seed FIFO depth.
+``INFO-CSRNG-GENBITS-GATE`` also logs the two CSRNG gate inputs at the DRBG instance
 (``csrng_sw_app_read_en_o``, ``csrng_lc_hw_debug_en_o``) and the run's lifecycle
 source: hw/ip/drbg/doc/architecture.adoc:47 says these signals gate the software
 read, and no text states their value per lifecycle state.
@@ -552,7 +611,7 @@ FIPS_FLAG0_FALSE = 1
 CSRNG_INT_STATE_NUM = sym("CSRNG_INT_STATE_NUM_REG_ADDR")
 CSRNG_INT_STATE_VAL = sym("CSRNG_INT_STATE_VAL_REG_ADDR")
 INT_STATE_WORDS = 448 // 32
-# The observation walks every instance index of FIPS_FORCE (one bit per instance)
+# The internal-state record walks every instance index of FIPS_FORCE (one bit per instance)
 # and one more: the index of the software instance is not stated.
 INT_STATE_IDX = range(CSRNG.fields("FIPS_FORCE")["FIPS_FORCE"]["bw"] + 1)
 _CS_RECOV = CSRNG.fields("RECOV_ALERT_STS")
@@ -591,9 +650,8 @@ UPDATE_CLEN = 1
 ACMD_RESERVED = (0x0, *range(0x6, 0x10))
 # The drawn reserved values: those whose bits [2:0] are also a reserved value.
 ACMD_RESERVED_DRAW = tuple(v for v in ACMD_RESERVED if v & 0x7 in ACMD_RESERVED)
-# The reserved value of the last leg: bits [2:0] carry the Instantiate code. The
-# CSRNG decodes acmd bits [2:0] only, and no text states the result of a reserved
-# value whose bits [2:0] are a defined command, so this value is logged, not graded.
+# The reserved value of the last leg: bits [2:0] carry the Instantiate code, and the
+# 4-bit acmd field reserves it (theory_of_operation.md:276-279).
 ACMD_RESERVED_HI = 0x9
 # CMD_STS codes (csrng.hjson SW_CMD_STS.CMD_STS; edn.adoc SW_CMD_STS links to them).
 STS_SUCCESS = 0
@@ -1073,6 +1131,13 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         "CHK-CSRNG-UPDATE",
         "CHK-CSRNG-UNINST-REFUSE",
         "CHK-CSRNG-ENTROPY-REQ",
+        "CHK-CSRNG-HDR-INS",
+        "CHK-CSRNG-STS",
+        "CHK-CSRNG-ACMD-HI",
+        "CHK-CSRNG-INVSEQ-STS",
+        "CHK-EDN-INVSEQ-STS",
+        "CHK-EDN-INVSEQ-ACK-ERR",
+        "CHK-CSRNG-UNINST-STS",
     )
 
     async def run_scenario(self) -> None:
@@ -1122,13 +1187,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 await NextTimeStep()
             close_graded_window(self.logger)
             if self.sb is not None:
-                self.sb.stop()
+                await self.sb.stop()
         await ingress.stop()
-        self.chk.obs(
+        self.chk.info(
             "DRBG-SEED-INGRESS",
             accepted=ingress.accepted,
             dropped=ingress.dropped,
             depth="na" if ingress.depth is None else ingress.depth,
+            graded="none",
         )
         await self.vec.stop()
         await self.clk.stop()
@@ -1180,7 +1246,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
     async def _trng_reset(self) -> None:
         dut = cocotb.top
         if self.sb is not None:
-            self.sb.stop()
+            await self.sb.stop()
             self.sb = None
         await self.swrst.park("trng")
         rise = await self._wait_probe(dut.trng_reset_active_probe_o, False, "trng reset rise")
@@ -1494,7 +1560,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         watch ("0b1: The EDN is in the hardware controlled part of auto mode.",
         edn.adoc:213), so a quiet port is not an EDN that never left software
         port mode. The headers EDN sends are logged
-        (``OBS-EDN-AUTO-ZERO``): no text states them for the value 0. The trial
+        (``INFO-EDN-AUTO-ZERO``): no text states them for the value 0. The trial
         opens no coverage window, so the check has its own release.
         """
         dut = cocotb.top
@@ -1537,8 +1603,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             (not reason or quiet) and first == CMD_INSTANTIATE and f["generates"] == 0,
             **f,
         )
-        self.chk.obs(
+        self.chk.info(
             "EDN-AUTO-ZERO",
+            graded="none",
             words=[f"0x{w:x}" for w in seq],
             hw_type=_field(hw, ED_HW_TYPE),
             hw_boot=int(bool(hw & ED_BOOT_MODE)),
@@ -1857,7 +1924,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             m = self.vec.mark()
             await r._wr(EDN_SW_CMD_REQ, CMD_INSTANTIATE)
             ack0 = await r._rd(EDN_SW_CMD_STS)
-            self.chk.obs("EDN-ACK0", ack_first_read=int(bool(ack0 & ED_STS_ACK)))
+            self.chk.info("EDN-ACK0", ack_first_read=int(bool(ack0 & ED_STS_ACK)), graded="none")
             _, done = await self._wait(EDN_SW_CMD_STS, ED_STS_ACK, ED_STS_ACK, FIRST_CAP, "edn_ack")
             t_cmd = max(self._now() - t_wr, 1)
             hs["ack_done"] = int(bool(done & ED_STS_ACK))
@@ -1899,14 +1966,15 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         )
         await self._release()
         if reason:
-            self.chk.ok("EDN-INVSEQ", False, reason=f"no_first_command:{reason}")
+            for name in ("EDN-INVSEQ", "EDN-INVSEQ-STS", "EDN-INVSEQ-ACK-ERR"):
+                self.chk.ok(name, False, reason=f"no_first_command:{reason}")
             return
         await self._edn_invseq(t_cmd)
         await self._edn_sts(t_cmd)
 
     async def _edn_sts(self, t_cmd: int) -> None:
         """CTRL-EDN-STS: a reserved acmd through the port reads INVALID_ACMD (1) at
-        its ack. OBS-EDN-STS: the code of the first instantiate (no sentence states
+        its ack. INFO-EDN-STS: the code of the first instantiate (no sentence states
         it for ``AUTO_REQ_MODE`` = false with the endpoints in reset).
 
         CHK-EDN-ACK-ERR: that non-zero ack sets ``CSRNG_ACK_ERR``. Control: the bit
@@ -2005,12 +2073,12 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             not reason and acmd13 == 1 and done == 1 and enable == 1 and vec27 == 1,
             **inv,
         )
-        self.chk.obs(
+        self.chk.info(
             "EDN-STS",
             cmd_sts=self._edn_first_sts,
             word=f"0x{CMD_INSTANTIATE:x}",
             auto_req_mode="false",
-            reason="success_stated_only_with_auto_req_mode_true",
+            graded="none",
         )
         await self._release()
 
@@ -2019,9 +2087,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         bound = BOUND_FACTOR * t_cmd
         first = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
         self.chk.ctrl("EDN-INVSEQ", first == 0, ctrl_first_invseq=first)
-        # The second instantiate runs with the coverage window closed: no stated value
-        # grades its acknowledge. The window opens for the bit 14 read and clear only
-        # once that acknowledge has been read back.
+        # The second instantiate runs with the coverage window closed. The window
+        # opens for the bit 14 read and clear only when the first SW_CMD_STS read
+        # after bit 14 shows CMD_ACK; the CMD_ACK wait of the status checks does not
+        # open it.
         rdy_mask = ED_STS_REG_RDY | ED_STS_RDY
         invseq = 0
         cleared = 0
@@ -2035,6 +2104,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             "pre_hw_exc": await r._rd(CSRNG_HW_EXC_STS),
             "pre_hw_inst_exc": int(bool(await r._rd(CSRNG_INTR_STATE) & CS_HW_INST_EXC)),
         }
+        # CSRNG_ACK_ERR written 0 and read back, so a 1 after the command comes from
+        # its acknowledge ("Writing a zero resets this status bit.", edn.hjson:543).
+        await r._wr(EDN_RECOV_ALERT_STS, 0)
+        pre_ack_err = int(bool(await r._rd(EDN_RECOV_ALERT_STS) & ED_ACK_ERR))
+        self.chk.ctrl("EDN-INVSEQ-ACK-ERR", pre_ack_err == 0, ctrl_pre_ack_err=pre_ack_err)
         try:
             await self._wait(EDN_SW_CMD_STS, rdy_mask, rdy_mask, bound, "edn_rdy2")
             await r._wr(EDN_SW_CMD_REQ, CMD_INSTANTIATE)
@@ -2045,20 +2119,30 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         sts = await r._rd(EDN_SW_CMD_STS)
+        ack_first = bool(sts & ED_STS_ACK)
+        # CMD_STS is checked once CMD_ACK reads 1 (edn.hjson:359-363).
+        ack_reason = ""
+        if not ack_first and not reason:
+            try:
+                _, sts = await self._wait(EDN_SW_CMD_STS, ED_STS_ACK, ED_STS_ACK, bound, "edn_ack2")
+            except TrialTimeout as exc:
+                ack_reason = f"timeout:{exc.what} bound={exc.bound}"
         hw_exc = await r._rd(CSRNG_HW_EXC_STS)
         hw_inst_exc = int(bool(await r._rd(CSRNG_INTR_STATE) & CS_HW_INST_EXC))
-        self.chk.obs(
+        cmd_ack = int(bool(sts & ED_STS_ACK))
+        cmd_sts = _field(sts, ED_STS_STS)
+        ack_err = int(bool(await r._rd(EDN_RECOV_ALERT_STS) & ED_ACK_ERR))
+        self.chk.info(
             "EDN-INVSEQ",
-            cmd_ack=int(bool(sts & ED_STS_ACK)),
-            cmd_sts=_field(sts, ED_STS_STS),
-            ack_err=int(bool(await r._rd(EDN_RECOV_ALERT_STS) & ED_ACK_ERR)),
+            graded="none",
+            cmd_ack_first=int(ack_first),
             hw_exc=f"0x{hw_exc:x}",
             hw_inst_exc=hw_inst_exc,
             vec25=self.vec.level("cs_exc"),
             cmd_rdy_after=int(bool(sts & ED_STS_RDY)),
         )
         await self._main_sm("edn_invseq")
-        if sts & ED_STS_ACK:
+        if ack_first:
             open_graded_window(TEST, self.logger)
         set_before_clear = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
         await r._wr(CSRNG_RECOV_ALERT_STS, 0)
@@ -2078,6 +2162,30 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             "EDN-INVSEQ",
             not reason and invseq == 1 and set_before_clear == 1 and cleared == 1,
             **fields,
+        )
+        sts_reason = reason or ack_reason
+        sts_fields = {
+            "word": f"0x{CMD_INSTANTIATE:x}",
+            "cmd_ack": cmd_ack,
+            "cmd_ack_first": int(ack_first),
+            "csrng_invseq": invseq,
+        }
+        if sts_reason:
+            sts_fields["reason"] = sts_reason
+        self.chk.ok(
+            "EDN-INVSEQ-STS",
+            not sts_reason and cmd_ack == 1 and cmd_sts == STS_INVALID_CMD_SEQ,
+            cmd_sts=cmd_sts,
+            expected_sts=STS_INVALID_CMD_SEQ,
+            **sts_fields,
+        )
+        self.chk.ok(
+            "EDN-INVSEQ-ACK-ERR",
+            not sts_reason and cmd_ack == 1 and ack_err == EXP_ACK_ERR,
+            ack_err=ack_err,
+            expected=EXP_ACK_ERR,
+            ctrl_pre_ack_err=pre_ack_err,
+            **sts_fields,
         )
         await self._release()
         await self._hw_exc_grade(exc_pre, hw_exc, hw_inst_exc, invseq, reason)
@@ -2154,7 +2262,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             m = self.vec.mark()
             await r._wr(CSRNG_CMD_REQ, CMD_INSTANTIATE)
             ack0 = await r._rd(CSRNG_SW_CMD_STS)
-            self.chk.obs("CSRNG-ACK0", ack_first_read=int(bool(ack0 & CS_STS_ACK)))
+            self.chk.info("CSRNG-ACK0", ack_first_read=int(bool(ack0 & CS_STS_ACK)), graded="none")
             _, done = await self._wait(CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "ack")
             t_cmd = max(self._now() - t_wr, 1)
             hs["ack"] = int(bool(done & CS_STS_ACK))
@@ -2166,7 +2274,15 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             ent = int(bool(state & CS_ENTROPY_REQ))
             hs["vec_clk"] = await self._wait_vec(m, "cs_done", VEC_CAP)
             hs["vec23"] = 1
-            self.chk.obs("CSRNG-STS", cmd_sts=_field(done, CS_STS_STS), t_cmd=t_cmd)
+            cmd_sts = _field(done, CS_STS_STS)
+            self._grade(
+                "CSRNG-STS",
+                cmd_sts == STS_SUCCESS,
+                word=f"0x{CMD_INSTANTIATE:x}",
+                cmd_sts=cmd_sts,
+                expected_sts=STS_SUCCESS,
+                t_cmd=t_cmd,
+            )
             await self._main_sm("csrng_inst_ack")
             await r._wr(CSRNG_INTR_STATE, CS_DONE)
             # Control: bit 14 is 0 after the first command.
@@ -2191,10 +2307,19 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             hs["vec_clk2"] = await self._wait_vec(m2, "cs_done", VEC_CAP)
             hs["vec23_2"] = 1
             sts = await r._rd(CSRNG_SW_CMD_STS)
-            self.chk.obs(
-                "CSRNG-INVSEQ",
+            self._grade(
+                "CSRNG-INVSEQ-STS",
+                _field(sts, CS_STS_STS) == STS_INVALID_CMD_SEQ,
+                word=f"0x{CMD_INSTANTIATE:x}",
                 cmd_sts=_field(sts, CS_STS_STS),
+                expected_sts=STS_INVALID_CMD_SEQ,
+                invseq=invseq,
+                done2=hs["done2"],
+            )
+            self.chk.info(
+                "CSRNG-INVSEQ",
                 hw_exc=f"0x{await r._rd(CSRNG_HW_EXC_STS):x}",
+                graded="none",
             )
             await self._main_sm("csrng_invseq")
             await r._wr(CSRNG_RECOV_ALERT_STS, 0)
@@ -2434,11 +2559,18 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         reason = ""
         try:
             # The first instantiate runs with the window closed: no check of this leg
-            # grades its handshake or its cs_cmd_req_done.
+            # grades its cs_cmd_req_done.
             t_cmd, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), FIRST_CAP, step)
             bound = BOUND_FACTOR * t_cmd
             recov = await r._rd(CSRNG_RECOV_ALERT_STS)
-            self.chk.obs("CSRNG-HDR-INS", flag0="0x9", cmd_sts=sts, t_cmd=t_cmd)
+            self._grade(
+                "CSRNG-HDR-INS",
+                sts == STS_SUCCESS,
+                flag0="0x9",
+                cmd_sts=sts,
+                expected_sts=STS_SUCCESS,
+                t_cmd=t_cmd,
+            )
             self.chk.ctrl(
                 "CSRNG-ACMD-INV", not recov & CS_ACMD_INV, recov=f"0x{recov:x}", after="instantiate"
             )
@@ -2460,20 +2592,41 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await self._live_probe(uni, "f6", bound)
             step = "uninst1"
             _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
-            self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="acmd_inv")
+            if uni["live_f6"] == 1:
+                self._grade(
+                    "CSRNG-UNINST-STS",
+                    sts == STS_SUCCESS,
+                    word=f"0x{cmd_word(ACMD_UNINSTANTIATE):x}",
+                    cmd_sts=sts,
+                    expected_sts=STS_SUCCESS,
+                    after="acmd_inv",
+                    live=uni["live_f6"],
+                )
+            else:
+                self.chk.blocked(
+                    "CSRNG-UNINST-STS",
+                    f"instance_not_shown_instantiated live_f6={uni['live_f6']} cmd_sts={sts}",
+                )
             uni["raw_uni_f6"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
             uni["pre_f6"] = await self._invseq_pre()
             step = "ins_f6"
             _, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE, flag0=MUBI_TRUE), bound, step)
             recov = await r._rd(CSRNG_RECOV_ALERT_STS)
             uni["post_f6"] = int(bool(recov & CS_INVSEQ))
-            self.chk.obs("CSRNG-HDR-INS", flag0="0x6", cmd_sts=sts, recov=f"0x{recov:x}")
+            self._grade(
+                "CSRNG-HDR-INS",
+                sts == STS_SUCCESS,
+                flag0="0x6",
+                cmd_sts=sts,
+                expected_sts=STS_SUCCESS,
+                recov=f"0x{recov:x}",
+            )
             self.chk.ctrl(
                 "CSRNG-FLAG0", not recov & CS_FLAG0_INV, flag0="0x6", recov=f"0x{recov:x}"
             )
             step = "uninst2"
             _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
-            self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="ins_f6")
+            self.chk.info("CSRNG-UNINST", cmd_sts=sts, after="ins_f6", graded="none")
             # Instantiate with an invalid flag0: bit 4.
             step = "ins_fbad"
             word = cmd_word(ACMD_INSTANTIATE, flag0=plan.bad_flag0)
@@ -2500,13 +2653,15 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await self._live_probe(uni, "f9b", bound)
             step = "uninst3"
             _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
-            self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="ins_fbad")
+            self.chk.info("CSRNG-UNINST", cmd_sts=sts, after="ins_fbad", graded="none")
             uni["raw_uni_f9b"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
             uni["pre_f9b"] = await self._invseq_pre()
             step = "ins_f9b"
             _, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), bound, step)
             uni["post_f9b"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
-            self.chk.obs("CSRNG-HDR-INS", flag0="0x9", cmd_sts=sts, after="ins_fbad")
+            self.chk.info(
+                "CSRNG-HDR-INS", flag0="0x9", cmd_sts=sts, after="ins_fbad", chk="CHK-CSRNG-FLAG0"
+            )
             flag0["legal_ins_sts"] = sts
             recov = await r._rd(CSRNG_RECOV_ALERT_STS)
             flag0["set_before_clear"] = int(bool(recov & CS_FLAG0_INV))
@@ -2570,7 +2725,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             try:
                 step = "uninst4"
                 _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
-                self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="flag0_clear")
+                self.chk.info("CSRNG-UNINST", cmd_sts=sts, after="flag0_clear", graded="none")
                 step = "ins_fbad2"
                 await self._sw_cmd(word, bound, step, wait_ack=False)
                 await self._wait(
@@ -2739,8 +2894,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 sw_app_enable=f"0x{plan.gen_off:x}",
             )
             gate["genbits"] = [f"0x{await r._rd(CSRNG_GENBITS):x}" for _ in range(4)]
-            self.chk.obs(
+            self.chk.info(
                 "CSRNG-GENBITS-GATE",
+                graded="none",
                 genbits_vld_after=await r._rd(CSRNG_GENBITS_VLD) & GB_VLD,
                 sw_app_read_en=f"0x{self.rd(cocotb.top.csrng_sw_app_read_en_o):02x}",
                 lc_hw_debug_en=f"0x{self.rd(cocotb.top.csrng_lc_hw_debug_en_o):x}",
@@ -3060,22 +3216,22 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         )
 
     async def _uninst_refuse_leg(self) -> None:
-        """OBS-CSRNG-UNINST-STATE before and after an Uninstantiate of the
+        """INFO-CSRNG-UNINST-STATE before and after an Uninstantiate of the
         instantiated software instance, then the refused Generate of
         CHK-CSRNG-UNINST-REFUSE leg ``after_uninstantiate``."""
-        await self._int_state_obs("pre")
+        await self._int_state_log("pre")
         try:
             _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), FIRST_CAP, "refuse_uni")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
             self.chk.ok("CSRNG-UNINST-REFUSE", False, leg="after_uninstantiate", reason=reason)
             return
-        self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="kat")
-        await self._int_state_obs("post")
+        self.chk.info("CSRNG-UNINST", cmd_sts=sts, after="kat", graded="none")
+        await self._int_state_log("post")
         await self._refused_generate("after_uninstantiate")
 
-    async def _int_state_obs(self, phase: str) -> None:
-        """OBS-CSRNG-UNINST-STATE at ``phase``: with ``CTRL.READ_INT_STATE`` True,
+    async def _int_state_log(self, phase: str) -> None:
+        """INFO-CSRNG-UNINST-STATE at ``phase``: with ``CTRL.READ_INT_STATE`` True,
         the INT_STATE_WORDS ``INT_STATE_VAL`` reads of each ``INT_STATE_NUM`` index
         (written, then read back). ``CTRL`` returns to ``CSRNG_CTRL_ON`` after."""
         r = self.reg
@@ -3085,7 +3241,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await r._wr(CSRNG_INT_STATE_NUM, idx)
             num_rb = await r._rd(CSRNG_INT_STATE_NUM)
             words = [await r._rd(CSRNG_INT_STATE_VAL) for _ in range(INT_STATE_WORDS)]
-            self.chk.obs(
+            self.chk.info(
                 "CSRNG-UNINST-STATE",
                 phase=phase,
                 idx=idx,
@@ -3094,6 +3250,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 digest=word_digest(words),
                 sw_app_read_en=f"0x{self.rd(top.csrng_sw_app_read_en_o):02x}",
                 lc_hw_debug_en=f"0x{self.rd(top.csrng_lc_hw_debug_en_o):x}",
+                graded="none",
             )
         await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
 
@@ -3174,22 +3331,41 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
 
     # --- reserved acmd 0x9: the last leg ---------------------------------------------
     async def _acmd_hi_leg(self) -> None:
-        """OBS-CSRNG-ACMD-HI: after an instantiate, log the ``CMD_STS`` and
-        ``RECOV_ALERT_STS`` of the reserved acmd 0x9. Not graded: the CSRNG decodes
-        acmd bits [2:0] only, and no text states the result of 0x9."""
+        """CHK-CSRNG-ACMD-HI: after an instantiate, the reserved acmd 0x9 acks with
+        ``CMD_STS`` = INVALID_ACMD and sets ``RECOV_ALERT_STS`` bit 13. Control
+        (``CTRL-CSRNG-ACMD-HI``): the instantiate acks with ``CMD_STS`` = 0, and bit
+        13 reads 0 after a write of 0, before the 0x9 word. A FAIL is recorded and
+        the later legs still run."""
         await self._clean_start("acmd_hi")
         word = cmd_word(ACMD_RESERVED_HI)
-        hi = {"word": f"0x{word:x}", "cmd_sts": "na", "recov": "na"}
+        hi: dict = {"word": f"0x{word:x}", "cmd_sts": "na", "acmd13": "na", "recov": "na"}
         step = "ins"
         try:
-            t_cmd, _ = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), FIRST_CAP, step)
+            t_cmd, sts_ins = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), FIRST_CAP, step)
+            await self.reg._wr(CSRNG_RECOV_ALERT_STS, 0)
+            pre = await self.reg._rd(CSRNG_RECOV_ALERT_STS)
+            self.chk.ctrl(
+                "CSRNG-ACMD-HI",
+                sts_ins == STS_SUCCESS and not pre & CS_ACMD_INV,
+                ins_cmd_sts=sts_ins,
+                pre_acmd13=int(bool(pre & CS_ACMD_INV)),
+                pre_recov=f"0x{pre:x}",
+            )
             step = "acmd_hi"
             _, sts = await self._sw_cmd(word, BOUND_FACTOR * t_cmd, step)
+            recov = await self.reg._rd(CSRNG_RECOV_ALERT_STS)
             hi["cmd_sts"] = sts
-            hi["recov"] = f"0x{await self.reg._rd(CSRNG_RECOV_ALERT_STS):x}"
+            hi["acmd13"] = int(bool(recov & CS_ACMD_INV))
+            hi["recov"] = f"0x{recov:x}"
         except TrialTimeout as exc:
             hi["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
-        self.chk.obs("CSRNG-ACMD-HI", **hi)
+        self.chk.ok(
+            "CSRNG-ACMD-HI",
+            "reason" not in hi and hi["cmd_sts"] == STS_INVALID_ACMD and hi["acmd13"] == 1,
+            **hi,
+            expected_sts=STS_INVALID_ACMD,
+            expected_acmd13=1,
+        )
 
     async def _enable_order_leg(self) -> None:
         """INFO-DRBG-ENABLE-ORDER: EDN on first, then CSRNG, then ESRC, and one EDN

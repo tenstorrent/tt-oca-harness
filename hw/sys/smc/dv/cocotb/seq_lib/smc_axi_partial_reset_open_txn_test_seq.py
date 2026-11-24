@@ -16,10 +16,12 @@ SCRATCH_COLD and SYS_OUT writes stay open across the warm edge on cold-domain
 targets; no SCRATCH_COLD_WARM access is open across it. Their outcome and the
 post-release response codes are measured, never compared (ruling #3341).
 
-The bench's own-domain checkers (u_cpu_mmio_uncore_rst_axi_sva on the cluster
-uncore reset, u_misc_warm_axil_sva on the misc wrapper's warm reset) grade the
-reset rules and flush their tracking on those resets; the ten primary-reset
-checkers keep the open transactions tracked across both. Leg A leaves both
+The bench's own-domain checkers grade the reset rules on those resets:
+u_cpu_mmio_uncore_rst_axi_sva (the cluster uncore reset) grades the master
+rules and keeps its tracking, since the fabric is outside that reset;
+u_misc_warm_axil_sva (the misc wrapper's warm reset) grades both sides and
+flushes its tracking. The ten primary-reset checkers keep the open
+transactions tracked across both. Leg A leaves both
 own-domain resets high: the MMIO port stays connected and its uncore-domain
 checker keeps grading it while core 0 is held. Leg B takes both low. Rule fires
 are $error lines in the simulator log. The bench's shadow of the own-domain

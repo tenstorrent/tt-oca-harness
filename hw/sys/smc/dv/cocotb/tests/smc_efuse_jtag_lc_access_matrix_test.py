@@ -69,7 +69,7 @@ from smc_base_test import smc_base_test
 from smc_efuse_jtag_lc_image import word_index, write_unlocked_image
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
-EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
 
 # Non-identity address class (RAND-REP): the seed draws, per lifecycle image, the register the

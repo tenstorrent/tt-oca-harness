@@ -60,7 +60,8 @@ module efuse_read_interface #(
                                                   // waiting for the response.
   input  fuse_command_resp_t fuse_command_resp_i,  // Filtered response to the read command.
 
-  output logic is_read_timeout_debug_o  // One-cycle pulse when a read operation times out.
+  output logic is_read_timeout_debug_o,  // One-cycle pulse when a read operation times out.
+  output logic [1:0] state_debug_o       // Read FSM state: 01 idle, 10 waiting for response.
 );
 
   localparam fuse_command_req_t FuseCommandReqDefault = '0;
@@ -81,6 +82,8 @@ module efuse_read_interface #(
 
 
   efuse_read_state_e read_state_q, read_state_d;
+
+  assign state_debug_o = read_state_q;
 
   logic read_err_q, read_err_d;
   logic read_done_q, read_done_d;

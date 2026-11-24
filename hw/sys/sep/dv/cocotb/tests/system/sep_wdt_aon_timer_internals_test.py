@@ -1239,7 +1239,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             bite_pre,
         )
         self.logger.info(
-            "OBS-WDT-LOCK-RESP: locked-write response WDOG_BARK_THOLD=%d WDOG_BITE_THOLD=%d; "
+            "INFO-WDT-LOCK-RESP: locked-write response WDOG_BARK_THOLD=%d WDOG_BITE_THOLD=%d; "
             "the specification states no response code, not graded",
             resp,
             resp_bite,

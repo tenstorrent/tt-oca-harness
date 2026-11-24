@@ -46,12 +46,16 @@ bit exempt for the same clock and the six bits with an unstated idle level left
 out (``env/sep_bit_watch.pic_vector_watch``); no document states that no other
 source moves.
 
-Checkers: CHK-BIND, CHK-FAULT-CELL, CHK-SRC40-RISE, CHK-FAULT-STICKY,
+Checkers: CHK-FAULT-CELL, CHK-SRC40-RISE, CHK-FAULT-STICKY,
 CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-FAULT-RESET-WORDS, CHK-LATCH-FREEZE.
-CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
+CTRL-LATCH-GO-REACH (each freeze cell): the token array reads back the frozen
+token and the go write under the freeze completes OKAY, so an unchanged digest is
+not a go that never reached the channel; a miss logs ``CHK-HOOK FAIL`` and ends the
+leaf. CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
 cell and prints their digest beside the digest of the expected token (the words
 are secret); it also fails when an expected word is 0, since a cleared word would
-read the same. Controls: CTRL-SEC-DIS-MATCH
+read the same. Controls: CTRL-BIND (the SHA-256 of 32 zero bytes equals the bench
+SEC_DIS digest), CTRL-SEC-DIS-MATCH
 (code ``0x15`` and ``security_disable_o`` 1) and CTRL-SEC-DIS-DROP (code ``0x2a``
 and ``security_disable_o`` 0), before each cell that uses the SEC_DIS channel. A
 common-mode cell logs the N/A line of the three fault-only checkers. A failing hook control logs
@@ -106,7 +110,7 @@ from env.sep_efuse_plan import (
     token_words,
     write_token,
 )
-from env.sep_efuse_test_lib import SepEfuseFd, chk_bind, hook_fail, sig_bits
+from env.sep_efuse_test_lib import SepEfuseFd, ctrl_bind, hook_fail, sig_bits
 from env.sep_fabric_common import RESP_NAME
 from env.sep_fcov_gate import (
     close_graded_window,
@@ -239,7 +243,6 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
     """Comparator copy faults, common-mode flips and the digest latch freeze."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-FAULT-CELL",
         "CHK-SRC40-RISE",
         "CHK-FAULT-STICKY",
@@ -730,6 +733,22 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         dig_f, val_f, _te = self._latch(ch)
         readback = [await self.fd.rd(a) for a in TOKEN_ARRAY_ADDR[ch]]
         rb_ok = readback == token_words(tok_b)
+        # The frozen digest proves no update only if the token and the go reached the
+        # channel: the array reads back token B, and the go write completed OKAY.
+        go_done = int(not go.timed_out)
+        go_resp = RESP_NAME.get(-1 if go.timed_out else int(go.resp_code), str(go.resp_code))
+        if not self.chk.ctrl(
+            "LATCH-GO-REACH",
+            rb_ok and go_done and go_resp == "OKAY",
+            ch=_CH_NAME[ch],
+            readback_b=int(rb_ok),
+            go_done=go_done,
+            go_resp=go_resp,
+        ):
+            getattr(dut, _TE_INJECT[ch]).value = 0
+            hook_fail(
+                self.chk, reason="latch_go_reach", ch=_CH_NAME[ch], go_done=go_done, go_resp=go_resp
+            )
 
         getattr(dut, _TE_INJECT[ch]).value = 0
         await ClockCycles(dut.clk_i, 2)
@@ -786,7 +805,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         faults = p.leg["faults"]
         order = p.leg["cell_order"]
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
         self.sdis_ctl_seen = False
         self.graded_fail = False
         self.cell_idx = 0

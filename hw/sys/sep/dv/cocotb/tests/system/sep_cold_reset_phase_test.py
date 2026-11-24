@@ -50,9 +50,10 @@ which is on a ``clk_i`` edge, so it is not graded. ``CTRL-RST-OFFEDGE`` logs
 the measured offset from the nearest ``clk_i`` edge of the ``rst_ni`` release
 (control pass) and of the ``ext_boot_seq_done_i`` rise (graded pass); in the
 graded pass an offset within the edge allowance fails the leaf, because
-CHK-RST-SYNC could not then fail. ``OBS-RST-ASSERT`` logs the delay from the
+CHK-RST-SYNC could not then fail. ``INFO-RST-ASSERT`` logs the delay from the
 ``rst_ni`` fall to the ``sep_reset_n`` fall; the specification gives no
-assertion timing, so it is not graded. ``OBS-RST-MIN-WIDTH`` logs the width
+assertion timing for the synchronizer into ``sep_intermediate_reset_n``, and
+no tap isolates the output stage, so it is not graded. ``INFO-RST-MIN-WIDTH`` logs the width
 of the pulse below the floor, whether ``sep_reset_n`` fell and rose, whether
 ``sep_fuse_sense_done_o`` fell, and both levels ``_SEP_BOUND``
 ``clk_i`` cycles after the release; the specification states no minimum
@@ -286,7 +287,7 @@ class sep_cold_reset_phase_test(sep_base_test):
         )
         clk_between = sum(1 for t in self.edges.edge_times("clk_i") if t_fall < t <= sep_falls[0])
         self.logger.info(
-            "OBS-RST-ASSERT: pass=%s third=%s rst_ni fell t=%d sep_reset_n fell t=%d delta=%d "
+            "INFO-RST-ASSERT: pass=%s third=%s rst_ni fell t=%d sep_reset_n fell t=%d delta=%d "
             "clk_edges_between=%d",
             pass_name,
             self.third if pass_name == "graded" else "-",
@@ -507,7 +508,7 @@ class sep_cold_reset_phase_test(sep_base_test):
         sep_end = self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True)
         sense_end = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
         self.logger.info(
-            "OBS-RST-MIN-WIDTH: width=%d floor=%d rst_ni fell t=%d released t=%d "
+            "INFO-RST-MIN-WIDTH: width=%d floor=%d rst_ni fell t=%d released t=%d "
             "sep_reset_n_fell=%d sep_reset_n_fall_delta=%s sep_reset_n_rose=%d "
             "sense_done_fell=%d sep_reset_n_end=%s sense_done_end=%s window_clk=%d",
             self.sub_w,

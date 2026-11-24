@@ -877,18 +877,17 @@ class sep_sec_dis_override_test(sep_base_test):
           ``security_disable_i`` input "skips fuse sensing and opens the shadow
           registers to software". Fuse field table: REQUIRED_SIGNERS is "SW
           writable true"; sep_efuse_map.rdl: ``required_signers`` is
-          ``sw = rw; onwrite = woset`` with reset 0, and the LOCKS bits reset to
+          ``sw = rw`` with reset 0, and the LOCKS bits reset to
           0. These lines state the shadow write after sense; no SEP line states
           it before sense under SEC_DIS.
         * LC_STATE: lifecycle_controller.adoc says the shadow output holds the
           INVALID encoding 4'b1111 before sensing, and "Invalid lifecycle
           encodings are terminal" (otp_fuse_controller.adoc, LC_STATE row);
-          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. Every
-          text leaves that word unchanged: ``lc_state`` is ``sw = r``
-          (sep_efuse_map.rdl:573-577); "LC_STATE bits can only be set" and an
+          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. The
+          lifecycle text leaves that word unchanged: "LC_STATE bits can only be set" and an
           INVALID encoding is "permanent" (lifecycle_controller.adoc:87, :90),
           and raw 4'b1111 has no bit left to set; "Invalid lifecycle encodings
-          are terminal" (otp_fuse_controller.adoc:220-224). CHK-SECDIS-LC-WR
+          are terminal" (otp_fuse_controller.adoc:228-229). CHK-SECDIS-LC-WR
           grades the JTAG readback after the write as the RDL reset word
           0x0000000f. No text states the JTAG write response, so
           OBS-SECDIS-LC-WR logs it without a verdict.
@@ -906,8 +905,10 @@ class sep_sec_dis_override_test(sep_base_test):
         verdict.
 
         CTRL-SECDIS-JTAG-WR-REACH: the REQUIRED_SIGNERS write, sent on the same
-        JTAG port in the same window just before the LC_STATE write, sets its
-        bit, and the LC_STATE write completes. So a JTAG shadow write reaches the
+        JTAG port in the same window just before the LC_STATE write, writes the
+        word read before it with one more ``required_signers`` bit set; the
+        readback after it equals that written word, and the LC_STATE write
+        completes. So a JTAG shadow write reaches the
         shadow map in this state, and the unchanged LC_STATE word of
         CHK-SECDIS-LC-WR is a write that arrived and did not change the word. The
         two write responses stay logged only.
@@ -925,8 +926,15 @@ class sep_sec_dis_override_test(sep_base_test):
         lc_addr = SepEfuseImage.field("LC_STATE").shadow_addr
         _width, rs_fields = register_fields(rs_addr)
         rs_field = next(f for f in rs_fields if f.name == "required_signers")
-        assert rs_field.one_to_set and rs_field.reset is not None, (
-            "test bug: REQUIRED_SIGNERS.required_signers is not woset with a reset in the RDL"
+        # rs_pre | (1 << rs_bit) sets the bit under plain read-write and under
+        # write-1-to-set; any other write modifier makes the control meaningless.
+        assert (
+            rs_field.access == "read-write"
+            and rs_field.write_modifier in (None, "oneToSet")
+            and rs_field.reset is not None
+        ), (
+            "test bug: REQUIRED_SIGNERS.required_signers is not plain read-write or "
+            "write-1-to-set with a reset in the RDL"
         )
         rs_reset = sum((f.reset or 0) << f.lsb for f in rs_fields)
         free = rs_field.mask & ~rs_reset
@@ -951,7 +959,8 @@ class sep_sec_dis_override_test(sep_base_test):
 
         self._require_sense_open("CTRL-SECDIS-SHADOW-WR", sec_dis=1)
         event = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
-        rs_resp, _ = await self.jtag_axil_op(write=True, addr=rs_addr, wdata=1 << rs_bit)
+        rs_wdata = rs_pre | (1 << rs_bit)
+        rs_resp, _ = await self.jtag_axil_op(write=True, addr=rs_addr, wdata=rs_wdata)
         lc_wdata = (lc_pre & ~LC_FIELD_MASK & _M32) | lc_new
         lc_resp, _ = await self.jtag_axil_op(write=True, addr=lc_addr, wdata=lc_wdata)
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
@@ -971,10 +980,10 @@ class sep_sec_dis_override_test(sep_base_test):
             rs_resp,
             rs_pre,
             rs_post,
-            int(rs_post == rs_pre | (1 << rs_bit)),
+            int(rs_post == rs_wdata),
         )
 
-        rs_landed = rs_post == rs_pre | (1 << rs_bit)
+        rs_landed = rs_post == rs_wdata
         if not rs_landed:
             raise AssertionError(
                 f"CTRL-SECDIS-JTAG-WR-REACH FAIL: the JTAG write of REQUIRED_SIGNERS bit {rs_bit} "

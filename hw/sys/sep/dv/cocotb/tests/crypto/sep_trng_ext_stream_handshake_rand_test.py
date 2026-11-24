@@ -577,7 +577,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             set_xhs_pass(0, self.logger)
             close_graded_window(self.logger)
             if self.sb is not None:
-                self.sb.stop()
+                await self.sb.stop()
         await self.ext.stop()
         await self.trace.stop()
         self.chk.finish()
@@ -651,7 +651,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         """
         dut = cocotb.top
         if self.sb is not None:
-            self.sb.stop()
+            await self.sb.stop()
             self.sb = None
         await self.swrst.park("trng")
         rise = await self._wait_probe(dut.trng_reset_active_probe_o, False, "trng reset rise")
@@ -1234,7 +1234,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         close_graded_window(self.logger)
         # The plan holds the select with the bit of the stream cleared after this leg.
         await self._sel(resel)
-        self.sb.stop()
+        await self.sb.stop()
         self.sb = None
 
     async def _drain(self, i: int) -> int:
@@ -1412,8 +1412,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
     async def _lock_leg(self) -> None:
         """CHK-SEL-LOCK: after the lock write of 1, a write of 0 leaves it at 1, a
         select write leaves the old value, and a TRNG reset leaves the lock at 1. The
-        select write under the lock must get a B response of any code; no text states
-        that code, so it is logged as OBS-SEL-LOCK-RESP.
+        select write under the lock must get a B response of any code; the code is
+        logged as INFO-SEL-LOCK-RESP and is not graded.
         Controls: the pre-lock write of a lands and a differs from the value held
         before it (the plan draws a away from that value); the TRNG reset probe rises
         and falls (clocks logged)."""
@@ -1433,7 +1433,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         write0_bresp = resp_name(self.reg.bresp)
         kept = await self._sel(plan.b, locked=True)
         sel_b = self.reg.bresp
-        self.chk.obs("SEL-LOCK-RESP", leg="lock", sel_write_bresp=resp_name(sel_b))
+        self.chk.info(
+            "SEL-LOCK-RESP", leg="lock", sel_write_bresp=resp_name(sel_b), chk="CHK-SEL-LOCK"
+        )
         rise, fall = await self._trng_reset()
         self._ctrl(
             "SEL-LOCK",
@@ -1481,14 +1483,19 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _lockfirst_leg(self) -> None:
         """CHK-SEL-LOCKFIRST: with the lock set before any select write, a select write
-        leaves the select at 0x7. That write must get a B response of any code; no
-        text states the code, so it is logged as OBS-SEL-LOCK-RESP.
+        leaves the select at 0x7. That write must get a B response of any code; the
+        code is logged as INFO-SEL-LOCK-RESP and is not graded.
         Control: after a rst_ni pulse a select write lands."""
         self._open()
         lock = await self._lock(LOCK_MASK)
         sel = await self._sel(0, locked=True)
         sel_b = self.reg.bresp
-        self.chk.obs("SEL-LOCK-RESP", leg="lockfirst", sel_write_bresp=resp_name(sel_b))
+        self.chk.info(
+            "SEL-LOCK-RESP",
+            leg="lockfirst",
+            sel_write_bresp=resp_name(sel_b),
+            chk="CHK-SEL-LOCKFIRST",
+        )
         close_graded_window(self.logger)
         await self._global_reset()
         lock_after = await self.reg._rd(LOCK_ADDR) & LOCK_MASK

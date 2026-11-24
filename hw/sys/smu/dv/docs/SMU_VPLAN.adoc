@@ -464,7 +464,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |===
 |Test |Leaf |Phase |Scenario
 |`smu_axi_alias_remap_manager_scope_test` |fabric |2 |SMU Tier A alias-remap (S3 LIVE)
-|`smu_axi_atomic_operation_test` |fabric |2 |non-ATOP SMN read completes (RID==ARID); ATOP not drivable, TB ties aw.atop low
+|`smu_axi_atomic_operation_test` |fabric |2 |non-ATOP SMN read completes (RID==ARID); ATOP is out by the `smu_axi_in` boundary contract, TB ties aw.atop low
 |`smu_axi_crossbar_error_handling_test` |fabric |2 |SMU_ALL_008 Option-B PWRGOOD-only
 |`smu_axi_filter_allow_ns_test` |fabric |2 |SMU Tier A allow_ns (SEP=1 J2A + s_axi)
 |`smu_axi_filter_in_instance_matrix_test` |fabric |2 |SMU Tier A inbound instance matrix
@@ -528,7 +528,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_jtag2axi_vs_smn_same_csr_race_test` |smu |3 |J2A vs SMN coherent winner
 |`smu_system_timer_octs_test` |smu |1 |SMU Tier C OCTS primary free-run
 |`smu_xtrig_ctm_illegal_phase_test` |smu |2 |pin-only illegal CTM corners
-|`smu_boundary_port_composition_test` |smu |2 |The SEP=1 SMU boundary ports are present at the widths the specifications state, the smu AXI ports carry 8-bit IDs in, 10-bit IDs out and 12-bit user fields on every channel, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP channels stay inert while their data inputs rest.
+|`smu_boundary_port_composition_test` |smu |2 |The SEP=1 SMU boundary ports are present at the widths the specifications state, the smu AXI ports carry 8-bit IDs in, 10-bit IDs out and 12-bit user fields on every channel, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, the SEP-side ID-width converter presents the 6-bit transaction ID the crossbar is stated to present to the SEP inbound subordinate, both converters take the 10-bit crossbar output ID the SMU datasheet states, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP channels stay inert while their data inputs rest.
 |`smu_composition_parameter_test` |smu |2 |The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 |`smu_smc_boundary_io_test` |smu |2 |The SMC-facing wrapper boundary signals that `port_table.adoc` declares are proved through the SMC register map or, for the external interrupts, the SMC CPU interrupt vector `interrupts.adoc` defines, each leg comparing a DUT-produced value against the contract.
 |`smu_smc_cool_reset_pin_test` |smu |3 |A seed-drawn pulse below the 32-sample de-glitcher on `rst_cool_n_from_pin_i` is filtered and a seed-drawn hold above it asserts the SMC primary reset; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
@@ -601,6 +601,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_smc_cold_boot_release_order_test` |smc |3 |Across two leaf-driven cold boots the stable power-good, the stable cold reset and the two primary resets hold, stretch and release as the SMC reset chapter states.
 |`smu_smc_cpu_ctrl_boot_state_test` |smc |3 |After boot the SMC CPU_CTRL registers read their documented reset values and the SMC_ATTRIBUTES fields decode the documented SMC configuration over JTAG2AXI.
 |`smu_smc_efuse_shadow_map_readback_test` |smc |3 |The words the SMC eFuse sense streams across the shim are the words the SMC eFuse map returns over JTAG2AXI, both equal the eFuse image the run loads, and the eFuse interface reports the sense done.
+|`smu_smc_efuse_supplementary_shadow_test` |smc |3 |35 sampled words of the SMC supplementary fuse window read over JTAG2AXI after the boot sense equal the stream words and the image words of the same index, all 128 supplementary stream words equal the image words, and SUPPLEMENTARY_LOCKS reads its image words.
 |`smu_smc_mailbox_aperture_layout_test` |smc |3 |The SMC mailbox apertures answer each register at its documented offset with per-aperture register state, and SMC_ATTRIBUTES reports 32 mailboxes of depth 2.
 |`smu_smc_mailbox_status_error_test` |smc |3 |Outbound mailbox 0 reports FIFO occupancy in STATUS, answers an empty read and a full write with SLVERR and the matching error flags, raises and drops its interrupt lane on enable and acknowledge, and refuses writes to its read-only registers.
 |`smu_smc_mailbox_threshold_lane_test` |smc |3 |The write-threshold interrupt of outbound mailbox 0 latches independently of IRQEN, reaches interrupt lane 0 only while enabled, returns to baseline on flush and acknowledge, and follows the clamped WIRQT threshold.
@@ -757,13 +758,13 @@ row's EXPECT sentence is worth, read the check.
 
 *Randomization*: RAND-REP. `random.Random(seed)` draws the ARID of the non-ATOP read from 1 to 0xFF; the stated outcome of every point is RID equal to ARID with OKAY.
 
-*Objective*: Prove a non-ATOP SMN read completes with RID==ARID; ATOP is not drivable here.
+*Objective*: Prove a non-ATOP SMN read completes with RID==ARID; ATOP is out by the `smu_axi_in` boundary contract.
 
 *Test Coverage*:
 
 * smu_axi_atomic_operation_test - non-ATOP SMN read path on the wrapper.
-* `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0`, the flat `s_axi` port list carries no ATOP pin, and the package has no ATOP driver, so no ATOP transaction reaches the DUT.
-* This test makes no claim about ATOP rejection; a green run here is not ATOP non-support credit.
+* `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the flat `ext_in` port list carries no ATOP pin, so no atomic reaches the DUT.
+* The `smu_axi_in` boundary contract (integrator guide, AXI boundary contract) requires `AWATOP` = 0 and the SMU neither refuses nor answers an atomic, so the leaf claims nothing about one.
 * What it proves: with the SMC aperture and an INBOUND0 window programmed over JTAG, a plain 32-bit read of `VERSION_LO` on the SMN path is answered OKAY with the register's reset value, and the RID sampled off the live R channel mirrors the ARID issued.
 * DECERR / err_slv poison deny semantics stay OUT for this leaf: the `smu_axi_in` boundary contract requires `AWATOP` = 0 and the SMU neither refuses nor answers an atomic, so no deny path exists to provoke.
 
@@ -1369,8 +1370,6 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 1800; tags `fabric`, `no_sep`, `smn`, `tier_c`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 3, so three seeds per regression); tool Verilator on `target = "compile_smu_chiplet"`.
 
-*Known limitation*: on VCS the leaf is RED on `OCAH_AXI_W_STRB_IN_LANES` from the AXI protocol checkers of `tb/tb_wrapper_top.sv`: the cocotb AXI master drives the write strobes of its narrow FIXED bursts on rotating byte lanes. The defect is in the bench master, not in the SMU; pull request #3448 fixes the master, and the leaf is GREEN with it. The leaf is not masked.
-
 *Randomization*: RAND-REP: the seed draws the ID set of the read train (sixty-four distinct ARIDs from the 8-bit ID width, with the all-zero and all-ones IDs, the minimum and maximum of the width, pinned into every drawn set), the write train running twice, once under each of the two pinned IDs as its one AWID and graded by `CHK-AXIIN-DEPTH-ORDER` each time, so both reach the inbound AWID; the burst shapes (the register-target INCR read and the INCR write each at AxLEN 1 or 3, two or four 32-bit beats, the lengths a WRAP burst admits inside the four CHIP_CONFIG registers and the first four SCRATCH_COLD words, the WRAP read at VERSION_LO and the FIXED write at SCRATCH_COLD each at the address, length and size of its INCR control), graded by `CHK-AXIIN-BURST` and `CHK-AXIIN-BURST-FIXED`; and the position of the unsupported-burst step on the inbound port (before the read train, between the trains or after the write trains), the read train returning the VERSION_LO reset value under every drawn ID and each write train leaving its last word as `CHK-AXIIN-DEPTH` and `CHK-AXIIN-DEPTH-ORDER` compare them. The eight-beat INCR burst into the SPM and the SPM size and address-walk cells keep their shapes; the outbound responder delays stay with `smu_axi_out_outstanding_test`. Every drawn cell is logged at the draw and in the PASS line of the checker that grades it; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: The inbound SMN port carries several transfers in flight and refuses the burst types the register targets do not support.
@@ -1890,6 +1889,7 @@ response-order and ID checks of `smu_axi_in_random_id_stress_test`.
 * TRST pulse (reset_tap) clears DEBUG_CONTROL / boot-stall exports
 * fuse_reset releases after TRST clear
 * Sticky: re-assert stall without primary reset does not re-gate fuse_reset
+* After each fuse-reset release (bring-up, TRST clear, override low over the pad) the SMC CPU makes its first ROM request at word address 0x0000 (byte 0xC004_0000, inside 0xC004_0000..0xC005_FFFF) within the declared bound (`hw/sys/smc/doc/rom.adoc:9-10` and `:22-24`, `hw/sys/smc/doc/cpu.adoc:145`)
 
 *Test Procedure*:
 
@@ -1906,6 +1906,11 @@ response-order and ID checks of `smu_axi_in_random_id_stress_test`.
   gate and not a sense still in progress. After the stall clears, with the sense already done, the
   release must arrive within 256 `clk_smu` (the `prim_sync3` + sticky flop + 16-stage pipe path,
   not the sense latency) and stay released for 64 `clk_smu`.
+. Arm a per-`clk_smu` sampler of `smc_rom_read_count_o` and the ROM macro request before the bring-up;
+  per release leg require the first request (`en`=1, `wmode`=0) within 524288 `clk_smu` of the release at word address 0x0000, logging
+  the leg name and the measured latency; the bound is a test-declared liveness bound (32 x 4096
+  zero-fill writes at one per cycle, times 4) and the specification states none. The ROM reads seen
+  before the release edge are logged per leg (`OBS-NO-FETCH-WHILE-HELD`) and not graded.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -1927,8 +1932,11 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 |===
 |Checker |Description
 |`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 for 64 `clk_smu` with `smc_fuse_sense_done_o` high
-|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; with the sense already done, the release follows the clear within the gate path and stays released
+|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; with the sense already done, the release follows the clear within the gate path and stays released; in the cocotb view the per-`clk_smu` sampler times the release from the observed clear edge and requires the gate to read 1 on every sampled edge from the release edge, at least 64 of them; the same timing and hold check, under the same label, also grades the override-low release over the driving pad, timed from the edge where the override stops reading 1
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert sticky
+|`CHK-FIRST-FETCH-AFTER-RELEASE` |Cocotb view only: per release leg the first ROM macro request (`en`=1, `wmode`=0) arrives within 524288 `clk_smu` of the fuse-reset release at word address 0x0000 (byte 0xC004_0000, inside the 128 KiB ROM window); one line per leg with the measured latency
+|`CHK-NONVAC` |Cocotb view only: the fence labels the legs and the first-fetch checks append are compared, in order, against the expected list (bring-up, cold+stall hold, TRST-clear release, sticky re-assert, pad-only hold, both-sources hold, override-low release, one first-fetch line per leg), and their timestamps must be ordered
+|`CHK-TIMEOUT-PATHS` |Cocotb view only: the sense-done, gate-release and first-fetch waits each name a finite bound and log their last state on expiry; one first-fetch wait finished per leg and none expired
 |`CHK-STALL-BASELINE` |SV-UVM shape only (`--framework uvm`): after the TAP reset the fuse reset is released, the sense is done and the stall override idle
 |`CHK-DEBUG-CONTROL-READBACK` |SV-UVM shape only (`--framework uvm`): the written DEBUG_CONTROL image reads back on its four software-owned bits and on the SMC exports
 |`CHK-STALL-STICKY` |SV-UVM shape only (`--framework uvm`): `STALL_COLD_STICKY` in the SV-UVM shape: the stall exports survive the cold reset and the fuse reset reads 0 on every hold-window clock after the sense completes
@@ -1945,7 +1953,7 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`. Under `--framework uvm` the SV-UVM rows above govern instead, and `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE` and `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` must each fail the run.
 
-*Scope limit*: None stated.
+*Scope limit*: The first-fetch checker is carried by the cocotb view only; the SV-UVM view does not carry it. No ROM read while the fuse reset alone holds the CPU is graded (the held window is logged only). The core that fetched is not identified, and the response word and the zero-fill completion order are not graded.
 
 '''''
 
@@ -3210,14 +3218,15 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 *Randomization*: RAND-NONE: directed, the leaf reads the elaborated port set passively (presence, width, idle value, CTP inertness and the sensed eFuse image) with a specification golden for every compare; nothing is drawn.
 
-*Objective*: The SEP=1 SMU boundary ports are present at the widths the specifications state, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP channels stay inert while their data inputs rest.
+*Objective*: The SEP=1 SMU boundary ports are present at the widths the specifications state, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, the SEP-side ID-width converter presents the 6-bit transaction ID the crossbar is stated to present to the SEP inbound subordinate, both converters take the 10-bit crossbar output ID the SMU datasheet states, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP channels stay inert while their data inputs rest.
 
 *Test Coverage*:
 
 * Every port read has a row in `hw/sys/smu/doc/port_table.adoc`, which gives presence, direction, type, width expression and, for the CTP channels, the "Tie to '0 if unused" note the inertness legs rest on.
 * Every width compare takes its expected value from a specification: the port table's literal widths (`lcc_demote_state_*_o` `[1:0]`, `ss_reset_ctrl_o` `[31:0]`, `skip_mem_repair_o` 1); `lc_state_o` as 8 bits (port table tie value `8'hf0`; `hw/sys/smc/doc/port_table.adoc` `lc_state_i` "(8 bits)"; `hw/sys/sep/doc/otp_fuse_controller.adoc` life-cycle state width 4); `XTRIG_NUM_CTP` = 16 from `doc/integrator/src/smu.adoc` "SMU Default Parameters"; 256 external interrupts from `hw/sys/smc/doc/port_table.adoc` `smc_ext_interrupts_i`; the 6-bit ID from that table's `sys_axi_in_req_i` row and `doc/integrator/src/smu-smc.adoc` "AXI Interface Configuration"; the `SS_CONFIG` width and reset value from the generated `hw/sys/smc/regs/gen/c/blocks/reset_unit.h`. `cocotb/seq_lib/smu_compose_helpers.py` names the source of each constant.
 * The ID and user fields of the smu AXI boundary ports: `doc/integrator/src/smu-composition.adoc` ("SMU AXI Crossbar Address Map") gives `smu_axi_in` 8-bit transaction IDs, `smu_axi_out` 10-bit transaction IDs and 12-bit user fields on all five channels. The bench exports `$bits` of every ID and user field of the `smu` ports (`obs_smu_axi_*_widths_o`), and the leaf compares each channel's width with the stated value.
-* The crossbar-side ID width of both ID-width converters and the SEP-side ID width have no specified value. They are logged as observations and not compared.
+* The SEP-side ID width: `doc/integrator/src/smu-composition.adoc` ("SMU AXI Crossbar Address Map") states that the crossbar presents 6-bit transaction IDs to the SEP and SMC inbound subordinates, so the subsystem-side width of the SEP ID-width converter is compared with 6, as the SMC one is under `CHK-SMU-EXT-SMN-S4`.
+* The crossbar-side ID width of both ID-width converters: `doc/datasheets/src/smu.adoc` ("At a glance", AXI IDs: 8-bit input; 10-bit crossbar output; 6-bit SMC/SEP target) states the 10-bit crossbar output ID, so the crossbar-side width of each converter is compared with 10 under `CHK-SMU-XBAR-OUT-ID-WIDTH`; the same row states the 6-bit SMC/SEP target width.
 * The idle-value compares read an output after bring-up against the value the specification gives for that state: `ss_config_o` equals the `SS_CONFIG` reset value, and `skip_mem_repair_o` is clear while no isolation request is pending (`smu.adoc`, memory repair: a cold reset without isolation executes repair), with the wrapper FLR pin sampled low as the precondition. Each can fail on a wrong idle value; neither distinguishes an undriven output from one driven to that value. Write-through of `SS_CONFIG` to `ss_config_o` and the FLR path onto `skip_mem_repair_o` are proven by `smu_smc_boundary_io_test`.
 * `smc_shadow_regs_o`: `port_table.adoc` types it `smc_efuse_pkg::efuse_map_t` and states no width, so the `smu_wrapper` port and the bench net are compared at width with the `smu` port. After `smc_fuse_sense_done_o` rises for the cold boot, the `smu` port, the `smu_wrapper` port and the bench net each carry the image `+smc_efuse_hex` names, fuse word `i` at shadow bits `32i+31..32i`; the image programs every bit, and the leaf requires it to program at least one, so a disconnected or narrowed wrapper port reads a zero where the image has a one.
 * The CTP data inputs are read at their resting level at the SMU boundary and at the DTP consumer. `smu_wrapper` passes them through; the bench, as the integrator the port table's "Tie to '0 if unused" note addresses, holds `req_in`, `ack_in` and `ack_out` at zero (`tb/tb_wrapper_top.sv` ties `ack_out`, and `req_in` and `ack_in` follow bench nets `smu_base_test` drives to zero; stand-in entry "CTP data-input tie-offs" in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`), and `req_out` sits on the bench's wire-OR board and rests at all ones, the pull-up of the active-low wire the generated header's `CONFIG.INVERT` reset of 0 selects, with no chiplet pulling. Every CTP output and the CTM boundary must then stay static at zero over the inert window; that leg is device-observed. A cross-trigger block held in reset, unclocked or disconnected would also stay static, so `smu_xtrig_ctp_pad_test` (<<sec-063-smu_xtrig_ctp_pad_test>>) is the live control for this leg: on the same bench a request on `xtrig_ctp_req_in_din_i[0]` raises `xtrig_ctp_ack_out_dout_o[0]` at the pads.
@@ -3226,7 +3235,7 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 [arabic]
 . Read each named port on the elaborated `smu` instance for its presence and its specified width.
-. Compare `$bits` of every ID and user field of `smu_axi_in` and `smu_axi_out` with the stated 8, 10 and 12 bits; read the subsystem-side ID width of the SMC ID-width converter and compare it with the specified 6-bit SMC system AXI input ID; log the two converters' crossbar-side and SEP-side ID widths without comparing them.
+. Compare `$bits` of every ID and user field of `smu_axi_in` and `smu_axi_out` with the stated 8, 10 and 12 bits; read the crossbar-side ID width of each ID-width converter and compare it with the stated 10-bit crossbar output ID, and read its subsystem-side ID width and compare it with the specified 6 bits (the SMC system AXI input ID for the SMC converter, the crossbar's stated 6-bit subordinate ID for the SEP converter).
 . Sample the CTP data inputs at the SMU boundary and the DTP consumer and require their resting levels, then require every CTP output and the CTM boundary static at zero over the inert window.
 . Sample `ss_config_o` and `skip_mem_repair_o` after bring-up and compare them with their specified idle values.
 . Compare the widths of the `smu_wrapper` `smc_shadow_regs_o` port and the bench net with the `smu` port, wait for `smc_fuse_sense_done_o` to rise, and compare all three with the image.
@@ -3238,6 +3247,8 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 |Checker |Description
 |`CHK-SMU-BOUNDARY-ID-USER-WIDTH` |`$bits` of every ID and user field of the smu AXI boundary ports: smu_axi_in IDs 8 on AW, B, R and AR, smu_axi_out IDs 10, user 12 on all five channels of both
 |`CHK-SMU-EXT-SMN-S4` |the SMC-side ID-width converter presents the specified 6-bit subsystem ID
+|`CHK-SMU-SEP-IN-ID-WIDTH` |the SEP-side ID-width converter presents the 6-bit transaction ID the crossbar is stated to present to the SEP inbound subordinate
+|`CHK-SMU-XBAR-OUT-ID-WIDTH` |both ID-width converters take the 10-bit crossbar output ID the SMU datasheet states
 |`CHK-SMU-INT-AGG-S1` |smc_ext_interrupts_i is 256 wide, the SMC external interrupt count
 |`CHK-SMU-XTRIG-CTP-S1` |all four CTP groups are 16 wide, the XTRIG_NUM_CTP default
 |`CHK-SMU-XTRIG-CTP-S6` |bench-held resting CTP data inputs leave the CTP outputs static (live control: `smu_xtrig_ctp_pad_test`)
@@ -3250,8 +3261,6 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
-
-*Scope limit*: the crossbar-side and SEP-side ID widths of the two converters are logged as observations and not compared.
 
 '''''
 [[sec-040-smu_composition_parameter_test]]
@@ -6373,26 +6382,26 @@ completion the bus returned. The cocotb TDO-resolved checks run on cocotb only.
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 1800; tags `efuse`, `smc`, `boot`, `sep`, `real_rtl`; run mode `sep_rtl_fuse_sense` (real SMC and SEP fuse sense; no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 3, so three seeds per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+smc_efuse_hex=hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex`.
 
-*Randomization*: RAND-REP: the seed draws the sixteen sampled indices (0 to 255 of the 256-word bank, sixteen distinct indices: the six named element words 0, 2, 10, 28, 30 and 32 of `CHK-BOOT-SHADOW-ELEMENTS` (LOCKS, JTAG_PUBLIC_IDENTITY, I2C_I3C_ID[0], SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE[0]) pinned into every set, because the checker looks each up in the sampled set, word 255, the last word of the bank and the last store of the sense's running count (`doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs), pinned beside them in every set, and the other nine drawn from the remaining 249 words) and the order they are read in, a permutation of the sixteen, under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); each drawn index is compared by `CHK-BOOT-SHADOW-SAMPLES` as the fixed sixteen were (the map word, the stream word and the image word of that index equal, and the map word equal to the stream word), its PASS lines carrying the drawn indices in their drawn order, and the six pinned elements by `CHK-BOOT-SHADOW-ELEMENTS` as before; `smu_smc_efuse_shadow_sense_reset_test` keeps its own cells; 3 seeds per regression.
+*Randomization*: RAND-REP: the seed draws the sixteen sampled indices (0 to 63 of the 64 harness map words, sixteen distinct indices: the seven named element words 0, 2, 4, 12, 30, 32 and 34 of `CHK-BOOT-SHADOW-ELEMENTS` (HARNESS_LOCKS, SUPPLEMENTARY_LOCKS, JTAG_PUBLIC_IDENTITY, I2C_I3C_ID[0], SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE[0]) pinned into every set, because the checker looks each up in the sampled set, word 63, the last harness map word, pinned beside them in every set, and the other eight drawn from the remaining 56 words) and the order they are read in, a permutation of the sixteen, under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); each drawn index is compared by `CHK-BOOT-SHADOW-SAMPLES` as the fixed sixteen were (the map word, the stream word and the image word of that index equal, and the map word equal to the stream word), its PASS lines carrying the drawn indices in their drawn order, and the seven pinned elements by `CHK-BOOT-SHADOW-ELEMENTS` as before; the 128 supplementary stream words (64 to 191, word 191 the last store of the sense's running count, `doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs) are compared with the image directly and are not drawn; `smu_smc_efuse_shadow_sense_reset_test` keeps its own cells; 3 seeds per regression.
 
 *Objective*: the words the SMC eFuse sense streams across the shim are the words the SMC eFuse map returns over JTAG2AXI, both equal the eFuse image the run loads, and the eFuse interface reports the sense done.
 
 *Test Coverage*:
 
-* The sense stores each `valid` strobe's `data` into the shadow word at the running count, one 32-bit word per strobe, for a 256-word bank (`doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs), and the SMC eFuse map exposes those shadow words from `smc_efuse_map @ BASE_ADDR + 0x000_7000` (`hw/sys/smc/regs/smc.rdl`; `hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, address map). The response layout `{data, status, valid}` is `hw/ip/efuse/doc/interface.adoc`, Response Structure.
-* The leaf requires the capture to hold exactly 256 strobes by the time `smc_fuse_sense_done_o` has risen and 64 further edges have passed.
-* Sixteen map words at 4-byte offsets, their indices drawn from the seed with the six named element words (0, 2, 10, 28, 30 and 32) and word 255, the last word of the bank, pinned into every set, each read with a 4-byte access over JTAG2AXI in the drawn order, and the stream words of the same indices equal the word of that index in the eFuse image the run loads; each map word also equals the stream word of the same index.
-* The first word of each named map element equals its word in the eFuse image the run loads: LOCKS at +0x0, JTAG_PUBLIC_IDENTITY at +0x8, I2C_I3C_ID[0] at +0x28, SMC_CONFIG at +0x70, OCCP_TRANSPORT_TIMEOUT at +0x78 and SPARE[0] at +0x80 (`smc_efuse_map.rdl`, register placement).
+* The sense stores each `valid` strobe's `data` into the shadow word at the running count, one 32-bit word per strobe, for a 192-word stream (64 harness plus 128 supplementary words) (`doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs), and the SMC eFuse map exposes those shadow words from `smc_efuse_map @ BASE_ADDR + 0x000_7000` (`hw/sys/smc/regs/smc.rdl`; `hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`, address map). The response layout `{data, status, valid}` is `hw/ip/efuse/doc/interface.adoc`, Response Structure.
+* The leaf requires the capture to hold exactly 192 strobes by the time `smc_fuse_sense_done_o` has risen and 64 further edges have passed.
+* Sixteen map words at 4-byte offsets, their indices drawn from the seed with the seven named element words (0, 2, 4, 12, 30, 32 and 34) and word 63, the last harness map word, pinned into every set, each read with a 4-byte access over JTAG2AXI in the drawn order, and the stream words of the same indices equal the word of that index in the eFuse image the run loads; each map word also equals the stream word of the same index. The 128 supplementary stream words (64 to 191, word 191 the last store of the sense's running count) equal the image words of the same index; they are compared on the stream alone, since the SMC map window holds only the harness words.
+* The first word of each named map element equals its word in the eFuse image the run loads: HARNESS_LOCKS at +0x0, SUPPLEMENTARY_LOCKS at +0x8, JTAG_PUBLIC_IDENTITY at +0x10, I2C_I3C_ID[0] at +0x30, SMC_CONFIG at +0x78, OCCP_TRANSPORT_TIMEOUT at +0x80 and SPARE[0] at +0x88 (`smc_efuse_map.rdl`, register placement).
 * EFUSE_INTERFACE_CTRL_STATUS at `efuse_interface_ctrl @ BASE_ADDR + 0x000_8000` (`smc.rdl`) reads `efuse_sense_done` 1 after `smc_fuse_sense_done_o` has risen (`hw/ip/efuse/regs/efuse_interface_ctrl.rdl`, "Indicates if the eFuse state machine has completed").
 * Measured and logged only: the first and last stream words, the number of strobes whose `status` bit is set, the per-index slices of `smc_shadow_regs` next to the stream words and whether each is equal, whether `smc_shadow_regs` is all zero, and the raw status word. The leaf does not read the status before the sense, assembles no multi-word element and does not compare `smc_shadow_regs`.
-* The 240 map words the leaf does not read are out of scope.
+* The 48 map words the leaf does not read over JTAG2AXI are out of scope; the supplementary words are never read over the SMC map.
 
 *Test Procedure*:
 
 [arabic]
-. Draw the sixteen sampled indices and their order from the seed and log them; arm the stream capture before bring-up, read the `+smc_efuse_hex` image into 256 words, wait for the reset-done event and for the rise of `smc_fuse_sense_done_o`, require 256 captured strobes, log the stream, reset the TAP, require the IDCODE the bench TAP returns and require the `tb_smc_jtag2axi_security_disable` gate open.
-. Read the sixteen drawn map words in the drawn order, compare each map word and the stream word of the same index with the image word of that index, and compare each map word with the stream word.
-. Compare the first word of each of the six named map elements with its image word.
+. Draw the sixteen sampled indices and their order from the seed and log them; arm the stream capture before bring-up, read the `+smc_efuse_hex` image into 192 words, wait for the reset-done event and for the rise of `smc_fuse_sense_done_o`, require 192 captured strobes, log the stream, reset the TAP, require the IDCODE the bench TAP returns and require the `tb_smc_jtag2axi_security_disable` gate open.
+. Read the sixteen drawn map words in the drawn order, compare each map word and the stream word of the same index with the image word of that index, and compare each map word with the stream word; compare the 128 supplementary stream words with the image words of the same index.
+. Compare the first word of each of the seven named map elements with its image word.
 . Read EFUSE_INTERFACE_CTRL_STATUS and require `efuse_sense_done` at 1.
 . Sample `smc_shadow_regs` one `clk_smu_i` edge later, require it resolvable and log the per-index slices and whether it is all zero.
 . Check that the capture, the done-rise wait and every JTAG2AXI poll finished inside their bounds.
@@ -6402,15 +6411,62 @@ completion the bus returned. The cocotb TDO-resolved checks run on cocotb only.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-BOOT-SHADOW-SAMPLES` |the sixteen sampled SMC eFuse map words (the six named element words and word 255, the last word of the bank, pinned, nine drawn from the seed), read over JTAG2AXI in the drawn order, and the stream words of the same indices equal the words of the eFuse image the run loads, and the map words equal the stream words
-|`CHK-BOOT-SHADOW-ELEMENTS` |the first word of each of the six named map elements equals its word in the eFuse image the run loads
+|`CHK-BOOT-SHADOW-SAMPLES` |the sixteen sampled SMC eFuse map words (the seven named element words and word 63, the last harness map word, pinned, eight drawn from the seed), read over JTAG2AXI in the drawn order, and the stream words of the same indices equal the words of the eFuse image the run loads, the map words equal the stream words, and the 128 supplementary stream words equal the image words of the same index
+|`CHK-BOOT-SHADOW-ELEMENTS` |the first word of each of the seven named map elements equals its word in the eFuse image the run loads
 |`CHK-BOOT-SENSE-STATUS` |`efuse_sense_done` of EFUSE_INTERFACE_CTRL_STATUS reads 1 after `smc_fuse_sense_done_o` rose
 |`CHK-TIMEOUT-PATHS` |the stream capture, the done-rise wait and every JTAG2AXI poll finish inside their bounds and no wait record shows an expiry
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: Measured and logged only: the first and last stream words, the number of strobes whose `status` bit is set, the per-index slices of `smc_shadow_regs` next to the stream words and whether each is equal, whether `smc_shadow_regs` is all zero, and the raw status word. The 240 map words the leaf does not read are out of scope.
+*Scope limit*: Measured and logged only: the first and last stream words, the number of strobes whose `status` bit is set, the per-index slices of `smc_shadow_regs` next to the stream words and whether each is equal, whether `smc_shadow_regs` is all zero, and the raw status word. The 48 map words the leaf does not read are out of scope.
+
+'''''
+[[sec-209-smu_smc_efuse_supplementary_shadow_test]]
+===== 209 `smu_smc_efuse_supplementary_shadow_test`
+
+*Phase*: 3
+
+*Area*: SMC
+
+*Source Module*: `smu_smc_efuse_supplementary_shadow_test` (`cocotb_wrapper/tests/`; the sequence `smu_smc_efuse_supplementary_shadow_test_seq` in `cocotb_wrapper/seq_lib/`)
+
+*BFM / Model*: the stream capture class `SmuEfuseStreamCapture` of `smu_smc_efuse_shadow_map_readback_test_seq`, armed ahead of the shared bring-up, which records every rising `valid` of `smc_efuse_shim_command_resp` under `u_dut` and the rise of `smc_fuse_sense_done_o` on `clk_smu_i`; SMC eFuse bank model inside the wrapper composition (declared in *Bench stand-ins and exceptions*); `ocah_jtag_vip` (the primary TAP and the SMC fabric JTAG2AXI bridge, read-only 4-byte accesses); bench observation `tb_smc_jtag2axi_security_disable`; `elaboration` firmware mode under the `sep_rtl_fuse_sense` run mode; `+rom_hex`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`, `+sep_itcm_hex` and `+sep_dtcm_hex` hex images, where `+smc_efuse_hex` names `hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex` (192 words, one per line), which the sequence also reads as the expected words
+
+*Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 1800; tags `efuse`, `smc`, `boot`, `sep`, `real_rtl`; run mode `sep_rtl_fuse_sense` (real SMC and SEP fuse sense; no `+skip_fuse_sense`); firmware `elaboration` (mode `elaboration`); seed 1 (no `reseed` key, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+smc_efuse_hex={repo_root}/hw/sys/smu/dv/assets/smc_efuse_readback_pattern.hex`.
+
+*Randomization*: RAND-NONE: directed, the 35 sampled window words are read in index order under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
+
+*Objective*: 35 sampled words of the SMC supplementary fuse window (every fourth word and the first and last word of each lock region) read over JTAG2AXI after the boot sense equal the stream words and the image words of the same index, all 128 supplementary stream words equal the image words, and SUPPLEMENTARY_LOCKS reads its image words.
+
+*Test Coverage*:
+
+* The reference SMC wrapper of the SMU composition carries the supplementary fuse region of the reference wrappers, "128 words in three lock regions" (`hw/ip/efuse/doc/architecture.adoc`, Supplementary Fuse Region: Configuration), sensed after the 64 harness words in one READ and served through the window at the base of the `fuse` slot of the `smc_external` supplementary region, `SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR` (`doc/integrator/src/smu-smc.adoc`, Supplementary Fuse Region; `hw/sys/smc/doc/memmap.adoc`, the supplementary fuse window).
+* Each of the 35 sampled window words (words 0, 4, 8, ... 124 plus the region boundaries 63, 64, 95, 96 and 127; the lock regions end at words 64, 96 and 128, `hw/ip/efuse/doc/architecture.adoc`, Supplementary Locks), read with a 4-byte access over JTAG2AXI in index order, equals the stream word of the same index (64 to 191, the stores of the sense's running count) and the word of that index in the eFuse image the run loads; all 128 supplementary stream words equal the image words of the same index. The window is sampled because a JTAG2AXI read is slow; the 93 words not read over the window are proven on the stream only.
+* `SUPPLEMENTARY_LOCKS` at `smc_efuse_map` +0x8 (`hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl`) is reachable after the boot sense and reads its two image words; both are 0 in the asset, so the row proves the register is served and no supplementary lock is set, not a non-zero store.
+* Measured and logged only: the first and last supplementary stream words, the number of strobes whose `status` bit is set, and each sampled window word next to its stream and image words. The harness map words, the 93 window words not sampled, the word past the window and the response of a locked region are out of scope; the harness words are the business of `smu_smc_efuse_shadow_map_readback_test`.
+
+*Test Procedure*:
+
+[arabic]
+. Arm the stream capture before bring-up, read the `+smc_efuse_hex` image into 192 words, wait for the reset-done event and for the rise of `smc_fuse_sense_done_o`, require 192 captured strobes, log the stream, reset the TAP, require the IDCODE the bench TAP returns and require the `tb_smc_jtag2axi_security_disable` gate open.
+. Read the 35 sampled window words in index order, compare each with the stream word and the image word of the same index, and compare all 128 supplementary stream words with the image words.
+. Read both `SUPPLEMENTARY_LOCKS` words and require the image words.
+. Check that the capture, the done-rise wait and every JTAG2AXI poll finished inside their bounds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SUPP-SHADOW-WINDOW` |the 35 sampled words of the SMC supplementary fuse window, read over JTAG2AXI after the boot sense, and their stream words equal the eFuse image words of the same index, and all 128 supplementary stream words (64 to 191) equal the image words
+|`CHK-SUPP-LOCKS-WORD` |`SUPPLEMENTARY_LOCKS` is reachable after the boot sense and reads its two image words (0 in the asset)
+|`CHK-TIMEOUT-PATHS` |the stream capture, the done-rise wait and every JTAG2AXI poll finish inside their bounds and no wait record shows an expiry
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: Measured and logged only: the first and last supplementary stream words, the status-bit count and each sampled window word. The harness map words, the 93 window words not read over the window (proven on the stream only), the word past the window and the response of a locked region are out of scope.
 
 '''''
 [[sec-160-smu_smc_mailbox_aperture_layout_test]]
@@ -8082,9 +8138,9 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 * The sense is the claim, so the leaf runs on the fuse-sense run mode and requires `+skip_fuse_sense` to be absent; `smc_fuse_sense_done_o` has to be observed rising 0 -> 1, and a run that begins with it already high fails.
 * The expected value comes from the image file the leaf loads and from `smc_addr.h`, both DV-owned; no RTL package or module supplies a golden or a walk.
-* `SMC_TOP_SMC_EFUSE_MAP_SIZE` sets the map at 1024 bytes and the fuse word at 4 bytes, so fuse word `i` is shadow bits `32i+31..32i`. The register base addresses in `smc_addr.h` are required to tile that map with no hole and no overlap, and each register's slice of the port is compared against its own bytes of the image: LOCKS, JTAG_PUBLIC_IDENTITY, the nine I2C_I3C_ID elements, SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and the twenty-eight SPARE regions.
+* `SMC_TOP_SMC_EFUSE_MAP_SIZE` sets the map at 256 bytes and the fuse word at 4 bytes, so fuse word `i` is shadow bits `32i+31..32i`. The register base addresses in `smc_addr.h` are required to tile that map with no hole and no overlap, and each register's slice of the port is compared against its own bytes of the image: LOCKS, JTAG_PUBLIC_IDENTITY, the nine I2C_I3C_ID elements, SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and the twenty-eight SPARE regions.
 * Every field of every register in `smc_efuse_map.rdl` resets to `0x0`, so the reset value of the whole map is zero; that is the value required before the sense completes and again while the cold reset is held, each over a 64-cycle window rather than at one instant.
-* The image sets all 8192 fuse bits, which the leaf requires of it before it compares anything. Both directions are then counted: the sense has to move all 8192 bits 0 -> 1 and the cold reset all 8192 bits 1 -> 0, so a port stuck at either value fails rather than passing on a partial match.
+* The image sets all 2048 fuse bits, which the leaf requires of it before it compares anything. Both directions are then counted: the sense has to move all 2048 bits 0 -> 1 and the cold reset all 2048 bits 1 -> 0, so a port stuck at either value fails rather than passing on a partial match.
 * A uniform image cannot distinguish one word of the map from another. The word-for-word claim here is that each register's slice carries its own bytes of the image at the port's full width; distinct data at named offsets is placed by `smu_dtp_otp_smc_map_rw_test` and `smu_otp_vs_fabric_map_race_test`.
 
 *Test Procedure*:
@@ -8093,7 +8149,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 . Bring the wrapper up on the fuse-sense run mode and require `+skip_fuse_sense` to be absent and `smc_shadow_regs` to be as wide as the map size declares.
 . Read the image `+smc_efuse_hex` names, require it to program every bit of the map, and sample `smc_shadow_regs` before the sense completes.
 . Wait for `smc_fuse_sense_done_o` to rise, then compare each register's slice of `smc_shadow_regs` against its bytes of the image, count the bits that moved 0 -> 1, and require the port to hold that value for 64 clk_smu.
-. Assert `rst_cold_ni`, wait for `smc_fuse_sense_done_o` to fall, and require `smc_shadow_regs` to read the map reset value, all 8192 bits having moved 1 -> 0.
+. Assert `rst_cold_ni`, wait for `smc_fuse_sense_done_o` to fall, and require `smc_shadow_regs` to read the map reset value, all 2048 bits having moved 1 -> 0.
 . Require that reset value to hold for a further 64 clk_smu with `rst_cold_ni` still asserted.
 
 *Checkers*:
@@ -8178,8 +8234,6 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 *BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins and the shared responder on `u_axi_out_if`; `ocah_jtag_vip` for the inbound filter entries, the SMC aperture and the outbound write; `elaboration` firmware mode
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `fabric`, `no_sep`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
-
-*Known limitation*: on VCS the leaf is RED on `OCAH_AXI_W_STRB_IN_LANES` from the AXI protocol checkers of `tb/tb_wrapper_top.sv`: the cocotb AXI master drives the write strobes of its narrow FIXED bursts on rotating byte lanes. The defect is in the bench master, not in the SMU; pull request #3448 fixes the master, and the leaf is GREEN with it. The leaf is not masked.
 
 *Randomization*: RAND-NONE: directed, the leaf walks its whole cell set (all eight AxPROT encodings, both values of AxREGION, AxQOS, AxCACHE and AxLOCK, AxSIZE `0`..`3`, the three AxLEN values and the three burst types) in every run and the seed selects nothing.
 
@@ -8938,15 +8992,15 @@ sequence's own raise, outside the scoreboard
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 16500; tags `depth`, `dtp`, `sep`, `smc`, `sba`, `efuse`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+sep_efuse_prog_fail_count=1`, `+smc_efuse_prog_fail_count=1`, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`, `+pll_sys_period_ns=10`.
 
-*Randomization*: RAND-NONE: directed, the fuse bit addresses (bit 0, the middle of the array with each address bit set, the fresh words and one bit past the array) are fixed values from the generated headers walked on both blocks in every run, and the failing first program comes from the fixed plusargs; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
+*Randomization*: RAND-NONE: directed, the fuse bit addresses (bit 0, the spare word with each address bit set, the fresh words and one bit past the array) are fixed values from the generated headers walked on both blocks in every run, and the failing first program comes from the fixed plusargs; the seed sets only the bench clock periods and reset timing (`randomize_timing` in the base test) and selects nothing.
 
 *Objective*: start eFuse read and program commands on the SEP and SMC fuse-command ports, which leave the SMU for the wrapper's eFuse shims, over every fuse address bit. Extends `smu_dtp_sep_dm_dmi_test`.
 
 *Test Coverage*:
 
-* Both subsystems carry an `efuse_interface_ctrl` block (`hw/ip/efuse` register description): EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL each start one fuse command at a fuse bit address, and an address at or beyond the fuse array -- the `*_efuse_map` size in bits from the generated address headers -- is rejected with the sticky address error. The SEP block is on the SEP map; the SMC block is reached through the SEP view of the SMC window. Every register address and field mask comes from the generated headers.
-* S4: a read at bit address 0, and at the middle of the array with each address bit set in turn, completes with `read_done` and no `read_status` error. The middle of the array is spare space that no lock field of the shadow preloads covers, so no read there is blocked.
-* S5: programs of four bits of the fuse word at the middle of the array complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
+* Both subsystems carry an `efuse_interface_ctrl` block (`hw/ip/efuse` register description): EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL each start one fuse command at the fuse bit address written to EFUSE_READ_ADDR or EFUSE_PROGRAM_ADDR, and an address at or beyond the fuse array -- the `*_efuse_map` size in bits from the generated address headers plus the 32 x WORDS supplementary bits, 128 words in the reference wrappers -- is rejected with the sticky address error. The SEP block is on the SEP map; the SMC block is reached through the SEP view of the SMC window. Every register address and field mask comes from the generated headers.
+* S4: a read at bit address 0, and at the spare word with each address bit set in turn (addresses inside the array only), completes with `read_done` and no `read_status` error. The spare word is the middle of the SEP array and the first word of SPARE[1] on the SMC: space that no lock field of the shadow preloads covers, so no read there is blocked.
+* S5: programs of four bits of the spare fuse word complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
 * S6: a read and a program one bit past the array complete with an error and set the sticky read and program address errors, and the clear strobes clear both.
 * S7: the bench fuse-bank models run with `+sep_efuse_prog_fail_count=1` and `+smc_efuse_prog_fail_count=1`, so the first program each bank takes leaves the fuse unblown. Every program ends with the SHIM's verify read of the word, so a program at a fresh bit reads the bit back unset and reports `program_status` 1 (`efuse_interface_shim.sv`), and the word reads 0.
 * S8: programs of all 32 bits of a fresh word complete without error, the word reads back `0xFFFF_FFFF`, and the word after it still reads 0.
@@ -8964,7 +9018,7 @@ sequence's own raise, outside the scoreboard
 |Checker |Description
 |`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
 |`CHK-EFUSE-CMD-READ` |on both blocks every walk read completes with `read_done` and no error
-|`CHK-EFUSE-CMD-PROGRAM` |on both blocks the four programs complete without error and the middle fuse word reads back with every programmed bit set
+|`CHK-EFUSE-CMD-PROGRAM` |on both blocks the four programs complete without error and the spare fuse word reads back with every programmed bit set
 |`CHK-EFUSE-CMD-OOB` |on both blocks the out-of-range read and program complete with an error, set both sticky address errors, and the clear strobes clear them
 |`CHK-EFUSE-CMD-PROGRAM-FAIL` |on both blocks a program against a failing bank reports `program_status` 1 from its verify read and the word reads 0
 |`CHK-EFUSE-CMD-WORD` |on both blocks the all-ones word reads back `0xFFFF_FFFF` and the next word reads 0
@@ -9307,7 +9361,7 @@ sequence's own raise, outside the scoreboard
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `dtp_under_smu`, `hosted`, `all`; `timeout_sec` 1800; tags `dtp`, `jtag2axi`, `otp`, `sep`, `real_rtl`, `lifecycle`, `security`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 3, so three seeds per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+lc_sigint_inject`, `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`.
 
-*Randomization*: RAND-REP: beside the pinned n-rail bit-0 window, hold 0, run on every seed (`lc_sigint_inject_i` driven to 1, the n rail of LC_STATE bit 0 that the walk inverted, until `lc_state_o` carries `0xE0`, then to 0 at once; graded by `CHK-LC-SIGINT-RAISED` and `CHK-LC-SIGINT-SMC-OTP-CLOSED`, where all three refusals are the integrity error's, by `CHK-LC-SIGINT-SEP-OTP-OPEN` (the SEP OTP read of SPARE0 with `lc_sigint_err_o` still 1) before the drive of 0, and by `CHK-LC-SIGINT-RELEASED` after it, their PASS lines labelled `pinned bit=0 rail=n hold=0`), the seed draws the bit (0 to 3) and the rail (p or n) of the exported pair for the drawn window and the hold length (0 to 4095 `clk_smu_i` cycles the inject stays high after the S3 operations, a range the entry chooses because no document states a hold) through the widened `lc_sigint_inject_i` (bit 0 arms the inject, bits [2:1] select the LC_STATE bit and bit 3 the rail, so a drive of 1 is the n rail of bit 0 the bench inverted before; `tb/tb_wrapper_top.sv`, `tb/smu_tb_signal_list.svh`), every drawn cell graded as the walk graded its one cell: `lc_sigint_err_o` 1 once the inject takes and still 1 at the end of the hold (`CHK-LC-SIGINT-RAISED`), the SMC OTP refusals under the inject (`CHK-LC-SIGINT-SMC-OTP-CLOSED`), the SEP OTP read under the inject (`CHK-LC-SIGINT-SEP-OTP-OPEN`) and the recovery on release after the hold (`CHK-LC-SIGINT-RELEASED`), their PASS lines carrying the drawn bit, rail and hold; under an n-rail flip the p rails keep the TEST_DEV state, which admits every access the leaf makes, so the three refusals are the integrity error's (`hw/sys/sep/doc/lifecycle_controller.adoc`, debug-path table: on an integrity error the SMC OTP path admits nothing); under a p-rail flip the decoded nibble moves as well and is logged, and the eFuse JTAG permissions (SMC) of `hw/ip/efuse/doc/architecture.adoc` give what the state alone admits: bit 0 gives PROD and bit 1 gives RMA_SIP_0 (0x2, RMA_SOP in that table), which refuse the SPARE[0] read and write on their own but admit the JTAG_PUBLIC_IDENTITY read, so that read's refusal is the integrity error's; bit 2 gives 0x4, a nibble outside the state table, and bit 3 gives PROD_END, both under the table's "Other States" column, which allows all three accesses, so there all three refusals of `CHK-LC-SIGINT-SMC-OTP-CLOSED` are the integrity error's; SEC_DIS is not drawn, because this entry writes no security-disable token, and the SEC_DIS-under-inject cells are graded by `smu_lc_sec_dis_over_sigint_prod_test` under PROD (`CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD`, `CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD`); 3 seeds per regression.
+*Randomization*: RAND-REP: beside the pinned n-rail bit-0 window, hold 0, run on every seed (`lc_sigint_inject_i` driven to 1, the n rail of LC_STATE bit 0 that the walk inverted, until `lc_state_o` carries `0xE0`, then to 0 at once; graded by `CHK-LC-SIGINT-RAISED` and `CHK-LC-SIGINT-SMC-OTP-CLOSED`, where all three refusals are the integrity error's, by `CHK-LC-SIGINT-SEP-OTP-OPEN` (the SEP OTP read of SPARE0 with `lc_sigint_err_o` still 1) before the drive of 0, and by `CHK-LC-SIGINT-RELEASED` after it, their PASS lines labelled `pinned bit=0 rail=n hold=0`), the seed draws the bit (0 to 3) and the rail (p or n) of the exported pair for the drawn window and the hold length (0 to 4095 `clk_smu_i` cycles the inject stays high after the S3 operations, a range the entry chooses because no document states a hold) through the four-bit `lc_sigint_inject_i` (bit 0 arms the inject, bits [2:1] select the LC_STATE bit and bit 3 the rail, so a drive of 1 is the n rail of bit 0, the pinned window; `tb/tb_wrapper_top.sv`, `tb/smu_tb_signal_list.svh`), every drawn cell graded as the walk graded its one cell: `lc_sigint_err_o` 1 once the inject takes and still 1 at the end of the hold (`CHK-LC-SIGINT-RAISED`), the SMC OTP refusals under the inject (`CHK-LC-SIGINT-SMC-OTP-CLOSED`), the SEP OTP read under the inject (`CHK-LC-SIGINT-SEP-OTP-OPEN`) and the recovery on release after the hold (`CHK-LC-SIGINT-RELEASED`), their PASS lines carrying the drawn bit, rail and hold; under an n-rail flip the p rails keep the TEST_DEV state, which admits every access the leaf makes, so the three refusals are the integrity error's (`hw/sys/sep/doc/lifecycle_controller.adoc`, debug-path table: on an integrity error the SMC OTP path admits nothing); under a p-rail flip the decoded nibble moves as well and is logged, and the eFuse JTAG permissions (SMC) of `hw/ip/efuse/doc/architecture.adoc` give what the state alone admits: bit 0 gives PROD and bit 1 gives RMA_SIP_0 (0x2, RMA_SOP in that table), which refuse the SPARE[0] read and write on their own but admit the JTAG_PUBLIC_IDENTITY read, so that read's refusal is the integrity error's; bit 2 gives 0x4, a nibble outside the state table, and bit 3 gives PROD_END, both under the table's "Other States" column, which allows all three accesses, so there all three refusals of `CHK-LC-SIGINT-SMC-OTP-CLOSED` are the integrity error's; SEC_DIS is not drawn, because this entry writes no security-disable token, and the SEC_DIS-under-inject cells are graded by `smu_lc_sec_dis_over_sigint_prod_test` under PROD (`CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD`, `CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD`); 3 seeds per regression.
 
 *Objective*: when the LC_STATE pair the SEP exports fails its differential check, the SMU reports the integrity error on `lc_sigint_err_o` and the SMC OTP JTAG2AXI path admits nothing, and both recover when the pair is legal again.
 
@@ -11901,7 +11955,7 @@ testlist entries, each supplying its preload file)
 
 *Run mode*: ten testlist entries (`testlists/all.toml`, `--dut smu`), one per file of the preload set, each naming the module `smu_lc_disable_vector_matrix_test` and its file in `+sep_shadow_reg_preload` (a time-0 bench plusarg; one entry per preload file, as the fixed-image `smu_lc_*` entries are listed): `smu_lc_disable_vector_matrix_test_dev_test` (`sep_efuse_shadow_lc_test_dev.preload`), `smu_lc_disable_vector_matrix_test_dev_sip_test` (`sep_efuse_shadow_lc_test_dev_sip_dis_sep_dbg.preload`), `smu_lc_disable_vector_matrix_test_dev_sys_test` (`sep_efuse_shadow_lc_test_dev_sys_dis_chiplet_dbg.preload`), `smu_lc_disable_vector_matrix_test_dev_sip_sys_test` (`sep_efuse_shadow_lc_test_dev_sip_dis_sep_dbg_sys_dis_chiplet_dbg.preload`), `smu_lc_disable_vector_matrix_test_dev_all_test` (`sep_efuse_shadow_lc_test_dev_dis_all.preload`), `smu_lc_disable_vector_matrix_prod_test` (`sep_efuse_shadow_lc_prod.preload`), `smu_lc_disable_vector_matrix_prod_sip_test` (`sep_efuse_shadow_lc_prod_sip_dis_sep_dbg.preload`), `smu_lc_disable_vector_matrix_prod_sys_test` (`sep_efuse_shadow_lc_prod_sys_dis_chiplet_dbg.preload`), `smu_lc_disable_vector_matrix_prod_sip_sys_test` (`sep_efuse_shadow_lc_prod_sip_dis_sep_dbg_sys_dis_chiplet_dbg.preload`), `smu_lc_disable_vector_matrix_prod_all_test` (`sep_efuse_shadow_lc_prod_dis_all.preload`); groups `hosted`, `all`; `timeout_sec` 1800; tags `dtp`, `jtag2axi`, `sep`, `stap`, `real_rtl`, `lifecycle`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 and no `reseed` key, so one seed per regression per entry, because each entry's stimulus is its preload file and the seed selects only the order in which the gated paths are walked; tool Verilator on `target = "compile_smu_chiplet"`.
 
-*Randomization*: RAND-NONE: directed, the image and the disable-vector pair are the preload file of the testlist entry, because the shadow preload is a time-0 plusarg (`+sep_shadow_reg_preload`) that the leaf cannot draw and this bench has no pre-sim image hook; one testlist entry per file, as the fixed eFuse images of the lifecycle leaves are listed; the preload set walks the pair classes over its ten entries, and the seed draws only the order in which the four gated paths are walked (a permutation of the I/O STAP, the SMC fabric bridge, the SEP debug STAP and the secure DFT SIB), which changes no expected value; the read-back step runs after the walk.
+*Randomization*: RAND-NONE: directed, the image and the disable-vector pair are the preload file of the testlist entry, because the shadow preload is the time-0 plusarg `+sep_shadow_reg_preload`, which `hw/ip/efuse/rtl/efuse_shadow_regs.sv` reads at time 0 with `$value$plusargs("sep_shadow_reg_preload=%s", ...)` and loads with `$readmemh` into its shadow preload array before the leaf starts, so the leaf cannot draw it and this bench has no pre-sim image hook; the ten testlist entries, one per file of the preload set, are the walked set of the drawn-cells contract (<<smu-vplan-drawn>>: one file of each image and pair class, cheap and contract-critical), so every regression walks the ten pair classes, as the fixed eFuse images of the lifecycle leaves are listed, and the seed draws only the order in which the four gated paths are walked (a permutation of the I/O STAP, the SMC fabric bridge, the SEP debug STAP and the secure DFT SIB), which changes no expected value; the read-back step runs after the walk.
 
 *Objective*: With the image and disable-vector pair of the entry's preload file, over a preload set that covers both images and every pair class (the four files that existed before the test and the six it adds), `lcc_feat_ctrl_o` and four gated debug paths take the posture that the lifecycle profile table states, and, under `sep_efuse_shadow_lc_test_dev.preload`, the TEST_DEV file whose pair leaves `SEP_DBG` and `CHIPLET_DBG` clear, `LC_STATE`, `SIP_DIS` and `SYS_DIS` read back the file's words over the SEP debug module's system bus. The 14 fixed-image `smu_lc_*` leaves and the inject leaf `smu_lc_sigint_fail_closed_test` stay beside it.
 
@@ -12094,23 +12148,23 @@ grade.
 
 *Randomization*: RAND-NONE: directed; the request set, the IDs and the addresses are fixed, and the seed draws only the bench bring-up timing.
 
-*Objective*: The SMU external inbound port answers each illegal encoding (WRAP with AxLEN 0, the reserved burst encoding, an INCR that crosses a 4 KiB boundary) with at most one response sequence carrying the request's ID and stays usable afterwards, toward the SEP aperture, the SMC aperture and neither aperture; the SEP SRAM refuses multi-beat FIXED and WRAP bursts from ext_in and serves INCR; and nothing illegal reaches the crossbar targets.
+*Objective*: The SMU forwards each illegal encoding on its external inbound port (WRAP with AxLEN 0, the reserved burst encoding, an INCR that crosses a 4 KiB boundary) unchanged to the link its start address selects and answers it as the boundary contract states: the crossbar's own DECERR for an address in neither aperture, OKAY from the SMC scratchpad, and from the SEP SRAM OKAY for the single-beat WRAP and the INCR and SLVERR for the two-beat reserved burst, one response sequence carrying the request's ID, and the port stays usable afterwards; the SEP SRAM refuses multi-beat FIXED and WRAP bursts from ext_in and serves INCR; and every other request the SMU issues at the crossbar targets is a legal burst.
 
 *Test Coverage*:
 
 * The SMC aperture local alias and SMC inbound filter entry 0 are opened over JTAG2AXI and the SEP aperture over the SEP debug module's system bus, so ext_in reaches the SEP SRAM through `sep_in` and the SMC scratchpad through `smc_in`, and an address in neither aperture returns the crossbar's own DECERR (`hw/sys/smu/doc/index.adoc`, routing table).
 * The SEP SRAM serves INCR bursts of every length and single-beat bursts of every type, and refuses a multi-beat FIXED or WRAP burst: the write is SLVERR and leaves SRAM unchanged, and every read beat is SLVERR (`hw/sys/sep/doc/fabric.adoc`, "SRAM").
-* With `+smu_axi_illegal_inject` the checkers on `smu_in`, the inbound cut and the crossbar ext_in port see the three illegal encodings as legal for the whole run, keyed on the encoding and not on the request ID, and every other rule of those instances still grades the request; the crossbar target and converter checkers are not masked, so what the SMU forwards is graded as it is.
-* What each illegal request is answered with, whether target memory changed, the hook's inputs per request, the WRAP strobes, the RDATA of SLVERR beats, the `aw.atop` field of the inbound request type and the admitting addresses are measured, not compared.
+* With `+smu_axi_illegal_inject` the checkers on the path an external inbound request takes (`smu_in`, the inbound cut, the crossbar ext_in port, the crossbar SEP and SMC target ports, both converter outputs and the SEP-reset instance of the SEP target port) see the three illegal encodings as legal for the whole run, keyed on the encoding and not on the request ID, and every other rule of those instances still grades the request; the instances on the links the SMU or another initiator originates are not masked. The SMU forwards the request unchanged (the integrator guide's AXI boundary contract), so the leaf grades the forwarded AxADDR, AxLEN, AxSIZE and AxBURST at the crossbar target port and the converter output of its target itself.
+* Whether an illegal request changed target memory (the bytes it reads or writes are not defined), its response time, the hook's inputs per request, the WRAP strobes, the RDATA of SLVERR beats, the `aw.atop` field of the inbound request type and the admitting addresses are measured, not compared.
 
 *Test Procedure*:
 
 [arabic]
 . S1: open the SMC aperture local alias and SMC inbound filter entry 0 over JTAG2AXI, then the SEP aperture to [0x0400_0000, 0x1500_0000) over the system bus; a write then read of one SEP SRAM word and one scratchpad word is the OKAY reference.
-. S2: INCR AxLEN 0, 1, 15 and 255 inside one 4 KiB page to both targets, single-beat FIXED and INCR, two-beat writes with W after, with and before AW, and four reads under distinct IDs in flight together; the AW and AR at both crossbar target ports and both converter outputs are sampled.
+. S2: INCR AxLEN 0, 1, 15 and 255 inside one 4 KiB page to both targets, single-beat FIXED and INCR, two-beat writes with W after, with and before AW, and four reads under distinct IDs in flight together (RREADY held low until the fourth AR is accepted, and every AR accepted before the first R handshake); the AW and AR at both crossbar target ports and both converter outputs are sampled.
 . S3: INCR writes at AxSIZE 0, 1 and 2 with an unaligned first beat and partial strobes, and one full-width write whose unstrobed lanes carry X; each read back against the bytes the leaf wrote.
 . S4: full-width FIXED AxLEN 1, 3, 15 and WRAP AxLEN 1, 3, 7, 15 from an aligned start into the SEP SRAM, each written and read, and the addressed words read back with single-beat INCR reads.
-. S5 to S7: the SEP SRAM and scratchpad words the illegal requests address are written first; then a read and a write with WRAP AxLEN 0, with AxBURST 2'b11 and as a 4 KiB-crossing INCR toward the SEP aperture, the SMC aperture and neither aperture, one at a time, each observed for 1024 `clk_smu_i` edges.
+. S5 to S7: the SEP SRAM and scratchpad words the illegal requests address are written first; then a read and a write with WRAP AxLEN 0, with AxBURST 2'b11 and as a 4 KiB-crossing INCR toward the SEP aperture, the SMC aperture and neither aperture, one at a time, each observed for 1024 `clk_smu_i` edges; the AW or AR at the crossbar target port and the converter output of the target is sampled in that window.
 . S8: after each illegal request a fresh single-beat write and read to the S1 word of its target.
 . S9: the hook inputs per illegal request, the `aw.atop` field, and the rule families live in the run.
 . S10: every handshake and response wait is bounded in `clk_smu_i` edges and raises with the last handshake sample and `rst_primary_smc_clk_n_o`.
@@ -12120,12 +12174,13 @@ grade.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-G11-WRAP0` |the WRAP AxLEN 0 read and write toward each aperture and neither get at most one response sequence each, and no B or R with any other ID arrives in the observation window; the fresh write and read after each are OKAY with one response each, no response with another ID, and the word written
-|`CHK-G11-RSVD` |the same for AxBURST 2'b11
-|`CHK-G11-4K` |the same for the 4 KiB-crossing INCR
+|`CHK-G11-WRAP0` |the WRAP AxLEN 0 read and write toward each aperture and neither get at most one response sequence each, and no B or R with any other ID arrives in the observation window; the fresh write and read after each are OKAY with one response each, no response with another ID, and the word written; the response code is the stated one (the SEP SRAM and the SMC scratchpad answer OKAY and neither aperture answers DECERR), one B per write and AxLEN+1 beats with RLAST on the last per read
+|`CHK-G11-RSVD` |the same for AxBURST 2'b11; the response code is the stated one (the SEP SRAM answers SLVERR, the SMC scratchpad OKAY and neither aperture DECERR), one B per write and AxLEN+1 beats with RLAST on the last per read
+|`CHK-G11-4K` |the same for the 4 KiB-crossing INCR; the response code is the stated one (the SEP SRAM and the SMC scratchpad answer OKAY and neither aperture answers DECERR), one B per write and AxLEN+1 beats with RLAST on the last per read
 |`CHK-G11-SEPSRAM` |each multi-beat FIXED or WRAP write to the SEP SRAM is SLVERR and the addressed bytes keep their prior values; each such read returns AxLEN+1 SLVERR beats with RLAST on the last; INCR AxLEN 0, 1, 15, 255 and single-beat FIXED and INCR are OKAY on every beat and B and read back the data written
 |`CHK-G11-BEAT` |on ext_in every legal read's RLAST is on beat ARLEN+1; the WLAST and WSTRB of the bench's own W stream are printed as `INFO-G11-DRIVER`, not graded
-|`CHK-G11-BURSTLEGAL` |every AW and AR at `xbar_sep_in`, `xbar_smc_in` and both converter outputs has a legal burst, AxSIZE at most 3, FIXED AxLEN at most 15, WRAP AxLEN in {1, 3, 7, 15} with an aligned address, and no INCR crossing 4 KiB, including while the illegal requests are presented
+|`CHK-G11-FORWARD` |each of the 12 illegal requests toward the SEP or SMC aperture appears exactly once at the crossbar target port and once at the converter output of its target inside its observation window with AxADDR, AxLEN, AxSIZE and AxBURST equal to what ext_in presented (24 forwarded samples), no other AW or AR reaches any of the four sampled links inside that window, and none reaches them inside the window of a request toward neither aperture
+|`CHK-G11-BURSTLEGAL` |every AW and AR at `xbar_sep_in`, `xbar_smc_in` and both converter outputs outside the 18 illegal request windows has a legal burst, AxSIZE at most 3, FIXED AxLEN at most 15, WRAP AxLEN in {1, 3, 7, 15} with an aligned address, and no INCR crossing 4 KiB, with every link sampled
 |`CHK-G11-WKNOWN` |the write with X only in unstrobed lanes carries known strobed lanes on every sampled link and changes only the strobed bytes
 |`CHK-G11-RULES-LIVE` |the run is four-state VCS with `OCAH_INC_ASSERT` and `SIMULATION` live on the seven checker instances the leaf names, so every rule family of the checker header compiles live
 |`CHK-NONVAC` |ordered fence SETUP < LEGAL_INCR < NARROW_STROBES < FIXED_WRAP < WRAP0 < RSVD < CROSS_4K < FRESH_ACCESS < DECODE_RULES, each term with its sim time and a count at or above the plan
@@ -12133,11 +12188,11 @@ grade.
 |`CHK-AXI-SVA-<PORT>` (bench, at final) |for `SMU-IN`, `XBAR-EXT-IN`, `INCUT`, `XBAR-SEP-IN`, `IWC-SEP`, `XBAR-SMC-IN` and `IWC-SMC`: a nonzero handshake count under `+axi_sva_need_<port>`, and no rule of the instance fires
 |===
 
-*Observations* (measured, never compared): `OBS-G11-WRAP0-RESP`, `OBS-G11-RSVD-RESP` and `OBS-G11-4K-RESP` (how an illegal burst encoding on smu_axi_in is answered; the READY-wait bound of AW, W and AR on each link), `OBS-G11-HOOK` (which checker provides the illegal-request injection hook), `OBS-G11-ATOP-FIELD` (whether inbound requests carry ATOP and how an atomic is answered), `OBS-G11-WRAP-STRB` (whether a write-strobe lane rule applies to WRAP bursts), `OBS-G11-SLVERR-RDATA` (whether RDATA must be resolved on every RVALID beat, errors included), `OBS-G11-ADDR` (which global addresses select the SEP SRAM and SMC scratchpad; how an illegal burst encoding on smu_axi_in is answered).
+*Observations* (measured, never compared): `OBS-G11-WRAP0-RESP`, `OBS-G11-RSVD-RESP` and `OBS-G11-4K-RESP` (whether target memory changed, since the bytes an illegal burst reads or writes are not defined; the READY-wait bound of AW, W and AR on each link), `OBS-G11-HOOK` (which checker provides the illegal-request injection hook), `OBS-G11-ATOP-FIELD` (the `aw.atop` field and its bench tie; `AWATOP` is 0 by the boundary contract), `OBS-G11-WRAP-STRB` (whether a write-strobe lane rule applies to WRAP bursts), `OBS-G11-SLVERR-RDATA` (whether RDATA must be resolved on every RVALID beat, errors included), `OBS-G11-ADDR` (which global addresses select the SEP SRAM and SMC scratchpad).
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. The leaf is red on `CHK-G11-BURSTLEGAL` and on the target-side checker reports it provokes until issue #3573 states what the SMU does with an illegal encoding on `smu_axi_in`; it is enrolled in `axi_sva` and `all`, not in a scheduled group, and is not masked.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. The leaf is enrolled in `axi_sva` and `all`, not in a scheduled group, and is not masked.
 
-*Scope limit*: the response code, beat count and memory effect of each illegal request are measured only, and the illegal requests run only under the bench hook, which masks the three encodings on the three external-inbound checker instances (`u_smu_in_axi_sva`, `u_incut_axi_sva`, `u_xbar_ext_in_axi_sva`) for the whole run and nothing else; no verdict reads `BURST_LEGAL`, `LEN_WRAP_LEGAL` or `4KB_BOUNDARY` on those instances.
+*Scope limit*: the memory effect of each illegal request is measured only, and the illegal requests run only under the bench hook, which masks the three encodings on the eight inbound-path checker instances for the whole run and nothing else; no verdict reads `BURST_LEGAL`, `LEN_WRAP_LEGAL` or `4KB_BOUNDARY` on those instances, and the forwarded fields are graded by `CHK-G11-FORWARD` on the bench taps instead.
 
 '''''
 
@@ -13196,7 +13251,11 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |`smu_smc_efuse_shadow_map_readback_test` (159)
 |SMC
 |RAND-REP
-|the seed draws the sixteen sampled indices (0 to 255 of the 256-word bank, sixteen distinct indices: the six named element words 0, 2, 10, 28, 30 and 32 of `CHK-BOOT-SHADOW-ELEMENTS` (LOCKS, JTAG_PUBLIC_IDENTITY, I2C_I3C_ID[0], SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE[0]) pinned into every set, because the checker looks each up in the sampled set, word 255, the last word of the bank and the last store of the sense's running count (`doc/integrator/src/smu-smc.adoc`, eFuse sensing paragraphs), pinned beside them in every set, and the other nine drawn from the remaining 249 words) and the order they are read in, a permutation of the sixteen, under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); each drawn index is compared by `CHK-BOOT-SHADOW-SAMPLES` as the fixed sixteen were (the map word, the stream word and the image word of that index equal, and the map word equal to the stream word), its PASS lines carrying the drawn indices in their drawn order, and the six pinned elements by `CHK-BOOT-SHADOW-ELEMENTS` as before; `smu_smc_efuse_shadow_sense_reset_test` keeps its own cells; 3 seeds per regression.
+|the seed draws the sixteen sampled indices (0 to 63 of the 64 harness map words, sixteen distinct indices: the seven named element words 0, 2, 4, 12, 30, 32 and 34 of `CHK-BOOT-SHADOW-ELEMENTS` (HARNESS_LOCKS, SUPPLEMENTARY_LOCKS, JTAG_PUBLIC_IDENTITY, I2C_I3C_ID[0], SMC_CONFIG, OCCP_TRANSPORT_TIMEOUT and SPARE[0]) pinned into every set, because the checker looks each up in the sampled set, word 63, the last harness map word, pinned beside them in every set, and the other eight drawn from the remaining 56 words) and the order they are read in, a permutation of the sixteen, under the entry's checked-in `+smc_efuse_hex` image (a time-0 preload the seed cannot draw); each drawn index is compared by `CHK-BOOT-SHADOW-SAMPLES` as the fixed sixteen were (the map word, the stream word and the image word of that index equal, and the map word equal to the stream word), its PASS lines carrying the drawn indices in their drawn order, and the seven pinned elements by `CHK-BOOT-SHADOW-ELEMENTS` as before; the 128 supplementary stream words (64 to 191, word 191 the last store of the sense's running count) are compared with the image directly and are not drawn; `smu_smc_efuse_shadow_sense_reset_test` keeps its own cells; 3 seeds per regression.
+|`smu_smc_efuse_supplementary_shadow_test` (209)
+|SMC
+|RAND-NONE
+|none; directed: the 35 sampled window words are read in index order under the entry's checked-in `+smc_efuse_hex` image; nothing is drawn, and the seed sets only the bench bring-up timing in `smu_base_test`.
 |`smu_smc_mailbox_aperture_layout_test` (160)
 |SMC
 |RAND-NONE
@@ -13320,7 +13379,7 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |`smu_lc_sigint_fail_closed_test` (128)
 |SMU_WRAPPER
 |RAND-REP
-|beside the pinned n-rail bit-0 window, hold 0, run on every seed (`lc_sigint_inject_i` driven to 1, the n rail of LC_STATE bit 0 that the walk inverted, until `lc_state_o` carries `0xE0`, then to 0 at once; graded by `CHK-LC-SIGINT-RAISED` and `CHK-LC-SIGINT-SMC-OTP-CLOSED`, where all three refusals are the integrity error's, by `CHK-LC-SIGINT-SEP-OTP-OPEN` (the SEP OTP read of SPARE0 with `lc_sigint_err_o` still 1) before the drive of 0, and by `CHK-LC-SIGINT-RELEASED` after it, their PASS lines labelled `pinned bit=0 rail=n hold=0`), the seed draws the bit (0 to 3) and the rail (p or n) of the exported pair for the drawn window and the hold length (0 to 4095 `clk_smu_i` cycles the inject stays high after the S3 operations, a range the entry chooses because no document states a hold) through the widened `lc_sigint_inject_i` (bit 0 arms the inject, bits [2:1] select the LC_STATE bit and bit 3 the rail, so a drive of 1 is the n rail of bit 0 the bench inverted before; `tb/tb_wrapper_top.sv`, `tb/smu_tb_signal_list.svh`), every drawn cell graded as the walk graded its one cell: `lc_sigint_err_o` 1 once the inject takes and still 1 at the end of the hold (`CHK-LC-SIGINT-RAISED`), the SMC OTP refusals under the inject (`CHK-LC-SIGINT-SMC-OTP-CLOSED`), the SEP OTP read under the inject (`CHK-LC-SIGINT-SEP-OTP-OPEN`) and the recovery on release after the hold (`CHK-LC-SIGINT-RELEASED`), their PASS lines carrying the drawn bit, rail and hold; under an n-rail flip the p rails keep the TEST_DEV state, which admits every access the leaf makes, so the three refusals are the integrity error's (`hw/sys/sep/doc/lifecycle_controller.adoc`, debug-path table: on an integrity error the SMC OTP path admits nothing); under a p-rail flip the decoded nibble moves as well and is logged, and the eFuse JTAG permissions (SMC) of `hw/ip/efuse/doc/architecture.adoc` give what the state alone admits: bit 0 gives PROD and bit 1 gives RMA_SIP_0 (0x2, RMA_SOP in that table), which refuse the SPARE[0] read and write on their own but admit the JTAG_PUBLIC_IDENTITY read, so that read's refusal is the integrity error's; bit 2 gives 0x4, a nibble outside the state table, and bit 3 gives PROD_END, both under the table's "Other States" column, which allows all three accesses, so there all three refusals of `CHK-LC-SIGINT-SMC-OTP-CLOSED` are the integrity error's; SEC_DIS is not drawn, because this entry writes no security-disable token, and the SEC_DIS-under-inject cells are graded by `smu_lc_sec_dis_over_sigint_prod_test` under PROD (`CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD`, `CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD`); 3 seeds per regression.
+|beside the pinned n-rail bit-0 window, hold 0, run on every seed (`lc_sigint_inject_i` driven to 1, the n rail of LC_STATE bit 0 that the walk inverted, until `lc_state_o` carries `0xE0`, then to 0 at once; graded by `CHK-LC-SIGINT-RAISED` and `CHK-LC-SIGINT-SMC-OTP-CLOSED`, where all three refusals are the integrity error's, by `CHK-LC-SIGINT-SEP-OTP-OPEN` (the SEP OTP read of SPARE0 with `lc_sigint_err_o` still 1) before the drive of 0, and by `CHK-LC-SIGINT-RELEASED` after it, their PASS lines labelled `pinned bit=0 rail=n hold=0`), the seed draws the bit (0 to 3) and the rail (p or n) of the exported pair for the drawn window and the hold length (0 to 4095 `clk_smu_i` cycles the inject stays high after the S3 operations, a range the entry chooses because no document states a hold) through the four-bit `lc_sigint_inject_i` (bit 0 arms the inject, bits [2:1] select the LC_STATE bit and bit 3 the rail, so a drive of 1 is the n rail of bit 0, the pinned window; `tb/tb_wrapper_top.sv`, `tb/smu_tb_signal_list.svh`), every drawn cell graded as the walk graded its one cell: `lc_sigint_err_o` 1 once the inject takes and still 1 at the end of the hold (`CHK-LC-SIGINT-RAISED`), the SMC OTP refusals under the inject (`CHK-LC-SIGINT-SMC-OTP-CLOSED`), the SEP OTP read under the inject (`CHK-LC-SIGINT-SEP-OTP-OPEN`) and the recovery on release after the hold (`CHK-LC-SIGINT-RELEASED`), their PASS lines carrying the drawn bit, rail and hold; under an n-rail flip the p rails keep the TEST_DEV state, which admits every access the leaf makes, so the three refusals are the integrity error's (`hw/sys/sep/doc/lifecycle_controller.adoc`, debug-path table: on an integrity error the SMC OTP path admits nothing); under a p-rail flip the decoded nibble moves as well and is logged, and the eFuse JTAG permissions (SMC) of `hw/ip/efuse/doc/architecture.adoc` give what the state alone admits: bit 0 gives PROD and bit 1 gives RMA_SIP_0 (0x2, RMA_SOP in that table), which refuse the SPARE[0] read and write on their own but admit the JTAG_PUBLIC_IDENTITY read, so that read's refusal is the integrity error's; bit 2 gives 0x4, a nibble outside the state table, and bit 3 gives PROD_END, both under the table's "Other States" column, which allows all three accesses, so there all three refusals of `CHK-LC-SIGINT-SMC-OTP-CLOSED` are the integrity error's; SEC_DIS is not drawn, because this entry writes no security-disable token, and the SEC_DIS-under-inject cells are graded by `smu_lc_sec_dis_over_sigint_prod_test` under PROD (`CHK-LC-SECDIS-HOLDS-UNDER-SIGINT-INJECT-PROD`, `CHK-LC-SMC-OTP-CLOSED-UNDER-SECDIS-SIGINT-PROD`); 3 seeds per regression.
 |`smu_sep_inbound_burst_extension_test` (167)
 |SMU_WRAPPER
 |RAND-NONE
@@ -13428,7 +13487,7 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |`smu_lc_disable_vector_matrix_test` (208)
 |SMU_WRAPPER
 |RAND-NONE
-|directed, the image and the disable-vector pair are the preload file of the testlist entry, because the shadow preload is a time-0 plusarg (`+sep_shadow_reg_preload`) that the leaf cannot draw and this bench has no pre-sim image hook; one testlist entry per file, as the fixed eFuse images of the lifecycle leaves are listed; the preload set walks the pair classes over its ten entries, and the seed draws only the order in which the four gated paths are walked (a permutation of the I/O STAP, the SMC fabric bridge, the SEP debug STAP and the secure DFT SIB), which changes no expected value; the read-back step runs after the walk.
+|directed, the image and the disable-vector pair are the preload file of the testlist entry, because the shadow preload is the time-0 plusarg `+sep_shadow_reg_preload`, which `hw/ip/efuse/rtl/efuse_shadow_regs.sv` reads at time 0 with `$value$plusargs("sep_shadow_reg_preload=%s", ...)` and loads with `$readmemh` into its shadow preload array before the leaf starts, so the leaf cannot draw it and this bench has no pre-sim image hook; the ten testlist entries, one per file of the preload set, are the walked set of the drawn-cells contract (<<smu-vplan-drawn>>: one file of each image and pair class, cheap and contract-critical), so every regression walks the ten pair classes, as the fixed eFuse images of the lifecycle leaves are listed, and the seed draws only the order in which the four gated paths are walked (a permutation of the I/O STAP, the SMC fabric bridge, the SEP debug STAP and the secure DFT SIB), which changes no expected value; the read-back step runs after the walk.
 |===
 
 [[smu-vplan-phase3-lists]]
@@ -13696,6 +13755,16 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Added bench observation outputs (`dtp_smc_dbg_aw_cache_o`, `dtp_smc_dbg_ar_cache_o` in `tb/smu_tb_signal_list.svh`, assigned from `u_dut.u_smu.dtp_axi_smc_dbg_req.aw.cache` / `.ar.cache` in `tb/tb_wrapper_top.sv`)
 |The AxCACHE the SMC fabric JTAG2AXI bridge issues on each AW and AR of its bus, valid while `dtp_smc_dbg_aw_valid_o` / `dtp_smc_dbg_ar_valid_o` is high; `CHK-RMAPA-CACHE` grades the S1 reference AxCACHE measured at `u_axi_out_if` against it.
 |`smu_remap_attr_rand_test`
+|SMU_WRAPPER
+|SEP debug STAP host TDO-enable output
+|Added bench observation output (`tb_stap_sep_host_tdo_oen` in `tb/smu_tb_signal_list.svh`, assigned from `u_dut.u_smu.u_dtp.jtag_stap_sep_host_tdo_oen_o` in `tb/tb_wrapper_top.sv`)
+|The TDO enable the DTP drives on the SEP debug STAP host path, the net the owner reads through `u_dut.u_smu.u_dtp`; the collector `smu_lifecycle_fcov` counts it with the host TMS as SEP debug STAP activity for `cp_posture` of `SMU_FCOV.adoc`.
+|`smu_lc_disable_vector_matrix_test` (through the collectors of `SMU_FCOV.adoc`)
+|SMU_WRAPPER
+|SEP eFuse SHIM fuse-command response valid output
+|Added bench observation output (`tb_efuse_shim_resp_valid` in `tb/smu_tb_signal_list.svh`, assigned from `u_dut.sep_efuse_shim_command_resp.valid` in `tb/tb_wrapper_top.sv`)
+|The response `valid` of the SEP eFuse SHIM's fuse-command interface at the wrapper (`hw/ip/efuse/doc/interface.adoc`, "Fuse Command Protocol"), whose rises the owner's fuse-sense probe counts as response strobes; the collector `smu_rst_fcov` counts them from the cold-reset release for `cp_sense_position` of `SMU_FCOV.adoc`.
+|`smu_secure_tm_real_sense_window_test` (through the collectors of `SMU_FCOV.adoc`)
 |===
 
 [[smu-vplan-phase3-added-hooks]]
@@ -13714,8 +13783,8 @@ Each item is an added hook (an error inject or a top-port drive the bench did no
 |SMU_WRAPPER
 |`tb_fcov_gate`
 |Added hook (bench input through the signal list; no wrapper port)
-|The graded-window gate of the live covergroups of `SMU_FCOV.adoc` (Planned Groups): the owning leaf holds it 1 around its graded window and `smu_base_test` drives it 0 at bring-up; the collectors `smu_filter_fcov`, `smu_remap_fcov`, `smu_xbar_fcov` and `smu_ext_fcov` sample their live groups only while it is 1.
-|`smu_filter_match_priority_rand_test`, `smu_remap_attr_rand_test`, `smu_ext_in_error_inject_rand_test`, `smu_axi_in_random_id_stress_test`, `smu_axi_in_burst_outstanding_test`
+|The graded-window gate of the live covergroups of `SMU_FCOV.adoc` (Planned Groups): the owning leaf holds it 1 around its graded window and `smu_base_test` drives it 0 at bring-up; the collectors `smu_filter_fcov`, `smu_remap_fcov`, `smu_xbar_fcov`, `smu_ext_fcov`, `smu_lifecycle_fcov` and `smu_rst_fcov` sample their live groups only while it is 1. `smu_lc_disable_vector_matrix_test` holds it 1 from the first `clk_smu_i` edge of its bring-up to the end of its scenario, after the read-back, `smu_lc_sigint_fail_closed_test` from the start of each hold to the return of its drive of 0, twice per run with the gate 0 between the two windows, and `smu_secure_tm_real_sense_window_test` from its second cold-reset release to the 512 samples after the completion rise. `smu_lifecycle_fcov` credits a lifecycle image at the gate's fall only when the four observed path postures equal the ones the profile word states (a shut posture when the path showed no activity and the PTAP moved, an open posture when the path's own activity was seen), and of these three windows only that of `smu_lc_disable_vector_matrix_test` walks the four paths.
+|`smu_filter_match_priority_rand_test`, `smu_remap_attr_rand_test`, `smu_ext_in_error_inject_rand_test`, `smu_axi_in_random_id_stress_test`, `smu_axi_in_burst_outstanding_test`, `smu_lc_disable_vector_matrix_test`, `smu_lc_sigint_fail_closed_test`, `smu_secure_tm_real_sense_window_test`
 |SMU_WRAPPER
 |`+lc_sigint_inject` LC_STATE pair fault inject
 |Existing bench hook, listed (error inject)
@@ -14221,7 +14290,6 @@ covered above. SEP=1 3×3 xbar receives no release credit.
 [[smu-known-limitations]]
 === Known Limitations
 
-* *Illegal AXI encodings pass through the crossbar.* `smu_axi_ext_in_illegal_encoding_test` shows WRAP with AxLEN 0, the reserved burst encoding and a 4 KiB-crossing INCR forwarded unchanged from `smu_axi_in` to the SEP and SMC target ports, where the bound `ocah_axi_sva` instances fire and some writes land with OKAY; no document states the response. The leaf is red on `CHK-G11-BURSTLEGAL` until issue #3573 is answered, and runs only where `all` or `axi_sva` is selected on VCS.
 * *`all` is not a scheduled group.* `.github/workflows/regress.yml` runs
   `hosted` nightly and weekly: the rest of `all` is the SEP firmware set,
   whose `c_build` stages need the RISC-V toolchain container, which the

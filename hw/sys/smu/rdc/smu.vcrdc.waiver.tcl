@@ -7,13 +7,42 @@
 # Child-block waivers are replayed from hw/sys/{smc,dtp,sep}/rdc under their
 # instance prefix and are not repeated here.
 
+# --- hierarchy-reuse tokens -------------------------------------------------------
+# ${PREFIX} re-anchors hierarchical filter fields at the parent instance path. A parent
+# run that replays this block predefines PREFIX and apply_prefix before sourcing this
+# file; in the block's own run PREFIX is "". ${BLOCKINST} is the containing instance of a
+# block-top violation (the design name here, the instance path at the parent).
+if { ![info exists PREFIX] } { set PREFIX "" }
+if { [info procs apply_prefix] eq "" } {
+    proc apply_prefix { filter } {
+        set out [string map [list {${PREFIX}} $::PREFIX] $filter]
+        if { $::PREFIX eq "" } {
+            set bi $::env(DESIGN_NAME)
+        } else {
+            set bi [string trimright $::PREFIX "/."]
+        }
+        set out [string map [list {${BLOCKINST}} $bi] $out]
+        return $out
+    }
+}
+# ${MODPREFIX} is the module-name prefix of a design whose modules are renamed
+# <prefix>_<name> ("" otherwise); apply_modprefix substitutes it in Module filters and
+# is independent of apply_prefix, which a parent run may replace.
+if { ![info exists ::MODPREFIX] } { set ::MODPREFIX "" }
+if { [info procs apply_modprefix] eq "" } {
+    proc apply_modprefix { filter } {
+        return [string map [list {${MODPREFIX}} $::MODPREFIX] $filter]
+    }
+}
+# ----------------------------------------------------------------------------------
+
 # =====================================================================================================================
 # SMU RDC waivers (flat run)
 # =====================================================================================================================
 
 waive_violation -add {SMU_SETUP_RESET_ASSERT_MISSING_sep_wdt_loop} \
     -comment {PRIMARY and the SEP watchdog timer resets (SEP_WDT_RESET_N and its WDT-clock sync RST_WDT_AON_CLK_N) reach the SMC watchdog reset stretcher and synchronizer through the SEP watchdog request flop and the smu.sv inversion, arriving as "deasserted". Both consumers of the WDT reset (SMC warm reset, SEP CPU reset) are AND-ed with a PRIMARY-derived reset and so assert under PRIMARY on their own path.} \
-    -filter {((ReasonInfoList:ReasonInfo:ReasonCode == "WRONG_ASSERT_VALUE") OR (ReasonInfoList:ReasonInfo:ReasonCode == "BLOCKED_ASSERT_VALUE")) AND ((SeqObject =~ "u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_reset_sync/u_rst_wdt_smc_sync/*") OR (SeqObject =~ "u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_reset_ctrl/u_wdt_reset_stretcher_n0_scan/*")) AND ((ResetInfoList:ResetInfo:ResetName == "PRIMARY_RESET_N") OR (ResetInfoList:ResetInfo:ResetName == "PRIMARY_RESET_N_SMC_CLK") OR (ResetInfoList:ResetInfo:ResetName == "SEP_WDT_RESET_N") OR (ResetInfoList:ResetInfo:ResetName == "RST_WDT_AON_CLK_N"))} \
+    -filter [apply_modprefix [apply_prefix {((ReasonInfoList:ReasonInfo:ReasonCode == "WRONG_ASSERT_VALUE") OR (ReasonInfoList:ReasonInfo:ReasonCode == "BLOCKED_ASSERT_VALUE")) AND ((SeqObject =~ "${PREFIX}u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_reset_sync/u_rst_wdt_smc_sync/*") OR (SeqObject =~ "${PREFIX}u_smc/u_smc_peripherals/u_smc_reset_unit/u_smc_reset_ctrl/u_wdt_reset_stretcher_n0_scan/*")) AND ((ResetInfoList:ResetInfo:ResetName == "PRIMARY_RESET_N") OR (ResetInfoList:ResetInfo:ResetName == "PRIMARY_RESET_N_SMC_CLK") OR (ResetInfoList:ResetInfo:ResetName == "SEP_WDT_RESET_N") OR (ResetInfoList:ResetInfo:ResetName == "RST_WDT_AON_CLK_N"))}]] \
     -app { rdc } -tag { SETUP_RESET_ASSERT_MISSING } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # =====================================================================================
@@ -24,23 +53,23 @@ waive_violation -add {SMU_SETUP_RESET_ASSERT_MISSING_sep_wdt_loop} \
 
 waive_violation -add {SMU_RDC_CORRUPT_sep_fabric_to_smc_debug_bus} \
     -comment {SEP flops (SEP_CPU_RESET_N / SEP_RESET_N / PRIMARY / KM_COLD) tapped onto the SMC external debug-bus observation sync (u_ext_debug_bus_sync3, unreset, SMUCLK->SMUCLK). Single-bit observation lanes resolve to old/new within the chain while SEP is itself resetting; the only consumer is the DFD (trace capture, debug-armed CLA), no functional consumer.} \
-    -filter {(SrcObject =~ "gen_sep.*") AND (DestObject =~ "u_smc/u_smc_base/u_ext_debug_bus_sync3/u_sync3[*]/q_d/Q") AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'") AND (ReasonInfoList:ReasonInfo:ReasonCode == "NFF_BEYOND_UDS")} \
+    -filter [apply_modprefix [apply_prefix {(SrcObject =~ "${PREFIX}gen_sep.*") AND (DestObject =~ "${PREFIX}u_smc/u_smc_base/u_ext_debug_bus_sync3/u_sync3[*]/q_d/Q") AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'") AND (ReasonInfoList:ReasonInfo:ReasonCode == "NFF_BEYOND_UDS")}]] \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 waive_violation -add {SMU_RDC_CORRUPT_jtag_dtp_stap_to_smc_dtm} \
     -comment {DTP SMC-STAP flops (trst_n_combined / tlr_reset / stap_smc_dbg_rst) into the SMC cluster DTM TAP (IDCODE CaptureChain, TAP state machine) on JTAG_TCK: TRST is chain-wide and also async-resets the DTM (JTAG_RESET = ~host trst_n), the other sources are TCK-flopped resets; 1149.1 chain bits are reloaded at Capture-DR.} \
-    -filter {((RdcSourceResets:ResetName == "trst_n_combined") OR (RdcSourceResets:ResetName == "tlr_reset") OR (RdcSourceResets:ResetName == "stap_smc_dbg_rst")) AND (SrcObject =~ "u_dtp/u_jtag_intf_unit/gen_stap_smc_dbg.u_stap_smc_dbg/*") AND (DestObject =~ "u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/dtm/*") AND (DestClockInfoList:DestClockInfo:ClockName == "JTAG_TCK")} \
+    -filter [apply_modprefix [apply_prefix {((RdcSourceResets:ResetName == "trst_n_combined") OR (RdcSourceResets:ResetName == "tlr_reset") OR (RdcSourceResets:ResetName == "stap_smc_dbg_rst")) AND (SrcObject =~ "${PREFIX}u_dtp/u_jtag_intf_unit/gen_stap_smc_dbg.u_stap_smc_dbg/*") AND (DestObject =~ "${PREFIX}u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/dtm/*") AND (DestClockInfoList:DestClockInfo:ClockName == "JTAG_TCK")}]] \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 waive_violation -add {SMU_RDC_CORRUPT_jtag_smc_dtm_to_dtp_stap} \
     -comment {SMC cluster DTM tdoReg (JTAG_RESET = the STAP host trst_n inverted in smu.sv) into the DTP SMC-STAP SIB scan_data (reset-less, JTAG_TCK): the same chain-wide TRST resets the STAP and its SIB at the same instant, and scan_data is reloaded at Capture-DR before any shift-out (same pattern as ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_stap_scan_data).} \
-    -filter {(RdcSourceResets:ResetName == "JTAG_RESET") AND (SrcObject =~ "u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/dtm/*") AND (DestObject =~ "u_dtp/u_jtag_intf_unit/gen_stap_smc_dbg.u_stap_smc_dbg/*") AND ((RdcDestResets:DestResetInfo:ResetName == "'no-reset'") OR (RdcDestResets:DestResetInfo:ResetName == "trst_n_combined") OR (RdcDestResets:DestResetInfo:ResetName == "stap_smc_dbg_rst")) AND (DestClockInfoList:DestClockInfo:ClockName == "JTAG_TCK")} \
+    -filter [apply_modprefix [apply_prefix {(RdcSourceResets:ResetName == "JTAG_RESET") AND (SrcObject =~ "${PREFIX}u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/dtm/*") AND (DestObject =~ "${PREFIX}u_dtp/u_jtag_intf_unit/gen_stap_smc_dbg.u_stap_smc_dbg/*") AND ((RdcDestResets:DestResetInfo:ResetName == "'no-reset'") OR (RdcDestResets:DestResetInfo:ResetName == "trst_n_combined") OR (RdcDestResets:DestResetInfo:ResetName == "stap_smc_dbg_rst")) AND (DestClockInfoList:DestClockInfo:ClockName == "JTAG_TCK")}]] \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # DTP jtag2axi -> SMC cluster fabric: cross-block twin of SMC_CPU_RDC_CORRUPT_CLUSTER_CONTAINED_SOURCE_RESET.
 waive_violation -add {SMU_RDC_CORRUPT_dtp_jtag2axi_primary_into_smc_cluster} \
     -comment {DTP jtag2axi clearable-CDC controller state (PRIMARY) reaching the SMC cluster MMIO-port AXI buffer queue pointers through fabric arbitration; PRIMARY also drives the cluster reset, so the destination is reset on the same event. Same disposition as SMC_CPU_RDC_CORRUPT_CLUSTER_CONTAINED_SOURCE_RESET for a source outside u_smc.} \
-    -filter {((RdcSourceResets:ResetName == "PRIMARY_RESET_N") OR (RdcSourceResets:ResetName == "PRIMARY_RESET_N_SMC_CLK")) AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'") AND (SrcObject =~ "u_dtp/u_jtag_intf_unit/u_jtag_ptap/*jtag2axi*/*") AND (DestObject =~ "u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/*")} \
+    -filter [apply_modprefix [apply_prefix {((RdcSourceResets:ResetName == "PRIMARY_RESET_N") OR (RdcSourceResets:ResetName == "PRIMARY_RESET_N_SMC_CLK")) AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'") AND (SrcObject =~ "${PREFIX}u_dtp/u_jtag_intf_unit/u_jtag_ptap/*jtag2axi*/*") AND (DestObject =~ "${PREFIX}u_smc/u_smc_cpu_wrapper/u_smc_cpu/u_digital_top/*")}]] \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 17-09-2026 18:15:09 }
 
 # =============================================================================
@@ -49,11 +78,11 @@ waive_violation -add {SMU_RDC_CORRUPT_dtp_jtag2axi_primary_into_smc_cluster} \
 
 waive_violation -add {SMU_SETUP_CLOCK_UNUSED_BOUNDARY_CLKS} \
     -comment {Output-port memory-interface clocks (SMUCLK_ROM / SMUCLK_RAM* / SMUCLK_{I,D}CACHE_* / SEPCLK_PKA_* / PERIPHERALCLK_I3C_*) and the SPICLK base of the GPIO SPI clocks clock no internal sequentials by construction. SEP_WDT_CLK clocks only the SEP watchdog, which the no-SEP configuration does not elaborate.} \
-    -filter {(Clock:ClkName =~ "SMUCLK_*") OR (Clock:ClkName =~ "SEPCLK_*") OR (Clock:ClkName =~ "PERIPHERALCLK_I3C_*") OR (Clock:ClkName == "SPICLK") OR (Clock:ClkName == "SEP_WDT_CLK")} \
+    -filter [apply_modprefix [apply_prefix {(Clock:ClkName =~ "SMUCLK_*") OR (Clock:ClkName =~ "SEPCLK_*") OR (Clock:ClkName =~ "PERIPHERALCLK_I3C_*") OR (Clock:ClkName == "SPICLK") OR (Clock:ClkName == "SEP_WDT_CLK")}]] \
     -app { rdc } -tag { SETUP_CLOCK_UNUSED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # Reset-tree edges that cross a block boundary, so neither block's RESET_OVERLAP class waiver owns them.
 waive_violation -add {SMU_SETUP_RESET_OVERLAP_CROSS_BLOCK_TREE} \
     -comment {DTP trst_n_combined is passed through the PTAP TAP controller and the SMC STAP to smc_cpu_jtag_reset_i, where smu.sv inverts it into the active-high JTAG_RESET. One declared reset reaching the root of another is the reset tree by construction.} \
-    -filter {(SrcRstInfo:ResetName == "trst_n_combined") AND (DesRstInfo:ResetName == "JTAG_RESET")} \
+    -filter [apply_modprefix [apply_prefix {(SrcRstInfo:ResetName == "trst_n_combined") AND (DesRstInfo:ResetName == "JTAG_RESET")}]] \
     -app { rdc } -tag { SETUP_RESET_OVERLAP } -user { nbetik } -timestamp { 17-09-2026 00:00:00 }

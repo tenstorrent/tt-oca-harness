@@ -78,9 +78,18 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
   CHK-RESP-ROUTE    every response reaches the initiator that issued it.
   CHK-ATTR-USER     AxUSER[3:0] of every LSU and DMA request at PR-OUT is
                     known, is not OTHERS (0) and is the same on every request,
-                    although the LSU issues two distinct non-zero values and
-                    the DMA issues OTHERS: the SMU path sets SEP's ID. The
-                    number is logged (OBS-ATTR-SRC-ID), with AxUSER[11:4].
+                    although the LSU issues two distinct non-zero values, as
+                    sampled at the ``s_axi`` handshake: the SMU path sets
+                    SEP's ID. AxUSER[11:4] of every such request is 0,
+                    although the LSU issues it non-zero.
+  CTRL-ATTR-LSU-USER
+                    each LSU request carries its drawn AxUSER at the
+                    ``s_axi`` handshake, once.
+  CHK-ATTR-SRC-ID   that AxUSER[3:0] equals SEP's ID, 0xF
+                    (``doc/integrator/src/smu-composition.adoc``, SEP row), and
+                    AxUSER[11:4] is 0 (reserved, driven as 0 on
+                    ``smu_axi_out``, ``smu-composition.adoc:205-206``); the
+                    line gives the values seen and the request count.
   CHK-ATTR-PROT     AxPROT of every LSU and DMA request at PR-OUT: bits 0
                     and 2 as issued, NS 1 (the inverse of address bit 55).
   CHK-LSU-DMA-OVERLAP
@@ -98,6 +107,7 @@ from __future__ import annotations
 
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_axi_chan_mon import SepAxUserMon
 from env.sep_fabric_common import SepSrcIdGrade, draw_src_users
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_seeded_rng import SepSeededRng
@@ -227,7 +237,7 @@ def _unattributed(view) -> str:
 class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
     """LSU, Secure DMA and SMN inbound master toward the outbound port, singly and together."""
 
-    required_evidence = CHECKS
+    required_evidence = CHECKS + ("CHK-ATTR-SRC-ID",)
 
     # ---- stimulus builders -----------------------------------------------------
     def _words(self, n: int) -> list[int]:
@@ -846,9 +856,17 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         seen_u = {i: [] for i in INITS}
         seen_p = {i: [] for i in INITS}
         cross_p = 0
-        # The SMU path sets SEP's ID, whose number is not stated: the grade is
-        # not OTHERS, one value on every request, and a replacement visible
-        # over the two LSU values and the DMA's OTHERS (SepSrcIdGrade).
+        # The SMU path sets SEP's ID: the grade is 0xF on every request, with
+        # AxUSER[11:4] 0, and a replacement visible over the two LSU values
+        # sampled at the s_axi handshake (SepSrcIdGrade). No probe shows the
+        # DMA master's AxUSER, so its requests carry no issued value.
+        self.lsu_mon.stop()
+        self.lsu_mon.check(
+            self.logger,
+            "ATTR-LSU-USER",
+            {a: [u] for a, u in self.lsu_issued.items()},
+            c.seed,
+        )
         grade = SepSrcIdGrade("ATTR")
         for r in reqs:
             if r.unknown:
@@ -860,9 +878,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             if r.prot != ep and r.prot in others_p:
                 cross_p += 1
             if r.init in ("lsu", "dma"):
-                # The DMA master drives OTHERS (hw/sys/sep/doc/fabric.adoc,
-                # Transaction Routing).
-                issued = self.lsu_issued.get(r.addr) if r.init == "lsu" else 0
+                issued = self.lsu_mon.first(r.addr) if r.init == "lsu" else None
                 why = grade.note(r.user, issued)
                 if why is not None:
                     self._fail(
@@ -888,11 +904,10 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
             )
         if cross_p:
             self._fail("CHK-ATTR-PROT", f"crossings={cross_p}")
-        self.logger.info("%s", grade.obs_line())
+        self.logger.info("%s", grade.chk_line())
         self._emit(
             "CHK-ATTR-USER",
-            f"lsu_users_issued=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} "
-            f"dma_user_issued=0 {grade.summary()}",
+            f"lsu_users_drawn=0x{c.lsu_users[0]:03x},0x{c.lsu_users[1]:03x} {grade.summary()}",
         )
 
         def pf(vals):
@@ -1028,6 +1043,7 @@ class sep_outbound_contention_rand_test(OutboundLeaf, sep_base_test):
         await self.bring_up_no_cpu()
         self.suppress_host_axi_transaction_info()
         await self.bench_start()
+        self.lsu_mon = SepAxUserMon().start()
         # PR-INFLT: the request out of the inbound filter. Only the SMN inbound
         # master passes the inbound filter, so every beat here is one of its
         # accesses that the filter admitted.

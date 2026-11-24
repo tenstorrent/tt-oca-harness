@@ -322,6 +322,17 @@ module smc_uvm_top
     output logic        bfm_cpu_trace_exc /*verilator public_flat_rw*/,
     output logic [63:0] bfm_cpu_trace_cause /*verilator public_flat_rw*/,
     output logic [57:0] bfm_cpu_trace_tval /*verilator public_flat_rw*/,
+    // Target harts 1-3 retirement records, each masked while its core is in
+    // reset, so a test can see which harts execute which ROM code.
+    output logic        dut_hart1_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart1_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart1_trace_pc /*verilator public_flat_rw*/,
+    output logic        dut_hart2_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart2_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart2_trace_pc /*verilator public_flat_rw*/,
+    output logic        dut_hart3_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart3_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart3_trace_pc /*verilator public_flat_rw*/,
 
     // ------------------------------------------------------------------
     // Read-only peek into the TARGET's scratch SRAM.
@@ -645,6 +656,9 @@ module smc_uvm_top
     bit tb_hold_ext_boot /*verilator public_flat_rw*/;
     // ext_interrupts_i[16:2], PLIC sources 3-17; bits 1 and 0 keep their own pins.
     bit [16:2] tb_ext_interrupts_hi_i /*verilator public_flat_rw*/;
+    // ext_interrupts_i[255:17], PLIC sources 18-256.
+    bit [smc_4core_cpu_pkg::NumExtInterrupts-1:17]
+        tb_ext_interrupts_ext_i /*verilator public_flat_rw*/;
     // +smc_uart_cross_3to0: cross-wire UART pairs 0↔3 and 1↔2
     // (TX of each into RX of the peer).
     bit tb_uart_cross_3to0;
@@ -1426,9 +1440,8 @@ module smc_uvm_top
         .smc_ras_o                  (smc_ras),
         .smc_global_base_o          (),
         .smc_region_size_o          (smc_region_size),
-        .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NumExtInterrupts-17){1'b0}},
-                                       tb_ext_interrupts_hi_i, tb_temp_interrupt_i,
-                                       tb_ext_interrupt_0_i}),
+        .smc_ext_interrupts_i       ({tb_ext_interrupts_ext_i, tb_ext_interrupts_hi_i,
+                                       tb_temp_interrupt_i, tb_ext_interrupt_0_i}),
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (tb_sep_wdt_reset_n),
         .smc_fuse_sense_done_o,
@@ -1787,6 +1800,8 @@ module smc_uvm_top
     assign tb_cpu_drained          = `SMC_CPU_WRAP.drained;
     assign tb_cpu_reset_timeout    = `SMC_CPU_CTRL.reset_timeout;
     assign tb_cpu_reset_applied    = `SMC_CPU_CTRL.reset_applied;
+    assign tb_cpu_ref_count        = `SMC_CPU_CTRL.u_refclk_counter.bin_count;
+    assign tb_cpu_ref_count_update = `SMC_CPU_CTRL.u_refclk_counter.cnt_update_i;
     assign tb_cpu_uncore_reset_n   = `SMC_CPU_WRAP.cluster_uncore_reset_n;
     assign tb_cpu_core_resets_n    = `SMC_CPU_WRAP.core_reset_n;
     assign tb_cpu_l2_isolated      = `SMC_CPU.l2_frontend_isolated;
@@ -2103,7 +2118,7 @@ module smc_uvm_top
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.valid;
     assign tb_efuse_shim_resp_status =
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.status;
-    assign tb_efuse_locks = shadow_regs.locks.locks;
+    assign tb_efuse_locks = shadow_regs.locks.harness_locks;
     `define SMC_MBX0 u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_axil_mailbox.gen_mailbox[0].u_axi_lite_mailbox
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;
@@ -3027,14 +3042,21 @@ module smc_uvm_top
     // u_cpu_mmio_uncore_rst_axi_sva watches the CPU MMIO link on the cluster
     // uncore reset (tb_cpu_uncore_reset_n), and u_misc_warm_axil_sva watches
     // the SCRATCH_COLD_WARM leg of the misc wrapper's AXI-Lite demux on the
-    // wrapper's warm reset. Their reset rules grade VALID in that reset and
-    // their tracking flushes on it. The MMIO port is shared by the four cores
+    // wrapper's warm reset. The MMIO port is shared by the four cores
     // behind the uncore bridge: the uncore reset isolates it, and a core reset
     // or core reset pulse leaves it connected, carrying the other cores'
     // traffic, so no core reset is a reset of this link. The MMIO instance
     // sets MASTER_SYNC_RESET: AWVALID, WVALID and ARVALID may stay high on the
     // first edge that samples the uncore reset low and must be low from the
-    // next edge on. Each is on once its reset is known; the MMIO instance also
+    // next edge on. Its slave, the primary-domain fabric, is outside the
+    // uncore reset and answers the requests it accepted before it; the
+    // force-mode flush discards those late responses while the reset is held
+    // (cpu.adoc 245-249, 297-299, 304-306). The instance sets
+    // SLAVE_IN_RESET_DOMAIN=0: its B and R reset rules are off and its
+    // tracking keeps those requests open until the fabric answers them. The
+    // misc instance's leg ends in the warm domain, so its reset rules grade
+    // both sides and its tracking flushes on that reset. Each is on once its
+    // reset is known; the MMIO instance also
     // follows the CPU-port hold-off below, and the misc instance is off on the
     // warm-reset cycles where its leg carries the AR the one leaf that presents
     // it on purpose issues (+smc_misc_warm_in_reset_assertoff beside it). The
@@ -3705,11 +3727,12 @@ module smc_uvm_top
     assign misc_warm_rst_n = u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.rst_warm_ni;
 
     ocah_axi_sva #(
-        .IS_LITE           (1'b0),
-        .ADDR_WIDTH        (56),
-        .DATA_WIDTH        (64),
-        .ID_WIDTH          (3),
-        .MASTER_SYNC_RESET (1'b1)
+        .IS_LITE               (1'b0),
+        .ADDR_WIDTH            (56),
+        .DATA_WIDTH            (64),
+        .ID_WIDTH              (3),
+        .MASTER_SYNC_RESET     (1'b1),
+        .SLAVE_IN_RESET_DOMAIN (1'b0)
     ) u_cpu_mmio_uncore_rst_axi_sva (     // CPU MMIO port on the cluster uncore reset
         .en_i (`SMC_AXI_UNCORE_RST_ON),
         `SMC_AXI_SVA_PORTS_RST(u_dut.u_smc.cpu_axi_mmio_port_req,
@@ -4335,14 +4358,15 @@ module smc_uvm_top
     end
     // Own-reset observation for the partial-reset leaf: the edges each
     // own-domain checker spent with its reset low, the edges at which the
-    // condition of one of their <CH>_VALID_RESET_LOW rules held, the AW/W/AR
-    // valids of the CPU MMIO master on the first edge that sampled the uncore
-    // reset low, the AW/AR handshakes the front-port checker graded while the
-    // core reset was low, and the CPU MMIO responses (one per B and per R
-    // carrying RLAST) split by OKAY.
+    // condition of one of their live <CH>_VALID_RESET_LOW rules held (the
+    // MMIO instance's B and R rules are off), the AW/W/AR valids of the CPU
+    // MMIO master on the first edge that sampled the uncore reset low, the
+    // AW/AR handshakes the front-port checker graded while the core reset was
+    // low, and the CPU MMIO responses (one per B and per R carrying RLAST)
+    // split by OKAY.
 `define SMC_AXI_ANY_VALID(REQ, RSP) \
         ((REQ.aw_valid || REQ.w_valid || REQ.ar_valid || RSP.b_valid || RSP.r_valid) === 1'b1)
-`define SMC_AXI_RSP_VALID(RSP) ((RSP.b_valid || RSP.r_valid) === 1'b1)
+`define SMC_AXI_REQ_VALID(REQ) ((REQ.aw_valid || REQ.w_valid || REQ.ar_valid) === 1'b1)
     logic        cpu_uncore_rst_q, misc_warm_rst_q;
     int unsigned axi_uncore_rst_edges, axi_misc_warm_rst_edges, axi_own_rst_valid_hits;
     int unsigned cpu_mmio_msr_first_edges, axi_cpu_front_core_held_hs;
@@ -4359,10 +4383,8 @@ module smc_uvm_top
                                                   u_dut.u_smc.cpu_axi_mmio_port_req.w_valid,
                                                   u_dut.u_smc.cpu_axi_mmio_port_req.ar_valid};
             end
-            if ((cpu_uncore_rst_q === 1'b0 &&
-                 `SMC_AXI_ANY_VALID(u_dut.u_smc.cpu_axi_mmio_port_req,
-                                    u_dut.u_smc.cpu_axi_mmio_port_resp)) ||
-                `SMC_AXI_RSP_VALID(u_dut.u_smc.cpu_axi_mmio_port_resp))
+            if (cpu_uncore_rst_q === 1'b0 &&
+                `SMC_AXI_REQ_VALID(u_dut.u_smc.cpu_axi_mmio_port_req))
                 axi_own_rst_valid_hits <= axi_own_rst_valid_hits + 1;
         end
         if (`SMC_AXI_SVA_ON && !cpu_reset_probe && tb_cpu_core_reset_n === 1'b0 &&
@@ -5102,7 +5124,7 @@ module smc_uvm_top
 `undef SMC_AXI_DK_W
 `undef SMC_FAB
 `undef SMC_BASE
-`undef SMC_AXI_RSP_VALID
+`undef SMC_AXI_REQ_VALID
 `undef SMC_AXI_ANY_VALID
 `undef SMC_AXI_MISC_WARM_ON
 `undef SMC_AXI_UNCORE_RST_ON
@@ -5650,6 +5672,24 @@ module smc_uvm_top
     assign bfm_cpu_trace_tval   = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_tval : '0;
     `undef SMC_DUT_HART0_CSR
     `undef SMC_BFM_HART0_CSR
+
+    `define SMC_DUT_CPU u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper
+    `define SMC_DUT_HART1_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr
+    `define SMC_DUT_HART2_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr
+    `define SMC_DUT_HART3_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr
+    assign dut_hart1_trace_valid = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart1_trace_exc   = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart1_trace_pc    = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_iaddr : '0;
+    assign dut_hart2_trace_valid = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart2_trace_exc   = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart2_trace_pc    = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_iaddr : '0;
+    assign dut_hart3_trace_valid = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart3_trace_exc   = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart3_trace_pc    = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_iaddr : '0;
+    `undef SMC_DUT_HART1_CSR
+    `undef SMC_DUT_HART2_CSR
+    `undef SMC_DUT_HART3_CSR
+    `undef SMC_DUT_CPU
 
     // ------------------------------------------------------------------
     // Controller I3C TX-port snoop (see the port comment). Passive: it only

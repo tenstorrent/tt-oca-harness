@@ -57,25 +57,31 @@ Checks (anchor):
                   key-path port (``KM-BUS`` tap). The response class of these
                   reads is logged
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
-                  register (KM readback vs host readback, staged fuse model)
+                  register (KM readback vs host readback, staged fuse model);
+                  each KM read of the read-locked field completes with SLVERR
+                  and data 0xBADCAB1E (otp_fuse_controller.adoc:112-114)
   CHK-EFW-RD-TM   the same with ``secure_tm_o`` = 1; register reads keep their
                   normal access controls (``test_mode.adoc`` "Protection While
-                  Active"), so each readable shadow draw equals the model
+                  Active"), so each readable shadow draw equals the model and
+                  each read-locked draw is SLVERR with 0xBADCAB1E
   CHK-EFW-PROG    a KM program of an unlocked spare bit completes and lands;
                   program_done and program_status are graded on the first
                   program after the boot cold reset, the second program's are
                   logged; efuse_req_error is graded on both (path readback +
                   host OTP readback)
   CHK-EFW-DENY    a KM program of a write-locked bit is refused and the OTP
-                  word equals the staged word (``efuse_req_error`` readback +
-                  host OTP readback)
+                  word equals the staged word; before each path's program the
+                  host writes EFUSE_PROGRAM_ADDR to a value other than the
+                  target, and after it reads the target back
+                  (``efuse_req_error`` readback + host OTP readback + host
+                  EFUSE_PROGRAM_ADDR readback)
   CHK-EFW-TM      in secure test mode no fuse command is issued, read and
                   program starts complete without issuing a command, and a
                   blocked read returns all-zero data
-                  (``hw/ip/efuse/doc/architecture.adoc:389-391, 399-400``):
+                  (``hw/ip/efuse/doc/architecture.adoc:404-406, 414-415``):
                   on each path (KM, host) each read go and each program go
-                  lands (only the go write carries efuse_addr, and the path
-                  reads it back after the go), raises 0 command requests at
+                  lands (the path reads EFUSE_PROGRAM_ADDR or EFUSE_READ_ADDR
+                  back as written after the go), raises 0 command requests at
                   the interface command outputs, and leaves done = 1 and
                   busy = 0; the goes of each path follow a cold reset of
                   their own with the strap held, so each go is the first of
@@ -87,9 +93,9 @@ Checks (anchor):
                   results, program_status results and write responses are
                   equal; after each program go, program_status read back
                   through the path is 1 (the start completes with an error,
-                  ``architecture.adoc:389-391``, and program_done states that
+                  ``architecture.adoc:404-406``, and program_done states that
                   the status of the program is in program_status,
-                  ``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:100``,
+                  ``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:90``,
                   ``efuse_interface_ctrl.adoc:50``); each KM eFuse write
                   leaves on efuse_req_o in order, and each target shadow word
                   equals the model word (path readback, ``KM-BUS`` write
@@ -107,6 +113,8 @@ Checks (anchor):
                   and fails the leaf
   CHK-REMAP-BUS   ``efuse_req_o`` after the remap keeps bits [11:0] of the KM
                   offset and holds one constant [31:12] (``KM-BUS`` tap)
+  CHK-REMAP-BASE  that constant [31:12] equals the eFuse page of the SEP
+                  map (``SHADOW_BASE``, 0x1093_0000)
 
 Logged only (no verdict): ``INFO-XBAR-UNSTATED`` (the first word of the mailbox
 and the DRBG sampler, which have no stated read response, and the response class
@@ -117,10 +125,32 @@ grades),
 program check), ``OBS-EFW-TM-TUPLE`` (the secure test program done, busy and
 efuse_req_error values and the read done, status and word; no text states that
 read_status carries the error of a blocked read, and efuse_req_error is stated
-for lock refusals only), ``OBS-REMAP-BASE`` (the value of ``OTP_EFUSE_REMAP_BASE``).
+for lock refusals only).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
+
+Write-locked shadow word, after the boot-one checks and before the boot-two
+re-sense (``otp_fuse_controller.adoc:110-114``; ``hw/ip/key_manager/doc/
+architecture.adoc:924-928``, the KM eFuse path honors the native per-field
+locks): ``CHK-EFW-WLOCK-SHADOW`` grades that a KM write of a drawn value, which
+differs from the staged word in a used bit of the field (it sets a used bit
+that is 0, or clears a used bit when every used bit is 1), to a word of the
+write-locked field completes with SLVERR, and that the host readback (class OKAY) and
+``efuse_shadow_probe_o`` of that word equal the staged word.
+``CTRL-EFW-WLOCK-SHADOW`` is its control: the same KM write to a word of an
+unlocked spare field, which is not a plan target (SW writable,
+``otp_fuse_controller.adoc:385-401,471-474``), completes OKAY, and the host
+readback (class OKAY) and the probe equal the written value; a mismatch prints
+``CTRL-MISSING EFW-WLOCK-SHADOW`` and fails the leaf. ``CTRL-EFW-WLOCK-LOCKABLE``
+is its second control: a KM write of the same rule as the write-locked write
+(it changes only used bits) to a word of an unlocked lockable field of the plan,
+which is not a spare and not a plan target, and whose used bits an unlocked write
+can change, completes OKAY, and the host readback (class OKAY) and the probe
+equal the written value for a writable field and the staged value OR the
+written value for a set-only field (``otp_fuse_controller.adoc:208,261,274,279,
+471-474``); a mismatch prints ``CTRL-MISSING EFW-WLOCK-LOCKABLE`` and fails the
+leaf. Both controls run before the check.
 """
 
 from __future__ import annotations
@@ -138,8 +168,9 @@ from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import word_digest
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
+from env.sep_efuse_field_map import spec_fields, spec_writable_shadow_walk
 from env.sep_efuse_image import SHADOW_BASE, WORD_BITS, WORD_MASK, SepEfuseImage
-from env.sep_efuse_plan import DIGEST_FIELDS
+from env.sep_efuse_plan import DIGEST_FIELDS, field_used_masks
 from env.sep_fcov_gate import (
     KM_EFW_PROG_PASS_DENY,
     KM_EFW_PROG_PASS_SPARE,
@@ -150,12 +181,15 @@ from env.sep_fcov_gate import (
     set_km_xbar_pass,
 )
 from env.sep_km_fuse_plan import (
+    _LOCKABLE,
     OTP_DUAL_RAIL_FIELDS,
+    SPARE_FIELDS,
     T_XBAR_EFUSE,
     FuseTarget,
     KmFusePlan,
     plan,
 )
+from env.sep_locked_field_irq import DENY_DATA_MARKER
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL, EFUSE_MMR, ip_c_header
@@ -275,6 +309,8 @@ BADCAB = int(_EFUSE_PAST["rdata"]) & WORD_MASK
 R_STATUS = "EFUSE_INTERFACE_CTRL_STATUS"
 R_PROG = "EFUSE_PROGRAM_CTRL"
 R_READ = "EFUSE_READ_CTRL"
+R_PADDR = "EFUSE_PROGRAM_ADDR"
+R_RADDR = "EFUSE_READ_ADDR"
 R_RDATA = "EFUSE_READ_INTERFACE_READ_DATA"
 _CTRL_STATUS_REGS = (R_STATUS, R_PROG, R_READ, R_RDATA)
 _TOKEN_STATUS_REGS = (
@@ -311,15 +347,17 @@ PC_DONE = _f(R_PROG, "program_done")
 PC_BUSY = _f(R_PROG, "program_busy")
 PC_GO = _f(R_PROG, "efuse_program_go")
 PC_DATA = _f(R_PROG, "efuse_data")
-PC_ADDR_MASK = _f(R_PROG, "efuse_addr")
-PC_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb(R_PROG, "efuse_addr")
+PC_ADDR_MASK = _f(R_PADDR, "efuse_addr")
+PC_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb(R_PADDR, "efuse_addr")
 RC_ENABLE = _f(R_READ, "read_enable")
 RC_STATUS = _f(R_READ, "read_status")
 RC_DONE = _f(R_READ, "read_done")
 RC_BUSY = _f(R_READ, "read_busy")
 RC_GO = _f(R_READ, "efuse_read_go")
-RC_ADDR_MASK = _f(R_READ, "efuse_addr")
-RC_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb(R_READ, "efuse_addr")
+RC_ADDR_MASK = _f(R_RADDR, "efuse_addr")
+RC_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb(R_RADDR, "efuse_addr")
+PC_ADDR_RESET = EFUSE_INTERFACE_CTRL.field_reset(R_PADDR, "efuse_addr")
+RC_ADDR_RESET = EFUSE_INTERFACE_CTRL.field_reset(R_RADDR, "efuse_addr")
 
 # --- test parameters ----------------------------------------------------------
 
@@ -587,7 +625,8 @@ def _fcov_outcome_mask(walk: _Walk, vrom: list[tuple[Cell, kp.PokeResult]], rd1:
     Bit ``v`` a decode outcome {class, write} of a graded walk cell, bit
     ``6 + v`` a VROM load (0) or store (1), bits 8 and 9 the two remap values
     (CHK-REMAP-BUS), bit ``10 + {class, SLVERR}`` the read class of a graded
-    walk read in the eFuse window or of an OKAY eFuse read of CHK-EFW-RD.
+    walk read in the eFuse window, of an OKAY eFuse read of CHK-EFW-RD, or of
+    a read-locked shadow read of CHK-EFW-RD (SLVERR with 0xBADCAB1E).
     """
     mask = 0b11 << 8
     for cell, _res in walk.cells:
@@ -604,6 +643,8 @@ def _fcov_outcome_mask(walk: _Walk, vrom: list[tuple[Cell, kp.PokeResult]], rd1:
     for d in rd1:
         if d["km_cls"] == "OKAY":
             mask |= 1 << (10 + 2 * _efw_read_class(d["km"]))
+        elif d["locked"] and (d["km_cls"], d["km_data"]) == ("SLVERR", DENY_DATA_MARKER):
+            mask |= 1 << (10 + 2 * _efw_read_class(d["km"]) + 1)
     return mask
 
 
@@ -624,6 +665,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         "CHK-EFW-DENY",
         "CHK-EFW-TM",
         "CHK-REMAP-BUS",
+        "CHK-REMAP-BASE",
+        "CHK-EFW-WLOCK-SHADOW",
     )
 
     # --- small helpers ------------------------------------------------------
@@ -830,6 +873,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         await self._deny_pair(rng, fp, prog)
         await self._pulse_efw_prog_pass(KM_EFW_PROG_PASS_DENY)
         close_graded_window(self.logger)
+        # A stream of its own, so the draws of every other stream keep their values.
+        await self._wlock_shadow(SepSeededRng(seed ^ (733 << 48)), fp, model)
 
         # Boot two: secure test strap set before the cold reset and held.
         tm1 = await self._cold_reset_strap1(model)
@@ -861,6 +906,158 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         await ClockCycles(clk, 2)
         set_km_efw_prog_pass(0, self.logger)
         await RisingEdge(clk)
+
+    @staticmethod
+    def _zero_bit_value(rng: SepSeededRng, staged: int) -> int:
+        """A drawn word that sets at least one bit that is 0 in ``staged``."""
+        zeros = [b for b in range(WORD_BITS) if not (staged >> b) & 1]
+        if not zeros:
+            raise AssertionError(f"staged word 0x{staged:08x} has no 0 bit")
+        return rng.getrandbits(WORD_BITS) | (1 << rng.choice(zeros))
+
+    @staticmethod
+    def _used_bit_change_value(rng: SepSeededRng, staged: int, used: int) -> int:
+        """A drawn word that differs from ``staged`` in a bit of ``used`` and only there.
+
+        Bits outside ``used`` keep their staged value, so a refusal cannot come
+        from a write to unused bits. It sets a used bit that
+        is 0 in ``staged``. When every used bit is 1, it clears one used bit
+        instead: a write lock blocks any write (``otp_fuse_controller.adoc:110,112-114``).
+        """
+        word = (staged & ~used & WORD_MASK) | (rng.getrandbits(WORD_BITS) & used)
+        ones = [b for b in range(WORD_BITS) if (used >> b) & 1]
+        zeros = [b for b in ones if not (staged >> b) & 1]
+        if zeros:
+            return word | (1 << rng.choice(zeros))
+        if not ones:
+            raise AssertionError(f"used-bit mask 0x{used:08x} has no bit")
+        return word & ~(1 << rng.choice(ones))
+
+    @staticmethod
+    def _wr_class(res: kp.PokeResult) -> str:
+        """Response class of a KM write; UNKNOWN when the flags cannot be graded."""
+        return _km_class(res) if res.flags_known and res.clean else "UNKNOWN"
+
+    async def _wlock_shadow(self, rng: SepSeededRng, fp: KmFusePlan, model: SepEfuseImage) -> None:
+        """KM write to a write-locked shadow word, after its control write to a spare.
+
+        A write-lock blocks shadow writes, and a write to a locked field
+        completes with SLVERR and leaves the shadow unchanged
+        (``otp_fuse_controller.adoc:110-114``); the KM eFuse path honors the
+        same per-field locks (``key_manager/doc/architecture.adoc:924-928``).
+        The control writes a SW-writable spare word that is not a plan target
+        (read-write, ``otp_fuse_controller.adoc:385-401,471-474``), so a KM path
+        that drops every write fails the control first. A second control writes
+        a word of an unlocked lockable field of the plan that is not a spare
+        and not a plan target, so a KM path that refuses every non-spare write
+        also fails a control first. Its expected readback follows the field's
+        SW-writable entry (``otp_fuse_controller.adoc:208,471-474``): the
+        written word for a writable field, the staged word OR the written word
+        for a set-only field (``:261,274,279``). The control word comes from the
+        write class of the write-locked word (set-only or writable, full or
+        narrow) when the plan has one, and its write changes only used bits.
+        The model is not updated: the next cold reset
+        re-senses the shadow from OTP.
+        """
+        busy = {fp.read_locked, fp.write_locked} | {t.field for t in fp.targets.values()}
+        cands = [f for f, _ in spec_writable_shadow_walk() if f in SPARE_FIELDS and f not in busy]
+        c_field = rng.choice(cands)
+        c_fld = SepEfuseImage.field(c_field)
+        c_idx = c_fld.word + rng.randrange(c_fld.n_words)
+        s_c = model.words[c_idx]
+        v_c = self._zero_bit_value(rng, s_c)
+        wl_field = fp.write_locked
+        wl_fld = SepEfuseImage.field(wl_field)
+        wl_idx = wl_fld.word + rng.randrange(wl_fld.n_words)
+        s = model.words[wl_idx]
+        wl_used = field_used_masks(wl_field)[wl_idx - wl_fld.word]
+        v = self._used_bit_change_value(rng, s, wl_used)
+        # A set-only word with every used bit 1 cannot change even when unlocked,
+        # so only the SLVERR half grades the lock on such a draw.
+        spec = {f.reg_name: f for f in spec_fields()}
+        rb_disc = int(not spec[wl_field].set_only or bool(wl_used & ~s))
+        self._draw("wlock.ctrl_field", c_field)
+        self._draw("wlock.ctrl_word", c_idx)
+        self._draw("wlock.ctrl_value", v_c)
+        self._draw("wlock.field", wl_field)
+        self._draw("wlock.word", wl_idx)
+        self._draw("wlock.used_mask", wl_used)
+        self.logger.info("DRAW wlock.value=%s", _wh(wl_idx, v))
+        # Every word of an unlocked lockable field whose used bits an unlocked write
+        # can change: a set-only word needs a used bit that is 0.
+        l_cands = []
+        for f in (f for f in _LOCKABLE if f not in busy):
+            fld = SepEfuseImage.field(f)
+            for w, used in enumerate(field_used_masks(f)):
+                if not spec[f].set_only or used & ~model.words[fld.word + w]:
+                    l_cands.append((f, fld.word + w, used))
+        if not l_cands:
+            raise AssertionError(f"test bug: no unlocked lockable control word in {fp.summary()}")
+        # Prefer a word of the write-locked word's write class: set-only or
+        # writable, and full or narrow.
+        wl_class = (spec[wl_field].set_only, wl_used == WORD_MASK)
+        same = [c for c in l_cands if (spec[c[0]].set_only, c[2] == WORD_MASK) == wl_class]
+        class_match = int(bool(same))
+        l_field, l_idx, l_used = rng.choice(same or l_cands)
+        s_l = model.words[l_idx]
+        v_l = self._used_bit_change_value(rng, s_l, l_used)
+        e_l = s_l | v_l if spec[l_field].set_only else v_l
+        self._draw("wlock.lockable_field", l_field)
+        self._draw("wlock.lockable_word", l_idx)
+        self._draw("wlock.lockable_used_mask", l_used)
+        self.logger.info("DRAW wlock.lockable_value=%s", _wh(l_idx, v_l))
+
+        c_addr = KM_EFUSE_MAP + 4 * c_idx
+        (c_res,) = await self._run([kp.wr(c_addr, v_c)])
+        c_rb, c_host = await self._host(SepAxiOp.READ, SHADOW_BASE + 4 * c_idx)
+        c_probe = self._shadow_probe_word(c_idx)
+        c_km = self._wr_class(c_res)
+        seen = (c_km, c_host, c_rb, c_probe) == ("OKAY", "OKAY", v_c, v_c)
+        self._ctrl(
+            "EFW-WLOCK-SHADOW",
+            seen,
+            f"field={c_field} word={c_idx} km_addr=0x{c_addr:05x} wrote=0x{v_c:08x} "
+            f"staged=0x{s_c:08x} km_resp={c_km} host_resp={c_host} host_rb=0x{c_rb:08x} "
+            f"probe=0x{c_probe:08x}",
+        )
+
+        l_addr = KM_EFUSE_MAP + 4 * l_idx
+        (l_res,) = await self._run([kp.wr(l_addr, v_l)])
+        l_rb, l_host = await self._host(SepAxiOp.READ, SHADOW_BASE + 4 * l_idx)
+        l_probe = self._shadow_probe_word(l_idx)
+        l_km = self._wr_class(l_res)
+        self._ctrl(
+            "EFW-WLOCK-LOCKABLE",
+            (l_km, l_host, l_rb, l_probe) == ("OKAY", "OKAY", e_l, e_l),
+            f"field={l_field} set_only={int(spec[l_field].set_only)} word={l_idx} used=0x{l_used:08x} "
+            f"class_match={class_match} "
+            f"km_addr=0x{l_addr:05x} wrote={_wh(l_idx, v_l)} staged={_wh(l_idx, s_l)} "
+            f"expected={_wh(l_idx, e_l)} km_resp={l_km} host_resp={l_host} "
+            f"host_rb={_wh(l_idx, l_rb)} probe={_wh(l_idx, l_probe)}",
+        )
+
+        addr = KM_EFUSE_MAP + 4 * wl_idx
+        (res,) = await self._run([kp.wr(addr, v)])
+        rb, host = await self._host(SepAxiOp.READ, SHADOW_BASE + 4 * wl_idx)
+        probe = self._shadow_probe_word(wl_idx)
+        km = self._wr_class(res)
+        flags = f"slv={res.slv} dec={res.dec}" if km != "UNKNOWN" else "slv=x dec=x"
+        line = (
+            f"field={wl_field} word={wl_idx} km_addr=0x{addr:05x} wrote={_wh(wl_idx, v)} "
+            f"staged={_wh(wl_idx, s)} used=0x{wl_used:08x} rb_discriminates={rb_disc} km_resp={km} {flags} pre_clean={int(res.clean)} "
+            f"host_resp={host} host_rb={_wh(wl_idx, rb)} probe={_wh(wl_idx, probe)}"
+        )
+        problems = []
+        if km != "SLVERR":
+            problems.append(f"KM write answered {km}, expected SLVERR: {line}")
+        if host != "OKAY":
+            problems.append(f"host shadow read answered {host}, expected OKAY: {line}")
+        if rb != s:
+            problems.append(f"host readback differs from the staged word: {line}")
+        if probe != s:
+            problems.append(f"efuse_shadow_probe_o word differs from the staged word: {line}")
+        self._fail("CHK-EFW-WLOCK-SHADOW", problems)
+        self.logger.info("CHK-EFW-WLOCK-SHADOW PASS %s", line)
 
     # --- steps 4 to 7: decode walk ------------------------------------------
 
@@ -1242,8 +1439,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             else:
                 mon.kill()
         marks.append(len(seen))
+        rl = SepEfuseImage.field(self.fp.read_locked)
         out = []
         for k, (m, km, sep, mask) in enumerate(draws):
+            word = (km - KM_EFUSE_MAP) // 4
             r = res[2 * k + 1]
             out.append(
                 {
@@ -1258,8 +1457,9 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                     "km_cls": _km_class(r),
                     "h1": host1[k],
                     "h2": host2[k],
-                    "staged": model.words[(km - KM_EFUSE_MAP) // 4] if m == "map" else None,
-                    "model": model.shadow_word((km - KM_EFUSE_MAP) // 4) if m == "map" else None,
+                    "locked": m == "map" and rl.word <= word < rl.word + rl.n_words,
+                    "staged": model.words[word] if m == "map" else None,
+                    "model": model.shadow_word(word) if m == "map" else None,
                     "bus": seen[marks[k] : marks[k + 1]] if bus else None,
                 }
             )
@@ -1363,7 +1563,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             problems.append(f"secure_tm_o={tm_seen} in this boot, expected {tm}")
         if tm and tm_first_boot != 0:
             problems.append(f"control: secure_tm_o={tm_first_boot} in the first boot, expected 0")
-        equal = stable = eq_staged = locked_staged = 0
+        equal = stable = eq_staged = locked_staged = locked_reads = locked_deny = 0
         maps = set()
         for d in draws:
             mask = d["mask"]
@@ -1390,6 +1590,16 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 continue
             word = (d["km"] - KM_EFUSE_MAP) // 4
             if word in locked_words:
+                locked_reads += 1
+                # otp_fuse_controller.adoc:112-114: a read the read lock blocks
+                # completes with SLVERR and read data 0xBADCAB1E.
+                if (d["km_cls"], kd) == ("SLVERR", DENY_DATA_MARKER):
+                    locked_deny += 1
+                else:
+                    problems.append(
+                        f"KM read of read-locked word {word} is not SLVERR with "
+                        f"0x{DENY_DATA_MARKER:08x}: {line}"
+                    )
                 if d["staged"] in (kd, h1d, h2d):
                     locked_staged += 1
                     problems.append(f"the read-locked word {word} returned its staged word: {line}")
@@ -1407,22 +1617,28 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             problems.append(f"draws cover maps {sorted(maps)}, not all three")
         if eq_staged == 0:
             problems.append("no shadow draw returned its staged word; the lock check cannot fail")
+        if locked_reads == 0:
+            problems.append("no draw read the read-locked field; the SLVERR check cannot fail")
         self._fail(chk, problems)
         if tm:
             self.logger.info(
                 "CHK-EFW-RD-TM PASS draws=%d equal=%d host_stable=%d host_eq_staged=%d "
-                "locked_field=%s locked_words_staged_seen=%d tm=1",
+                "locked_field=%s locked_reads=%d locked_slverr_badcab=%d "
+                "locked_words_staged_seen=%d tm=1",
                 len(draws),
                 equal,
                 stable,
                 eq_staged,
                 fp.read_locked,
+                locked_reads,
+                locked_deny,
                 locked_staged,
             )
         else:
             self.logger.info(
                 "CHK-EFW-RD PASS seed=%d draws=%d equal=%d maps=%d host_stable=%d "
-                "host_eq_staged=%d locked_field=%s locked_words_staged_seen=%d tm=0",
+                "host_eq_staged=%d locked_field=%s locked_reads=%d locked_slverr_badcab=%d "
+                "locked_words_staged_seen=%d tm=0",
                 seed,
                 len(draws),
                 equal,
@@ -1430,6 +1646,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 stable,
                 eq_staged,
                 fp.read_locked,
+                locked_reads,
+                locked_deny,
                 locked_staged,
             )
 
@@ -1455,36 +1673,46 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             problems.append(f"efuse_req_o bits [31:12] take {len(uppers)} values: {sorted(uppers)}")
         self._fail("CHK-REMAP-BUS", problems + self._xz_problems())
         base = next(iter(uppers)) << KM_EFUSE_LOW_BITS
-        self.logger.info("OBS-REMAP-BASE base=0x%08x", base)
         self.logger.info(
             "CHK-REMAP-BUS PASS draws=%d low12=ok base_constant=1 base=0x%08x xz_cycles=%d",
             len(draws),
             base,
             self.mon_xz,
         )
+        # OTP_EFUSE_REMAP_BASE is the address of the eFuse controller
+        # (hw/ip/key_manager/doc/architecture.adoc:68-71, :88-89); the SEP map places
+        # the eFuse shadow map, interface controller and MMR in the one 4 KiB page
+        # at 0x1093_0000 (hw/sys/sep/regs/sep.rdl:108, :111, :114).
+        exp = SHADOW_BASE & ~KM_EFUSE_LOW
+        self._fail(
+            "CHK-REMAP-BASE",
+            [] if base == exp else [f"efuse_req_o bits [31:12] 0x{base:08x} != 0x{exp:08x}"],
+        )
+        self.logger.info("CHK-REMAP-BASE PASS base=0x%08x exp=0x%08x", base, exp)
 
     # --- steps 9, 10 and 12: programs -----------------------------------------
 
     @staticmethod
-    def _prog_word(tgt: FuseTarget) -> int:
-        return PC_ENABLE | PC_DATA | _place(tgt.address, PC_ADDR_LSB, PC_ADDR_MASK)
+    def _prog_addr(tgt: FuseTarget) -> int:
+        return _place(tgt.address, PC_ADDR_LSB, PC_ADDR_MASK)
 
     @staticmethod
-    def _read_word(tgt: FuseTarget) -> int:
-        return RC_ENABLE | _place(_word_bit_addr(tgt), RC_ADDR_LSB, RC_ADDR_MASK)
+    def _read_addr(tgt: FuseTarget) -> int:
+        return _place(_word_bit_addr(tgt), RC_ADDR_LSB, RC_ADDR_MASK)
 
     def _km_prog_ops(self, tgt: FuseTarget, mode: str) -> list[kp.PokeOp]:
         """KM program ops. ``mode``: "allow", "deny" or "tm"."""
         km = self._km
-        pw = self._prog_word(tgt)
+        pw = PC_ENABLE | PC_DATA
         ops = [
             kp.wr(km(R_STATUS), ST_REQ_ERR_CLR),
             kp.rd(km(R_STATUS)),
             kp.wr(km(R_READ), 0),
             kp.rd(km(R_PROG)),
-            # In secure test mode only the go write carries efuse_addr, so the
-            # efuse_addr read back after it shows that the go write landed.
-            kp.wr(km(R_PROG), pw & ~PC_ADDR_MASK if mode == "tm" else pw),
+            kp.wr(km(R_PADDR), self._prog_addr(tgt)),
+            kp.wr(km(R_PROG), pw),
+        ]
+        ops += [
             kp.wr(km(R_PROG), pw | PC_GO, raw=mode == "allow"),
         ]
         if mode == "allow":
@@ -1496,8 +1724,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             ops.append(kp.poll(km(R_PROG), PC_BUSY, 0, PROG_POLL_LOADS))
         else:
             # A fixed interval: the condition never holds, so the poll makes
-            # exactly TM_POLL_READS loads.
+            # exactly TM_POLL_READS loads. EFUSE_PROGRAM_ADDR (RW) is read back
+            # after the go and its wait, before the other path touches it.
             ops.append(kp.poll(km(R_PROG), 0, 1, TM_POLL_READS))
+            ops.append(kp.rd(km(R_PADDR)))
         ops += [kp.rd(km(R_PROG)), kp.rd(km(R_STATUS))]
         if mode != "allow":
             # A refused or blocked program leaves the sticky efuse_req_error set;
@@ -1519,7 +1749,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             waited = bool(polls[0].data[0] & ST_REQ_ERR) and not polls[1].data[0] & PC_BUSY
         else:
             waited = polls[0].data[1] == TM_POLL_READS
-        echo = pc if mode == "tm" else None
+        echo = res[-4].value if mode == "tm" else None
         return {
             "path": "km",
             "echo": echo,
@@ -1534,19 +1764,22 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         }
 
     async def _host_program(self, tgt: FuseTarget, mode: str) -> dict:
-        pw = self._prog_word(tgt)
+        pw = PC_ENABLE | PC_DATA
         await self._hw(R_STATUS, ST_REQ_ERR_CLR)
         req_before = _bit(await self._hr(R_STATUS), ST_REQ_ERR)
         await self._hw(R_READ, 0)
         done_before = _bit(await self._hr(R_PROG), PC_DONE)
-        await self._hw(R_PROG, pw & ~PC_ADDR_MASK if mode == "tm" else pw)
+        await self._hw(R_PADDR, self._prog_addr(tgt))
+        await self._hw(R_PROG, pw)
         await self._hw(R_PROG, pw | PC_GO)
+        echo = None
         waited = False
         busy_seen = 0
         if mode == "tm":
             for _ in range(TM_POLL_READS):
                 await self._hr(R_PROG)
             waited = True
+            echo = await self._hr(R_PADDR)
         else:
             for _ in range(HOST_POLL_READS):
                 pc = await self._hr(R_PROG)
@@ -1565,7 +1798,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             await self._hw(R_STATUS, ST_REQ_ERR_CLR)
         return {
             "path": "host",
-            "echo": pc if mode == "tm" else None,
+            "echo": echo,
             "busy_seen": busy_seen,
             "req_err_before": req_before,
             "done_before": done_before,
@@ -1576,9 +1809,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             "waited": waited,
         }
 
-    async def _host_otp_read(
-        self, tgt: FuseTarget, *, need_done: bool = True, addr_on_go: bool = False
-    ) -> dict:
+    async def _host_otp_read(self, tgt: FuseTarget, *, need_done: bool = True) -> dict:
         """Host OTP read of the word that holds ``tgt``.
 
         read_done is set when a read has completed (efuse_interface_ctrl.adoc,
@@ -1588,16 +1819,16 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         ``efuse_shim_command_req_o`` from the go write on. With ``need_done``
         the bounded wait ends at read_busy = 0 and read_done = 1 with at least
         one such command, so the data is the result of this go. Without
-        ``need_done`` it ends at read_busy = 0 and ``rd_cmds`` is logged. With
-        ``addr_on_go`` only the go write carries efuse_addr, so ``addr`` (the
-        efuse_addr read back after the go) shows that the go write landed.
+        ``need_done`` it ends at read_busy = 0 and ``rd_cmds`` is logged. ``addr``
+        is EFUSE_READ_ADDR read back after the go.
         """
-        rw = self._read_word(tgt)
+        rw = RC_ENABLE
         addr = _word_bit_addr(tgt)
         mon = SepShimCmdMonitor().start()
         try:
             await self._hw(R_PROG, 0)
-            await self._hw(R_READ, RC_ENABLE if addr_on_go else rw)
+            await self._hw(R_RADDR, self._read_addr(tgt))
+            await self._hw(R_READ, rw)
             mark = mon.mark()
             await self._hw(R_READ, rw | RC_GO)
             rc = 0
@@ -1610,6 +1841,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                     break
             data, rcls = await self._host(SepAxiOp.READ, EFUSE_INTERFACE_CTRL.addr(R_RDATA))
             rd_cmds = len(mon.reads_since(mark, address=addr))
+            raddr = await self._hr(R_RADDR)
             await self._hw(R_READ, 0)
         finally:
             await mon.stop()
@@ -1620,34 +1852,36 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             "status": _bit(rc, RC_STATUS),
             "waited": waited,
             "rd_cmds": rd_cmds,
-            "addr": (rc & RC_ADDR_MASK) >> RC_ADDR_LSB,
+            "addr": (raddr & RC_ADDR_MASK) >> RC_ADDR_LSB,
         }
 
-    async def _km_otp_read(self, tgt: FuseTarget, *, addr_on_go: bool = False) -> dict:
-        """KM OTP read of the word that holds ``tgt``; ``addr_on_go`` as in ``_host_otp_read``."""
+    async def _km_otp_read(self, tgt: FuseTarget) -> dict:
+        """KM OTP read of the word that holds ``tgt``; ``addr`` as in ``_host_otp_read``."""
         km = self._km
-        rw = self._read_word(tgt)
+        rw = RC_ENABLE
         res = await self._run(
             [
                 kp.wr(km(R_PROG), 0),
-                kp.wr(km(R_READ), RC_ENABLE if addr_on_go else rw),
+                kp.wr(km(R_RADDR), self._read_addr(tgt)),
+                kp.wr(km(R_READ), rw),
                 kp.wr(km(R_READ), rw | RC_GO),
                 kp.poll(km(R_READ), RC_BUSY, 0, PROG_POLL_LOADS),
                 kp.rd(km(R_READ)),
                 kp.rd(km(R_RDATA)),
+                kp.rd(km(R_RADDR)),
                 kp.wr(km(R_READ), 0),
             ]
         )
-        rc = res[4].value
-        rd = res[5]
+        rc = res[5].value
+        rd = res[6]
         okay = rd.clean and (rd.slv, rd.dec) == (0, 0)
         return {
             "word": rd.value,
             "rcls": "OKAY" if okay else f"slv={rd.slv},dec={rd.dec}",
             "done": _bit(rc, RC_DONE),
             "status": _bit(rc, RC_STATUS),
-            "waited": not res[3].data[0] & RC_BUSY,
-            "addr": (rc & RC_ADDR_MASK) >> RC_ADDR_LSB,
+            "waited": not res[4].data[0] & RC_BUSY,
+            "addr": (res[7].value & RC_ADDR_MASK) >> RC_ADDR_LSB,
         }
 
     def _order(self, rng: SepSeededRng, name: str) -> tuple[str, str]:
@@ -1720,7 +1954,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         # Control of CHK-EFW-TM: with secure_tm_o = 0 a program go triggers a
         # program and a read go a read to efuse (efuse_interface_ctrl.adoc,
         # efuse_program_go, efuse_read_go), so each go raises one request. Each
-        # start completes (architecture.adoc:389-391), so after the goes done
+        # start completes (architecture.adoc:404-406), so after the goes done
         # is 1 and busy is 0 on both interfaces.
         tm = self.rd(dut.secure_tm_o)
         for path in ("km", "host"):
@@ -1830,11 +2064,18 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
 
     async def _deny_pair(self, rng: SepSeededRng, fp: KmFusePlan, prog: dict) -> None:
         tgt = fp.targets["denied"]
+        want_addr = self._prog_addr(tgt)
+        # The legs share EFUSE_PROGRAM_ADDR. The host sets it to a value other than
+        # the target before each leg, so the host readback after the leg shows the
+        # address write of that leg.
+        sentinel = _place(tgt.address ^ 1, PC_ADDR_LSB, PC_ADDR_MASK)
         out: dict = {}
         for path in self._order(rng, "deny.order"):
+            await self._hw(R_PADDR, sentinel)
             r = await (
                 self._km_program(tgt, "deny") if path == "km" else self._host_program(tgt, "deny")
             )
+            r["addr_rb"] = await self._hr(R_PADDR)
             r["otp"] = await self._host_otp_read(tgt)
             out[path] = r
         spare = {}
@@ -1856,9 +2097,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 f"path={path} field={tgt.field} word={tgt.word} bit={tgt.bit} "
                 f"req_err_before={r['req_err_before']} req_err={r['req_err']} "
                 f"done={r['done']} status={r['status']} otp_word={_wh(sw, r['otp']['word'])} "
-                f"staged={_wh(sw, staged)} otp_word_eq={r['eq']} rd_cmds={r['otp']['rd_cmds']}"
+                f"staged={_wh(sw, staged)} otp_word_eq={r['eq']} rd_cmds={r['otp']['rd_cmds']} "
+                f"program_addr_rb=0x{r['addr_rb']:08x} sentinel=0x{sentinel:08x}"
             )
             r["line"] = line
+            if r["addr_rb"] != want_addr:
+                problems.append(
+                    f"EFUSE_PROGRAM_ADDR read by the host after the {path} leg "
+                    f"!= the target 0x{want_addr:08x}: {line}"
+                )
             bad = []
             if r["req_err_before"]:
                 bad.append("efuse_req_error read 1 after its clear (control)")
@@ -1961,9 +2208,9 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             rd_mark, rdd_mark, shim_mark = len(rd_req), len(rd_done), shim.mark()
             read_done_before = self.rd(dut.efuse_read_done_o)
             otp = await (
-                self._km_otp_read(tgt, addr_on_go=True)
+                self._km_otp_read(tgt)
                 if path == "km"
-                else self._host_otp_read(tgt, need_done=False, addr_on_go=True)
+                else self._host_otp_read(tgt, need_done=False)
             )
             await ClockCycles(dut.clk_i, 4)
             otp["shim_cmds"] = len(shim.commands_since(shim_mark))
@@ -2054,18 +2301,18 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             word = tm_res[path]["echo"]
             echo[path] = int((word & PC_ADDR_MASK) >> PC_ADDR_LSB == tgt.address)
             self.logger.info(
-                "INFO-LOG-EFW-TM echo path=%s program_ctrl=0x%08x efuse_addr_echo=%d",
+                "INFO-LOG-EFW-TM echo path=%s program_addr=0x%08x efuse_addr_echo=%d",
                 path,
                 word,
                 echo[path],
             )
-        # efuse_addr is RW (efuse_interface_ctrl.adoc, EFUSE_PROGRAM_CTRL), and
-        # no secure test protection covers EFUSE_PROGRAM_CTRL (test_mode.adoc,
-        # "Protection While Active"), so each path reads back the address its
-        # program go write carried.
+        # efuse_addr is RW (efuse_interface_ctrl.adoc, EFUSE_PROGRAM_ADDR), and
+        # no secure test protection covers EFUSE_PROGRAM_ADDR (test_mode.adoc,
+        # "Protection While Active"), so each path reads back its written address.
         if (echo["km"], echo["host"]) != (1, 1):
             problems.append(
-                "efuse_addr read back after the program go is not the go write address: "
+                "efuse_addr read back after the program go and its wait is not the "
+                "written address: "
                 f"km echo={echo['km']} host echo={echo['host']}"
             )
         for path in ("km", "host"):
@@ -2075,33 +2322,34 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             if r["req_err_before"]:
                 problems.append(f"path={path}: efuse_req_error read 1 after its clear (control)")
         # In secure test mode no fuse command is issued, and read and program
-        # starts complete without issuing a command (architecture.adoc:389-391);
-        # a blocked read returns all-zero data (architecture.adoc:399-400).
+        # starts complete without issuing a command (architecture.adoc:404-406);
+        # a blocked read returns all-zero data (architecture.adoc:410-411).
         # CTRL-EFW-TM shows that the same goes raise one request each with
         # secure_tm_o = 0, and the staged word is not 0, so a read that issued
         # its request would load other data.
         if not all(prog[p]["ctrl_seen"] for p in ("km", "host")):
             problems.append("control: CTRL-EFW-TM was not seen in boot one")
-        # Each start completes (architecture.adoc:389-391). done is set when the
+        # Each start completes (architecture.adoc:404-406). done is set when the
         # operation has completed and resets to 0 (efuse_interface_ctrl.adoc,
         # EFUSE_READ_CTRL read_done, EFUSE_PROGRAM_CTRL program_done). The goes
         # of each path follow a cold reset of their own, and no start runs on
         # either interface between that reset and the goes, so each go starts
         # with done = 0 and gives a done rise. After each go the interface taps
-        # read done = 1 and busy = 0. Only the go write carries efuse_addr, so
-        # the efuse_addr read back after the go shows that the go write landed.
+        # read done = 1 and busy = 0. A target address that differs from the
+        # address register reset value shows by its readback that the write landed.
         for path in ("km", "host"):
             tgt = fp.targets["tm_km_spare" if path == "km" else "tm_host_spare"]
             r = tm_res[path]
             otp = r["otp"]
             rd_addr = _word_bit_addr(tgt)
-            if not rd_addr or not tgt.address:
+            if rd_addr == RC_ADDR_RESET or tgt.address == PC_ADDR_RESET:
                 problems.append(
-                    f"path={path}: target address 0 is also the address of the write before the go"
+                    f"path={path}: target address 0x{tgt.address:x} equals the address "
+                    "register reset value"
                 )
             if otp["addr"] != rd_addr:
                 problems.append(
-                    f"path={path}: efuse_addr read back after the read go is "
+                    f"path={path}: EFUSE_READ_ADDR read back after the read go is "
                     f"0x{otp['addr']:x}, expected 0x{rd_addr:x}"
                 )
             for kind, rises, before, done, busy in (
@@ -2163,8 +2411,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                     "expected the default all-zero response"
                 )
             # A blocked program start completes with an error
-            # (architecture.adoc:389-391), and the status of a completed program
-            # is in program_status, 1 = Error (efuse_interface_ctrl.rdl:100,
+            # (architecture.adoc:404-406), and the status of a completed program
+            # is in program_status, 1 = Error (efuse_interface_ctrl.rdl:96,
             # program_status). Each path reads EFUSE_PROGRAM_CTRL after its go.
             if r["status"] != 1:
                 problems.append(
