@@ -26,8 +26,8 @@ rom.adoc, Hand-off to BL1, Release and Jump:
   fence for the region BL1 was loaded into — a single rewrite of the locked BL1-region rule
   under `mseccfg.RLB=1` (SEP-ROM-PMP-080, <<sec:pmp_mechanism>>). The release shall be the
   last write before the jump sequence."
-* Item 2 of the same list: "The BL1 image is copied from its staged payload location to its TOC
-  entry's `load_addr`, and control transfers to `load_addr + entry_point`
+* Items 1 and 4 of the same list: "The BL1 image is copied from its staged payload location to
+  its TOC entry's `load_addr`" and "Control transfers to `load_addr + entry_point`
   (SEP-ROM-MAN-050/-060)."
 * SEP-ROM-HOFF-070: "The jump shall order memory correctly for freshly written code:
   `mepc ← entry`, `fence.i` (IFU sees the new SRAM contents), `fence` (stores complete), then
@@ -47,8 +47,9 @@ behavioural part: no retirement outside the Boot ROM from the first PMP write to
 
 Partial coverage of "after the self-check passes" (HOFF-060, PMP-030, PMP-080): the release is
 graded only as following the progress codes MANIFEST_VALIDATED, FUSE_SECRETS_LOCKED and the
-[S29] entry code HANDOFF_CHECK. The "passes" clause is logged as blocked: no spec status reports
-a passed self-check, and the gate-ledger self-check is not on this tree (rom.adoc gap note).
+[S29] entry code HANDOFF_CHECK. The "passes" clause is logged as blocked here: the gate-ledger
+leaves grade it (sep_rom_gate_ledger_pass_test CHK-SELFCHECK-ORDER sees the self-check retire
+before STARTING_BL1 and the release; the negative leaves see a failed self-check halt first).
 
 HOFF-060 "last write" is graded on CSR writes after the release; the stores are listed as OBS.
 
@@ -328,7 +329,8 @@ class sep_rom_pmp_release_handoff_test(sep_rom_observe_base):
         )
         chk.blocked(
             "RELEASE-AFTER-SELF-CHECK-PASSES",
-            "no spec status reports a passed self-check; the gate ledger is not on this tree",
+            "graded by sep_rom_gate_ledger_pass_test CHK-SELFCHECK-ORDER and the negative "
+            "gate-ledger leaves",
         )
 
         kept = [r for r in obs.retires if r.t_ps <= mret_t]
