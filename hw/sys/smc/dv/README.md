@@ -350,13 +350,13 @@ Sixteen scenarios are bound. Six carry both implementations:
 `smc_multi_reset_csr_persistence_test`. Ten are SV-UVM only and sit in
 `testlists/holdout.toml`, by group:
 
-- `csr_uvm_extended`: `smc_regblock_sparse_strobe_test`, `smc_lock_pipelined_write_test`,
+* `csr_uvm_extended`: `smc_regblock_sparse_strobe_test`, `smc_lock_pipelined_write_test`,
   `smc_external_reg_lane_test`, `smc_narrow_access_side_effect_test`;
-- `wdt_uvm_extended`: `smc_wdt_feed_zerocmp_test`, `smc_wdt_core_awake_gate_test`,
+* `wdt_uvm_extended`: `smc_wdt_feed_zerocmp_test`, `smc_wdt_core_awake_gate_test`,
   `smc_wdt_second_stage_reset_test`;
-- `cg_uvm_extended`: `smc_fabric_reg_clock_gate_test`;
-- `mailbox_uvm_extended`: `smc_mailbox_cool_reset_recovery_test`;
-- `reset_uvm_extended`: `smc_ingress_reset_inflight_test`.
+* `cg_uvm_extended`: `smc_fabric_reg_clock_gate_test`;
+* `mailbox_uvm_extended`: `smc_mailbox_cool_reset_recovery_test`;
+* `reset_uvm_extended`: `smc_ingress_reset_inflight_test`.
 
 `uvm_extended` collects the eight of them that run on Verilator or VCS; the
 other two, `smc_wdt_second_stage_reset_test` and
