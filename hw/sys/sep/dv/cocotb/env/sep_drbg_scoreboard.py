@@ -283,6 +283,8 @@ class SepDrbgScoreboard:
         # Items past that count: (index, expected, actual), logged, never graded.
         self.observed = {k: [] for k in self._STREAMS}
         self._tasks = []
+        self._noise_run = False
+        self._noise_task = None
         # Live runtime flag (not a one-shot fork decision). CHK5 sink / AXIS1
         # monitors are forked from start() but skip every cycle until
         # enable_chk5() — typically after the ESRC seed, before EDN enable —
@@ -290,12 +292,24 @@ class SepDrbgScoreboard:
         self.chk5_enable = False
 
     # ------------------------------------------------------------------ drive
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """End every task ``start`` forked (noise driver and monitors).
+
+        The noise driver is not cancelled: cancelling a task that waits on
+        ``NextTimeStep`` leaves the simulator callback registered on Verilator,
+        and the simulator later calls the freed callback data. ``stop`` clears
+        the run flag and returns after the loop's next write of
+        ``esrc_noise_ext_i``, at most one clock later, so ``clk_i`` must run.
+        The monitors wait only on ``RisingEdge`` and ``ReadOnly`` and are
+        cancelled. A second call does nothing.
 
         A leaf calls this before a TRNG reset that ends the bring-up the tasks
         observe; a later ``start`` forks a fresh set. Results stay readable.
         """
+        self._noise_run = False
+        noise, self._noise_task = self._noise_task, None
+        if noise is not None:
+            await noise
         for task in self._tasks:
             stop = getattr(task, "cancel", None) or task.kill
             stop()
@@ -304,11 +318,12 @@ class SepDrbgScoreboard:
     def start(self):
         """Fork the noise driver + per-stream monitors (after reset released)."""
         d = self.dut
+        self._noise_run = True
+        self._noise_task = cocotb.start_soon(self._drive_noise())  # CHK1 runs inline here
         # CHK2 default = AXI frontdoor FIFO_RDATA drain (check_fifo_frontdoor),
         # the overflow-robust observation point. Only fork the live backdoor
         # wire-tap monitor (entropy_stream_data_o) when explicitly selected.
         self._tasks = [
-            cocotb.start_soon(self._drive_noise()),  # CHK1 runs inline here
             # CHK3: capture the seed on the REAL CSRNG seed handshake
             # (seed_valid && es_ack), not merely seed_valid -- the value the CSRNG
             # actually accepted.
@@ -531,6 +546,8 @@ class SepDrbgScoreboard:
                 )
             await NextTimeStep()
             d.esrc_noise_ext_i.value = self.noise_gen.step_all()
+            if not self._noise_run:
+                return
             await RisingEdge(d.clk_i)
             await ReadOnly()
 
