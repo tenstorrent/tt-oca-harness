@@ -1078,7 +1078,7 @@ Exceptions (a closed set):
   drive one lane together.
 * *ESRC noise-source stuck-at inject* — while bit i of `esrc_noise_stuck_en_i`
   is 1, the output of the noise ring oscillator of lane i
-  (`u_noise_source.noise_async_i`, the input of the sampling flop) is forced to
+  (`u_noise_sampler.noise_async_i`, the input of the sampling flop) is forced to
   bit i of `esrc_noise_stuck_val_i`, and the ESRC noise force of that lane is
   released. The value passes the sampling flop and the synchronizer, so it
   reaches the noise observe FIFO and the decorrelator of the lane. Software

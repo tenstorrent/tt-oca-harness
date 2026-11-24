@@ -3,7 +3,7 @@
 
 // Combine NRINGS entropy generators through a GF(2^8) BIW extractor into one 32-bit stream.
 //
-// Each lane has a noise source, decorrelator, per-lane health test, and auto-tune FSM.
+// Each lane has a noise sampler, decorrelator, per-lane health test, and auto-tune FSM.
 // Per-lane jitter_ro_*, sample_clk_*, and decorrelator_* inputs configure each generator;
 // health_test_* inputs are shared.
 //
@@ -220,7 +220,7 @@ module entropy_generator_complex #(
     .err_o             (window_cntr_err)
   );
 
-  // Per-lane generator: noise source + decorrelator + per-lane health test
+  // Per-lane generator: noise sampler + decorrelator + per-lane health test
   for (genvar i = 0; i < NRINGS; i++) begin : gen_ecmplx
     entropy_generator #(
       .CLKDIV_WIDTH(CLKDIV_WIDTH)

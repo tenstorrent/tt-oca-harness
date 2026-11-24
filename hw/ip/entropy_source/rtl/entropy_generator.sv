@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Generate one entropy lane from a noise source, decorrelator, health tests, and auto-tune.
+// Generate one entropy lane from a noise sampler, decorrelator, health tests, and auto-tune.
 //
 // Samples the lane's ring oscillator, noise_async_i, on sample_clk_i and feeds the bit to
 // decorrelation and Repetition/APT/Markov tests.
@@ -56,7 +56,7 @@ module entropy_generator #(
                                                              // evaluates and restarts the APT and
                                                              // Markov tests.
 
-  output      logic                    noise_bit_monitor_o,  // Synchronized noise-source bit, for
+  output      logic                    noise_bit_monitor_o,  // Synchronized noise-sampler bit, for
                                                              // debug observation.
   output      logic [7:0]              test_status_o,  // Health-test status byte, encoded as
                                                        // entropy_health_test status_o.
@@ -94,7 +94,7 @@ module entropy_generator #(
   // Sub-instances
   /////////////////
 
-  entropy_noise_source u_noise_source (
+  entropy_noise_sampler u_noise_sampler (
     .clk_i,
     .rst_ni,
     .sample_clk_i,

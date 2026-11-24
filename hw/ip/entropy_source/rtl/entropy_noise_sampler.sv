@@ -7,7 +7,7 @@
 // sample_clk_i clocks the metastable sample of noise_async_i; the bit is double-synchronized
 // onto clk_i as noise_o.
 
-module entropy_noise_source (
+module entropy_noise_sampler (
   input       logic clk_i,              // System clock.
   input       logic rst_ni,             // Active-low asynchronous reset of the sample and
                                         // synchronizer flops.

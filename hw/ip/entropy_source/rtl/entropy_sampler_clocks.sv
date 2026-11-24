@@ -25,7 +25,7 @@ module entropy_sampler_clocks #(
                                                             // change only while that lane's
                                                             // sample-clock enable is low.
   output      logic [NRINGS-1:0]      sample_clk_o  // Per-lane selected and divided sample clock
-                                                    // for the noise-source sampling flop.
+                                                    // for the noise sampler's sampling flop.
 );
 
   /////////////

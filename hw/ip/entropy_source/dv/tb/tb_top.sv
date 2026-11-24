@@ -327,7 +327,7 @@ module entropy_source_tb_top (
     .noise_o  (noise_source_async)
   );
 
-  entropy_noise_source u_noise_source (
+  entropy_noise_sampler u_noise_sampler (
     .clk_i         (clk),
     .rst_ni        (rst_n),
     .sample_clk_i  (rosc_sample_clk),
