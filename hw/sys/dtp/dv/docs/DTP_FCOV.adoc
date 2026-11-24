@@ -116,6 +116,7 @@ checkers. Toggle and FSM coverage are not collected.
 |JTAG2AXI DMI status |`cg_j2a_dmi_status` |`dtp_j2a_fcov`
 |JTAG2AXI Debug Module access |`cg_j2a_dm_access` |`dtp_j2a_fcov`
 |JTAG2AXI System Bus Access |`cg_j2a_sba_access` |`dtp_j2a_fcov`
+|JTAG2AXI System Bus Access errors |`cg_j2a_sba_error` |`dtp_j2a_fcov`
 |Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
 |Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
 |XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
@@ -522,6 +523,31 @@ a carry in the cycle a completion's autoincrement moves the address bits above
 bit 31, with the op of the access it completes.
 `dtp_jtag2axi_sba_sizes_test` reaches every `x_lane`, `x_autoinc`, and
 `cp_carry` bin in every pass.
+
+==== `cg_j2a_sba_error`
+
+*Description*: Covers the errors each JTAG2AXI bridge's Debug Module records
+from its bus accesses, and the DMI writes it acts on while it holds one.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_code` |`bus`, `size`: the `sberror` the Debug Module records; an alignment error is ignored, and any other value is an illegal bin
+|`cp_bus` |One bin per bridge, op, and response of an access that ends in a bus error: SLVERR and DECERR, each on a read and a write; an OKAY or EXOKAY response is an illegal bin
+|`cp_size` |One bin per bridge and op of an access whose size is above the bridge's data width
+|`cp_held` |One bin per bridge and DMI write the Debug Module acts on while `sberror` is not 0: an `sbdata0` write, an `sbaddress0` write with `sbreadonaddr`, an `sbcs` write whose `sberror` field is 0, and one whose `sberror` field is not
+|===
+
+`dtp_j2a_fcov` takes each bridge's error report, the responses on its port, the
+DMI requests its Debug Module accepts, and that module's `sbcs` from its
+`tdr2axi` instance, and samples on the bridges' system clock. An error is
+sampled in the cycle the Debug Module records it, which for a bus error is the
+cycle of the B or R handshake, with the op of the access the adapter granted
+last, and for a size error with the op of the access it refuses. A held write
+is sampled in the cycle the Debug Module accepts it with `dmactive` 1 and
+`sbbusy` and `sbbusyerror` 0.
+`dtp_jtag2axi_sba_errors_test` reaches every `cp_code`, `cp_bus`, `cp_size`,
+and `cp_held` bin in every pass.
 
 ==== `cg_ctp`
 
@@ -1008,6 +1034,7 @@ review.
 |`dtp_jtag2axi_dmi_status_test` |`cg_j2a_dmi_status` `x_update` and `x_dmireset`
 |`dtp_jtag2axi_dm_regs_test` |`cg_j2a_dm_access` `x_access` and `x_sbcs_ro`
 |`dtp_jtag2axi_sba_sizes_test` |`cg_j2a_sba_access` `x_lane`, `x_autoinc`, and `cp_carry`
+|`dtp_jtag2axi_sba_errors_test` |`cg_j2a_sba_error` `cp_code`, `cp_bus`, `cp_size`, and `cp_held`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins

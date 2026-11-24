@@ -355,6 +355,9 @@ localparam string DtpJ2aDtmCaptureCheckId = "CHK-J2A-DTM-CAPTURE";
 localparam string DtpJ2aDmActiveCheckId = "CHK-J2A-DM-ACTIVE";
 // The sbaddress value after accesses with sbautoincrement.
 localparam string DtpJ2aAutoincCheckId = "CHK-J2A-AUTOINC";
+// The sberror an error access leaves, keeps while the bridge refuses
+// accesses and an sbcs write clears.
+localparam string DtpJ2aSbaErrorCheckId = "CHK-J2A-SBA-ERROR";
 
 // One function per bridge: the widths come from the bench configuration
 // tb_top elaborates the DUT with (dtp_dv_cfg_pkg), and the TDR opcodes from

@@ -7,7 +7,9 @@
 // each bridge reads and writes with dmactive 0 and 1, and the sbcs writes
 // that set a read-only bit (cg_j2a_dm_access); the size, byte offset and
 // sbautoincrement of each bus access a bridge's Debug Module starts, and the
-// autoincrements that carry into address bit 32 (cg_j2a_sba_access).
+// autoincrements that carry into address bit 32 (cg_j2a_sba_access); the
+// errors each Debug Module records from its bus accesses, and the DMI writes
+// it acts on while it holds one (cg_j2a_sba_error).
 //
 // One instance in the shared tb_top serves both flows. Each bridge's DMI
 // capture and update strobes, its captured status, the DMI value its bridge
@@ -22,7 +24,10 @@
 // The System Bus Access samples are taken on the bridges' system clock, from
 // each Debug Module's request to its bus adapter: one when the adapter grants
 // a request, and one in the cycle a completion's autoincrement moves the
-// address bits above bit 31.
+// address bits above bit 31. The error samples are taken on the same clock:
+// one in the cycle a Debug Module records an error, which for a bus error is
+// the cycle of the B or R handshake that ends the access, and one for each
+// DMI write it accepts while sberror is not 0, with the sbcs it then holds.
 //
 // Covergroups follow the cross rules dtp_fcov.sv states.
 //
@@ -47,13 +52,26 @@ module dtp_j2a_fcov (
   // The request address modulo the bridge's beat.
   input wire [2:0][2:0] sba_offset_i,
   input wire [2:0]      sba_autoinc_i,
-  input wire [2:0]      sba_carry_i
+  input wire [2:0]      sba_carry_i,
+  input wire [2:0]      sba_error_valid_i,
+  input wire [2:0][2:0] sba_error_i,
+  input wire [2:0][1:0] sba_bresp_i,
+  input wire [2:0][1:0] sba_rresp_i,
+  input wire [2:0]      dm_req_i,
+  // {address 40:34, op 33:32, data 31:0}
+  input wire [2:0][40:0] dm_req_dmi_i,
+  input wire [2:0][31:0] dm_sbcs_i,
+  input wire [2:0]      dm_sbbusy_i
 );
 
   localparam int unsigned Bridges = 3;
   // sbcs sbversion, sbbusy, sbasize and sbaccess128 to sbaccess8.
   localparam logic [31:0] SbcsReadOnly = 32'hE020_0FFF;
   localparam logic [6:0] AddrSbcs = 7'h38;
+  localparam logic [6:0] AddrSbaddress0 = 7'h39;
+  localparam logic [6:0] AddrSbdata0 = 7'h3C;
+  localparam logic [2:0] SberrorBus = 3'd2;
+  localparam logic [2:0] SberrorSize = 3'd4;
 
   // The status each bridge's last DMI capture presented, which its next DMI
   // update closes the scan of.
@@ -183,9 +201,65 @@ module dtp_j2a_fcov (
     x_autoinc: cross cp_size, cp_op, cp_autoinc;
   endgroup
 
+  // One sample per error a bridge's Debug Module records, with the op and
+  // response of the access a bus error ends and the op a size error refuses,
+  // and one per DMI write it acts on while it holds an error, by kind: 0 an
+  // sbdata0 write, 1 an sbaddress0 write with sbreadonaddr, 2 an sbcs write
+  // whose sberror field is 0, 3 one whose sberror field is not. A bus error
+  // follows only a SLVERR or DECERR, and the bus adapters report no other
+  // error (7).
+  covergroup cg_j2a_sba_error with function sample (
+      logic [1:0] bridge,
+      logic held,
+      logic [2:0] code,
+      logic write,
+      logic [1:0] resp,
+      logic [1:0] kind
+  );
+    option.per_instance = 1;
+    cp_code: coverpoint code iff (!held) {
+      bins bus = {SberrorBus};
+      bins size = {SberrorSize};
+      ignore_bins alignment = {3'd3};
+      illegal_bins other = {3'd0, 3'd1, [3'd5 : 3'd7]};
+    }
+    // 8 * bridge + 4 * op + response
+    cp_bus: coverpoint {
+      bridge, write, resp
+    } iff (!held && code == SberrorBus) {
+      bins smc_axi_read[] = {2, 3};
+      bins smc_axi_write[] = {6, 7};
+      bins smc_otp_read[] = {10, 11};
+      bins smc_otp_write[] = {14, 15};
+      bins sep_otp_read[] = {18, 19};
+      bins sep_otp_write[] = {22, 23};
+      illegal_bins okay = {0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20, 21};
+      illegal_bins none = {[24 : 31]};
+    }
+    // 2 * bridge + op
+    cp_size: coverpoint {
+      bridge, write
+    } iff (!held && code == SberrorSize) {
+      bins smc_axi[] = {0, 1};
+      bins smc_otp[] = {2, 3};
+      bins sep_otp[] = {4, 5};
+      illegal_bins none = {6, 7};
+    }
+    // 4 * bridge + kind
+    cp_held: coverpoint {
+      bridge, kind
+    } iff (held) {
+      bins smc_axi[] = {[0 : 3]};
+      bins smc_otp[] = {[4 : 7]};
+      bins sep_otp[] = {[8 : 11]};
+      illegal_bins none = {[12 : 15]};
+    }
+  endgroup
+
   cg_j2a_dmi_status u_cg_j2a_dmi_status = new();
   cg_j2a_dm_access u_cg_j2a_dm_access = new();
   cg_j2a_sba_access u_cg_j2a_sba_access = new();
+  cg_j2a_sba_error u_cg_j2a_sba_error = new();
 
   always_ff @(posedge tck_i) begin
     if (tap_rst_ni) begin
@@ -215,6 +289,29 @@ module dtp_j2a_fcov (
     end
   end
 
+  // A DMI write each bridge's Debug Module acts on while it holds an error,
+  // and its kind in cg_j2a_sba_error.
+  logic [Bridges-1:0]      held_valid;
+  logic [Bridges-1:0][1:0] held_kind;
+
+  always_comb begin
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      // sbcs bits 14:12 sberror, 20 sbreadonaddr, 22 sbbusyerror.
+      held_valid[b] = dm_req_i[b] && dm_req_dmi_i[b][33:32] == 2'd2 && dmactive_i[b] &&
+          dm_sbcs_i[b][14:12] != '0 && !dm_sbcs_i[b][22] && !dm_sbbusy_i[b];
+      held_kind[b] = 2'd0;
+      case (dm_req_dmi_i[b][40:34])
+        AddrSbdata0: held_kind[b] = 2'd0;
+        AddrSbaddress0: begin
+          held_kind[b] = 2'd1;
+          held_valid[b] &= dm_sbcs_i[b][20];
+        end
+        AddrSbcs: held_kind[b] = {1'b1, dm_req_dmi_i[b][14:12] != '0};
+        default: held_valid[b] = 1'b0;
+      endcase
+    end
+  end
+
   always_ff @(posedge clk_i) begin
     if (rst_ni) begin
       for (int unsigned b = 0; b < Bridges; b++) begin
@@ -223,6 +320,11 @@ module dtp_j2a_fcov (
                                      sba_autoinc_i[b]);
         if (sba_carry_i[b])
           u_cg_j2a_sba_access.sample(2'(b), 1'b1, sba_write_q[b], sba_size_i[b], '0, 1'b1);
+        if (sba_error_valid_i[b])
+          u_cg_j2a_sba_error.sample(2'(b), 1'b0, sba_error_i[b],
+                                    sba_error_i[b] == SberrorBus ? sba_write_q[b] : sba_write_i[b],
+                                    sba_write_q[b] ? sba_bresp_i[b] : sba_rresp_i[b], '0);
+        if (held_valid[b]) u_cg_j2a_sba_error.sample(2'(b), 1'b1, '0, 1'b0, '0, held_kind[b]);
       end
     end
   end

@@ -317,15 +317,17 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     dmi_write(t, DTP_DM_SBADDRESS0, masked[31:0], {context_s, ".sbaddress0"});
   endtask
 
-  // Poll sbcs until sbbusy clears, then require sberror 0 and sbbusyerror
-  // `exp_sbbusyerror`. CHK-AXI-COMPLETION judges the SbaPolls bound and
-  // CHK-J2A-FAULT-STATUS the two error fields.
-  task wait_sba_idle(dtp_j2a_target_t t, string context_s, bit exp_sbbusyerror = 1'b0);
+  // Poll sbcs until sbbusy clears, then require sberror `exp_sberror` and
+  // sbbusyerror `exp_sbbusyerror`. CHK-AXI-COMPLETION judges the SbaPolls
+  // bound and CHK-J2A-FAULT-STATUS the two error fields.
+  task wait_sba_idle(dtp_j2a_target_t t, string context_s, bit exp_sbbusyerror = 1'b0,
+                     bit [2:0] exp_sberror = '0);
     ocah_axi_checker        ev = evidence(t);
     realtime                start = $realtime;
     bit              [31:0] value;
     dtp_sbcs_t              sbcs;
     bit              [63:0] errors;
+    bit              [63:0] expected = 64'({exp_sberror, exp_sbbusyerror});
     for (int unsigned poll = 0; poll < SbaPolls; poll++) begin
       dmi_read(t, DTP_DM_SBCS, context_s, value);
       sbcs = dtp_sbcs_t'(value);
@@ -342,7 +344,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     void'(ev.expect_equal(
         DtpJ2aFaultStatusCheckId,
         errors,
-        64'(exp_sbbusyerror),
+        expected,
         $sformatf(
             "%s target=%s (sberror, sbbusyerror)", context_s, t.name)
     ));
@@ -357,9 +359,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   endtask
 
   // Write `data` to sbdata, which starts the `size` write at `addr`, the
-  // address sbaddress holds, and judge the bus request.
+  // address sbaddress holds, and judge the bus request; the write ends with
+  // sberror `exp_sberror`.
   task sba_write_data(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data, int unsigned size,
-                      string context_s);
+                      string context_s, bit [2:0] exp_sberror = '0);
     int unsigned offset = int'(addr % t.beat_bytes);
     bit [7:0] wstrb = 8'(dtp_j2a_full_wstrb(size) << offset);
 
@@ -369,7 +372,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       target_cfgs[t.name].arm_expected_write(addr & bit_mask(t.addr_width), lanes, wstrb);
     if (size == 3) dmi_write(t, DTP_DM_SBDATA1, masked[63:32], {context_s, ".sbdata1"});
     dmi_write(t, DTP_DM_SBDATA0, masked[31:0], {context_s, ".sbdata0"});
-    wait_sba_idle(t, context_s);
+    wait_sba_idle(t, context_s, 1'b0, exp_sberror);
     expect_bus_request(t, 1'b0, addr, size, lanes, wstrb, context_s);
   endtask
 
@@ -378,10 +381,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   task sba_read(input dtp_j2a_target_t t, input bit [63:0] addr, input int unsigned size,
                 input string context_s, output bit [63:0] data, input bit autoincrement = 1'b0);
     bit [31:0] word;
-    if (target_enabled(t)) target_cfgs[t.name].arm_expected_read(addr & bit_mask(t.addr_width));
-    sba_setup(t, addr, size, 1'b1, context_s, autoincrement);
-    wait_sba_idle(t, context_s);
-    expect_bus_request(t, 1'b1, addr, size, '0, '0, context_s);
+    sba_read_request(t, addr, size, context_s, autoincrement);
     dmi_read(t, DTP_DM_SBDATA0, {context_s, ".sbdata0"}, word);
     data = 64'(word);
     if (size == 3) begin
@@ -389,6 +389,25 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       data[63:32] = word;
     end
   endtask
+
+  // Start the `size` read at `addr` with an sbaddress0 write and judge the
+  // bus request; the read ends with sberror `exp_sberror`.
+  task sba_read_request(dtp_j2a_target_t t, bit [63:0] addr, int unsigned size, string context_s,
+                        bit autoincrement = 1'b0, bit [2:0] exp_sberror = '0);
+    if (target_enabled(t)) target_cfgs[t.name].arm_expected_read(addr & bit_mask(t.addr_width));
+    sba_setup(t, addr, size, 1'b1, context_s, autoincrement);
+    wait_sba_idle(t, context_s, 1'b0, exp_sberror);
+    expect_bus_request(t, 1'b1, addr, size, '0, '0, context_s);
+  endtask
+
+  // The responder answers the next read (`is_read`) or write of the beat at
+  // `addr` with `resp`, and the AXI scoreboard expects that response.
+  function void inject_bus_error(dtp_j2a_target_t t, bit [63:0] addr, ocah_axi_resp_e resp,
+                                 bit is_read);
+    bit [63:0] aligned = addr & bit_mask(t.addr_width) & ~64'(t.beat_bytes - 1);
+    responder(t.name).inject_error(aligned, resp, is_read, !is_read);
+    if (target_enabled(t)) target_cfgs[t.name].arm_expected_resp(aligned, resp, is_read, !is_read);
+  endfunction
 
   // Write a seeded word at `addr` and another at the next beat, then read
   // `addr` back. The words differ, so a read that returns the first one read

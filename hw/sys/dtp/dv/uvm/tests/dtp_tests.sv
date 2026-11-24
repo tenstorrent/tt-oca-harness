@@ -47,6 +47,7 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag2axi_dmi_status_test.svh"
 `include "dtp_jtag2axi_dm_regs_test.svh"
 `include "dtp_jtag2axi_sba_sizes_test.svh"
+`include "dtp_jtag2axi_sba_errors_test.svh"
 
 // Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
 `include "dtp_jtag_tmp_status_register_smoke_test.svh"

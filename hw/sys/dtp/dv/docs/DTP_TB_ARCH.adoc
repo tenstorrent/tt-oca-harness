@@ -485,6 +485,7 @@ seed.
 |JTAG2AXI write |On each bridge, activate the Debug Module, write a seeded word and its neighbour through `sbaddress0` and `sbdata0`, poll sbcs, check the responder memory after each write
 |JTAG2AXI read |Read the first word back through `sbaddress0` with `sbreadonaddr`, poll sbcs, compare `sbdata0` with the written word
 |JTAG2AXI sizes |On each bridge, read and write every size at every offset in a beat of distinct bytes, check the whole beat after each write, and run an `sbautoincrement` stream at every size, across address bit 32 on the SMC fabric bridge
+|JTAG2AXI errors |On each bridge, start every access size above the data width with each trigger, and have the responder answer a write and a read with SLVERR and with DECERR, armed with the expectation of each response in the AXI checks; check `sberror`, try an `sbdata0` and an `sbaddress0` access while it is set, clear it, and recover; keep one error per bridge while the later bridges run
 |===
 
 Additional stimulus categories cover STAP/3DCR, iJTAG, XTRIG CSR, CTP, CTM,
