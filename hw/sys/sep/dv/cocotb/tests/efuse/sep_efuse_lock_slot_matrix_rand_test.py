@@ -162,8 +162,9 @@ Checkers:
   CHK-LOCK-SLOT0-STORE order cell, after CHK-LOCK-ORDER: a write of ``LOCKS`` bits [1:0]
                     (slot 0, ``LC_STATE``) reads both bits 1, and a later write of 0
                     leaves both 1 (``sep_efuse_map.rdl`` ``LOCKS``, woset);
-                    ``OBS-LOCK-SLOT0-RESP`` logs both response codes. The exempt
-                    cell grades the effect on ``LC_STATE`` (CHK-LOCK-EXEMPT).
+                    ``OBS-LOCK-SLOT0-RESP`` logs both response codes. The effect
+                    of the runtime-written bits on ``LC_STATE`` is not graded; the
+                    exempt cell grades the burned bits (CHK-LOCK-EXEMPT).
                     Control: both bits read 0 before.
   CHK-PROG-ROUND    chain leg, per round: the frontdoor word is unchanged after the
                     program, the program reads ``program_busy`` 0, ``program_done``
@@ -1767,8 +1768,10 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         ``sep_efuse_map.rdl`` ``LOCKS``: ``LC_STATE_WRITE_LOCK`` [0] and
         ``LC_STATE_READ_LOCK`` [1] are ``sw = rw; onwrite = woset``, reset 0. A write of
         both bits sets them; a later write of 0 clears neither. Their response codes are
-        logged (``OBS-LOCK-SLOT0-RESP``). Their effect on ``LC_STATE`` is graded in the
-        exempt cell, on the frontdoor and on the read-interface path (CHK-LOCK-EXEMPT).
+        logged (``OBS-LOCK-SLOT0-RESP``). The effect of these runtime-written bits on
+        ``LC_STATE`` is not graded; the exempt cell grades the effect of the same bits
+        burned in the fuses, on the frontdoor and on the read-interface path
+        (CHK-LOCK-EXEMPT).
         Control: both bits read 0 before the write.
         """
         slot0 = (1 << write_lock_bit(0)) | (1 << read_lock_bit(0))
