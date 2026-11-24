@@ -38,6 +38,7 @@ from rom_fw.sep_rom_gate_ledger_base import (
     BOOT_GATE_EXPECT,
     CHECKS,
     GATES,
+    PMP_CSR_LAST,
     ROM_HI,
     SCRATCH_STATUS,
     STATUS_EXEC_IMAGE,
@@ -126,7 +127,7 @@ class sep_rom_gate_ledger_pass_test(sep_rom_gate_ledger_base):
         prestart = obs.status_t(STATUS_PRESTART_DONE)
         rel = [
             r
-            for r in obs.csr_writes(CSR_PMPCFG0, CSR_PMPCFG0 + 0x4F)
+            for r in obs.csr_writes(CSR_PMPCFG0, PMP_CSR_LAST)
             if prestart is not None and r.t_ps > prestart
         ]
         rel_t = rel[0].t_ps if rel else None

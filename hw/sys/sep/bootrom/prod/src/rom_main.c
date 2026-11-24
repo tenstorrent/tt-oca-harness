@@ -502,8 +502,7 @@ rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_sta
     // the stack actually peaks -- the RSA-3072 modexp, SHA-256 and AES all run
     // inside rom_manifest_boot() -- so checking before that call would measure
     // the canary ahead of the deepest frame and prove nothing. And it has to be
-    // before [S29], because rom_handoff_bl1() jumps to BL1 and does not return:
-    // this is the last instant at which the ROM can still refuse to hand off.
+    // before [S29], because rom_handoff_bl1() jumps to BL1 and does not return.
     if (*(volatile uint32_t *)__stack_bottom != STACK_CANARY_VALUE) {
         rom_err_fail(ROM_ERR_STACK_OVERFLOW);
     }

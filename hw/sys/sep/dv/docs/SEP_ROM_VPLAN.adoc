@@ -3369,7 +3369,7 @@ Where the specification contradicts itself or leaves a value undefined, the leaf
 |===
 |Group |Tests |Purpose
 |`rom_fw_smoke` |`sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` |Bring-up of the SMC-SRAM, OpenTitan SPI DMA and PIO, and signed boot paths, and of the hand-off magic. Run it first after a ROM or toolchain change
-|`rom_fw` |All 256 entries of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
+|`rom_fw` |All 272 entries of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
 |===
 
 [source,bash]
@@ -3418,7 +3418,7 @@ The Boot ROM has no formal flow.
 [cols="4,1,4",options="header"]
 |===
 |Item |State |Note
-|Every test in the summary has a procedure group |Yes |256 tests in 40 groups
+|Every test in the summary has a procedure group |Yes |272 tests in 40 groups
 |Every documented test exists in `rom_fw.toml` and in the `rom_fw` group |Yes |Checked against both
 |Every test has at least one checker with a PASS record |Yes |Static check of the test source: 0 tests without one
 |`rom_fw` has an `expected_count` |No |`rom_fw_smoke` has one. `rom_fw` does not, so a dropped entry does not fail the testlist load

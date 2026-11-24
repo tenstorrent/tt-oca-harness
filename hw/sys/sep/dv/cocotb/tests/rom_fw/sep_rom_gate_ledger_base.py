@@ -59,6 +59,8 @@ from rom_fw.sep_rom_observe_base import ROM_BASE, sep_rom_observe_base
 from sep_reg_meta import sym
 
 ROM_HI = ROM_BASE + ROM_BYTES
+# pmpcfg0 through pmpaddr63.
+PMP_CSR_LAST = CSR_PMPCFG0 + 0x4F
 OP_BRANCH = 0x63
 INSN_NOP = asm.addi(asm.ZERO, asm.ZERO, 0)
 _WORD = 0xFFFF_FFFF
@@ -590,7 +592,7 @@ class sep_rom_gate_ledger_base(sep_rom_observe_base):
             status_records=len(words),
         )
         prestart = obs.status_t(STATUS_PRESTART_DONE)
-        pmp = obs.csr_writes(CSR_PMPCFG0, CSR_PMPCFG0 + 0x3F + 0x10)
+        pmp = obs.csr_writes(CSR_PMPCFG0, PMP_CSR_LAST)
         cold = [r for r in pmp if prestart is not None and r.t_ps < prestart]
         late = [r for r in pmp if prestart is None or r.t_ps >= prestart]
         chk.ctrl("PMP-RECORD-LIVE", bool(cold), cold_pmp_writes=len(cold))
