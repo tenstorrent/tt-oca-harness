@@ -975,7 +975,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         """Grade the running chain, then end its scoreboard before a TRNG reset."""
         await self.stop_fifo_drain()
         assert self.drbg_sb.report()
-        self.drbg_sb.stop()
+        await self.drbg_sb.stop()
 
     # ------------------------------------------------------------- scenario
     async def run_scenario(self) -> None:

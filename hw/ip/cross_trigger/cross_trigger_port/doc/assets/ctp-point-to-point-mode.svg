@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="812" viewBox="0 0 1040 812" role="img" aria-labelledby="title desc">
 <title id="title">Cross Trigger Port in point-to-point mode</title>
-<desc id="desc">The Cross Trigger Port with CONFIG.MODE set to point-to-point, showing only the logic that is active in that mode. ct_src_i starts the sender state machine in u_handshake_ctrl. Its ct_req_out_o, XOR invert_i, is registered onto the CT_Req_out pad, whose output enable is 1. The CT_Ack_in and CT_Req_in pad inputs, enabled by registered 1s, each pass through two synchroniser registers, an XOR with invert_i and an AND gate with p2p_din_valid into the handshake controller. p2p_din_valid is the registered CT_Req_in pad input enable delayed by two more registers, so the controller sees the pad inputs only once the synchronisers carry pad data. The ungated CT_Req_in level also feeds u_edge_detector, whose output is unused. The handshake ct_ack_out_o, XOR invert_i, is registered onto the CT_Ack_out pad, enabled by a registered 1. The handshake busy_o and ct_dst_o are registered once more to become the port's busy_o and ct_dst_o. handshake_reset_i from CONFIG.RESET resets the sender state machine.</desc>
+<desc id="desc">The Cross Trigger Port with CONFIG.MODE set to point-to-point, showing only the logic that is active in that mode. ct_src_i starts the sender state machine in u_handshake_ctrl. Its ct_req_out_o, XOR invert_i, is registered onto the CT_Req_out pad, whose output enable is 1. The CT_Ack_in and CT_Req_in pad inputs, enabled by registered 1s, each pass through two synchroniser registers, an XOR with invert_i and an AND gate with din_valid into the handshake controller. din_valid is the registered CT_Req_in pad input enable delayed by two more registers, so the controller sees the pad inputs only once the synchronisers carry pad data. The ungated CT_Req_in level also feeds u_edge_detector, whose output pulses ct_dst_o only in toggle mode. The handshake ct_ack_out_o, XOR invert_i, is registered onto the CT_Ack_out pad, enabled by a registered 1. The handshake busy_o and ct_dst_o are registered once more to become the port's busy_o and ct_dst_o. handshake_reset_i from CONFIG.RESET resets the sender state machine.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -232,10 +232,10 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M862,460 L862,410 L831,410"/>
 <path class="sigo" d="M800,410 L781,410"/>
 <path class="sigplain" d="M750,410 L645,410"/>
-<text class="s" x="652" y="404" text-anchor="start">p2p_din_valid</text>
+<text class="s" x="652" y="404" text-anchor="start">din_valid</text>
 <rect class="core" x="580" y="528" width="110" height="44" rx="6"/>
 <text class="s" x="635" y="546.5" text-anchor="middle">u_edge_detector</text>
-<text class="si" x="635" y="563.5" text-anchor="middle">output unused</text>
+<text class="si" x="635" y="563.5" text-anchor="middle">toggle mode only</text>
 <circle cx="660" cy="500" r="3.5" fill="#5b6670"/>
 <path class="sigo" d="M660,500 L660,525"/>
 <rect class="core" x="14" y="759" width="36" height="18" rx="4"/>

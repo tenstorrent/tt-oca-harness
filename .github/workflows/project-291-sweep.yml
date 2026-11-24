@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Project 291 sweep (ITSEC-295).
+# Every 15 minutes this job adds new and edited issues of this repository and of two
+# private companion repositories to org Project 291, and fills board fields that are
+# still empty from the issue form. It is the board part of issue-pr-ingest.yml, whose
+# stored board token was removed. Labels, title prefix, assignee and milestone stay in
+# issue-pr-ingest.yml (built-in token, at once).
+#
+# The token comes from the OSPO Vault at run time. Only scheduled runs on main can get
+# it. It lives at most one hour and is revoked at the end of the job. It can change
+# every project of the organization and read the issues of the three repositories, so
+# keep this job small: every action pinned by full sha, no package install, no step
+# that runs other code while the token exists. Any scheduled job on main with
+# id-token: write can ask for this token: never give id-token: write to an AI agent job
+# or to a job that runs third-party code.
+# The run logs of this repository are public: the script prints totals only. Do not
+# set SWEEP_LOG_DETAILS here.
+# If a run ends with exit code 8 (guard), disable this workflow and tell OSPO. Until
+# it is disabled, every later run makes at most one more write and stops again.
+# The logic and its tests: .github/scripts/project_291_sweep.py and
+# .github/scripts/test_project_291_sweep.py. To ask for a change, open an OSPO ticket.
+
+name: Project 291 sweep
+
+on:
+  schedule:
+    # Every run: issues opened or edited in the last 2 hours. The minute-4 run also
+    # continues the catch-up while SWEEP_BACKFILL_SINCE is set (below).
+    - cron: '4 * * * *'
+    - cron: '19,34,49 * * * *'
+    - cron: '57 2 * * *'  # once a day: issues opened or edited in the last 7 days
+
+permissions: {}  # the job lists what it needs
+
+jobs:
+  sweep:
+    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Two sweeps never run at the same time. At most one run waits; a newer waiting run
+    # replaces an older one (no state is lost).
+    concurrency:
+      group: project-291-sweep
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write  # OSPO Vault sign-in only
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
+
+      # Before any Vault step: any scheduled job with id-token: write can ask for this
+      # token. So no other workflow file may hold id-token: write or write-all, doc.yml
+      # (which has it on purpose) must stay without a schedule, and this file must grant it
+      # once (this job). A failure here means: fix that file, or ask OSPO (OSPO ticket).
+      - name: Check that no other workflow can ask for this token
+        run: |
+          set -uo pipefail
+          pat="^[^#]*[\"']?id-token[\"']?[[:space:]]*:[[:space:]]*[\"']?write|^[^#]*permissions[\"']?[[:space:]]*:[[:space:]]*[\"']?write-all"
+          hits=$(grep -lE "$pat" .github/workflows/*.y*ml); rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::the workflow scan failed"; exit 1; fi
+          found=$(printf '%s\n' "$hits" | grep -vxE '\.github/workflows/(project-291-sweep|doc)\.yml' || true)
+          if grep -qE '^[^#]*schedule[[:space:]]*:' .github/workflows/doc.yml; then found="$found .github/workflows/doc.yml"; fi
+          if [ "$(grep -cE "$pat" .github/workflows/project-291-sweep.yml)" -ne 1 ]; then
+            found="$found .github/workflows/project-291-sweep.yml"
+          fi
+          found=$(printf '%s' "$found" | tr '\n' ' ' | sed 's/^ *//; s/ *$//')
+          if [ -n "$found" ]; then echo "::error::an id-token or write-all grant was found outside the sweep job; the sweep does not run: $found"; exit 1; fi
+
+      - name: Get a token for Project 291
+        id: vault
+        uses: tenstorrent/.github/actions/vault-secrets@a697f1bb22ad8b488b0ac63f9a261e462179fe13 # vault-secrets-v1.0.0
+        with:
+          role: tenstorrent--tt-oca-harness--projects
+          github-token: tenstorrent--tt-oca-harness--projects-write
+
+      - name: Sweep the board
+        env:
+          PROJECT_BOARD_TOKEN: ${{ steps.vault.outputs.token }}
+          SWEEP_MODE: write
+          SWEEP_WINDOW: ${{ github.event.schedule == '57 2 * * *' && 'long' || 'short' }}
+          # Catch-up for the issues created since the board stopped being filled (2026-11-08).
+          # Only the minute-4 run gets the date (one run an hour); the other runs get '' (off).
+          # That run first serves and writes the normal window, then lists the issues created
+          # since the date (by repository id, no name) and works on them oldest first, within
+          # SWEEP_MAX_WRITES for the whole run. No hand work. The script ignores a date
+          # older than 60 days. Remove the date by a later pull request when the minute-4 runs
+          # have shown left_for_next_run=0 for a full day.
+          SWEEP_BACKFILL_SINCE: ${{ github.event.schedule == '4 * * * *' && '2026-11-08T00:00:00Z' || '' }}
+          # At most 20 board writes (adds plus field writes) per run for the first runs, on
+          # purpose. The team can raise this by a later pull request once the first runs are
+          # checked. 100 makes at most about 400 to 500 board writes an hour; other OSPO jobs
+          # share GitHub's limit of about 500 an hour, so do not go higher.
+          SWEEP_MAX_WRITES: '20'
+          # SWEEP_LOG_DETAILS is not set on purpose: the run logs are public, and the board
+          # and two of the repositories are private. Without it the log shows totals only.
+        run: python3 .github/scripts/project_291_sweep.py
+
+      - name: Revoke the token
+        if: ${{ always() }}
+        env:
+          PROJECT_BOARD_TOKEN: ${{ steps.vault.outputs.token }}
+        run: |
+          if [ -n "${PROJECT_BOARD_TOKEN:-}" ]; then
+            curl -sS -o /dev/null -w 'revoke: HTTP %{http_code}\n' -X DELETE \
+              -H "Authorization: Bearer ${PROJECT_BOARD_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/installation/token
+          else
+            echo "no token to revoke"
+          fi
+
+      # Leaving the tailnet cuts this job off from Vault.
+      - name: Leave tailnet
+        if: ${{ always() }}
+        run: sudo tailscale logout || { echo "::warning::tailscale logout failed; taking the interface down"; sudo tailscale down || true; }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Detect rising edges on an already-synchronized CTP request.
+// Detect level changes on an already-synchronized CTP request.
 //
 // Uses prim_edge_detector with EnSync disabled because signal_i is pre-synchronized; the
 // primitive registers the previous level and derives the edge pulse combinationally from
@@ -16,10 +16,12 @@ module ctp_edge_detector (
                                         // polarity-corrected (the CT_Req_in pad input in the port
                                         // core).
 
-  output logic posedge_pulse_o          // One-cycle pulse on each rising edge of signal_i,
-                                        // combinational from signal_i; not consumed in
-                                        // cross_trigger_port_core.
+  output logic edge_pulse_o             // One-cycle pulse on each rising or falling edge of
+                                        // signal_i, combinational from signal_i.
 );
+
+  logic posedge_pulse;
+  logic negedge_pulse;
 
   // Use prim_edge_detector with synchronization disabled since input is already synchronized
   prim_edge_detector #(
@@ -31,8 +33,10 @@ module ctp_edge_detector (
     .rst_ni,
     .d_i(signal_i),
     .q_sync_o(),  // Not used
-    .q_posedge_pulse_o(posedge_pulse_o),
-    .q_negedge_pulse_o()  // Not used
+    .q_posedge_pulse_o(posedge_pulse),
+    .q_negedge_pulse_o(negedge_pulse)
   );
+
+  assign edge_pulse_o = posedge_pulse | negedge_pulse;
 
 endmodule : ctp_edge_detector

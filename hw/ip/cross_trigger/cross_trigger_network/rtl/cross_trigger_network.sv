@@ -328,7 +328,8 @@ module cross_trigger_network
             .rst_ni                 (rst_ni),
 
             // Static configuration (no CSRs)
-            .mode_wire_or_i         (ModeWireOr),
+            .mode_i                 (ModeWireOr ? cross_trigger_port_pkg::MODE_WIRE_OR
+                                                : cross_trigger_port_pkg::MODE_POINT_TO_POINT),
             .invert_i               (1'b0),           // No inversion for internal
             .handshake_reset_i      (1'b0),           // No handshake reset
             .stretch_mult_i         (16'h0001),       // Minimal stretch for internal

@@ -11,10 +11,9 @@ cpu_interrupts_o[NumExtInterrupts-1:0] = synchronised smc_ext_interrupts_i), smu
 interrupt-integration.
 
 The bench drives external input 0 on tb_ext_interrupt_0_i and inputs 2..16 on
-tb_ext_interrupts_hi_i; input 1 is the temperature pin (held 0, read only) and inputs 17..255 are
-tied 0 (open: where the pending behaviour of inputs 17 to 255 is closed). The PLIC pending state
-of each external ID is read passively and only logged: its register map, route, bound and
-retention are open.
+tb_ext_interrupts_hi_i; input 1 is the temperature pin (held 0, read only) and inputs 17..255 sit
+on tb_ext_interrupts_ext_i, which stays 0 here. The PLIC pending state of each external ID is read passively and only logged:
+its register map, route, bound and retention are open.
 """
 
 from __future__ import annotations
