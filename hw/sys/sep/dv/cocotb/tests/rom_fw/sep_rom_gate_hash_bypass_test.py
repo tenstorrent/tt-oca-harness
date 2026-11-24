@@ -17,7 +17,7 @@ the START_PAYLOAD_VALIDATION status store in rom_manifest_boot becomes a jump to
 instruction after the PAYLOAD_OK print: the payload check, its HASH stamp, the
 PAYLOAD_VALIDATED status and the PAYLOAD_OK line are all skipped. The site is found the same
 way in any build, so the same fault runs on a ROM without the gate ledger, where the boot
-reaches BL1.
+reaches BL1 and this leaf fails; INFO-BOOT-OUTCOME records where the boot went.
 
 Checks: CHK-HASH-BLOCK-SKIPPED (the jump retired after the START_PAYLOAD_VALIDATION status and
 the next watched retirement is its target; neither PAYLOAD_VALIDATED nor PAYLOAD_OK appears,

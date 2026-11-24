@@ -25,8 +25,9 @@ re-verification can halt the boot.
   check_fuse_secrets_locked() by an unconditional jump to its pass path; the [S26] re-read
   still runs and prints FUSE_SECRETS_NOT_LOCKED, and the FUSELOCK stamp retires.
 
-Checks: CHK-FAULT-TOOK-EFFECT (the DCCM read-back differs from the value recorded before the
-flip and the locus no longer holds; or the replaced instructions retired and [S26] printed
+Checks: CHK-FAULT-TOOK-EFFECT (the locus held before the flip, the DCCM read-back is the
+recorded value with the flipped bits, and only the faulted leg of the locus rule now fails; or
+the replaced instructions retired and [S26] printed
 FUSE_SECRETS_NOT_LOCKED), CHK-ALL-STAMPS (all four gates' stores retired after the reset), and
 the halt contract with the halt at the first evaluation of the faulted check.
 """
@@ -67,32 +68,44 @@ class sep_rom_locus_flip_base(sep_rom_gate_ledger_base):
     """Flips one locus word in DCCM after [S23]; subclasses name the word and the bits."""
 
     data_mask = 0
+    breaks_addr = False
 
     def target(self) -> int:
         raise NotImplementedError
 
-    def locus_holds(self, addr: int, length: int) -> bool:
-        return addr == SRAM_BASE and length <= SRAM_BASE + SRAM_SIZE - addr
+    def locus(self) -> tuple[int, int]:
+        """(recorded manifest address, validated manifest length) as DCCM holds them now."""
+        return dccm_word(manifest_addr_field(self.img)), dccm_word(
+            self.img.syms["g_gate_manifest_len"]
+        )
 
     async def inject(self, obs) -> None:
         await self.wait_line(obs, AFTER_S23_LINE)
+        self.before_locus = self.locus()
         self.before, _ = await self.dccm_flip(self.target(), self.data_mask)
 
     def grade(self, obs, chk) -> None:
         before = getattr(self, "before", None)
-        addr_f = manifest_addr_field(self.img)
-        len_f = self.img.syms["g_gate_manifest_len"]
+        pre = getattr(self, "before_locus", None)
         now = dccm_word(self.target())
-        addr, length = dccm_word(addr_f), dccm_word(len_f)
+        addr, length = self.locus()
         recorded = None if before is None else before & 0xFFFF_FFFF
+        # Only the faulted leg of the locus rule may fail, and the rule held before the flip.
+        addr_ok, len_ok = addr == SRAM_BASE, length <= SRAM_BASE + SRAM_SIZE - addr
+        broken = (not addr_ok and len_ok) if self.breaks_addr else (addr_ok and not len_ok)
         chk.ok(
             "FAULT-TOOK-EFFECT",
             recorded is not None
+            and pre is not None
+            and pre[0] == SRAM_BASE
+            and pre[1] <= SRAM_SIZE
             and now == recorded ^ self.data_mask
-            and not self.locus_holds(addr, length),
+            and broken,
             word=f"0x{self.target():08x}",
             recorded=f"0x{recorded:08x}" if recorded is not None else "none",
             readback=f"0x{now:08x}",
+            before_addr=f"0x{pre[0]:08x}" if pre else "none",
+            before_len=f"0x{pre[1]:08x}" if pre else "none",
             manifest_addr=f"0x{addr:08x}",
             manifest_len=f"0x{length:08x}",
         )

@@ -102,11 +102,13 @@ class sep_rom_gate_ledger_pass_test(sep_rom_gate_ledger_base):
         entries = [img.syms[n] for n in CHECKS]
         order = [r.pc for r in obs.hits if r.pc in entries]
         ret = [r for r in sc if opcode(r.insn) == OP_JALR and r.insn == 0x0000_8067]
-        tally = all(obs.at(p) for p in m.tally_branches)
+        # The final tally compares both the loop index and the counter with the check count.
+        tally = len(m.tally_branches) == 2 and all(obs.at(p) for p in m.tally_branches)
         chk.ok(
             "SELFCHECK-RAN",
             order == entries and tally and bool(ret),
             checks=[img.owner(p) for p in order],
+            tally_branches=len(m.tally_branches),
             tally_retired=tally,
             returned=bool(ret),
         )

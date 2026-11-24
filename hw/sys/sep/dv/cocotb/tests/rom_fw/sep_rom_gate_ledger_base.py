@@ -56,6 +56,7 @@ from env.sep_rv32_trace_decode import (
 )
 from env.sep_tcm_flip import DCCM_BASE, tcm_flip
 from rom_fw.sep_rom_observe_base import ROM_BASE, sep_rom_observe_base
+from sep_reg_meta import sym
 
 ROM_HI = ROM_BASE + ROM_BYTES
 OP_BRANCH = 0x63
@@ -69,7 +70,7 @@ STATUS_EXEC_IMAGE = 0x0101_0054
 STATUS_PRESTART_DONE = 0x8001_0056
 STATUS_START_PAYLOAD_VALIDATION = 0x8001_0052
 STATUS_PAYLOAD_VALIDATED = 0x0101_0055
-SCRATCH_STATUS = 0x1080_2008
+SCRATCH_STATUS = sym("SEP_SCRATCH_COLD_SCRATCH_1__REG_ADDR")
 BOOT_GATE_EXPECT = 0xF
 GATES = ("manifest", "crypto", "hash", "fuselock")
 GATE_BIT = {g: 1 << i for i, g in enumerate(GATES)}

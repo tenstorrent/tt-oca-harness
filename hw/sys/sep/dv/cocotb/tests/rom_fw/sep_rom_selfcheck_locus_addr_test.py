@@ -14,6 +14,7 @@ from rom_fw.sep_rom_selfcheck_reverify_base import manifest_addr_field, sep_rom_
 @pyuvm.test()
 class sep_rom_selfcheck_locus_addr_test(sep_rom_locus_flip_base):
     data_mask = 1 << 4
+    breaks_addr = True
 
     def target(self) -> int:
         return manifest_addr_field(self.img)
