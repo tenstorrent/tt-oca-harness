@@ -18,7 +18,7 @@ Usage::
 
     sb = await drbg_bring_up(self, edn_ctrl=EDN.value("CTRL", EDN_ENABLE=6, CMD_FIFO_RST=9))
     ...
-    sb.stop()
+    await sb.stop()
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ async def drbg_bring_up(
     await test.start_seq(SepEsrcEnableGeneratorsSeq("esrc_enable_gens"))
     if not await test.wait_seed_ready():
         await test.report_entropy_stall()
-        sb.stop()
+        await sb.stop()
         raise AssertionError("DRBG-BRING-UP: ESRC never produced a seed (drbg_seed_valid_o)")
     await sb.grade_ro_enable(test, GENERATORS_ON)
     if edn_ctrl is not None:
