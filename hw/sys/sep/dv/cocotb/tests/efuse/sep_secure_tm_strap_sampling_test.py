@@ -18,7 +18,11 @@ resample at an event reads 0), C (a strap change 1 to 0 and 0 to 1 after a captu
 (early-capture control, no match), E (late ``SEC_DIS``: the token arrives after
 sensing with no later cold reset) and D (early capture with the match present,
 strap 1, then strap 0). The ``SEC_DIS`` token is presented over the JTAG
-AXI-Lite port ``j_axi`` with the token whose digest ``tb_top`` binds. A match
+AXI-Lite port ``j_axi`` with the token whose digest ``tb_top`` binds, with the
+strap at 0: the ``TEST_EN`` strap drives ``secure_tm_req_i``
+(``test_mode.adoc``, Entry and Exit) and test enable freezes the retained digest
+latches (``token_processing.adoc``, Token Matching Mechanism), so a go with the
+strap at 1 need not form a match. The strap rises after the match. A match
 survives ``rst_ni`` (``security_disable.adoc``, Reset Persistence), so the
 cold resets of leg D boot with the match present and no fuse sense runs.
 
@@ -71,7 +75,7 @@ Checkers:
                    windows does; ``:26`` the cold-reset clear). The strap is
                    ``secure_tm_req_i`` (``test_mode.adoc:16-17``,
                    ``port_table.adoc:122``), driven by the bench pin
-                   ``test_en_strap_i`` (``tb_top.sv:681``). The text gives no
+                   ``test_en_strap_i`` (``tb_top.sv:686``). The text gives no
                    capture edge, so the edge is not graded. The strap at the
                    rise must read 1, so the captured value differs from the
                    cleared value; the line prints the strap, the expected
@@ -83,9 +87,12 @@ Checkers:
   CHK-STM-CLEAR    with ``rst_ni`` low and the strap at 1, ``secure_tm_o`` reads 0
                    on every ``clk_i`` edge from the first edge with ``rst_ni`` low
                    to the release. Control: it reads 1 before the reset.
-  CHK-STM-LATE     in leg E, with no match at the boot, ``secure_tm_o`` stays 0
-                   after the strap rises and the ``SEC_DIS`` token matches.
-                   Control: leg D shows the early capture to 1.
+  CHK-STM-LATE     in leg E, with no match at the boot, the ``SEC_DIS`` token
+                   matches with the strap at 0, then the strap rises to 1 and
+                   ``secure_tm_o`` stays 0 on every sample of the hold
+                   (``test_mode.adoc``: asserting ``SEC_DIS`` later does not
+                   itself sample the strap). The recorded strap reads 1 on every
+                   sample of the hold. Control: leg D shows the early capture to 1.
   CHK-STM-SECDIS-FEAT
                    in leg D with the match present and ``secure_tm_o`` = 1,
                    ``FEAT_CTRL`` (``lcc_feat_ctrl_probe_o``) reads all ones on
@@ -317,7 +324,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"bound={_STM_BOUND} "
             f"zero_before_rise={sum(1 for v in pre if v == 0)}/{len(pre)} "
             f"held={sum(1 for v in held if v == strap)}/{len(held)} next_rst_fall={nxt} "
-            f"strap_pin=secure_tm_req_i(tb_top.sv:681 test_en_strap_i) {_SENSE_CAPTURE_CONTRACT}"
+            f"strap_pin=secure_tm_req_i(tb_top.sv:686 test_en_strap_i) {_SENSE_CAPTURE_CONTRACT}"
         )
         assert (
             strap == 1
@@ -656,7 +663,10 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._edge()
         low = self._window(a, rel - 1)
         strap_low = self._window(a, rel - 1, "strap")
-        assert all(s == 1 for s in strap_low), f"leg A: strap not 1 during the reset: {strap_low}"
+        assert strap_low and all(s == 1 for s in strap_low), (
+            f"CHK-STM-CLEAR FAIL: test_en_strap_i not 1 during the reset at samples "
+            f"{[a + i for i, v in enumerate(strap_low) if v != 1][:8]}"
+        )
         # Sample a is the edge on which rst_ni falls: no clk_i edge has seen it low yet.
         late = [a + 1 + i for i, v in enumerate(low[1:]) if v != 0]
         assert len(low) >= 2 and not late, (
@@ -665,7 +675,10 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         )
         self.logger.info(
             "CHK-STM-CLEAR PASS: rst_ni low -> secure_tm_o=0 from the first clk_i edge with "
-            "rst_ni low to the release, strap=1 edges_low=%d ones_while_low=%d control_legA=1",
+            "rst_ni low to the release, strap_high_samples=%d/%d edges_low=%d "
+            "ones_while_low=%d control_legA=1",
+            sum(1 for v in strap_low if v == 1),
+            len(strap_low),
             len(low) - 1,
             sum(1 for v in low if v == 1),
         )
@@ -718,15 +731,15 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                 "INFO-LEG-B event=%s strap=0 samples=%d..%d secure_tm_o=1", ev, e0, e1 - 1
             )
         b1 = self._now() - 1
-        strap_b = self._window(b0, b1, "strap")
-        assert all(s == 0 for s in strap_b), "leg B: the strap did not stay at 0"
+        n_strap = self._strap_flipped(b0, b1 + 1, 0, "B")
         whole = self._window(fl, b1)
         assert all(v == 1 for v in whole), (
             f"CHK-STM-RETAIN FAIL: leg=B strap=0 secure_tm_o left 1 at samples "
             f"{[fl + i for i, v in enumerate(whole) if v != 1][:8]}"
         )
         retain.append(
-            f"leg=B events={','.join(graded)}{ungraded} strap=0 value=1 cycles={b1 - fl + 1}"
+            f"leg=B events={','.join(graded)}{ungraded} value=1 cycles={b1 - fl + 1} "
+            f"strap_samples={n_strap}"
         )
         close_graded_window(self.logger)
 
@@ -737,15 +750,16 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._until(sense + c)
         dut.test_en_strap_i.value = 0
         f0 = self._now()
+        off = f0 - sense
         f1 = await self._hold()
         n_strap = self._strap_flipped(f0, f1, 0, "C strap 1->0")
         vals = self._window(f0, f1 - 1)
         assert all(v == 1 for v in vals), (
-            f"CHK-STM-RETAIN FAIL: leg=C strap 1->0 at sample {f0} (sense+{c}): secure_tm_o "
+            f"CHK-STM-RETAIN FAIL: leg=C strap 1->0 at sample {f0} (sense+{off}): secure_tm_o "
             f"left 1 at samples {[f0 + i for i, v in enumerate(vals) if v != 1][:8]}"
         )
         retain.append(
-            f"leg=C events=strap_1to0@sense+{c} value=1 cycles={f1 - f0} strap_samples={n_strap}"
+            f"leg=C events=strap_1to0@sense+{off} value=1 cycles={f1 - f0} strap_samples={n_strap}"
         )
         close_graded_window(self.logger)
 
@@ -757,15 +771,16 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._until(sense + c)
         dut.test_en_strap_i.value = 1
         f0 = self._now()
+        off = f0 - sense
         f1 = await self._hold()
         n_strap = self._strap_flipped(f0, f1, 1, "C strap 0->1")
         vals = self._window(f0, f1 - 1)
         assert all(v == 0 for v in vals), (
-            f"CHK-STM-RETAIN FAIL: leg=C strap 0->1 at sample {f0} (sense+{c}): secure_tm_o "
+            f"CHK-STM-RETAIN FAIL: leg=C strap 0->1 at sample {f0} (sense+{off}): secure_tm_o "
             f"left 0 at samples {[f0 + i for i, v in enumerate(vals) if v != 0][:8]}"
         )
         retain.append(
-            f"leg=C events=strap_0to1@sense+{c} value=0 cycles={f1 - f0} strap_samples={n_strap}"
+            f"leg=C events=strap_0to1@sense+{off} value=0 cycles={f1 - f0} strap_samples={n_strap}"
         )
         close_graded_window(self.logger)
 
@@ -811,8 +826,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         self.logger.info("INFO-LEG-E match_present=0 (sense completed at sample %d)", sense)
         open_graded_window(TEST, self.logger)
         await self._edge()
-        dut.test_en_strap_i.value = 1
-        e0 = self._now()
+        t0 = self._now()
         code = await self._present_sec_dis()
         sec_dis = self.rd(dut.lcc_security_disable_probe_o)
         assert code == TOKEN_MATCH and sec_dis == 1, (
@@ -821,18 +835,31 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         )
         await self._edge()
         tok = self._now()
+        tok_straps = self._window(t0, tok - 1, "strap")
+        assert all(v == 0 for v in tok_straps), (
+            "leg E precondition FAIL: test_en_strap_i did not read 0 during the SEC_DIS token go"
+        )
+        dut.test_en_strap_i.value = 1
+        e0 = self._now()
         e1 = await self._hold()
         late = self._window(e0, e1 - 1)
+        late_straps = self._window(e0, e1 - 1, "strap")
+        assert all(v == 1 for v in late_straps), (
+            f"CHK-STM-LATE FAIL: leg=E: test_en_strap_i did not read 1 at samples "
+            f"{[e0 + i for i, v in enumerate(late_straps) if v != 1][:8]}"
+        )
         assert all(v == 0 for v in late), (
             f"CHK-STM-LATE FAIL: match_present=0 strap=1 SEC_DIS late: secure_tm_o left 0 at "
             f"samples {[e0 + i for i, v in enumerate(late) if v != 0][:8]}"
         )
         self.logger.info(
-            "CTRL-STM-E-TOKEN seen: code=0x%02x secdis=%d strap_rise=%d matched_by=%d hold_end=%d",
+            "CTRL-STM-E-TOKEN seen: code=0x%02x secdis=%d strap_at_go=0 go_start=%d "
+            "matched_by=%d strap_rise=%d hold_end=%d",
             code,
             sec_dis,
-            e0,
+            t0,
             tok,
+            e0,
             e1,
         )
 
@@ -959,8 +986,9 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         for line in captures + zero_caps:
             self.logger.info("CHK-STM-SENSE-CAPTURE PASS: %s", line)
         self.logger.info(
-            "CHK-STM-LATE PASS: match_present=0 strap=1 SEC_DIS late secure_tm_o=0 cycles=%d "
-            "control_legD=1",
+            "CHK-STM-LATE PASS: match_present=0 strap_at_go=0 strap=1 SEC_DIS late "
+            "secure_tm_o=0 cycles=%d strap_samples=%d control_legD=1",
             len(late),
+            len(late_straps),
         )
         self.result_pass(TEST, seed, len(self.required_evidence))

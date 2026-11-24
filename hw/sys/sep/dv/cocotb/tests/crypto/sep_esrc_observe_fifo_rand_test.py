@@ -72,8 +72,8 @@ Checkers:
                     and the sample clock stopped gives LEVEL 0, and every word popped
                     after it equals the word of 1 - z (no kept word); locked at 0:
                     after a write of RAW_ENABLE 1 that the lock refuses, LEVEL
-                    stays 0. That write must get a B response of any code; no text
-                    states the code, so it is logged as ``OBS-LOCK0-RESP``.
+                    stays 0. That write must get a B response of any code; the
+                    code is logged as ``INFO-LOCK0-RESP`` and is not graded.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
@@ -111,7 +111,23 @@ Checkers:
                     CHK-OBS-SEQ grade. Control: for this sequence the kept words at
                     each offset differ from popped words 1 to 63 of a FIFO that
                     discards its two oldest words, at each offset.
-Logged only: ``OBS-FAST``
+  CHK-OBS-POP-LEVEL with RAW_ENABLE read back 0 on both observe FIFOs after the overflow
+                    leg (capture stops, architecture.adoc:182, :186): each
+                    NOISE_OBS_RDATA / BIW_OBS_RDATA pop lowers that FIFO's LEVEL by
+                    exactly 1 (entropy_source.rdl NOISE_OBS_RDATA, BIW_OBS_RDATA:
+                    "Returns and removes"), for every pop of the drain. In the same
+                    drain each pop moves RPTR to RPTR + 1 mod 64, WPTR keeps its
+                    value, and (WPTR - RPTR) mod 64 equals LEVEL mod 64 at every
+                    status read (NOISE_OBS_STATUS, BIW_OBS_STATUS WPTR and RPTR; the
+                    observe FIFOs use the same 64-entry FIFO as the output FIFO,
+                    architecture.adoc:189, :146).
+  CHK-OBS-BIW-DRAIN same drain: the BIW observe FIFO reads LEVEL 64 before the first
+                    pop and reads LEVEL 0 after exactly 64 pops (architecture.adoc:189,
+                    :146: the same 64-entry FIFO as the output FIFO).
+Logged only: ``INFO-OBS-EMPTY-READ`` logs, as the last action of the leaf and for both
+observe FIFOs at LEVEL 0 with capture off, RDATA and LEVEL, WPTR and RPTR before and
+after one RDATA read (no text states the result of a read of an empty observe FIFO).
+``INFO-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
 ``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-LANESEL-SAME`` logs
 LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (the ``LANE_SEL`` text
@@ -445,6 +461,8 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         "CHK-SYNC-DEPTH",
         "CHK-OBS-MAIN",
         "CHK-OBS-OVF-KEEP",
+        "CHK-OBS-POP-LEVEL",
+        "CHK-OBS-BIW-DRAIN",
     )
 
     async def run_scenario(self) -> None:
@@ -478,6 +496,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             await self._lock0(fifo, plan.z_lock[2 * i + 1], t_cap)
         await self._seq_leg()
         close_graded_window(self.logger)
+        await self._empty_read_info()
         self._release_stuck()
         await self.noise.stop()
         self.chk.finish()
@@ -536,6 +555,77 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 pops += 1
             if pops > FIFO_DEPTH_MAX:
                 raise AssertionError(f"{fifo} observe FIFO not empty after {pops} pops")
+
+    async def _graded_drain(self, fifo: str) -> dict:
+        """Pop until LEVEL reads 0, reading STATUS after every pop (at most FIFO_DEPTH_MAX + 1).
+
+        Grades per pop LEVEL - 1, RPTR + 1 mod depth and WPTR kept, and at every
+        STATUS read (WPTR - RPTR) mod depth == LEVEL mod depth.
+        """
+        start, wptr0, rptr0 = await self._status_fields(fifo)
+        level, wptr, rptr = start, wptr0, rptr0
+        pops = bad = 0
+        rptr_bad = wptr_bad = 0
+        ptr_level_bad = int((wptr0 - rptr0) % OBS_FIFO_DEPTH != start % OBS_FIFO_DEPTH)
+        steps: list[str] = []
+        ptr_steps: list[str] = []
+        while level and pops <= FIFO_DEPTH_MAX:
+            await self._pop(fifo)
+            pops += 1
+            after, w_after, r_after = await self._status_fields(fifo)
+            if after != level - 1:
+                bad += 1
+                steps.append(f"{level}->{after}")
+            r_bad = r_after != (rptr + 1) % OBS_FIFO_DEPTH
+            w_bad = w_after != wptr0
+            pl_bad = (w_after - r_after) % OBS_FIFO_DEPTH != after % OBS_FIFO_DEPTH
+            rptr_bad += r_bad
+            wptr_bad += w_bad
+            ptr_level_bad += pl_bad
+            if r_bad or w_bad or pl_bad:
+                ptr_steps.append(f"{pops}:l{after}/w{w_after}/r{rptr}->{r_after}")
+            level, wptr, rptr = after, w_after, r_after
+        return {
+            "level_start": start,
+            "pops": pops,
+            "level_end": level,
+            "bad": bad,
+            "steps": steps,
+            "wptr_start": wptr0,
+            "rptr_start": rptr0,
+            "wptr_end": wptr,
+            "rptr_end": rptr,
+            "rptr_bad": rptr_bad,
+            "wptr_bad": wptr_bad,
+            "ptr_level_bad": ptr_level_bad,
+            "ptr_steps": ptr_steps,
+        }
+
+    async def _status_fields(self, fifo: str) -> tuple[int, int, int]:
+        addr, reg, _, _ = FIFOS[fifo]
+        v = await self._rd(addr)
+        return _get(v, reg, "LEVEL"), _get(v, reg, "WPTR"), _get(v, reg, "RPTR")
+
+    async def _empty_read_info(self) -> None:
+        """INFO-OBS-EMPTY-READ: one RDATA read of each observe FIFO at LEVEL 0, capture off."""
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, 0))
+        await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
+        for fifo in ("noise", "biw"):
+            await self._pop_to_empty(fifo)
+            l0, w0, r0 = await self._status_fields(fifo)
+            data = await self._pop(fifo)
+            l1, w1, r1 = await self._status_fields(fifo)
+            self.chk.info(
+                "OBS-EMPTY-READ",
+                fifo=fifo,
+                rdata=f"0x{data:08x}",
+                level_before=l0,
+                wptr_before=w0,
+                rptr_before=r0,
+                level_after=l1,
+                wptr_after=w1,
+                rptr_after=r1,
+            )
 
     async def _stop_samples(self) -> None:
         """Stop the sample clock and let the last sample reach the observe FIFO."""
@@ -672,9 +762,9 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             cur = v
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, cur))
         close_graded_window(self.logger)
-        await self._lane_same_obs()
+        await self._lane_same_info()
 
-    async def _lane_same_obs(self) -> None:
+    async def _lane_same_info(self) -> None:
         """LEVEL around a LANE_SEL write that keeps lane 0 selected."""
         sel = self.plan.same_sel
         await self._pop_to_empty("noise")
@@ -817,11 +907,16 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         later = {fifo: await self._level(fifo) for fifo in FIFOS}
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, 0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
+        raw = {
+            "noise": _get(await self._rd(ESRC_NOISE_OBS_CTRL), "NOISE_OBS_CTRL", "RAW_ENABLE"),
+            "biw": _get(await self._rd(ESRC_BIW_OBS_CTRL), "BIW_OBS_CTRL", "RAW_ENABLE"),
+        }
         w1c: dict[str, int] = {}
         held: dict[str, int] = {}
+        drain: dict[str, dict] = {}
         for fifo in ("noise", "biw"):
             bit = FIFOS[fifo][3]
-            await self._pop_to_empty(fifo)
+            drain[fifo] = await self._graded_drain(fifo)
             # The overflow bit is RW1C (entropy_source.adoc:134, :136): it still reads 1
             # after the drain, so the clear below is caused by the write-one.
             held[fifo] = int(bool(await self._rd(ESRC_INTR_STATUS) & bit))
@@ -853,6 +948,47 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 and w1c[fifo] == 0,
                 **fields,
             )
+        for fifo in ("noise", "biw"):
+            d = drain[fifo]
+            self.chk.ok(
+                "OBS-POP-LEVEL",
+                raw[fifo] == 0
+                and d["pops"] > 0
+                and d["bad"] == 0
+                and d["level_end"] == 0
+                and d["rptr_bad"] == 0
+                and d["wptr_bad"] == 0
+                and d["ptr_level_bad"] == 0,
+                fifo=fifo,
+                raw_enable=raw[fifo],
+                level_start=d["level_start"],
+                pops=d["pops"],
+                level_end=d["level_end"],
+                not_minus_one=d["bad"],
+                steps=",".join(d["steps"][:8]) or "none",
+                rptr_step=int(d["rptr_bad"] == 0),
+                wptr_kept=int(d["wptr_bad"] == 0),
+                ptr_level_ok=int(d["ptr_level_bad"] == 0),
+                rptr_not_plus_one=d["rptr_bad"],
+                wptr_moved=d["wptr_bad"],
+                ptr_level_mismatch=d["ptr_level_bad"],
+                wptr_start=d["wptr_start"],
+                wptr_end=d["wptr_end"],
+                rptr_start=d["rptr_start"],
+                rptr_end=d["rptr_end"],
+                ptr_steps=",".join(d["ptr_steps"][:8]) or "none",
+            )
+        d = drain["biw"]
+        self.chk.ok(
+            "OBS-BIW-DRAIN",
+            d["level_start"] == OBS_FIFO_DEPTH
+            and d["pops"] == OBS_FIFO_DEPTH
+            and d["level_end"] == 0,
+            level_start=d["level_start"],
+            pops=d["pops"],
+            level_end=d["level_end"],
+            expect=OBS_FIFO_DEPTH,
+        )
 
     # --- main-chain leg ------------------------------------------------------------
     async def _main_chain_leg(self) -> None:
@@ -1100,7 +1236,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             resp = await self.esrc.wr_locked(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
         else:
             resp = await self.esrc.wr_locked(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
-        self.logger.info("OBS-LOCK0-RESP: fifo=%s B=%s", fifo, resp_name(resp))
+        self.chk.info("LOCK0-RESP", fifo=fifo, b=resp_name(resp))
         raw_rb = await self._read_raw(fifo)
         wait = LOCK0_WAIT_FACTOR * t_cap if t_cap else 0
         if wait:
@@ -1139,7 +1275,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
 
     async def _seq_leg(self) -> None:
         """CHK-OBS-SEQ and CHK-SYNC-DEPTH at a sample period of 8 x clk_i + 2 ps, then
-        OBS-FAST at 2 x clk_i + 2 ps, then CHK-OBS-OVF-KEEP at 8 x clk_i + 2 ps."""
+        INFO-FAST at 2 x clk_i + 2 ps, then CHK-OBS-OVF-KEEP at 8 x clk_i + 2 ps."""
         plan = self.plan
         lane = plan.seq_lane
         t = self._clk_ps()
@@ -1173,7 +1309,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         self._release_stuck()
         got = [(w >> j) & 1 for w in fast["words"] for j in range(32)]
         lost, rep = _indel_align(got, plan.fast)
-        self.chk.obs(
+        self.chk.info(
             "FAST",
             lane=lane,
             period_ps=fast["period_ps"],

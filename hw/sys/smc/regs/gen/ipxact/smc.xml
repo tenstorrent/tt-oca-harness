@@ -3232,8 +3232,11 @@ to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONTROLLER_TX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
-error. Write `1` to clear.</ipxact:description>
+              <ipxact:description>Controller Mode interrupt: asserted while the Controller TX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.FMTRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3247,8 +3250,11 @@ error. Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONTROLLER_RX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
-error. Write `1` to clear.</ipxact:description>
+              <ipxact:description>Controller Mode interrupt: asserted while the Controller RX FIFO reports an
+integrity error: a parity mismatch on the entry at its head, or a pointer
+mismatch in its hardened counter. The parity error clears once that entry is
+read; the pointer error holds until `FIFO_CTRL.RXRST` or a reset. Write `1` to
+clear; the field stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>17</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3262,8 +3268,11 @@ error. Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TARGET_TX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
-Write `1` to clear.</ipxact:description>
+              <ipxact:description>Target Mode interrupt: asserted while the Target TX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.TXRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>18</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3277,8 +3286,11 @@ Write `1` to clear.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TARGET_RX_FIFO_ERROR</ipxact:name>
-              <ipxact:description>Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
-Write `1` to clear.</ipxact:description>
+              <ipxact:description>Target Mode interrupt: asserted while the Target RX FIFO reports an integrity
+error: a parity mismatch on the entry at its head, or a pointer mismatch in its
+hardened counter. The parity error clears once that entry is read; the pointer
+error holds until `FIFO_CTRL.ACQRST` or a reset. Write `1` to clear; the field
+stays set while the error persists.</ipxact:description>
               <ipxact:bitOffset>19</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3936,8 +3948,9 @@ This would violate the proper protocol for a controller to join a multi-controll
 environment. However, if this controller is known to be the first to join, this
 ordering will enable skipping the idle wait.
 
-When `0`, the bus monitor will report that the bus is always free, so the
-Controller FSM is never blocked from transmitting.</ipxact:description>
+When `0`, the bus monitor reports the bus busy only during the `TIMING4.T_BUF`
+wait after a qualified STOP, so that wait is the only time the Controller FSM
+is blocked from transmitting.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4630,10 +4643,14 @@ details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>TSU_DAT</ipxact:name>
-              <ipxact:description>Global control: specifies the data setup time (`t_SU;DAT`) in system clock
-cycles. See Table 11 in the I2C Specification for details. This field is sized
-to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
-requirement, assuming a 1 GHz system clock.</ipxact:description>
+              <ipxact:description>Target Mode control: specifies the data setup time (`t_SU;DAT`) in system clock
+cycles: after driving a data or ACK bit, the target holds SCL low for
+`TIMING1.T_R + TSU_DAT` before it releases a clock stretch. The controller does
+not use this field; its data setup is `TLOW - THD_DAT`, so a controller meets
+`t_SU;DAT` through `TIMING0.TLOW` and `TIMING3.THD_DAT`. See Table 11 in the I2C
+Specification for details. This field is sized to meet the I2C Standard-mode
+(100 kHz)'s `t_SU;DAT = 250 ns` minimum requirement, assuming a 1 GHz system
+clock.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4681,8 +4698,18 @@ minimum requirement, assuming a 1 GHz system clock.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>T_BUF</ipxact:name>
-              <ipxact:description>Global control: specifies the time between a STOP and START condition (`t_BUF`)
-in system clock cycles. See Table 11 in the I²C Specification for details. This
+              <ipxact:description>Global control: specifies the bus free time between a STOP and the following
+START condition (`t_BUF`) in system clock cycles. See Table 11 in the I²C
+Specification for details. The bus monitor starts this wait once SCL has stayed
+high for `TIMING3.THD_DAT` cycles after the STOP's SDA rise, and the controller
+holds a START back only while the wait runs. With
+`CTRL.MULTI_CONTROLLER_MONITOR_EN` set, the controller waits after every STOP.
+Otherwise, a START behind the controller's own STOP waits only when that STOP
+is qualified before the controller takes the next FMT FIFO entry: when
+`THD_DAT` is 0 or 1, or when the FMT FIFO is empty at the STOP and the next
+entry arrives after the qualification. With `THD_DAT` of 2 or more and the next
+entry already queued, the START follows the STOP's SDA rise after
+`TIMING1.T_R + TIMING2.TSU_STA + 7` cycles whatever this field holds. This
 field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
 requirement, assuming a 1 GHz system clock.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
@@ -5318,7 +5345,9 @@ detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</ipxact:
 pads: while set, the UART owns their data and direction. While clear, the UART
 keeps running, but its pads follow the GPIO data and direction selection like
 any pad without a hardware request, so TX and RTS do not reach the pins unless
-software forces LSIO selection.</ipxact:description>
+software forces LSIO selection. Without that selection, the receive and CTS
+inputs read high, the serial idle level: the receiver sees no start bit and
+`MSR.CTS` reads 0.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -6305,12 +6334,20 @@ a log entry. The log entries go through round robin arbitration.</ipxact:descrip
         <ipxact:displayName>Efuse address map of physical efuse macro</ipxact:displayName>
         <ipxact:description>Address map for efuse shadow registers providing access to various chip configuration and ID fields</ipxact:description>
         <ipxact:baseAddress>'hc0007000</ipxact:baseAddress>
-        <ipxact:range>'h400</ipxact:range>
+        <ipxact:range>'h100</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:register>
-          <ipxact:name>LOCKS</ipxact:name>
+          <ipxact:name>HARNESS_LOCKS</ipxact:name>
           <ipxact:description>Lock controls for each fuse field. When write locked, the corresponding field is not
-programmable. When read locked, the shadow register is not readable.</ipxact:description>
+programmable. When read locked, the shadow register is not readable.
+
+A write to the shadow register of a write-locked field, or a read of the shadow
+register of a read-locked field, completes with SLVERR and read data 0xBADCAB1E,
+leaves the shadow register unchanged and raises the locked-field access interrupt
+for the duration of the access. An attempted fuse program of a write-locked field,
+or an attempted fuse read of a read-locked field, started through the eFuse
+interface control registers is refused and sets
+EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:description>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -6496,8 +6533,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare3_write_lock</ipxact:name>
-            <ipxact:description>Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.</ipxact:description>
+            <ipxact:name>spare_tail_write_lock</ipxact:name>
+            <ipxact:description>Spare tail write lock (slot 7). When set, no SPARE_TAIL element is writable.</ipxact:description>
             <ipxact:bitOffset>14</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6509,8 +6546,224 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare3_read_lock</ipxact:name>
-            <ipxact:description>Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.</ipxact:description>
+            <ipxact:name>spare_tail_read_lock</ipxact:name>
+            <ipxact:description>Spare tail read lock (slot 7). When set, no SPARE_TAIL element is readable.</ipxact:description>
+            <ipxact:bitOffset>15</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>SUPPLEMENTARY_LOCKS</ipxact:name>
+          <ipxact:description>Lock controls for the supplementary fuse region. When write locked, the corresponding
+supplementary lock region is not programmable. When read locked, its shadow register is
+not readable.</ipxact:description>
+          <ipxact:addressOffset>'h8</ipxact:addressOffset>
+          <ipxact:size>64</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>region0_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 0 write lock. When set, supplementary lock region 0 is not writable.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region0_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 0 read lock. When set, supplementary lock region 0 is not readable.</ipxact:description>
+            <ipxact:bitOffset>1</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region1_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 1 write lock. When set, supplementary lock region 1 is not writable.</ipxact:description>
+            <ipxact:bitOffset>2</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region1_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 1 read lock. When set, supplementary lock region 1 is not readable.</ipxact:description>
+            <ipxact:bitOffset>3</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region2_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 2 write lock. When set, supplementary lock region 2 is not writable.</ipxact:description>
+            <ipxact:bitOffset>4</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region2_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 2 read lock. When set, supplementary lock region 2 is not readable.</ipxact:description>
+            <ipxact:bitOffset>5</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region3_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 3 write lock. When set, supplementary lock region 3 is not writable.</ipxact:description>
+            <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region3_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 3 read lock. When set, supplementary lock region 3 is not readable.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region4_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 4 write lock. When set, supplementary lock region 4 is not writable.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region4_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 4 read lock. When set, supplementary lock region 4 is not readable.</ipxact:description>
+            <ipxact:bitOffset>9</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region5_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 5 write lock. When set, supplementary lock region 5 is not writable.</ipxact:description>
+            <ipxact:bitOffset>10</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region5_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 5 read lock. When set, supplementary lock region 5 is not readable.</ipxact:description>
+            <ipxact:bitOffset>11</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region6_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 6 write lock. When set, supplementary lock region 6 is not writable.</ipxact:description>
+            <ipxact:bitOffset>12</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region6_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 6 read lock. When set, supplementary lock region 6 is not readable.</ipxact:description>
+            <ipxact:bitOffset>13</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region7_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 7 write lock. When set, supplementary lock region 7 is not writable.</ipxact:description>
+            <ipxact:bitOffset>14</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region7_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 7 read lock. When set, supplementary lock region 7 is not readable.</ipxact:description>
             <ipxact:bitOffset>15</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6522,8 +6775,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare4_write_lock</ipxact:name>
-            <ipxact:description>Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.</ipxact:description>
+            <ipxact:name>region8_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 8 write lock. When set, supplementary lock region 8 is not writable.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6535,8 +6788,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare4_read_lock</ipxact:name>
-            <ipxact:description>Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.</ipxact:description>
+            <ipxact:name>region8_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 8 read lock. When set, supplementary lock region 8 is not readable.</ipxact:description>
             <ipxact:bitOffset>17</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6548,8 +6801,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare5_write_lock</ipxact:name>
-            <ipxact:description>Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.</ipxact:description>
+            <ipxact:name>region9_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 9 write lock. When set, supplementary lock region 9 is not writable.</ipxact:description>
             <ipxact:bitOffset>18</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6561,8 +6814,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare5_read_lock</ipxact:name>
-            <ipxact:description>Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.</ipxact:description>
+            <ipxact:name>region9_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 9 read lock. When set, supplementary lock region 9 is not readable.</ipxact:description>
             <ipxact:bitOffset>19</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6574,8 +6827,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare6_write_lock</ipxact:name>
-            <ipxact:description>Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.</ipxact:description>
+            <ipxact:name>region10_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 10 write lock. When set, supplementary lock region 10 is not writable.</ipxact:description>
             <ipxact:bitOffset>20</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6587,8 +6840,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare6_read_lock</ipxact:name>
-            <ipxact:description>Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.</ipxact:description>
+            <ipxact:name>region10_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 10 read lock. When set, supplementary lock region 10 is not readable.</ipxact:description>
             <ipxact:bitOffset>21</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6600,8 +6853,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare7_write_lock</ipxact:name>
-            <ipxact:description>Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.</ipxact:description>
+            <ipxact:name>region11_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 11 write lock. When set, supplementary lock region 11 is not writable.</ipxact:description>
             <ipxact:bitOffset>22</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6613,8 +6866,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare7_read_lock</ipxact:name>
-            <ipxact:description>Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.</ipxact:description>
+            <ipxact:name>region11_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 11 read lock. When set, supplementary lock region 11 is not readable.</ipxact:description>
             <ipxact:bitOffset>23</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6626,8 +6879,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare8_write_lock</ipxact:name>
-            <ipxact:description>Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.</ipxact:description>
+            <ipxact:name>region12_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 12 write lock. When set, supplementary lock region 12 is not writable.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6639,8 +6892,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare8_read_lock</ipxact:name>
-            <ipxact:description>Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.</ipxact:description>
+            <ipxact:name>region12_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 12 read lock. When set, supplementary lock region 12 is not readable.</ipxact:description>
             <ipxact:bitOffset>25</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6652,8 +6905,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare9_write_lock</ipxact:name>
-            <ipxact:description>Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.</ipxact:description>
+            <ipxact:name>region13_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 13 write lock. When set, supplementary lock region 13 is not writable.</ipxact:description>
             <ipxact:bitOffset>26</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6665,8 +6918,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare9_read_lock</ipxact:name>
-            <ipxact:description>Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.</ipxact:description>
+            <ipxact:name>region13_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 13 read lock. When set, supplementary lock region 13 is not readable.</ipxact:description>
             <ipxact:bitOffset>27</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6678,8 +6931,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare10_write_lock</ipxact:name>
-            <ipxact:description>Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.</ipxact:description>
+            <ipxact:name>region14_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 14 write lock. When set, supplementary lock region 14 is not writable.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6691,8 +6944,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare10_read_lock</ipxact:name>
-            <ipxact:description>Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.</ipxact:description>
+            <ipxact:name>region14_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 14 read lock. When set, supplementary lock region 14 is not readable.</ipxact:description>
             <ipxact:bitOffset>29</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6704,8 +6957,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare11_write_lock</ipxact:name>
-            <ipxact:description>Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.</ipxact:description>
+            <ipxact:name>region15_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 15 write lock. When set, supplementary lock region 15 is not writable.</ipxact:description>
             <ipxact:bitOffset>30</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6717,8 +6970,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare11_read_lock</ipxact:name>
-            <ipxact:description>Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.</ipxact:description>
+            <ipxact:name>region15_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 15 read lock. When set, supplementary lock region 15 is not readable.</ipxact:description>
             <ipxact:bitOffset>31</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6730,8 +6983,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare12_write_lock</ipxact:name>
-            <ipxact:description>Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.</ipxact:description>
+            <ipxact:name>region16_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 16 write lock. When set, supplementary lock region 16 is not writable.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6743,8 +6996,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare12_read_lock</ipxact:name>
-            <ipxact:description>Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.</ipxact:description>
+            <ipxact:name>region16_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 16 read lock. When set, supplementary lock region 16 is not readable.</ipxact:description>
             <ipxact:bitOffset>33</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6756,8 +7009,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare13_write_lock</ipxact:name>
-            <ipxact:description>Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.</ipxact:description>
+            <ipxact:name>region17_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 17 write lock. When set, supplementary lock region 17 is not writable.</ipxact:description>
             <ipxact:bitOffset>34</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6769,8 +7022,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare13_read_lock</ipxact:name>
-            <ipxact:description>Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.</ipxact:description>
+            <ipxact:name>region17_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 17 read lock. When set, supplementary lock region 17 is not readable.</ipxact:description>
             <ipxact:bitOffset>35</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6782,8 +7035,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare14_write_lock</ipxact:name>
-            <ipxact:description>Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.</ipxact:description>
+            <ipxact:name>region18_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 18 write lock. When set, supplementary lock region 18 is not writable.</ipxact:description>
             <ipxact:bitOffset>36</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6795,8 +7048,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare14_read_lock</ipxact:name>
-            <ipxact:description>Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.</ipxact:description>
+            <ipxact:name>region18_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 18 read lock. When set, supplementary lock region 18 is not readable.</ipxact:description>
             <ipxact:bitOffset>37</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6808,8 +7061,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare15_write_lock</ipxact:name>
-            <ipxact:description>Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.</ipxact:description>
+            <ipxact:name>region19_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 19 write lock. When set, supplementary lock region 19 is not writable.</ipxact:description>
             <ipxact:bitOffset>38</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6821,8 +7074,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare15_read_lock</ipxact:name>
-            <ipxact:description>Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.</ipxact:description>
+            <ipxact:name>region19_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 19 read lock. When set, supplementary lock region 19 is not readable.</ipxact:description>
             <ipxact:bitOffset>39</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6834,8 +7087,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare16_write_lock</ipxact:name>
-            <ipxact:description>Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.</ipxact:description>
+            <ipxact:name>region20_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 20 write lock. When set, supplementary lock region 20 is not writable.</ipxact:description>
             <ipxact:bitOffset>40</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6847,8 +7100,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare16_read_lock</ipxact:name>
-            <ipxact:description>Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.</ipxact:description>
+            <ipxact:name>region20_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 20 read lock. When set, supplementary lock region 20 is not readable.</ipxact:description>
             <ipxact:bitOffset>41</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6860,8 +7113,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare17_write_lock</ipxact:name>
-            <ipxact:description>Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.</ipxact:description>
+            <ipxact:name>region21_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 21 write lock. When set, supplementary lock region 21 is not writable.</ipxact:description>
             <ipxact:bitOffset>42</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6873,8 +7126,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare17_read_lock</ipxact:name>
-            <ipxact:description>Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.</ipxact:description>
+            <ipxact:name>region21_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 21 read lock. When set, supplementary lock region 21 is not readable.</ipxact:description>
             <ipxact:bitOffset>43</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6886,8 +7139,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare18_write_lock</ipxact:name>
-            <ipxact:description>Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.</ipxact:description>
+            <ipxact:name>region22_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 22 write lock. When set, supplementary lock region 22 is not writable.</ipxact:description>
             <ipxact:bitOffset>44</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6899,8 +7152,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare18_read_lock</ipxact:name>
-            <ipxact:description>Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.</ipxact:description>
+            <ipxact:name>region22_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 22 read lock. When set, supplementary lock region 22 is not readable.</ipxact:description>
             <ipxact:bitOffset>45</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6912,8 +7165,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare19_write_lock</ipxact:name>
-            <ipxact:description>Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.</ipxact:description>
+            <ipxact:name>region23_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 23 write lock. When set, supplementary lock region 23 is not writable.</ipxact:description>
             <ipxact:bitOffset>46</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6925,8 +7178,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare19_read_lock</ipxact:name>
-            <ipxact:description>Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.</ipxact:description>
+            <ipxact:name>region23_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 23 read lock. When set, supplementary lock region 23 is not readable.</ipxact:description>
             <ipxact:bitOffset>47</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6938,8 +7191,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare20_write_lock</ipxact:name>
-            <ipxact:description>Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.</ipxact:description>
+            <ipxact:name>region24_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 24 write lock. When set, supplementary lock region 24 is not writable.</ipxact:description>
             <ipxact:bitOffset>48</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6951,8 +7204,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare20_read_lock</ipxact:name>
-            <ipxact:description>Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.</ipxact:description>
+            <ipxact:name>region24_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 24 read lock. When set, supplementary lock region 24 is not readable.</ipxact:description>
             <ipxact:bitOffset>49</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6964,8 +7217,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare21_write_lock</ipxact:name>
-            <ipxact:description>Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.</ipxact:description>
+            <ipxact:name>region25_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 25 write lock. When set, supplementary lock region 25 is not writable.</ipxact:description>
             <ipxact:bitOffset>50</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6977,8 +7230,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare21_read_lock</ipxact:name>
-            <ipxact:description>Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.</ipxact:description>
+            <ipxact:name>region25_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 25 read lock. When set, supplementary lock region 25 is not readable.</ipxact:description>
             <ipxact:bitOffset>51</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6990,8 +7243,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare22_write_lock</ipxact:name>
-            <ipxact:description>Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.</ipxact:description>
+            <ipxact:name>region26_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 26 write lock. When set, supplementary lock region 26 is not writable.</ipxact:description>
             <ipxact:bitOffset>52</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7003,8 +7256,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare22_read_lock</ipxact:name>
-            <ipxact:description>Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.</ipxact:description>
+            <ipxact:name>region26_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 26 read lock. When set, supplementary lock region 26 is not readable.</ipxact:description>
             <ipxact:bitOffset>53</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7016,8 +7269,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare23_write_lock</ipxact:name>
-            <ipxact:description>Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.</ipxact:description>
+            <ipxact:name>region27_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 27 write lock. When set, supplementary lock region 27 is not writable.</ipxact:description>
             <ipxact:bitOffset>54</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7029,8 +7282,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare23_read_lock</ipxact:name>
-            <ipxact:description>Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.</ipxact:description>
+            <ipxact:name>region27_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 27 read lock. When set, supplementary lock region 27 is not readable.</ipxact:description>
             <ipxact:bitOffset>55</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7042,8 +7295,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare24_write_lock</ipxact:name>
-            <ipxact:description>Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.</ipxact:description>
+            <ipxact:name>region28_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 28 write lock. When set, supplementary lock region 28 is not writable.</ipxact:description>
             <ipxact:bitOffset>56</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7055,8 +7308,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare24_read_lock</ipxact:name>
-            <ipxact:description>Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.</ipxact:description>
+            <ipxact:name>region28_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 28 read lock. When set, supplementary lock region 28 is not readable.</ipxact:description>
             <ipxact:bitOffset>57</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7068,8 +7321,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare25_write_lock</ipxact:name>
-            <ipxact:description>Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.</ipxact:description>
+            <ipxact:name>region29_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 29 write lock. When set, supplementary lock region 29 is not writable.</ipxact:description>
             <ipxact:bitOffset>58</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7081,8 +7334,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare25_read_lock</ipxact:name>
-            <ipxact:description>Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.</ipxact:description>
+            <ipxact:name>region29_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 29 read lock. When set, supplementary lock region 29 is not readable.</ipxact:description>
             <ipxact:bitOffset>59</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7094,8 +7347,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare26_write_lock</ipxact:name>
-            <ipxact:description>Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.</ipxact:description>
+            <ipxact:name>region30_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 30 write lock. When set, supplementary lock region 30 is not writable.</ipxact:description>
             <ipxact:bitOffset>60</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7107,8 +7360,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare26_read_lock</ipxact:name>
-            <ipxact:description>Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.</ipxact:description>
+            <ipxact:name>region30_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 30 read lock. When set, supplementary lock region 30 is not readable.</ipxact:description>
             <ipxact:bitOffset>61</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7120,8 +7373,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare27_write_lock</ipxact:name>
-            <ipxact:description>Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.</ipxact:description>
+            <ipxact:name>region31_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 31 write lock. When set, supplementary lock region 31 is not writable.</ipxact:description>
             <ipxact:bitOffset>62</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7133,8 +7386,8 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare27_read_lock</ipxact:name>
-            <ipxact:description>Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.</ipxact:description>
+            <ipxact:name>region31_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 31 read lock. When set, supplementary lock region 31 is not readable.</ipxact:description>
             <ipxact:bitOffset>63</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7149,10 +7402,12 @@ programmable. When read locked, the shadow register is not readable.</ipxact:des
         <ipxact:register>
           <ipxact:name>JTAG_PUBLIC_IDENTITY</ipxact:name>
           <ipxact:description>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
-are admitted while JTAG access to every other fuse field is blocked. Encoding
+are admitted while every JTAG write and every other JTAG read is blocked. When
+the lifecycle state fails its integrity check, JTAG reads of this range are
+blocked as well. Encoding
 is adopter-defined; the harness does not interpret or consume the value. The
 slot-0 read lock still hides the bits when set.</ipxact:description>
-          <ipxact:addressOffset>'h8</ipxact:addressOffset>
+          <ipxact:addressOffset>'h10</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>value</ipxact:name>
@@ -7172,7 +7427,7 @@ it.</ipxact:description>
           <ipxact:name>I2C_I3C_ID</ipxact:name>
           <ipxact:description>I2C/I3C interface ID</ipxact:description>
           <ipxact:dim>9</ipxact:dim>
-          <ipxact:addressOffset>'h28</ipxact:addressOffset>
+          <ipxact:addressOffset>'h30</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>interface_id</ipxact:name>
@@ -7193,7 +7448,7 @@ it.</ipxact:description>
           <ipxact:name>SMC_CONFIG</ipxact:name>
           <ipxact:description>SMC boot and configuration controls sourced from fuse. Only the low word carries
 assigned bits, so firmware reads it as a single 32-bit access.</ipxact:description>
-          <ipxact:addressOffset>'h70</ipxact:addressOffset>
+          <ipxact:addressOffset>'h78</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>rom_flip_endianness</ipxact:name>
@@ -7271,7 +7526,7 @@ assigned bits, so firmware reads it as a single 32-bit access.</ipxact:descripti
         <ipxact:register>
           <ipxact:name>OCCP_TRANSPORT_TIMEOUT</ipxact:name>
           <ipxact:description>OCCP transport timeout in the low word; upper word reserved.</ipxact:description>
-          <ipxact:addressOffset>'h78</ipxact:addressOffset>
+          <ipxact:addressOffset>'h80</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>timeout</ipxact:name>
@@ -7301,9 +7556,9 @@ assigned bits, so firmware reads it as a single 32-bit access.</ipxact:descripti
         <ipxact:register>
           <ipxact:name>SPARE</ipxact:name>
           <ipxact:description>Individually lockable 256-bit spare region, reserved for fields assigned after the
-RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:description>
-          <ipxact:dim>28</ipxact:dim>
-          <ipxact:addressOffset>'h80</ipxact:addressOffset>
+RTL is frozen. Each element has its own write/read lock pair in HARNESS_LOCKS.</ipxact:description>
+          <ipxact:dim>3</ipxact:dim>
+          <ipxact:addressOffset>'h88</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
@@ -7318,13 +7573,34 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>SPARE_TAIL</ipxact:name>
+          <ipxact:description>64-bit spare region at the end of the map, reserved for fields assigned after the
+RTL is frozen. All elements share the slot-7 write/read lock pair in
+HARNESS_LOCKS.</ipxact:description>
+          <ipxact:dim>3</ipxact:dim>
+          <ipxact:addressOffset>'he8</ipxact:addressOffset>
+          <ipxact:size>64</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:description>Spare fuse bits for future use.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>efuse_interface_ctrl</ipxact:name>
         <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
         <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
         <ipxact:baseAddress>'hc0008000</ipxact:baseAddress>
-        <ipxact:range>'h1c</ipxact:range>
+        <ipxact:range>'h24</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>EFUSE_INTERFACE_CTRL_STATUS</ipxact:name>
@@ -7420,21 +7696,9 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to program</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_data</ipxact:name>
             <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
@@ -7458,18 +7722,6 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_program_read_back</ipxact:name>
-            <ipxact:description>When set, trigger a read back after a program</ipxact:description>
-            <ipxact:bitOffset>18</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -7526,21 +7778,9 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_READ_CTRL</ipxact:name>
-          <ipxact:description>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to read</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_read_go</ipxact:name>
             <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
@@ -7608,12 +7848,12 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_INTERFACE_READ_DATA</ipxact:name>
-          <ipxact:description>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</ipxact:description>
+          <ipxact:description>Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.</ipxact:description>
           <ipxact:addressOffset>'hc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>dout</ipxact:name>
-            <ipxact:description>Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only</ipxact:description>
+            <ipxact:description>Program response data from the adopter SHIM; its meaning is adopter-defined.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7701,6 +7941,42 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_PROGRAM_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</ipxact:description>
+          <ipxact:addressOffset>'h1c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_READ_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</ipxact:description>
+          <ipxact:addressOffset>'h20</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -44093,7 +44369,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44105,7 +44381,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44117,7 +44393,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44177,7 +44453,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44189,7 +44465,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44267,7 +44543,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44279,7 +44555,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44291,7 +44567,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44351,7 +44627,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44363,7 +44639,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44441,7 +44717,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44453,7 +44729,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44465,7 +44741,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44525,7 +44801,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44537,7 +44813,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44615,7 +44891,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44627,7 +44903,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44639,7 +44915,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44699,7 +44975,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44711,7 +44987,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44789,7 +45065,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44801,7 +45077,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44813,7 +45089,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44873,7 +45149,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44885,7 +45161,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44963,7 +45239,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44975,7 +45251,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44987,7 +45263,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45047,7 +45323,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45059,7 +45335,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45137,7 +45413,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45149,7 +45425,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45161,7 +45437,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45221,7 +45497,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45233,7 +45509,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45311,7 +45587,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45323,7 +45599,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45335,7 +45611,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45395,7 +45671,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45407,7 +45683,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45521,7 +45797,7 @@ reaches termination value.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>Signal0Select</ipxact:name>
-              <ipxact:description>Define which signal to select for edge detection.</ipxact:description>
+              <ipxact:description>Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45545,7 +45821,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Signal1Select</ipxact:name>
-              <ipxact:description>Define which signal to select for edge detection.</ipxact:description>
+              <ipxact:description>Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45570,7 +45846,7 @@ reaches termination value.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgEapStatus</ipxact:name>
-            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</ipxact:description>
+            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit.</ipxact:description>
             <ipxact:addressOffset>'h188</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -45779,6 +46055,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45791,6 +46068,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>33</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45803,6 +46081,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>34</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45815,6 +46094,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node0Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>35</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45827,6 +46107,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>36</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45839,6 +46120,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>37</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45851,6 +46133,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45863,6 +46146,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node1Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>39</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45875,6 +46159,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>40</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45887,6 +46172,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>41</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45899,6 +46185,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>42</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45911,6 +46198,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node2Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>43</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45923,6 +46211,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap0W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45935,6 +46224,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap1W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>45</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45947,6 +46237,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap2W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>46</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45959,6 +46250,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Node3Eap3W2C</ipxact:name>
+              <ipxact:description>Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.</ipxact:description>
               <ipxact:bitOffset>47</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45990,7 +46282,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EnableEap</ipxact:name>
-              <ipxact:description>Set Enable EAP to 1 after EAP programming is complete</ipxact:description>
+              <ipxact:description>Set Enable EAP to 1 after EAP programming is complete. Clearing it disables every EAP, and is required before the CDbgEapStatus w2c write that releases a debug interrupt; set it again to re-arm the EAPs</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46002,7 +46294,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EnableCla</ipxact:name>
-              <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</ipxact:description>
+              <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated. Gating the clock freezes a held clock halt request rather than releasing it</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46026,7 +46318,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DisableGlobalClockHalt</ipxact:name>
-              <ipxact:description>If this bit is set, clock halt action is not applied to global clocks</ipxact:description>
+              <ipxact:description>If this bit is set, a clock halt action does not set the global clock halt request. Setting it does not release a request already set; the request is held until the CLA reset</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46038,7 +46330,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DisableLocalClockHalt</ipxact:name>
-              <ipxact:description>If this bit is set, clock halt action is not applied to local clocks</ipxact:description>
+              <ipxact:description>If this bit is set, a clock halt action does not set the local clock halt request. Setting it does not release a request already set; the request is held until the CLA reset</ipxact:description>
               <ipxact:bitOffset>15</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46636,7 +46928,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46648,7 +46940,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46660,7 +46952,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46720,7 +47012,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46732,7 +47024,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46810,7 +47102,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46822,7 +47114,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46834,7 +47126,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46894,7 +47186,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46906,7 +47198,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46984,7 +47276,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46996,7 +47288,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47008,7 +47300,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47068,7 +47360,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47080,7 +47372,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47158,7 +47450,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47170,7 +47462,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47182,7 +47474,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47242,7 +47534,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47254,7 +47546,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47332,7 +47624,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47344,7 +47636,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47356,7 +47648,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47416,7 +47708,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47428,7 +47720,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47506,7 +47798,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47518,7 +47810,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47530,7 +47822,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47590,7 +47882,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47602,7 +47894,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47680,7 +47972,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47692,7 +47984,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47704,7 +47996,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47764,7 +48056,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47776,7 +48068,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47854,7 +48146,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>LogicalOp</ipxact:name>
-              <ipxact:description>Relation to be satisfied among events to activate the actions</ipxact:description>
+              <ipxact:description>Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.</ipxact:description>
               <ipxact:bitOffset>14</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47866,7 +48158,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType0</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47878,7 +48170,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType1</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47938,7 +48230,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>EventType2</ipxact:name>
-              <ipxact:description>Select a trigger event</ipxact:description>
+              <ipxact:description>Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.</ipxact:description>
               <ipxact:bitOffset>38</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47950,7 +48242,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Udf</ipxact:name>
-              <ipxact:description>User Defined Function with event type 0, 1, and 2 as arguments</ipxact:description>
+              <ipxact:description>Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.</ipxact:description>
               <ipxact:bitOffset>44</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49795,7 +50087,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Trdsttimestampconfig</ipxact:name>
-              <ipxact:description>DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.</ipxact:description>
+              <ipxact:description>DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.</ipxact:description>
               <ipxact:bitOffset>31</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49973,7 +50265,7 @@ reaches termination value.</ipxact:description>
         <ipxact:displayName>SMC External Window Address Map</ipxact:displayName>
         <ipxact:description>Adopter-provided external register window, split into mandatory and supplementary regions.</ipxact:description>
         <ipxact:baseAddress>'hc0400000</ipxact:baseAddress>
-        <ipxact:range>'h6548</ipxact:range>
+        <ipxact:range>'hb000</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>mandatory</ipxact:name>
@@ -50076,7 +50368,7 @@ Strap assignments in this range:
           <ipxact:displayName>SMC External Supplementary Region Address Map</ipxact:displayName>
           <ipxact:description>Supplementary adopter blocks in the external window: extra controllers, extra GPIO registers, and PVT.</ipxact:description>
           <ipxact:addressOffset>'h4000</ipxact:addressOffset>
-          <ipxact:range>'h2548</ipxact:range>
+          <ipxact:range>'h7000</ipxact:range>
         </ipxact:registerFile>
       </ipxact:addressBlock>
       <ipxact:addressBlock>

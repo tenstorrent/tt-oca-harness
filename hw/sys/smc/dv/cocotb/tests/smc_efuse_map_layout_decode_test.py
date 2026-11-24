@@ -4,8 +4,10 @@
 
 Sources: smc_efuse_map.rdl (address map), smc.rdl (smc_efuse_map ocah_past_extent_resp).
 
-The image is written into the run directory during ``build_phase``: 256 pairwise-distinct
-words, LOCKS 0x40000000_00000000, every other field a distinct-word pattern.
+The image is written into the run directory during ``build_phase``: 64 pairwise-distinct
+words; the four LOCKS words are 0, 0x4000_0000 (a HARNESS_LOCKS bit above the lock vector)
+and the marker words 2 and 3 in the SUPPLEMENTARY_LOCKS words, so no map region is locked;
+every other field is the distinct-word pattern.
 """
 
 from __future__ import annotations
@@ -24,16 +26,20 @@ from seq_lib.smc_efuse_map_layout_decode_test_seq import (
 from smc_base_test import smc_base_test
 
 _EFUSE_DIR = Path(__file__).resolve().parents[2] / "efuse_preload"
-_LOCKS_VALUE = 0x4000_0000_0000_0000
 
 
 def _marker(n: int) -> int:
-    """Word n of the marker image: non-zero and distinct for every n in 2..255."""
+    """Word n of the marker image: non-zero and distinct for every n in 1..63."""
     return 0x5A5A0000 | (n << 8) | (0xA5 ^ n)
 
 
 def _field(first: int, count: int) -> int:
     return sum(_marker(first + k) << (32 * k) for k in range(count))
+
+
+#: LOCKS words 0..3: HARNESS_LOCKS 0 / 0x4000_0000, SUPPLEMENTARY_LOCKS marker words 2 and 3.
+LOCKS_WORDS_VALUE = (0, 0x4000_0000, _marker(2), _marker(3))
+_LOCKS_VALUE = sum(w << (32 * k) for k, w in enumerate(LOCKS_WORDS_VALUE))
 
 
 _CONFIG_TEMPLATE = """\
@@ -44,7 +50,7 @@ _CONFIG_TEMPLATE = """\
     write_locked = "False"
     read_locked = "False"
     [LOCKS.fields.lock_entries]
-    value = 0x{locks:016x}
+    value = 0x{locks:032x}
 
 [JTAG_PUBLIC_IDENTITY]
     write_locked = "False"
@@ -92,11 +98,11 @@ def write_marker_image() -> Path:
     config.write_text(
         _CONFIG_TEMPLATE.format(
             locks=_LOCKS_VALUE,
-            jpi=_field(2, 8),
-            i2c=_field(10, 18),
-            cfg=_field(28, 2),
-            occp=_field(30, 2),
-            spare=_field(32, 224),
+            jpi=_field(4, 8),
+            i2c=_field(12, 18),
+            cfg=_field(30, 2),
+            occp=_field(32, 2),
+            spare=_field(34, 30),
         ),
         encoding="utf-8",
     )

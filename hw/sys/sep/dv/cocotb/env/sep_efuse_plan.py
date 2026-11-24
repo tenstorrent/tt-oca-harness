@@ -54,6 +54,7 @@ from sep_reg_meta import (
     EFUSE_MMR,
     SEP_LIFECYCLE_CTRL,
     RegBlock,
+    block_size,
     sym,
     word_reset,
 )
@@ -322,6 +323,8 @@ def _lock_slots() -> tuple[tuple[str, int, int], ...]:
 LOCK_SLOTS = _lock_slots()
 LOCK_SLOT_FIELD: tuple[str, ...] = tuple(s[0] for s in LOCK_SLOTS)
 SLOT_OF_FIELD: dict[str, int] = {n: i for i, n in enumerate(LOCK_SLOT_FIELD)}
+_UID_LOCK_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("CHIPLET_UID", "SIP_UID", "SYS_UID"))
+_ORDER_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("SIP_DIS", "SYS_DIS", "REQUIRED_ALGS"))
 # otp_fuse_controller.adoc LOCK field: 41 slots, write lock at bit 2s, read lock at 2s+1.
 for _s, (_n, _wb, _rb) in enumerate(LOCK_SLOTS):
     if (_wb, _rb) != (2 * _s, 2 * _s + 1) or _n not in FIELD_NAMES:
@@ -720,8 +723,13 @@ def palindromic_word(word: int) -> bool:
 STATUS_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
 PROGRAM_CTRL_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
 READ_CTRL_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
+PROGRAM_ADDR_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_ADDR")
+IFCTL_EXTENT = block_size("EFUSE_INTERFACE_CTRL")
+READ_ADDR_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_ADDR")
 _PG = "EFUSE_PROGRAM_CTRL"
 _RD = "EFUSE_READ_CTRL"
+_PA = "EFUSE_PROGRAM_ADDR"
+_RA = "EFUSE_READ_ADDR"
 
 
 def _fld(reg: str, name: str, value: int) -> int:
@@ -732,37 +740,65 @@ def _fld(reg: str, name: str, value: int) -> int:
     return int(value << lsb)
 
 
-def program_ctrl_word(
-    bit_addr: int, *, data: int = 1, enable: int = 1, go: int = 1, read_back: int = 0
-) -> int:
-    """``EFUSE_PROGRAM_CTRL`` value with the named fields; every other bit 0."""
+def program_addr_word(bit_addr: int) -> int:
+    """``EFUSE_PROGRAM_ADDR`` value for a fuse bit address."""
+    return _fld(_PA, "efuse_addr", bit_addr)
+
+
+def read_addr_word(bit_addr: int) -> int:
+    """``EFUSE_READ_ADDR`` value for a fuse bit address."""
+    return _fld(_RA, "efuse_addr", bit_addr)
+
+
+def program_ctrl_word(*, data: int = 1, enable: int = 1, go: int = 1) -> int:
+    """``EFUSE_PROGRAM_CTRL`` value with the named fields; every other bit 0.
+
+    The go programs the bit at ``EFUSE_PROGRAM_ADDR``; write it first.
+    """
     return (
-        _fld(_PG, "efuse_addr", bit_addr)
-        | _fld(_PG, "efuse_data", data)
+        _fld(_PG, "efuse_data", data)
         | _fld(_PG, "efuse_program_go", go)
-        | _fld(_PG, "efuse_program_read_back", read_back)
         | _fld(_PG, "program_enable", enable)
     )
 
 
-def read_ctrl_word(bit_addr: int, *, enable: int = 1, go: int = 1) -> int:
-    """``EFUSE_READ_CTRL`` value with the named fields; every other bit 0."""
-    return (
-        _fld(_RD, "efuse_addr", bit_addr)
-        | _fld(_RD, "efuse_read_go", go)
-        | _fld(_RD, "read_enable", enable)
-    )
+def read_ctrl_word(*, enable: int = 1, go: int = 1) -> int:
+    """``EFUSE_READ_CTRL`` value with the named fields; every other bit 0.
+
+    The go reads the word at ``EFUSE_READ_ADDR``; write it first.
+    """
+    return _fld(_RD, "efuse_read_go", go) | _fld(_RD, "read_enable", enable)
 
 
-async def program_go_no_wait(
-    wr: WriteFn, bit_addr: int, *, data: int = 1, read_back: int = 0
-) -> int:
-    """Write one ``EFUSE_PROGRAM_CTRL`` with enable, data, address and go; no poll.
+_ADDR_REG_NAME = {PROGRAM_ADDR_ADDR: _PA, READ_ADDR_ADDR: _RA}
 
-    Returns the written value. The caller places every later step by a probe or a
+
+async def require_addr_readback(rd: ReadFn, reg_addr: int, want: int) -> int:
+    """Read ``EFUSE_PROGRAM_ADDR`` or ``EFUSE_READ_ADDR`` back; fail unless it holds ``want``.
+
+    A refused or blocked command is graded only at the address the test set. Returns
+    the value read.
+    """
+    got = await rd(reg_addr)
+    if got != want:
+        raise AssertionError(
+            f"CHK-EFUSE-ADDR-RB FAIL: {_ADDR_REG_NAME[reg_addr]} read 0x{got:08x} after "
+            f"write 0x{want:08x}"
+        )
+    return got
+
+
+async def program_go_no_wait(wr: WriteFn, rd: ReadFn, bit_addr: int, *, data: int = 1) -> int:
+    """Write ``EFUSE_PROGRAM_ADDR``, read it back, then write ``EFUSE_PROGRAM_CTRL`` with
+    enable, data and go; no poll.
+
+    Returns the written control value. The caller places every later step by a probe or a
     bounded window (VPLAN eFuse rules, Time).
     """
-    value = program_ctrl_word(bit_addr, data=data, read_back=read_back)
+    addr = program_addr_word(bit_addr)
+    await wr(PROGRAM_ADDR_ADDR, addr)
+    await require_addr_readback(rd, PROGRAM_ADDR_ADDR, addr)
+    value = program_ctrl_word(data=data)
     await wr(PROGRAM_CTRL_ADDR, value)
     return value
 
@@ -1055,30 +1091,27 @@ def _timeout_count(d: SepEfuseDraws, name: str) -> int:
 def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     """Fixed TEST_DEV image; runtime draws in the Randomization order.
 
-    Order: two timeout counts; ``EFUSE_PROGRAM_CTRL`` pattern (bits 18, 16, 15:0);
-    ``EFUSE_READ_CTRL`` pattern (15:0); word order of the SIP, CHIPLET and SEC_DIS
-    arrays; seven past-extent offsets (one in {0x20, 0x24}); six reserved-span
-    addresses (one alias target per zone); control-write word index w.
+    Order: two timeout counts; ``EFUSE_PROGRAM_CTRL`` pattern (bit 16);
+    ``EFUSE_PROGRAM_ADDR`` pattern (31:0); ``EFUSE_READ_ADDR`` pattern (31:0); word
+    order of the SIP, CHIPLET and SEC_DIS arrays; seven past-extent offsets; six
+    reserved-span addresses (one alias target per zone); control-write word index w.
     """
     d = SepEfuseDraws(seed)
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=FIXED_SIP_DIS, sys_dis=FIXED_SYS_DIS)
     _timeout_count(d, "read_req_timeout_cycles")
     _timeout_count(d, "program_req_timeout_cycles")
-    pg_mask = (
-        EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_addr")
-        | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data")
-        | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_program_read_back")
-    )
-    rd_mask = EFUSE_INTERFACE_CTRL.field_mask(_RD, "efuse_addr")
+    pg_mask = EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data")
+    pa_mask = EFUSE_INTERFACE_CTRL.field_mask(_PA, "efuse_addr")
+    ra_mask = EFUSE_INTERFACE_CTRL.field_mask(_RA, "efuse_addr")
     d.until("program_ctrl_pattern", lambda: d.rng.getrandbits(32) & pg_mask, lambda v: v != 0)
-    d.until("read_ctrl_pattern", lambda: d.rng.getrandbits(32) & rd_mask, lambda v: v != 0)
+    d.until("program_addr_pattern", lambda: d.rng.getrandbits(32) & pa_mask, lambda v: v != 0)
+    d.until("read_addr_pattern", lambda: d.rng.getrandbits(32) & ra_mask, lambda v: v != 0)
     for ch in CHANNELS:
         d.word_order(ch)
-    # Past the 28-byte interface-control extent: word offsets 0x20..0xFC.
-    cands = list(range(0x20, 0x100, 4))
-    alias = d.choice("past_extent_alias", (0x20, 0x24))
-    rest = d.sample("past_extent_rest", [c for c in cands if c != alias], 6)
-    offsets = d.shuffled("past_extent_offsets", [alias, *rest])
+    # Past the interface-control extent, after its pinned first word: word offsets
+    # up to 0xFC.
+    cands = list(range(IFCTL_EXTENT + 4, 0x100, 4))
+    offsets = d.sample("past_extent_offsets", cands, 7)
     rw_offs = {field_offset(n) + 4 * w for n in SHADOW_RW_FIELDS for w in range(field_n_words(n))}
     pinned = {0x600, 0xC1C, 0xFFFC}
     zone1 = [a for a in range(0x604, 0x1000, 4) if a not in pinned]
@@ -1615,6 +1648,19 @@ def plan_token_fault(seed: int) -> SepEfusePlan:
     return _make_plan(T_TOKEN_FAULT, seed, d, LC_TEST_DEV, sip, sys_, img, leg)
 
 
+# Width of the efuse_addr field of both address registers.
+EFUSE_ADDR_BITS = EFUSE_INTERFACE_CTRL.field_width(_PA, "efuse_addr")
+FUSE_BITS = NUM_FUSE_WORDS * WORD_BITS
+
+
+def _draw_wide_oor_address(d: SepEfuseDraws) -> int:
+    """Out-of-range address: a non-zero upper half of ``efuse_addr`` over an in-range bit."""
+    half = EFUSE_ADDR_BITS // 2
+    low = d.randrange("oor_wide_low", 0, FUSE_BITS)
+    high = d.randrange("oor_wide_high", 1, 1 << (EFUSE_ADDR_BITS - half))
+    return high << half | low
+
+
 IF_CASES = (
     "pre_sense",
     "read_go_no_enable",
@@ -1624,6 +1670,7 @@ IF_CASES = (
     "lock_read",
     "both_enables",
     "data0",
+    "prog_go_no_enable",
 )
 
 
@@ -1632,11 +1679,14 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
 
     Order: case order; out-of-range address in 8193..65534; write-lock slot
     (1..39); read-lock slot (1..39, not 11, 13, 15, not the write-lock slot); the
-    four spare fields of the pre-sense program, its twin, the lock twin and the data-0
-    program (pairwise different, none a lock-slot field), each with a zero bit; the
+    six spare fields of the pre-sense program, its twin, the lock twin, the data-0
+    program, the program go with ``program_enable`` 0 and the program after the
+    flag reset (pairwise different, none a lock-slot field), each with a zero bit; the
     zero bit of the lock-blocked program; the bit of the lock-blocked read; the
     unlocked read bits of the case frame, the read-go case, the lock-read twin and
-    the both-enables case.
+    the both-enables case; last, the wide out-of-range address: an in-range bit
+    address in the lower half of the ``efuse_addr`` field and a non-zero upper
+    half, so a compare of the lower half alone takes it as in range.
     """
     d = SepEfuseDraws(seed)
     order = d.shuffled("case_order", IF_CASES)
@@ -1647,9 +1697,19 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
     locks = (1 << write_lock_bit(wl)) | (1 << read_lock_bit(rl))
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=sip, sys_dis=sys_, lock_bits=locks)
     locked = {LOCK_SLOT_FIELD[wl], LOCK_SLOT_FIELD[rl]}
-    spares = d.sample("program_spare_fields", [f for f in SPARE_FIELDS if f not in locked], 4)
+    roles = (
+        "pre_sense",
+        "pre_sense_twin",
+        "lock_twin",
+        "data0",
+        "prog_go_no_enable",
+        "reset_flags",
+    )
+    spares = d.sample(
+        "program_spare_fields", [f for f in SPARE_FIELDS if f not in locked], len(roles)
+    )
     progs = {}
-    for role, f in zip(("pre_sense", "pre_sense_twin", "lock_twin", "data0"), spares):
+    for role, f in zip(roles, spares):
         progs[role] = _pick_bit(d, f"program.{role}", img, f)
     lock_prog = _pick_bit(d, "program.lock_blocked", img, LOCK_SLOT_FIELD[wl])
     lock_read = _pick_bit(d, "read.lock_blocked", img, LOCK_SLOT_FIELD[rl], zero=False)
@@ -1660,7 +1720,7 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
         reads[role] = _pick_bit(d, f"read.{role}", img, f, zero=False)
     leg = {
         "case_order": order,
-        "oor_addresses": [8192, 65535, oor],
+        "oor_addresses": [8192, 65535, oor, _draw_wide_oor_address(d)],
         "write_lock_slot": wl,
         "read_lock_slot": rl,
         "programs": progs,
@@ -1718,7 +1778,7 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
                 continue
             kinds = (
                 (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_WR)
-                if s in (11, 13, 15)
+                if s in _UID_LOCK_SLOTS
                 else (_LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_R, _LOCK_KIND_WR)
             )
             layout[s] = d.choice(f"lock_kind.{s}", kinds)
@@ -1780,12 +1840,12 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
         leg["class_key_bit"] = _pick_bit(d, "class_key_bit", img, "CLASS_KEY", zero=False)
         leg["locks_bit"] = _pick_bit(d, "locks_bit", img, "LOCKS", zero=False)
     elif kind == "order":
-        slot = d.choice("order_slot", (3, 4, 22))
+        slot = d.choice("order_slot", _ORDER_SLOTS)
         perm = d.shuffled("order_permutation", ("write_a", "lock", "write_b"))
         img = build_image(lc_raw=LC_TEST_DEV, sip_dis=sip, sys_dis=sys_)
         fname = LOCK_SLOT_FIELD[slot]
         abc = d.sample("order_bits_abc", zero_bits(img, fname), 3)
-        ctl_slot = d.choice("control_slot", [s for s in (3, 4, 22) if s != slot])
+        ctl_slot = d.choice("control_slot", [s for s in _ORDER_SLOTS if s != slot])
         leg.update(slot=slot, permutation=perm, bits_abc=abc, control_slot=ctl_slot)
         leg["control_bit"] = _pick_bit(d, "control_bit", img, LOCK_SLOT_FIELD[ctl_slot])
     else:
@@ -1808,9 +1868,8 @@ def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
             ]
             fname = d.choice(f"round.{rnd}.field", [f for f in fields if zero_bits(ref, f)])
             bit = _pick_bit(d, f"round.{rnd}.bit", ref, fname)
-            rb = d.choice(f"round.{rnd}.read_back", (0, 1))
             ref.words[field_word(fname) + bit["word"]] |= 1 << bit["bit"]
-            chain.append({**bit, "read_back": rb})
+            chain.append(bit)
         leg.update(rounds=chain, version_field=version, index_class=idx_class, version_index=index)
         leg["version_bit"] = {
             "field": version,
@@ -1969,8 +2028,16 @@ _IFCTL_REGS = (
     "EFUSE_READ_INTERFACE_READ_DATA",
     "EFUSE_READ_REQ_TIMEOUT",
     "EFUSE_PROGRAM_REQ_TIMEOUT",
+    "EFUSE_PROGRAM_ADDR",
+    "EFUSE_READ_ADDR",
 )
-_IFCTL_WR_REGS = ("EFUSE_INTERFACE_CTRL_STATUS", "EFUSE_PROGRAM_CTRL", "EFUSE_READ_CTRL")
+_IFCTL_WR_REGS = (
+    "EFUSE_INTERFACE_CTRL_STATUS",
+    "EFUSE_PROGRAM_CTRL",
+    "EFUSE_READ_CTRL",
+    "EFUSE_PROGRAM_ADDR",
+    "EFUSE_READ_ADDR",
+)
 _REQUIRED_CELLS = (
     ("shadow", "rd"),
     ("shadow", "wr"),
@@ -2003,8 +2070,9 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
     bit); c and p; N (15..20); the go channel; the word order and the vector of each
     word write of its array; insert positions of the other token-block accesses and
     the extras; the class and operation of each extra; per access its address and
-    pattern. The required interface-control write is always ``EFUSE_PROGRAM_CTRL``
-    with the address of p; an extra interface-control write draws its register.
+    pattern. The required interface-control write is always an ``EFUSE_PROGRAM_CTRL``
+    go, made while ``EFUSE_PROGRAM_ADDR`` holds p; an extra interface-control write
+    draws its register.
     """
     d = SepEfuseDraws(seed)
     raw = d.choice("state", (LC_PROD, LC_RMA_SIP_0))
@@ -2115,6 +2183,8 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
             written.append((acc["channel"], acc["index"]))
     denied = d.shuffled("denied_order", denied)
     rw_cands = [f for f in SHADOW_RW_FIELDS if zero_bits(img, f)]
+    # The direct read of p leaves the bit address of its word in EFUSE_READ_ADDR.
+    p_read = (field_word(p_bit["field"]) + p_bit["word"]) * 32
     for i, acc in enumerate(denied):
         if acc["cls"] == "shadow" and acc["op"] == "rd":
             w = d.randrange(f"shadow_read_word.{i}", 0, NUM_FUSE_WORDS)
@@ -2135,9 +2205,29 @@ def plan_jtag_access(seed: int) -> SepEfusePlan:
             if reg == "EFUSE_INTERFACE_CTRL_STATUS":
                 data = EFUSE_INTERFACE_CTRL.field_mask(reg, "efuse_read_addr_error_clear")
             elif reg == "EFUSE_PROGRAM_CTRL":
-                data = program_ctrl_word(p_bit["addr"])
+                data = program_ctrl_word()
+            elif reg == "EFUSE_READ_CTRL":
+                data = read_ctrl_word()
+            elif reg == "EFUSE_PROGRAM_ADDR":
+                # Neither 0 (the control writes 0 first) nor p (the value the
+                # frontdoor holds there during the denied block).
+                data = program_addr_word(
+                    d.until(
+                        f"ifctl_program_addr.{i}",
+                        lambda: d.rng.randrange(1, NUM_FUSE_WORDS * 32),
+                        lambda v: v != p_bit["addr"],
+                    )
+                )
             else:
-                data = read_ctrl_word(d.randrange(f"ifctl_read_addr.{i}", 0, 8192))
+                # Neither 0 nor p_read (the value the frontdoor holds there during
+                # the denied block).
+                data = read_addr_word(
+                    d.until(
+                        f"ifctl_read_addr.{i}",
+                        lambda: d.rng.randrange(1, NUM_FUSE_WORDS * 32),
+                        lambda v: v != p_read,
+                    )
+                )
             acc.update(reg=reg, addr=EFUSE_INTERFACE_CTRL.addr(reg), data=data)
     leg = {
         "access_count": n,

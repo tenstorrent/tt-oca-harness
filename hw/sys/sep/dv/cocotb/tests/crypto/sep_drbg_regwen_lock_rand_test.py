@@ -24,7 +24,8 @@ stimulus): the order of the three targets, the values A and B of each target
 (multi-bit-boolean fields from True 6 and False 9; ``FIPS_FORCE`` non-zero
 3-bit values), the data on the inactive 32-bit lane of the 64-bit bus of each
 write (the strobe covers the register lane only), the ``INT_STATE_READ_ENABLE``
-value of the observation, and the count r (1 to 3) of re-set attempts.
+value of the logged write (``INFO-REGWEN-OWN``), and the count r (1 to 3) of
+re-set attempts.
 
 Checkers:
   CHK-REGWEN-LOCK     after the write of 0, ``REGWEN`` reads 0 and a write of B
@@ -43,15 +44,22 @@ Checkers:
                       ``CTRL-REGWEN-ERRTEST``: after the TRNG reset (``REGWEN`` 1)
                       the same write reads back the written value. CSRNG targets
                       only.
+  CHK-REGWEN-OTHER    with the CSRNG ``REGWEN`` cleared, a write of the
+                      complement of the readback to ``RESEED_INTERVAL`` and to
+                      ``INT_STATE_NUM`` reads back the written value, which
+                      differs from the value before the write. Neither register has
+                      a ``regwen`` binding (``csrng.hjson`` :321-325, :520-524),
+                      while ``CTRL``, ``FIPS_FORCE`` and ``ERR_CODE_TEST`` name
+                      ``REGWEN`` (:256, :573, :793), so the lock does not cover
+                      them; the ``csrng.rdl`` ``REGWEN`` text ("all writeable
+                      registers ... become read-only") is the upstream text and
+                      names no register. One line per register; CSRNG targets
+                      only.
 Each refused write (B under the lock, ``ERR_CODE_TEST`` under the lock, each
 write of 1 to ``REGWEN``) carries its B response on the check line
 (``wr_resp``); a response other than OKAY fails the leaf at the write.
 ``INT_STATE_READ_ENABLE`` under the CSRNG ``REGWEN`` is logged only
-(``OBS-REGWEN-OWN``), and so are ``RESEED_INTERVAL`` and ``INT_STATE_NUM``
-under it (``OBS-REGWEN-OTHER``): the ``csrng.rdl`` ``REGWEN`` text ("all
-writeable registers ... become read-only") names no register, and the upstream
-``regwen`` binding locks only ``CTRL``, ``FIPS_FORCE`` and ``ERR_CODE_TEST``.
-The two texts differ for these two registers, so no golden is stated.
+(``INFO-REGWEN-OWN``).
 """
 
 from __future__ import annotations
@@ -81,8 +89,8 @@ MUBI = (MUBI_TRUE, MUBI_FALSE)
 CSRNG_REGWEN = sym("CSRNG_REGWEN_REG_ADDR")
 EDN_REGWEN = sym("EDN_REGWEN_REG_ADDR")
 CSRNG_INT_STATE_READ_ENABLE = sym("CSRNG_INT_STATE_READ_ENABLE_REG_ADDR")
-# Writeable CSRNG registers with no ``regwen`` binding: the REGWEN text says "all
-# writeable registers" become read-only, the register map binds neither. Logged only.
+# Writeable CSRNG registers with no ``regwen`` binding (csrng.hjson RESEED_INTERVAL,
+# INT_STATE_NUM): a write under the lock lands.
 CSRNG_OTHER = (
     ("RESEED_INTERVAL", sym("CSRNG_RESEED_INTERVAL_REG_ADDR")),
     ("INT_STATE_NUM", sym("CSRNG_INT_STATE_NUM_REG_ADDR")),
@@ -298,6 +306,7 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
         "CHK-REGWEN-NOREARM",
         "CHK-REGWEN-RESET",
         "CHK-REGWEN-ERRTEST",
+        "CHK-REGWEN-OTHER",
     )
 
     async def run_scenario(self) -> None:
@@ -463,7 +472,7 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
         if unit == "csrng":
             await self._wr(CSRNG_INT_STATE_READ_ENABLE, tp.isre, isre_fill)
             isre = await self._rd(CSRNG_INT_STATE_READ_ENABLE)
-            self.chk.obs(
+            self.chk.info(
                 "REGWEN-OWN",
                 reg="INT_STATE_READ_ENABLE",
                 wrote=f"0x{tp.isre:x}",
@@ -477,8 +486,10 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
                 wrote = ~before & mask
                 await self._wr(addr, wrote, isre_fill)
                 read = await self._rd(addr) & mask
-                self.chk.obs(
+                self.chk.ok(
                     "REGWEN-OTHER",
+                    regwen_locked & rw_mask == 0 and read == wrote and wrote != before,
+                    unit=unit,
                     reg=name,
                     regwen=regwen_locked & rw_mask,
                     before=f"0x{before:x}",

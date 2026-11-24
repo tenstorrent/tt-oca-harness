@@ -549,7 +549,11 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
       <ipxact:addressBlock>
         <ipxact:name>otp_efuse_map</ipxact:name>
         <ipxact:displayName>SEP eFuse Map Address Map</ipxact:displayName>
-        <ipxact:description>Per-field write-lock and read-lock registers for the SEP eFuse map.</ipxact:description>
+        <ipxact:description>Shadow registers of the SEP eFuse fields and their per-field write-lock and
+read-lock registers. The access properties of each field state the
+software access to its shadow register when the field's locks are clear;
+a set write lock, a set read lock or secure test mode further restricts
+it as the LOCKS register describes.</ipxact:description>
         <ipxact:baseAddress>'h11000</ipxact:baseAddress>
         <ipxact:range>'h400</ipxact:range>
         <ipxact:width>256</ipxact:width>
@@ -1657,7 +1661,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>8</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
@@ -1670,7 +1675,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>24</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1688,7 +1694,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
@@ -1701,7 +1707,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>31</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1719,7 +1725,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
@@ -1732,7 +1738,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>31</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -1986,7 +1992,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2004,7 +2010,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2022,7 +2028,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2040,7 +2046,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2058,7 +2065,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2076,7 +2084,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2094,7 +2103,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2112,7 +2121,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2130,7 +2139,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2148,7 +2157,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2166,7 +2175,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2184,7 +2193,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>2</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>reserved</ipxact:name>
@@ -2197,7 +2206,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>30</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2215,7 +2224,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rom_swap_ctrl</ipxact:name>
@@ -2228,7 +2237,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>5</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>reserved</ipxact:name>
@@ -2241,7 +2250,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>26</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2259,7 +2268,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>11</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
@@ -2272,7 +2281,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>21</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2290,7 +2299,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2308,7 +2317,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2326,7 +2335,6 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>2</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>reserved</ipxact:name>
@@ -2339,7 +2347,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>30</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2396,7 +2404,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>20</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2414,7 +2423,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2432,7 +2441,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2450,7 +2459,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2468,7 +2477,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2486,7 +2495,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2504,7 +2513,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2522,7 +2531,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2540,7 +2549,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2558,7 +2567,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2576,7 +2585,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2594,7 +2603,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2612,7 +2621,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2630,7 +2639,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2648,7 +2657,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2666,7 +2675,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2684,7 +2693,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2702,7 +2711,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
@@ -2720,7 +2729,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>256</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
       </ipxact:addressBlock>
@@ -2729,7 +2738,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
         <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
         <ipxact:baseAddress>'h11400</ipxact:baseAddress>
-        <ipxact:range>'h1c</ipxact:range>
+        <ipxact:range>'h24</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>EFUSE_INTERFACE_CTRL_STATUS</ipxact:name>
@@ -2825,21 +2834,9 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to program</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_data</ipxact:name>
             <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
@@ -2863,18 +2860,6 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>efuse_program_read_back</ipxact:name>
-            <ipxact:description>When set, trigger a read back after a program</ipxact:description>
-            <ipxact:bitOffset>18</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
@@ -2931,21 +2916,9 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_READ_CTRL</ipxact:name>
-          <ipxact:description>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to read</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_read_go</ipxact:name>
             <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
@@ -3013,12 +2986,12 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_INTERFACE_READ_DATA</ipxact:name>
-          <ipxact:description>Read data captured through the program interface. Hardware debug only; valid only while the program interface state machine is in its capture-data state.</ipxact:description>
+          <ipxact:description>Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.</ipxact:description>
           <ipxact:addressOffset>'hc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>dout</ipxact:name>
-            <ipxact:description>Read Data from eFuse through program interface. This field is only valid when the efuse programming interface is utilized to burn the efuse IP and only when the state machine is during ST_CAPTUER_DATA state. Hardware debug only</ipxact:description>
+            <ipxact:description>Program response data from the adopter SHIM; its meaning is adopter-defined.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3106,6 +3079,42 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_PROGRAM_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</ipxact:description>
+          <ipxact:addressOffset>'h1c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_READ_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</ipxact:description>
+          <ipxact:addressOffset>'h20</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>

@@ -16,11 +16,13 @@ image and every stimulus choice above; the run seed is the ``seed=`` of every
 check line. INFO-SEED prints the plan seed as ``seed=`` and both seeds as
 ``run_seed=`` and ``plan_seed=``.
 
-With ``+sep_pin_cell=prod`` the plan seed is the fixed seed of the cell in ``_PIN``
-in place of the run seed; it draws enable 0 and start PROD, so the leaf runs
-neither leg B nor leg S and reaches the out-of-order program of bit 2. The entry
-that sets it stages the same image with ``+sep_efuse_preload``. INFO-SEED also
-prints ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell;
+With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
+``_PIN`` in place of the run seed. ``prod`` draws enable 0 and start PROD, so the
+leaf runs neither leg B nor leg S and reaches the out-of-order program of bit 2.
+``rma_sip`` draws enable 1, start RMA_SIP and the script SIP then CHIPLET, so the
+leaf reaches the CHIPLET match after the leg-A cold reset. ``legs`` draws enable
+1 and start PROD, so the leaf runs leg S. The entry that sets a cell stages the
+same image with ``+sep_efuse_preload``. INFO-SEED also prints ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell;
 ``+sep_pin_cell`` with ``+sep_rma_require_legb`` is a setup failure. CTRL-PIN-LEG:
 the plan draws the pinned pair; a plan that draws another pair logs
 ``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
@@ -38,6 +40,13 @@ Per-LC-state Feature Control Profile). The OTP ``LC_STATE`` word stays the stage
 word, and no program command reaches the post-guard port during the script. A
 cold reset restores the sensed state.
 
+After that reset, when the enable is 1, the start is RMA_SIP and a leg-A CHIPLET
+match moved the shadow to RMA_CHIPLET, a CHIPLET match from the restored RMA_SIP
+state lands RMA_CHIPLET again (CHK-TRANSIENT ``step=a_rst_chp``): the update
+follows each token match, and the update before the reset does not block it. The
+match then ends, and a second cold reset restores the sensed state
+(CHK-TRANSIENT-RESET ``leg=a_rst_chp``).
+
 Leg S (enable 1, start TEST_DEV or PROD): an RMA_CHIPLET match is held while
 ``TOKEN_T1`` matches on RMA_SIP. The chiplet path has priority and needs
 RMA_SIP already set, so the SIP match does not fall through: after W the
@@ -45,16 +54,21 @@ RMA_SIP already set, so the SIP match does not fall through: after W the
 channels at Match before and after W (``otp_fuse_controller.adoc``, row
 ``TRANSIENT_RMA_EN``). The script ends both matches. A lone SIP match right
 after it lands RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK): the update
-follows each token match (``otp_fuse_controller.adoc:232-238``) and the block
-covers only a SIP match made while the chiplet match is held. A cold reset
-follows; the twin then presents the
+follows each token match (``otp_fuse_controller.adoc:237-243``) and the block
+covers only a SIP match made while the chiplet match is held. A lone CHIPLET
+match after that lands RMA_CHIPLET without a reset
+(CHK-TRANSIENT-AFTER-BLOCK-CHP), so the blocked CHIPLET match of the script does
+not use up the CHIPLET update either. A cold reset follows; the twin then
+presents the
 SIP match alone from the sensed start state and lands RMA_SIP, and a second
-cold reset restores the sensed state. The lone SIP match and the cold reset
-after it run with the graded coverage window closed.
+cold reset restores the sensed state. The lone SIP and CHIPLET matches and the
+cold reset after them run with the graded coverage window closed.
 
 Every ``LC_STATE`` shadow read is graded as the whole 32-bit word: ``{~r, r}``
-in bits [7:0] and 0 in the reserved bits [31:8]
-(``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``, register ``LC_STATE``).
+in bits [7:0] and, in the reserved bits [31:8], the staged word's 0: a read of
+those bits returns what the fuse word or the last write left in them
+(``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl:594``), the staged
+word holds 0 there, and the transient update writes only [7:0].
 
 Leg B (TEST_DEV image with the enable at 0): a program of ``LC_STATE`` bit 1 with
 only RMA_CHIPLET matched changes no bank bit and issues no program command; the
@@ -71,14 +85,20 @@ before ``efuse_req_error_clear``. No check reads the record.
 
 Last step, starts PROD and TEST_DEV without leg B: a program of bit 2 with RMA_CHIPLET
 matched (CTRL-PROG-LC-ORDER-MATCH) and bit 1 clear is logged as OBS-PROG-LC-ORDER
-(the OTP word, the program commands within W and the status bits), not graded:
-the specification texts disagree on whether that program needs bit 1 in the
-pre-write state. It runs with the graded coverage window closed. After each resense the shadow byte is
-``{~r, r}`` with r the raw nibble OR the programmed bit (``otp_fuse_controller.adoc``,
-sections Fuse Programming and RMA Authorization, Shadow Register Updates and
-Test-Mode Protection). Every match and mismatch go of leg B must reach its code
-(``0x15`` or ``0x2a``) inside the bounded poll; a go that does not fails
-CHK-PROG-LC and ends the leaf before the program it sets up is graded.
+(the OTP word after the full W, the program commands within W and the status bits),
+not graded: the specification texts disagree on whether that program needs bit 1 in
+the pre-write state. ``otp_fuse_controller.adoc`` (row ``LC_STATE``) and
+``lifecycle_controller.adoc`` (Lifecycle States) require bit 1 first;
+``token_processing.adoc`` (Post Token Matching Handling) and ``otp_fuse_controller.adoc``
+(Fuse Programming and RMA Authorization) gate the program on the token match alone.
+CTRL-PROG-LC-ORDER-GO: the request fields of ``EFUSE_PROGRAM_CTRL`` read back as the
+go wrote them, so the go reached the DUT. It runs with the graded coverage window
+closed. After each resense the shadow byte is ``{~r, r}`` with r the raw
+nibble OR the programmed bit (``otp_fuse_controller.adoc``, sections Fuse Programming
+and RMA Authorization, Shadow Register Updates and Test-Mode Protection). Every match
+and mismatch go of leg B must reach its code (``0x15`` or ``0x2a``) inside the bounded
+poll; a go that does not fails CHK-PROG-LC and ends the leaf before the program it sets
+up is graded.
 
 Time: the window W is a multiple of the sense time the leaf measures, at least
 256 clocks. Every program wait lasts the full W with no early exit. The window
@@ -88,11 +108,12 @@ channel before the next cold reset. In leg A a CHIPLET match also ends before
 a later SIP step; leg S holds it on purpose.
 
 Checkers: CHK-TRANSIENT, CHK-TRANSIENT-NOBURN, CHK-TRANSIENT-RESET (every
-leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-CTL,
+leaf); CHK-TRANSIENT-SIMUL, CHK-TRANSIENT-AFTER-BLOCK and
+CHK-TRANSIENT-AFTER-BLOCK-CHP (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-CTL,
 CTRL-TRANSIENT-EN (the sensed ``TRANSIENT_RMA_EN`` shadow equals the staged
-enable, every leaf), CTRL-PROG-LC-ORDER-MATCH, CTRL-PROG-LC-GO (leg B: after each
-refused program, ``efuse_addr``, ``efuse_data`` and ``program_enable`` of
-``EFUSE_PROGRAM_CTRL`` read back as the go wrote them), CTRL-RMA-LEGB (with
+enable, every leaf), CTRL-PROG-LC-ORDER-MATCH, CTRL-PROG-LC-ORDER-GO,
+CTRL-PROG-LC-GO (leg B: after each refused program, ``efuse_data`` and
+``program_enable`` of ``EFUSE_PROGRAM_CTRL`` read back as the go wrote them), CTRL-RMA-LEGB (with
 ``+sep_rma_require_legb`` only: the plan drew leg B and both refused programs
 issued a go write that returned a response). A failing hook control
 logs ``CHK-HOOK FAIL`` and ends the leaf. A match that does not end with its
@@ -102,8 +123,8 @@ leaf verdict.
 
 FCOV (owner ``sep_efuse_transient_rma_rand_test``): the graded window opens
 after the window control and stays open to the end of the leaf, except for the
-lone SIP match of leg S and its cold reset and the bit-2 control program of
-leg B. The sampler holds each legal outcome of ``x_transient``,
+lone SIP and CHIPLET matches of leg S and their cold reset and the bit-2
+control program of leg B. The sampler holds each legal outcome of ``x_transient``,
 ``cp_simultaneous_match``, ``cp_reset_restore`` and ``x_lc_prog_gate`` as
 pending, and samples it only on the rise of its bit of the pass label
 ``tr_pass``, which the leaf writes after the check that grades that outcome
@@ -126,6 +147,7 @@ from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
     NARROW_USED,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
     RIGHT_TOKEN,
     ST_PROD,
@@ -140,7 +162,9 @@ from env.sep_efuse_plan import (
     lc_state_class,
     plan,
     poll_code,
+    program_addr_word,
     program_ctrl_word,
+    require_addr_readback,
     shadow_addr,
     token_go,
     write_token,
@@ -177,7 +201,7 @@ _SENSE_BOUND = 100_000
 _POLL_READS = 400
 _LC_WORD = field_word("LC_STATE")
 _EN_MASK = NARROW_USED["TRANSIENT_RMA_EN"]
-# Raw LC_STATE bits a token match sets (otp_fuse_controller.adoc:216-224;
+# Raw LC_STATE bits a token match sets (otp_fuse_controller.adoc:221-229;
 # lifecycle_controller.adoc:88-90): bit 1 with an RMA_SIP match, bit 2 with an
 # RMA_CHIPLET match from a state with bit 1 set.
 _LC_SIP_BIT = 1
@@ -191,10 +215,8 @@ _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_done")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_status")
 # The sw=rw request fields of EFUSE_PROGRAM_CTRL read back as written
 # (efuse_interface_ctrl.rdl); efuse_program_go is a single pulse and is not read.
-_PG_REQ = (
-    EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_addr")
-    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data")
-    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_enable")
+_PG_REQ = EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data") | EFUSE_INTERFACE_CTRL.field_mask(
+    _PG, "program_enable"
 )
 _ST = "EFUSE_INTERFACE_CTRL_STATUS"
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error")
@@ -208,7 +230,18 @@ _LEG_S_STARTS = ("TEST_DEV", "PROD")
 # Plan seed of ``+sep_rma_require_legb``: plan(T_TRANSIENT, _S_B) draws leg B.
 _S_B = 8
 # Pinned cells: plan seed and the draw the cell needs.
-_PIN = {"prod": (15, lambda p: p.leg["enable"] == 0 and p.leg["start"] == "PROD")}
+_PIN = {
+    "prod": (15, lambda p: p.leg["enable"] == 0 and p.leg["start"] == "PROD"),
+    "rma_sip": (
+        9,
+        lambda p: (
+            p.leg["enable"] == 1
+            and p.leg["start"] == "RMA_SIP"
+            and tuple(p.leg["script"]) == ("SIP", "CHIPLET")
+        ),
+    ),
+    "legs": (27, lambda p: p.leg["enable"] == 1 and p.leg["start"] == "PROD"),
+}
 
 
 def _pin(seed: int) -> tuple[str | None, int]:
@@ -227,7 +260,9 @@ def _hex2(code: int | None) -> str:
 
 def _lc_word(raw: int) -> int:
     """Whole LC_STATE shadow word for raw state ``raw``: ``{~raw, raw}`` in [7:0], 0 in
-    the reserved bits [31:8] (``regs/gen/adoc/blocks/sep_efuse_map.adoc:164-165``)."""
+    the reserved bits [31:8]. Those bits read what the fuse word or the last write left
+    in them (``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl:594``); the staged
+    word holds 0 there and the transient update writes only [7:0]."""
     return lc_encode(raw)
 
 
@@ -361,7 +396,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         Every match of the leg ended with a Mismatch go before the reset; the whole
         LC_STATE word, its probe, FEAT_CTRL and its probe equal the staged state; and
         when the leg updated the shadow, the byte before the reset differs from the
-        staged byte (otp_fuse_controller.adoc:9-11, :232-234).
+        staged byte (otp_fuse_controller.adoc:9-11, :237-239).
         """
         p = self.plan
         raw0 = p.lc_raw & _LC_RAW_MASK
@@ -451,11 +486,12 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _program(self, bit_addr: int, *, go_by_readback: bool = False) -> dict[str, int]:
         """Program one bit with the full W wait, then read status and the OTP word.
 
-        Two writes: enable and address with data 0 and no go, then the same with
-        data 1 and the go bit. The data bit differs between the two writes, so the
-        request fields read back show the go write landed; the first write has no
-        go and starts no program (``efuse_interface_ctrl.rdl``). The command record
-        runs from the go write to the end of W. ``program_enable`` is
+        Three writes: the address, which is read back and must equal the written value,
+        then enable with data 0 and no go, then the same with data 1 and the go bit. The
+        data bit differs between the two control writes, so the request fields read back
+        show the go write landed; the first control write has no go and starts no
+        program (``efuse_interface_ctrl.rdl``). The command record runs from the go
+        write to the end of W. ``program_enable`` is
         dropped before the direct read, so the read interface reaches the bank. A
         refused program sets the sticky ``efuse_req_error``, which holds off every
         later read and program request until software writes
@@ -467,9 +503,12 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         the leaf and ``go_resp`` is None. A go write that gets no B response
         fails the leaf at the bus timeout of the access.
         """
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, data=0, go=0))
+        addr = program_addr_word(bit_addr)
+        await self.fd.wr(PROGRAM_ADDR_ADDR, addr)
+        await require_addr_readback(self.fd.rd, PROGRAM_ADDR_ADDR, addr)
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=0, go=0))
         mark = self.shim.mark()
-        go_word = program_ctrl_word(bit_addr, go=1)
+        go_word = program_ctrl_word(go=1)
         if go_by_readback:
             go_resp = await self.fd.wr_graded_by_readback(PROGRAM_CTRL_ADDR, go_word)
         else:
@@ -499,14 +538,14 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             "go_resp": go_resp,
         }
 
-    def _go_issued(self, bit: int, bit_addr: int, res: dict) -> bool:
+    def _go_issued(self, bit: int, bit_addr: int, res: dict, name: str = "PROG-LC-GO") -> bool:
         """The request fields of a refused program read back as the go wrote them.
 
         ``efuse_data`` is 0 before the go write and 1 in it, so a lost go write fails.
         """
-        exp = program_ctrl_word(bit_addr, go=0)
+        exp = program_ctrl_word(go=0)
         return self._ctrl(
-            "PROG-LC-GO",
+            name,
             res["pctl"] & _PG_REQ == exp,
             bit=bit,
             program_ctrl=f"0x{res['pctl']:08x}",
@@ -594,9 +633,10 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             self.required_evidence = (*type(self).required_evidence, "CHK-PROG-LC")
         if leg_s:
             self.required_evidence = (
-                *type(self).required_evidence,
+                *self.required_evidence,
                 "CHK-TRANSIENT-SIMUL",
                 "CHK-TRANSIENT-AFTER-BLOCK",
+                "CHK-TRANSIENT-AFTER-BLOCK-CHP",
             )
         self.logger.info("EVIDENCE-REQUIRED seed=%d ids=%s", seed, ",".join(self.required_evidence))
 
@@ -718,6 +758,8 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         after = await self._lc_and_feat()
         if self._grade_reset("a", pre_reset_codes, after, raw != raw0, shadow_pre_reset):
             await self._label(TR_PASS_RESET)
+        if en == 1 and start == ST_RMA_SIP and CH_CHIPLET in script:
+            await self._chiplet_after_reset(raw0)
 
         if leg_s:
             await self._simul(raw0)
@@ -739,27 +781,53 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         await self.shim.stop()
         self.chk.finish()
 
-    async def _prog_order(self, raw0: int, staged_word: int, leg_b: bool) -> None:
-        """OBS-PROG-LC-ORDER: a program of bit 2 with RMA_CHIPLET matched and bit 1 clear.
+    async def _chiplet_after_reset(self, raw0: int) -> None:
+        """A CHIPLET match after the leg-A cold reset lands RMA_CHIPLET again.
 
-        Logged, not graded: the specification does not settle whether the OTP program
-        of bit 2 needs bit 1 in the pre-write state. ``otp_fuse_controller.adoc`` (row
-        ``LC_STATE``) and ``lifecycle_controller.adoc`` say bit 2 requires bit 1;
-        ``token_processing.adoc`` (Post Token Matching Handling) and
-        ``otp_fuse_controller.adoc`` (Fuse Programming and RMA Authorization) gate
-        the fuse program on the token match only. The line logs the OTP word, the
-        program commands within W and the status bits. CTRL-PROG-LC-ORDER-MATCH
-        shows the RMA_CHIPLET match. It runs last, with the graded window closed,
-        because a landed bit changes every later state. It runs from PROD and
-        TEST_DEV (bit 1 clear, a legal state); a leg-B leaf has set bit 1 by then
-        and logs ``INFO-PROG-LC-ORDER-SKIP``.
+        Leg A moved the shadow from RMA_SIP to RMA_CHIPLET, and the cold reset
+        restored RMA_SIP. The update follows each token match
+        (``otp_fuse_controller.adoc:237-243``; ``token_processing.adoc:178-184``),
+        so the CHIPLET match after the reset sets bit 2 again (CHK-TRANSIENT
+        ``step=a_rst_chp``). The match ends, and a cold reset restores the sensed
+        state (CHK-TRANSIENT-RESET ``leg=a_rst_chp``).
+        """
+        raw = raw0 | (1 << _LC_CHP_BIT)
+        code = await self._match(CH_CHIPLET, "a_rst.chp")
+        await ClockCycles(cocotb.top.clk_i, self.w)
+        got = await self._lc_and_feat()
+        if self._grade_transient("a_rst_chp", CH_CHIPLET, code, raw, got):
+            await self._label(TR_PASS_TRANSIENT)
+        codes = {_CH_NAME[CH_CHIPLET]: await self._mismatch(CH_CHIPLET, "a_rst.chp_end")}
+        self._stop_if_held("TRANSIENT-RESET", codes, leg="a_rst_chp")
+        await self.pulse_rst_ni()
+        after = await self._lc_and_feat()
+        if self._grade_reset("a_rst_chp", codes, after, True, got["word"]):
+            await self._label(TR_PASS_RESET)
+
+    async def _prog_order(self, raw0: int, staged_word: int, leg_b: bool) -> None:
+        """OBS-PROG-LC-ORDER: logs a bit-2 program with RMA_CHIPLET matched and bit 1 clear.
+
+        Logged, not graded: the specification texts disagree on whether the OTP
+        program needs bit 1 in the pre-write state. ``otp_fuse_controller.adoc`` (row
+        ``LC_STATE``) and ``lifecycle_controller.adoc`` (Lifecycle States) require
+        bit 1 first. ``token_processing.adoc`` (Post Token Matching Handling) and
+        ``otp_fuse_controller.adoc`` (Fuse Programming and RMA Authorization) gate the
+        program on the token match alone and put the bit-1 order on the shadow
+        transition. The line logs the OTP ``LC_STATE`` word after the full W, the
+        staged word, the program commands within W, the status bits and the go
+        response. CTRL-PROG-LC-ORDER-MATCH shows the RMA_CHIPLET match, and
+        CTRL-PROG-LC-ORDER-GO shows the go write reached ``EFUSE_PROGRAM_CTRL``. The
+        step runs last, with the graded window closed, because a landed bit changes
+        every later state. A leaf that does not run it logs
+        ``INFO-PROG-LC-ORDER-SKIP``.
         """
         if leg_b or self.start not in (ST_PROD, ST_TEST_DEV) or (raw0 >> _LC_SIP_BIT) & 1:
             self.chk.info("PROG-LC-ORDER-SKIP", start=self.start, leg_b=int(leg_b))
             return
         code = await self._match(CH_CHIPLET, "o.chp")
         self._ctrl("PROG-LC-ORDER-MATCH", code == CODE_MATCH, chp_code=_hex2(code))
-        r = await self._program(_LC_BIT2)
+        r = await self._program(_LC_BIT2, go_by_readback=True)
+        self._go_issued(2, _LC_BIT2, r, name="PROG-LC-ORDER-GO")
         end = await self._mismatch(CH_CHIPLET, "o.chp_end")
         self.chk.obs(
             "PROG-LC-ORDER",
@@ -776,6 +844,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             done=r["done"],
             req_err=r["req_err"],
             program_status=r["pstatus"],
+            go_resp=r["go_resp"],
             chp_end=_hex2(end),
         )
 
@@ -786,7 +855,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         (CHK-TRANSIENT ``step=simul_chp``). The SIP match that follows while the
         CHIPLET match is held does not fall through to RMA_SIP: after W the whole
         LC_STATE word, its probe and FEAT_CTRL keep the start state
-        (otp_fuse_controller.adoc:232-238). Both channels read Match after the SIP
+        (otp_fuse_controller.adoc:237-243). Both channels read Match after the SIP
         match and the CHIPLET channel still reads Match after W, in the same line, so
         a script that never held both cannot pass. SIP ends first, then CHIPLET;
         an end go that does not reach Mismatch ends the leaf before the cold
@@ -860,9 +929,13 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
 
         First, right after the simultaneous script, a lone SIP match must land
         RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK,
-        ``otp_fuse_controller.adoc:232-238``). Its Mismatch go must reach its code (CTRL-TRANSIENT-AFTER-BLOCK-END; a
-        missing end ends the leaf there), and a cold reset follows, both with
-        the window closed. The window opens again after that reset. Then the
+        ``otp_fuse_controller.adoc:237-243``). After its Mismatch go a lone
+        CHIPLET match must then land RMA_CHIPLET without a reset
+        (CHK-TRANSIENT-AFTER-BLOCK-CHP): the CHIPLET match blocked in the
+        simultaneous script does not use up the CHIPLET update. Both Mismatch
+        goes must reach their code (CTRL-TRANSIENT-AFTER-BLOCK-END; a missing
+        end ends the leaf there), and a cold reset follows, all with the window
+        closed. The window opens again after that reset. Then the
         twin SIP match lands RMA_SIP from the sensed start state (CHK-TRANSIENT
         ``step=simul_twin``); after its Mismatch go a cold reset restores the
         staged state (CHK-TRANSIENT-RESET ``leg=simul``), so that reset always
@@ -883,10 +956,24 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             name="TRANSIENT-AFTER-BLOCK",
         )
         obs_end = await self._mismatch(CH_SIP, f"{tag}.obs_sip_end")
+        sip_raw = _transient_next(raw0, CH_SIP, 1)
+        obs_chp = await self._match(CH_CHIPLET, f"{tag}.obs_chp")
+        await ClockCycles(dut.clk_i, self.w)
+        obs = await self._lc_and_feat()
+        self._grade_transient(
+            "after_block_chp",
+            CH_CHIPLET,
+            obs_chp,
+            _transient_next(sip_raw, CH_CHIPLET, 1),
+            obs,
+            name="TRANSIENT-AFTER-BLOCK-CHP",
+        )
+        chp_end = await self._mismatch(CH_CHIPLET, f"{tag}.obs_chp_end")
         if not self._ctrl(
             "TRANSIENT-AFTER-BLOCK-END",
-            obs_end == CODE_MISMATCH,
+            obs_end == CODE_MISMATCH and chp_end == CODE_MISMATCH,
             sip_end=_hex2(obs_end),
+            chp_end=_hex2(chp_end),
         ):
             self.chk.finish()
         await self.pulse_rst_ni()

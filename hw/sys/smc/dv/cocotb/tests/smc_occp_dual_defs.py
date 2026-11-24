@@ -10,6 +10,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.smc_cpu_trace_monitor import symbol_file_for_image
 
 # The generated register map is not an installed package.
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
@@ -38,7 +39,9 @@ from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_SCRATCH_11__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_12__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_13__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_14__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_15__REG_ADDR,
+    SMC_EFUSE_MAP_SMC_CONFIG_REG_FIELDS,
     SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_ADDR,
     SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_ADDR,
 )
@@ -85,6 +88,11 @@ SCRATCH_SEP_RB_COUNT = SMC_CPU_CTRL_SCRATCH_12__REG_ADDR
 # Firmware sets this around GET_SEP_STATUS; leave the shadow buffer alone while it is set.
 SCRATCH_SEP_RB_GUARD = SMC_CPU_CTRL_SCRATCH_13__REG_ADDR
 
+# Controller only, sep_ring_buffer_test: its progress word and the first two entries it read.
+SCRATCH_SEP_RB_PHASE = SMC_CPU_CTRL_SCRATCH_14__REG_ADDR
+SCRATCH_SEP_RB_FIRST = SMC_CPU_CTRL_SCRATCH_5__REG_ADDR
+SCRATCH_SEP_RB_SECOND = SMC_CPU_CTRL_SCRATCH_6__REG_ADDR
+
 # Controller only: the two OCCP I2C target addresses, one byte per channel in channel order.
 SCRATCH_I2C_TARGET_IDS = SMC_CPU_CTRL_SCRATCH_4__REG_ADDR
 
@@ -97,6 +105,62 @@ SCRATCH_MANIFEST_ADDR = SMC_CPU_CTRL_SCRATCH_8__REG_ADDR
 SEP_STATUS_MANIFEST_READY_BIT = 1
 
 SCRATCH_MBIST_STATUS = SMC_CPU_CTRL_SCRATCH_15__REG_ADDR
+
+# SMC_CONFIG.dft_ignore_error, which lets the ROM continue past a failure.
+SMC_CONFIG_DFT_IGNORE_ERROR = next(
+    1 << lsb for name, lsb, *_ in SMC_EFUSE_MAP_SMC_CONFIG_REG_FIELDS if name == "dft_ignore_error"
+)
+
+# Controller only, occp_boot_sequence_status_test: the target boot mode it must find in the
+# ring, and the summary of its one drain. Must match fw/tests/occp_boot_sequence_status_test.
+SCRATCH_STATUS_MODE = SMC_CPU_CTRL_SCRATCH_14__REG_ADDR
+SCRATCH_STATUS_SUMMARY = SMC_CPU_CTRL_SCRATCH_15__REG_ADDR
+STATUS_MODE_MAGIC = 0x3299_0000
+STATUS_MODE_PRIMARY = 0x1
+STATUS_MODE_RECOVERY = 0x2
+STATUS_SUMMARY_MAGIC = 0xB500_0000
+STATUS_CHECKS_ALL = 0x7
+STATUS_SEEN_PRIMARY = 0x1
+STATUS_SEEN_SECONDARY = 0x2
+STATUS_SEEN_RECOVERY = 0x4
+
+
+def status_mode_word(primary: bool, recovery: bool) -> int:
+    return (
+        STATUS_MODE_MAGIC
+        | (STATUS_MODE_PRIMARY if primary else 0)
+        | (STATUS_MODE_RECOVERY if recovery else 0)
+    )
+
+
+# SMC status ring words, from status-coordination.adoc: [31:24] type, [23:16] firmware ID.
+SMC_STATUS_FW_ID_SMC_BL0 = 0x03
+SMC_STATUS_TYPE_STATUS = 0x01
+SMC_STATUS_TYPE_WARNING = 0x08
+
+
+def smc_status_word(msg_type: int, value: int) -> int:
+    return (msg_type << 24) | (SMC_STATUS_FW_ID_SMC_BL0 << 16) | value
+
+
+def expected_boot_statuses(primary: bool, recovery: bool) -> list[int]:
+    """The boot entries one ROM boot leaves in the SMC ring, in order (SMC ROM FW flow)."""
+    status = SMC_STATUS_TYPE_STATUS
+    words = [
+        smc_status_word(status, 0x001),  # ROM_STARTED, smc_status_init marker
+        smc_status_word(status, 0x040),  # COORDINATION_ACTIVE
+        smc_status_word(status, 0x001),  # ROM_STARTED, explicit
+        smc_status_word(status, 0x021 if primary else 0x022),  # PRIMARY_MODE / SECONDARY_MODE
+    ]
+    if recovery:
+        words.append(smc_status_word(SMC_STATUS_TYPE_WARNING, 0x020))  # RECOVERY_MODE
+    words += [
+        smc_status_word(status, 0x010),  # BOOT_START
+        smc_status_word(status, 0x031),  # OCCP_READY
+        smc_status_word(status, 0x050),  # BOOT_COMPLETE
+    ]
+    return words
+
 
 # Also the ROM's SIM pass code; the pass proof holds only while the payload alone writes it.
 TEST_PASS = 0xACAF_ACA1
@@ -186,6 +250,7 @@ POST_CODE_BOOT_PHASE_MASK = 0xF
 POST_CODE_ERROR_SHIFT = 16
 POST_CODE_ERROR_MASK = 0xF
 
+POST_CODE_BOOT_PHASE_IFACE_CONFIG = 0x3
 POST_CODE_BOOT_PHASE_OCCP_PROC = 0x5
 POST_CODE_BOOT_PHASE_ERROR = 0x7
 
@@ -257,6 +322,33 @@ def payload_entry_offset(sym_path: str) -> int:
             "point is not inside the image"
         )
     return offset
+
+
+def rom_symbol_ranges(names: tuple[str, ...]) -> dict[str, tuple[int, int]]:
+    """[start, next symbol) of each named label in the staged production ROM symbols."""
+    rom = cocotb.plusargs.get("rom_bin64")
+    sym = symbol_file_for_image("rom_bin64", str(rom)) if rom is not None else None
+    if sym is None or not Path(sym).exists():
+        raise AssertionError(f"no symbol file for +rom_bin64={rom!r}; cannot locate {names}")
+    # `nm -B -n` lines, sorted by address: "<addr> <type> <name>".
+    addrs = sorted(
+        {
+            (int(parts[0], 16), parts[2])
+            for parts in (line.split() for line in Path(sym).read_text().splitlines())
+            if len(parts) >= 3
+        }
+    )
+    ranges: dict[str, tuple[int, int]] = {}
+    for idx, (addr, name) in enumerate(addrs):
+        if name in names:
+            following = [a for a, _ in addrs[idx + 1 :] if a > addr]
+            if not following:
+                raise AssertionError(f"{sym}: {name} is the last symbol; its extent is unknown")
+            ranges[name] = (addr, following[0])
+    missing = [name for name in names if name not in ranges]
+    if missing:
+        raise AssertionError(f"{sym} has no {', '.join(missing)}")
+    return ranges
 
 
 def required_plusarg(name: str, test_name: str) -> str:

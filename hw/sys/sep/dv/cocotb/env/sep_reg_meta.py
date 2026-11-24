@@ -597,6 +597,9 @@ class FieldMeta:
     # IP-XACT modifiedWriteValue `oneToSet` (RDL `onwrite = woset`): a written
     # 1 sets the bit and a written 0 leaves it.
     one_to_set: bool
+    # IP-XACT modifiedWriteValue as written (`oneToSet`, `oneToClear`, ...), or
+    # None when the field has none and takes the written value.
+    write_modifier: str | None = None
 
     @property
     def mask(self) -> int:
@@ -618,6 +621,7 @@ def _ipxact_fields() -> dict[int, tuple[int, tuple[FieldMeta, ...]]]:
                     access=one.findtext(_IPXACT_NS + "access") or "read-write",
                     reset=None if reset is None else ipxact_num(reset.text),
                     one_to_set=(one.findtext(_IPXACT_NS + "modifiedWriteValue") == "oneToSet"),
+                    write_modifier=one.findtext(_IPXACT_NS + "modifiedWriteValue"),
                 )
             )
         out[addr] = (width, tuple(metas))
@@ -1205,10 +1209,10 @@ def _selftest() -> int:
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (2126, 1952, 174):
+    if (walk.export, walk.inventory, walk.nometa) != (2128, 1954, 174):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 2126/1952/174"
+            f"{walk.nometa} != 2128/1954/174"
         )
     if walk.inventory < 100:
         failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")

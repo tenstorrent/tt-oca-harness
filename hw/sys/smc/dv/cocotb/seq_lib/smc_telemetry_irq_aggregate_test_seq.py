@@ -5,9 +5,9 @@
 Spec sources: hw/sys/smc/doc/interrupts.adoc, hw/ip/telemetry_receiver/doc/architecture.adoc,
 regs/telemetry_receiver.rdl.
 
-ATB framing from telemetry_receiver/doc/architecture.adoc (Assembly and Decode): eight beats
-LSB first, bit 63 last packet, probe ID [60:56]; the 9-bit block layout from bit 0 is a bench
-choice.
+ATB framing from telemetry_receiver/doc/index.adoc (Telemetry packet fields) and
+architecture.adoc (Assembly and Decode): eight beats LSB first, bit 63 last packet, probe ID
+[60:56] of the first packet, block i at bits [9i+8:9i] with its valid bit at 9i+8.
 """
 
 from __future__ import annotations

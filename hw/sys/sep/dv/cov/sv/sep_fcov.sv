@@ -618,8 +618,8 @@ module sep_fcov (
   input sep_efuse_pkg::efuse_axil_req_t     jtag_req_i,      // axil_sep_otp_jtag_req_i
   input sep_efuse_pkg::efuse_axil_resp_t    jtag_resp_i,     // axil_sep_otp_jtag_resp_o
   input wire                                irq_token_fault_i,  // PIC source 40 request line
-  input wire [5:0]                          tok_sip_i,       // ext_debug_bus_o[229:224]
-  input wire [5:0]                          tok_chp_i,       // ext_debug_bus_o[213:208]
+  input wire [5:0]                          tok_sip_i,       // RMA_SIP_TOKEN_MATCH status code
+  input wire [5:0]                          tok_chp_i,       // RMA_CHIPLET_TOKEN_MATCH status code
   input wire [5:0]                          tok_sdis_i,      // TOKEN_PROC sec_disable_token_match_q
   input wire [2:0]                          tok_fault_i,     // TOKEN_PROC token_match_fault_sticky_q
   input wire [2:0]                          token_go_i,      // TOKEN_PROC hash start pulses
@@ -2417,11 +2417,18 @@ module sep_fcov (
   // DMA master AR and AW handshakes after the alias remap (dma_req_i).
   wire dm_ar = !in_reset && (dma_req_i.ar_valid === 1'b1) && (dma_resp_i.ar_ready === 1'b1);
   wire dm_aw = !in_reset && (dma_req_i.aw_valid === 1'b1) && (dma_resp_i.aw_ready === 1'b1);
-  // Interrupt clear write of source 0 on the DMA host port (CLEAR_INTR_BUS
-  // bit 0 = 1): a DMA master AW to INTR_SRC_ADDR_0 with CLEAR_INTR_SRC bit 0 set.
-  wire dma_intr_clr_aw = dm_aw && (dma_reg2hw_i.clear_intr_src.q[0] === 1'b1) &&
-      (dma_reg2hw_i.clear_intr_bus.q[0] === 1'b1) &&
-      (dma_req_i.aw.addr == dma_reg2hw_i.intr_src_addr[0].q);
+  // Interrupt clear write of source i on the DMA host port (CLEAR_INTR_BUS
+  // bit i = 1): a DMA master AW to INTR_SRC_ADDR_i with CLEAR_INTR_SRC bit i
+  // set (dma.hjson CLEAR_INTR_SRC, NumIntClearSources).
+  localparam int unsigned DmaNumClr = $bits(secure_dma_reg_pkg::dma_reg2hw_clear_intr_src_reg_t);
+  logic [DmaNumClr-1:0] dma_intr_clr_aw;
+  always_comb begin
+    for (int i = 0; i < DmaNumClr; i++) begin
+      dma_intr_clr_aw[i] = dm_aw && (dma_reg2hw_i.clear_intr_src.q[i] === 1'b1) &&
+          (dma_reg2hw_i.clear_intr_bus.q[i] === 1'b1) &&
+          (dma_req_i.aw.addr == dma_reg2hw_i.intr_src_addr[i].q);
+    end
+  end
   // Pass label of sep_spi_dma_handshake_rand_test: bit 0 releases the held
   // cp_hs_mask cell, bit 1 the held cp_intr_clear cell, bit 2 the other held
   // cells of that leaf (hr_pend_q, SPI and DMA section). The leaf writes 0 at
@@ -2430,12 +2437,15 @@ module sep_fcov (
   // the window with the label 0; a window close or a reset drops the held
   // cells. It gates a sample; it is never a DUT value and drives nothing.
   int unsigned hs_mask_pass = 0;
-  logic ic_pend_q = 1'b0, ic_pass_q = 1'b0;
-  wire ic_rel = own_spi_dma_hs && ic_pend_q && ((hs_mask_pass & 32'h2) != 0) && !ic_pass_q;
+  logic [DmaNumClr-1:0] ic_pend_q = '0;
+  logic ic_pass_q = 1'b0;
+  // The held clear sources at the rise of bit 1, else 0.
+  wire ic_rel_ev = own_spi_dma_hs && ((hs_mask_pass & 32'h2) != 0) && !ic_pass_q;
+  wire [DmaNumClr-1:0] ic_rel = ic_rel_ev ? ic_pend_q : '0;
   always @(posedge clk_i) begin
     ic_pass_q <= ((hs_mask_pass & 32'h2) != 0);
-    if (in_reset || !own_spi_dma_hs || ic_rel) ic_pend_q <= 1'b0;
-    else if (dma_intr_clr_aw) ic_pend_q <= 1'b1;
+    if (in_reset || !own_spi_dma_hs || ic_rel_ev) ic_pend_q <= '0;
+    else ic_pend_q <= ic_pend_q | dma_intr_clr_aw;
   end
   // CFG_REGWEN read response with the busy probe at that clock.
   wire [4:0] dma_cfg_rw = {d_busy, rd_data[3:0]};
@@ -2466,6 +2476,18 @@ module sep_fcov (
   wire        dr_status = rd_ev && rhit4(ar_addr_q, ar_size_q, DmaStatus);
   wire [31:0] dr_status_d = word4(lsu_r_data_i, DmaStatus);
   wire        dr_ist = rd_ev && rhit4(ar_addr_q, ar_size_q, DmaIntrState);
+  wire [31:0] dr_ist_d = word4(lsu_r_data_i, DmaIntrState);
+  // Per event {ERROR, CHUNK_DONE, DONE} of an INTR_STATE read: the bit reads 1
+  // with its INTR_ENABLE bit 0 and its STATUS bit 1. The STATUS bit leaves out
+  // a bit that only INTR_TEST set.
+  wire [2:0]  dr_ist_ungated = {
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_ERROR_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_error.q === 1'b0) && d_err,
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_CHUNK_DONE_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_chunk_done.q === 1'b0) && d_chunk,
+    ((dr_ist_d & SECURE_DMA_INTR_STATE_DMA_DONE_MASK) != 0) &&
+        (dma_reg2hw_i.intr_enable.dma_done.q === 1'b0) && d_done
+  };
 
   // --- Secure DMA: latched fields ----------------------------------------
   logic [31:0] d_src_q, d_dst_q, d_total_q, d_chunk_q, d_base_q, d_limit_q;
@@ -2545,6 +2567,113 @@ module sep_fcov (
       (wr_data != rl_old_q) && (d_limit_now == rl_old_q);
   wire dl_valid = dl_locked && hit4(aw_addr_q, w_strb_q, DmaRangeValid) &&
       (dl_valid_wd != rvv_old_q) && (d_valid_now == rvv_old_q);
+
+  // The registers that dma.hjson marks regwen "CFG_REGWEN", locked while the
+  // DMA is busy (CFG_REGWEN description). cl_reg is the cp_locked_write_refused
+  // value of each: 4 to 7 the address registers that hardware also writes
+  // (hwaccess "hrw"), 8 to 18 the others; 0 is any other address.
+  localparam logic [31:0] DmaSrcHi = SECURE_DMA_SRC_ADDR_HI_REG_ADDR;
+  localparam logic [31:0] DmaDstHi = SECURE_DMA_DST_ADDR_HI_REG_ADDR;
+  localparam logic [31:0] DmaAsid = SECURE_DMA_ADDR_SPACE_ID_REG_ADDR;
+  localparam logic [31:0] DmaHsIntrEn = SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR;
+  localparam logic [31:0] DmaClrSrc = SECURE_DMA_CLEAR_INTR_SRC_REG_ADDR;
+  localparam logic [31:0] DmaClrBus = SECURE_DMA_CLEAR_INTR_BUS_REG_ADDR;
+  localparam logic [31:0] DmaClrAddr0 = SECURE_DMA_INTR_SRC_ADDR_0_0__REG_ADDR;
+  localparam logic [31:0] DmaClrAddrEnd = SECURE_DMA_INTR_SRC_ADDR_0_10__REG_ADDR + 32'd4;
+  localparam logic [31:0] DmaClrVal0 = SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_ADDR;
+  localparam logic [31:0] DmaClrValEnd = SECURE_DMA_INTR_SRC_WR_VAL_0_10__REG_ADDR + 32'd4;
+  function automatic logic [4:0] cl_reg(input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return 5'd17;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return 5'd18;
+    case (a)
+      DmaSrcLo:    return 5'd4;
+      DmaSrcHi:    return 5'd5;
+      DmaDstLo:    return 5'd6;
+      DmaDstHi:    return 5'd7;
+      DmaAsid:     return 5'd8;
+      DmaTotal:    return 5'd9;
+      DmaChunk:    return 5'd10;
+      DmaWidth:    return 5'd11;
+      DmaSrcCfg:   return 5'd12;
+      DmaDstCfg:   return 5'd13;
+      DmaHsIntrEn: return 5'd14;
+      DmaClrSrc:   return 5'd15;
+      DmaClrBus:   return 5'd16;
+      default:     return 5'd0;
+    endcase
+  endfunction
+  // The writable fields of the register at `a`, at their register positions.
+  function automatic logic [31:0] cl_mask(input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return SECURE_DMA_INTR_SRC_ADDR_0_ADDR_0_MASK;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return SECURE_DMA_INTR_SRC_WR_VAL_0_WR_VAL_0_MASK;
+    case (a)
+      DmaSrcLo:    return SECURE_DMA_SRC_ADDR_LO_SRC_ADDR_LO_MASK;
+      DmaSrcHi:    return SECURE_DMA_SRC_ADDR_HI_SRC_ADDR_HI_MASK;
+      DmaDstLo:    return SECURE_DMA_DST_ADDR_LO_DST_ADDR_LO_MASK;
+      DmaDstHi:    return SECURE_DMA_DST_ADDR_HI_DST_ADDR_HI_MASK;
+      DmaAsid:
+      return SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_MASK | SECURE_DMA_ADDR_SPACE_ID_DST_ASID_MASK;
+      DmaTotal:    return SECURE_DMA_TOTAL_DATA_SIZE_DATA_SIZE_MASK;
+      DmaChunk:    return SECURE_DMA_CHUNK_DATA_SIZE_DATA_SIZE_MASK;
+      DmaWidth:    return SECURE_DMA_TRANSFER_WIDTH_TRANSACTION_WIDTH_MASK;
+      DmaSrcCfg:   return SECURE_DMA_SRC_CONFIG_INCREMENT_MASK | SECURE_DMA_SRC_CONFIG_WRAP_MASK;
+      DmaDstCfg:   return SECURE_DMA_DST_CONFIG_INCREMENT_MASK | SECURE_DMA_DST_CONFIG_WRAP_MASK;
+      DmaHsIntrEn: return SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_MASK;
+      DmaClrSrc:   return SECURE_DMA_CLEAR_INTR_SRC_SOURCE_MASK;
+      DmaClrBus:   return SECURE_DMA_CLEAR_INTR_BUS_BUS_MASK;
+      default:     return 32'h0;
+    endcase
+  endfunction
+  // The stored value of the register at `a` (reg2hw), at its register positions.
+  function automatic logic [31:0] cl_val(input secure_dma_reg_pkg::dma_reg2hw_t r,
+                                         input logic [31:0] a);
+    if (in_win(a, DmaClrAddr0, DmaClrAddrEnd)) return r.intr_src_addr[4'((a-DmaClrAddr0)>>2)].q;
+    if (in_win(a, DmaClrVal0, DmaClrValEnd)) return r.intr_src_wr_val[4'((a-DmaClrVal0)>>2)].q;
+    case (a)
+      DmaSrcLo:    return r.src_addr_lo.q;
+      DmaSrcHi:    return r.src_addr_hi.q;
+      DmaDstLo:    return r.dst_addr_lo.q;
+      DmaDstHi:    return r.dst_addr_hi.q;
+      DmaAsid:
+      return (32'(r.addr_space_id.src_asid.q) << SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_SHIFT) |
+          (32'(r.addr_space_id.dst_asid.q) << SECURE_DMA_ADDR_SPACE_ID_DST_ASID_SHIFT);
+      DmaTotal:    return r.total_data_size.q;
+      DmaChunk:    return r.chunk_data_size.q;
+      DmaWidth:
+      return 32'(r.transfer_width.q) << SECURE_DMA_TRANSFER_WIDTH_TRANSACTION_WIDTH_SHIFT;
+      DmaSrcCfg:
+      return (32'(r.src_config.increment.q) << SECURE_DMA_SRC_CONFIG_INCREMENT_SHIFT) |
+          (32'(r.src_config.wrap.q) << SECURE_DMA_SRC_CONFIG_WRAP_SHIFT);
+      DmaDstCfg:
+      return (32'(r.dst_config.increment.q) << SECURE_DMA_DST_CONFIG_INCREMENT_SHIFT) |
+          (32'(r.dst_config.wrap.q) << SECURE_DMA_DST_CONFIG_WRAP_SHIFT);
+      DmaHsIntrEn:
+      return 32'(r.handshake_intr_enable.q) << SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_SHIFT;
+      DmaClrSrc:
+      return 32'(r.clear_intr_src.q) << SECURE_DMA_CLEAR_INTR_SRC_SOURCE_SHIFT;
+      DmaClrBus:   return 32'(r.clear_intr_bus.q) << SECURE_DMA_CLEAR_INTR_BUS_BUS_SHIFT;
+      default:     return 32'h0;
+    endcase
+  endfunction
+  // A full-word write to a protected register, issued and answered (any
+  // response: none is stated for a locked write) while BUSY is 1, that did not
+  // land. Hardware also writes the address registers, so for those the stored
+  // value differs from the written one; for the others it is the value before
+  // the write, and the write carried another value.
+  logic [31:0] cl_pre_q;
+  logic        cl_busy_q;
+  wire         wr_done_any = !in_reset && b_hs && (aw_out_q == 4'd1) && (w_beats_q == 2'd1);
+  wire  [4:0]  cl_lw = cl_reg(aw_addr_q);
+  wire  [31:0] cl_wd = wr_data & cl_mask(aw_addr_q);
+  wire  [31:0] cl_now = cl_val(dma_reg2hw_i, aw_addr_q);
+  wire         cl_refused = wr_done_any && (cl_lw != 5'd0) && (wr_strb == 4'hF) && cl_busy_q &&
+      d_busy && ((cl_lw <= 5'd7) ? (cl_now != cl_wd) : ((cl_wd != cl_pre_q) && (cl_now == cl_pre_q)));
+  always_ff @(posedge clk_i) begin
+    if (wr_issue) begin
+      cl_pre_q  <= cl_val(dma_reg2hw_i, wi_addr);
+      cl_busy_q <= d_busy;
+    end
+  end
 
   // Position of a region against the range: 0 at BASE, 1 interior,
   // 2 at LIMIT (last byte at LIMIT), 3 other.
@@ -2858,7 +2987,8 @@ module sep_fcov (
         uc_v_q <= 1'b0;
       end
 
-      // Interrupt trial: lines held from the GO issue to the INTR_STATE read.
+      // Interrupt trial: lines held from the GO issue to the INTR_STATE read
+      // at its end.
       if (di_go && di_init && (di_op == DmaOpCopy)) begin
         it_on_q  <= 1'b1;
         it_en_q  <= d_ien_q;
@@ -2866,7 +2996,9 @@ module sep_fcov (
         it_cls_q <= (d_total_q == 32'h0) ? 2'd2 : (d_single ? 2'd0 : (d_multi ? 2'd1 : 2'd3));
       end else if (it_on_q) begin
         it_l_q <= it_l_q | {irq_d_err, irq_d_chunk, irq_d_done};
-        if (dr_ist) begin
+        // A read at a CHUNK_DONE stop before DONE or ERROR is not the end of
+        // the trial.
+        if (dr_ist && !(d_chunk && !d_done && !d_err)) begin
           it_on_q           <= 1'b0;
           dma_irq_cell_q    <= {it_en_q, it_cls_q};
           dma_irq_cell_ev_q <= own_dma_irq && (it_cls_q != 2'd3) &&
@@ -2984,10 +3116,12 @@ module sep_fcov (
   // so the whole cross is filled by ONE seed; only the bit offset inside a
   // spare is seeded.
   //
-  // Every operation is frontdoor on EFUSE_PROGRAM_CTRL: the write carries the
-  // OTP bit index in EFUSE_ADDR plus PROGRAM_GO, and the outcome reads back as
-  // PROGRAM_DONE or PROGRAM_STATUS (the refusal).
+  // Every operation is frontdoor: EFUSE_PROGRAM_ADDR takes the OTP bit index,
+  // the EFUSE_PROGRAM_CTRL write with PROGRAM_GO starts the program of that
+  // bit, and the outcome reads back as PROGRAM_DONE or PROGRAM_STATUS (the
+  // refusal).
   localparam logic [31:0] EfuseProgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
+  localparam logic [31:0] EfuseProgAddr = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR;
   // Two lock bits per spare, and the assigned spare locks end where the RDL
   // reserved field of LOCKS_SPARE starts: 9 spares, slots 32-40
   // (otp_fuse_controller.adoc).
@@ -3009,9 +3143,11 @@ module sep_fcov (
 
   wire        efuse_prog_go = wr_ev && (aw_addr_q == EfuseProgCtrl) &&
       ((wr_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK) != 32'h0);
-  wire [15:0] efuse_prog_bit = (wr_data &
-      EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK) >>
-      EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT;
+  // Mirror of EFUSE_PROGRAM_ADDR: the bit a GO programs is the last address
+  // written before it.
+  logic [31:0] efuse_prog_addr_q;
+  wire        efuse_prog_addr_wr = wr_ev && (aw_addr_q == EfuseProgAddr);
+  wire [31:0] efuse_prog_bit = efuse_prog_addr_q;
   wire        efuse_prog_rd = rd_ev && (ar_addr_q == EfuseProgCtrl);
   wire        efuse_prog_done = efuse_prog_rd &&
       ((rd_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_DONE_MASK) != 32'h0);
@@ -3354,6 +3490,7 @@ module sep_fcov (
       feat_lo_valid_q   <= 1'b0;
       prog_pending_q    <= 1'b0;
       lock_pending_q    <= 1'b0;
+      efuse_prog_addr_q <= 32'(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT);
       wdt_bark_irq_q    <= 1'b0;
       wdt_thold_q       <= 1'b0;
       cold_valid_q      <= 1'b0;
@@ -3607,6 +3744,10 @@ module sep_fcov (
       if (m_aw_hs) m_aw_addr_q <= m_axi_awaddr_i;
       if (m_ar_hs) m_ar_addr_q <= m_axi_araddr_i;
 
+      if (efuse_prog_addr_wr) begin
+        efuse_prog_addr_q <= (wr_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK) >>
+            EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT;
+      end
       if (efuse_prog_go && prog_is_spare) begin
         prog_spare_q   <= prog_spare_idx;
         prog_locked_q  <= spare_locked_q[prog_spare_idx];
@@ -4130,19 +4271,22 @@ module sep_fcov (
     option.name = "sep_otbn_execute_cg";
     cp_cmd: coverpoint otbn_execute {bins execute = {1'b1};}
     cp_done: coverpoint otbn_done {bins idle_err_bits_zero = {1'b1};}
-    // The only IMEM/DMEM write-then-read leaves run while STATUS reads
-    // BUSY_SEC_WIPE_INT and log these accesses under the OTBN wipe-state
-    // memory access exception (docs/test_contracts/smoke_uvm.adoc). No leaf
-    // writes and reads back these memories while OTBN is idle (NO-STIMULUS in
-    // docs/SEP_FCOV.adoc), so every value is an ignore bin.
-    // verilator lint_off COVERIGN
-    cp_imem_rdback: coverpoint otbn_imem_rdback {
-      option.weight = 0; ignore_bins write_then_read = {1'b1}; ignore_bins no_readback = {1'b0};
+    // Word written and read back at IDLE, by its offset in the window (owner
+    // sep_otbn_load_checksum_read_test). Accesses outside that owner window,
+    // such as those under the OTBN wipe-state memory access exception
+    // (docs/test_contracts/smoke_uvm.adoc), do not sample.
+    cp_imem_rdback: coverpoint ar_addr_q iff (otbn_imem_rdback &&
+        (graded_owner == FcovOwnSepOtbnLoadChecksumReadTest)) {
+      bins first_word = {OTBN_IMEM_MEM_BASE_ADDR};
+      bins mid_word = {[OTBN_IMEM_MEM_BASE_ADDR + 32'd4 : OtbnImemEnd - 32'd8]};
+      bins last_word = {OtbnImemEnd - 32'd4};
     }
-    cp_dmem_rdback: coverpoint otbn_dmem_rdback {
-      option.weight = 0; ignore_bins write_then_read = {1'b1}; ignore_bins no_readback = {1'b0};
+    cp_dmem_rdback: coverpoint ar_addr_q iff (otbn_dmem_rdback &&
+        (graded_owner == FcovOwnSepOtbnLoadChecksumReadTest)) {
+      bins first_word = {OTBN_DMEM_MEM_BASE_ADDR};
+      bins mid_word = {[OTBN_DMEM_MEM_BASE_ADDR + 32'd4 : OtbnDmemEnd - 32'd8]};
+      bins last_word = {OtbnDmemEnd - 32'd4};
     }
-  // verilator lint_on COVERIGN
   endgroup
 
   covergroup sep_abr_keygen_cg @(posedge clk_i);
@@ -4479,10 +4623,21 @@ module sep_fcov (
     cp_cfg_regwen: coverpoint dmx_crw_cv iff (dmx_crw_rv) {
       bins busy_false = {5'b1_1001}; bins idle_true = {5'b0_0110};
     }
-    // Interrupt clear write of source 0 on the DMA host port, in the window of
-    // its owner, held until hs_mask_pass bit 1 rises.
+    // Interrupt clear write of source 0 (clear_wr_host) and of each source 1 to
+    // 10 (clear_wr_host_idx<i>) on the DMA host port, in the window of its
+    // owner, held until hs_mask_pass bit 1 rises.
     cp_intr_clear: coverpoint ic_rel {
-      bins clear_wr_host = {1'b1};
+      wildcard bins clear_wr_host = {11'b???_????_???1};
+      wildcard bins clear_wr_host_idx1 = {11'b???_????_??1?};
+      wildcard bins clear_wr_host_idx2 = {11'b???_????_?1??};
+      wildcard bins clear_wr_host_idx3 = {11'b???_????_1???};
+      wildcard bins clear_wr_host_idx4 = {11'b???_???1_????};
+      wildcard bins clear_wr_host_idx5 = {11'b???_??1?_????};
+      wildcard bins clear_wr_host_idx6 = {11'b???_?1??_????};
+      wildcard bins clear_wr_host_idx7 = {11'b???_1???_????};
+      wildcard bins clear_wr_host_idx8 = {11'b??1_????_????};
+      wildcard bins clear_wr_host_idx9 = {11'b?1?_????_????};
+      wildcard bins clear_wr_host_idx10 = {11'b1??_????_????};
     }
   endgroup
 
@@ -6094,8 +6249,8 @@ module sep_fcov (
   // (NS 1 for ap, the inverse of address bit 55 for smu and stee); 7 ap and
   // 8 stee with AxUSER[3:0] 0 while the LSU drove non-zero; 9 smu with a
   // source ID that is not OTHERS (0) and not the one the LSU drove; 10 DMA on
-  // smu with a source ID that is not OTHERS. SEP's ID has no stated number,
-  // so bins 9 and 10 sample its class, not a value.
+  // smu with a source ID that is not OTHERS. Bins 9 and 10 sample the class of
+  // SEP's ID, not its value 0xF; CHK-OUT-SRC-ID and CHK-CPU-SRC-ID grade it.
   covergroup sep_fabric_outbound_route_cg with function sample (
       logic [3:0] cls_dir,
       logic own_cls,
@@ -9759,7 +9914,9 @@ module sep_fcov (
       logic cc_v,
       logic cdc_v,
       logic [1:0] cd,
-      logic cd_v
+      logic cd_v,
+      logic [2:0] ist,
+      logic ist_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_completion_cg";
@@ -9789,6 +9946,14 @@ module sep_fcov (
       bins single_chunk_wrap1 = {2'b01};
       bins multi_exact_wrap0 = {2'b10};
       bins multi_exact_wrap1 = {2'b11};
+    }
+    // INTR_STATE read with the bit of an event 1, its INTR_ENABLE bit 0 and its
+    // STATUS bit 1, per event {ERROR, CHUNK_DONE, DONE} (secure_dma.adoc
+    // INTR_STATE, INTR_ENABLE): the enable gates the line, not the state bit.
+    cp_intr_state_seen: coverpoint ist iff (ist_v) {
+      wildcard bins dma_done = {3'b??1};
+      wildcard bins dma_chunk_done = {3'b?1?};
+      wildcard bins dma_error = {3'b1??};
     }
   endgroup
 
@@ -9923,12 +10088,37 @@ module sep_fcov (
     }
   endgroup
 
-  covergroup sep_dma_error_terminal_cg with function sample (logic ea_v, logic ao_v, logic aq_v);
+  // ERROR_CODE bits of the configuration faults that a start can carry together
+  // (programmers_guide.md, Error Condition: all detected errors are reported).
+  localparam logic [7:0] DmaEcOpcode = 8'(SECURE_DMA_ERROR_CODE_OPCODE_ERROR_MASK);
+  localparam logic [7:0] DmaEcAsid = 8'(SECURE_DMA_ERROR_CODE_ASID_ERROR_MASK);
+  localparam logic [7:0] DmaEcSize = 8'(SECURE_DMA_ERROR_CODE_SIZE_ERROR_MASK);
+  localparam logic [7:0] DmaEcDst = 8'(SECURE_DMA_ERROR_CODE_DST_ADDR_ERROR_MASK);
+  localparam logic [7:0] DmaEcOpcAsid = DmaEcOpcode | DmaEcAsid;
+  localparam logic [7:0] DmaEcOpcSize = DmaEcOpcode | DmaEcSize;
+  localparam logic [7:0] DmaEcOpcDst = DmaEcOpcode | DmaEcDst;
+  localparam logic [7:0] DmaEcAsidSize = DmaEcAsid | DmaEcSize;
+  localparam logic [7:0] DmaEcAsidDst = DmaEcAsid | DmaEcDst;
+  localparam logic [7:0] DmaEcSizeDst = DmaEcSize | DmaEcDst;
+
+  covergroup sep_dma_error_terminal_cg with function sample (
+      logic ea_v, logic ao_v, logic aq_v, logic [7:0] me, logic me_v
+  );
     option.per_instance = 1;
     option.name = "sep_dma_error_terminal_cg";
     cp_error_x_aggregate: coverpoint ea_v {bins size_error_status_and_intr_state = {1'b1};}
     cp_abort_outcome: coverpoint ao_v {bins aborted_set = {1'b1};}
     cp_abort_quiet: coverpoint aq_v {bins no_beat_after_aborted = {1'b1};}
+    // ERROR_CODE at the STATUS.ERROR rise, equal to exactly two of the
+    // OPCODE_ERROR, ASID_ERROR, SIZE_ERROR and DST_ADDR_ERROR bits.
+    cp_error_multi_class: coverpoint me iff (me_v) {
+      bins opcode_asid = {DmaEcOpcAsid};
+      bins opcode_size = {DmaEcOpcSize};
+      bins opcode_dst_addr = {DmaEcOpcDst};
+      bins asid_size = {DmaEcAsidSize};
+      bins asid_dst_addr = {DmaEcAsidDst};
+      bins size_dst_addr = {DmaEcSizeDst};
+    }
   endgroup
 
   // --- Secure DMA: zero fill ---------------------------------------------
@@ -10033,10 +10223,12 @@ module sep_fcov (
   // Range lock (sep-programming.adoc, zero fill procedure; dma.adoc, Zero
   // Fill). Every bin of the range-lock coverpoints is a BASE, LIMIT or
   // RANGE_VALID write after the lock write (dl_locked) that leaves the register
-  // value unchanged. cp_dma_lock_recovery is sampled by the memory, boot and
+  // value unchanged. The configuration lock bins of cp_locked_write_refused are
+  // a write to a CFG_REGWEN-protected register while BUSY is 1 that did not
+  // land (cl_refused). cp_dma_lock_recovery is sampled by the memory, boot and
   // reset owner.
   covergroup sep_dma_containment_cg with function sample (
-      logic [1:0] lw,
+      logic [4:0] lw,
       logic lw_v,
       logic [1:0] iv,
       logic iv_v,
@@ -10049,9 +10241,28 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_dma_containment_cg";
     // The register of a refused write; regwen_true is a refused write after an
-    // unlock write of True to RANGE_REGWEN.
+    // unlock write of True to RANGE_REGWEN. 4 to 18: the register of a write
+    // refused by the configuration lock (dma.hjson regwen "CFG_REGWEN").
     cp_locked_write_refused: coverpoint lw iff (lw_v) {
-      bins base = {2'd0}; bins limit = {2'd1}; bins valid = {2'd2}; bins regwen_true = {2'd3};
+      bins base = {5'd0};
+      bins limit = {5'd1};
+      bins valid = {5'd2};
+      bins regwen_true = {5'd3};
+      bins cfg_src_addr_lo = {5'd4};
+      bins cfg_src_addr_hi = {5'd5};
+      bins cfg_dst_addr_lo = {5'd6};
+      bins cfg_dst_addr_hi = {5'd7};
+      bins cfg_addr_space_id = {5'd8};
+      bins cfg_total_data_size = {5'd9};
+      bins cfg_chunk_data_size = {5'd10};
+      bins cfg_transfer_width = {5'd11};
+      bins cfg_src_config = {5'd12};
+      bins cfg_dst_config = {5'd13};
+      bins cfg_handshake_intr_enable = {5'd14};
+      bins cfg_clear_intr_src = {5'd15};
+      bins cfg_clear_intr_bus = {5'd16};
+      bins cfg_intr_src_addr = {5'd17};
+      bins cfg_intr_src_wr_val = {5'd18};
     }
     // A refused write after an unlock write of that value to RANGE_REGWEN.
     cp_regwen_invalid_value: coverpoint iv iff (iv_v) {
@@ -10612,8 +10823,8 @@ module sep_fcov (
         gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd, cd_v
       })] = 1;
     else
-      u_sep_dma_completion_cg.sample(gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd,
-                                     cd_v);
+      u_sep_dma_completion_cg.sample(gl, gl_v, bp, bp_v, ds, ds_v, dcp_v, cc, cc_v, cdc_v, cd, cd_v,
+                                     3'd0, 1'b0);
   endfunction
   function automatic void dmx_range_config(logic rv_v, logic bl_v, logic [2:0] ip, logic ip_v,
                                            logic [1:0] uw, logic uw_v);
@@ -10639,7 +10850,7 @@ module sep_fcov (
   endfunction
   function automatic void dmx_completion_rel(dmx_completion_t k);
     u_sep_dma_completion_cg.sample(k.gl, k.gl_v, k.bp, k.bp_v, k.ds, k.ds_v, k.dcp_v, k.cc, k.cc_v,
-                                   k.cdc_v, k.cd, k.cd_v);
+                                   k.cdc_v, k.cd, k.cd_v, 3'd0, 1'b0);
   endfunction
   function automatic void dmx_range_config_rel(dmx_range_config_t k);
     u_sep_dma_range_config_cg.sample(k.rv_v, k.bl_v, k.ip, k.ip_v, k.uw, k.uw_v);
@@ -11578,13 +11789,25 @@ module sep_fcov (
       end
 
       // ---- DMA faults, errors and abort ----
+      // The size-zero kind and the aggregate cell need SIZE_ERROR alone in
+      // ERROR_CODE; a start with a second configuration fault is a multi-error
+      // class.
       if (d_size_err && !size_err_q)
-        u_sep_dma_config_fault_cg.sample(szk_q, own_dma_irq && szk_v_q, hwf_q,
-                                         own_dma_irq && hwf_v_q, 2'd0, 1'b0, 3'd0, 1'b0);
-      if (ea_v_q && d_err && d_ist_err) u_sep_dma_error_terminal_cg.sample(own_dma_irq, 1'b0, 1'b0);
-      if (d_aborted && !aborted_q) u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0);
+        u_sep_dma_config_fault_cg.sample(szk_q,
+                                         own_dma_irq && szk_v_q && (dma_err_code_i == DmaEcSize),
+                                         hwf_q, own_dma_irq && hwf_v_q, 2'd0, 1'b0, 3'd0, 1'b0);
+      if (ea_v_q && d_err && d_ist_err)
+        u_sep_dma_error_terminal_cg.sample(own_dma_irq && (dma_err_code_i == DmaEcSize), 1'b0, 1'b0,
+                                           8'd0, 1'b0);
+      if (d_aborted && !aborted_q)
+        u_sep_dma_error_terminal_cg.sample(1'b0, own_dma_abort, 1'b0, 8'd0, 1'b0);
       if (ab_on_q && aborted_q && !d_aborted && !ab_after_q && !dm_ar && !dm_aw)
-        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort);
+        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, own_dma_abort, 8'd0, 1'b0);
+      if (d_err && !dma_err_q)
+        u_sep_dma_error_terminal_cg.sample(1'b0, 1'b0, 1'b0, dma_err_code_i, own_dma_irq);
+      if (dr_ist && (dr_ist_ungated != 3'b000))
+        u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0, 1'b0,
+                                       2'd0, 1'b0, dr_ist_ungated, own_dma_irq);
       // An ABORT while the DMA is busy; one before the start or after the end is not a phase.
       if (d_abort && !abort_q && d_busy)
         u_sep_dma_xfer_rand_cg.sample(6'd0, 1'b0, 5'd0, 1'b0, 2'd0, 1'b0, abort_cls(
@@ -11604,15 +11827,18 @@ module sep_fcov (
     // Refused BASE, LIMIT and RANGE_VALID writes after the lock write, each
     // with the latest unlock value written before it.
     if (dl_base || dl_limit || dl_valid) begin
-      u_sep_dma_containment_cg.sample(dl_base ? 2'd0 : (dl_limit ? 2'd1 : 2'd2), own_dma_irq,
+      u_sep_dma_containment_cg.sample(dl_base ? 5'd0 : (dl_limit ? 5'd1 : 5'd2), own_dma_irq,
                                       lk_last_q[1] ? 2'd0 : (lk_last_q[2] ? 2'd1 : 2'd2),
                                       own_dma_irq && (lk_last_q[3:1] != 3'b000),
                                       own_dma_irq && (lk_try_q == 4'hF), d_err,
                                       own_dma_irq && (d_err || !d_busy), 1'b0, 1'b0);
       if (lk_last_q[0])
-        u_sep_dma_containment_cg.sample(2'd3, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,
+        u_sep_dma_containment_cg.sample(5'd3, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,
                                         1'b0);
     end
+    // A write the configuration lock refused while the DMA was busy.
+    if (cl_refused)
+      u_sep_dma_containment_cg.sample(cl_lw, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0);
 
     // ---- Held cells of the DMA handshake leaf ----
     hr_pass_q <= hr_pass;
@@ -11626,11 +11852,11 @@ module sep_fcov (
       for (int g = 3; g <= 5; g++) begin
         if (hr_pend_q[g])
           u_sep_dma_completion_cg.sample(3'(g - 1), 1'b1, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd0, 1'b0,
-                                         1'b0, 2'd0, 1'b0);
+                                         1'b0, 2'd0, 1'b0, 3'd0, 1'b0);
       end
       if (hr_pend_q[6])
         u_sep_dma_completion_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 2'd2, 1'b1, 1'b0,
-                                       2'd0, 1'b0);
+                                       2'd0, 1'b0, 3'd0, 1'b0);
       hr_pend_q <= '0;
     end
   end
@@ -20014,10 +20240,10 @@ module sep_fcov (
     // or a cold reset, then the next read.
     if (rd_ev && (di == MrDmaRegwen)) begin
       if (mr_rg_pulse && (rd_data[3:0] == 4'h0) && mr_own_ret) begin
-        u_sep_dma_containment_cg.sample(2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1);
+        u_sep_dma_containment_cg.sample(5'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1);
       end
       if (mr_rg_cold && (rd_data[3:0] == 4'h6) && mr_own_ret) begin
-        u_sep_dma_containment_cg.sample(2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1);
+        u_sep_dma_containment_cg.sample(5'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1);
       end
       mr_rg_pulse   <= 1'b0;
       mr_rg_cold    <= 1'b0;
@@ -27678,6 +27904,122 @@ module sep_fcov (
   end
 
   // ---------------------------------------------------------------------
+  // KMAC: cp_kmac_err_code_class (owner sep_kmac_unsupported_cfg_inject_test)
+  // and sep_kmac_ms_cg (owner sep_kmac_mode_strength_rand_test).
+  // ---------------------------------------------------------------------
+  // A CMD.start write. Both groups drop a held outcome on it.
+  wire cy_kx_start = wr_ev && (aw_addr_q == KMAC_CMD_REG_ADDR) && (wr_data[5:0] == KmacCmdStart6);
+
+  // ERR_CODE[31:24] of an error-code leg whose check passed (kmac.hjson
+  // ERR_CODE; theory_of_operation.md error table). 0x80 is the Sha3Control
+  // code that the SwCmdSequence error also reports, so it counts as 0x08.
+  // 0x03 needs a command from the application interface, which SEP ties off.
+  covergroup sep_kmac_err_class_cg with function sample (logic [7:0] code);
+    option.per_instance = 1;
+    option.name = "sep_kmac_err_class_cg";
+    cp_kmac_err_code_class: coverpoint code {
+      bins sw_pushed_msg_fifo = {8'h02};
+      bins incorrect_entropy_mode = {8'h05};
+      bins incorrect_function_name = {8'h07};
+      bins sw_cmd_sequence = {8'h08, 8'h80};
+      ignore_bins sw_cmd_in_app_active = {8'h03};
+      illegal_bins other_code = {[8'h00 : 8'h01], 8'h04, 8'h06, [8'h09 : 8'h7F], [8'h81 : 8'hFF]};
+    }
+  endgroup
+  sep_kmac_err_class_cg u_sep_kmac_err_class_cg = new();
+
+  // The last OKAY ERR_CODE read inside the owner-135 window is held and
+  // samples when kmac_unsup_pass rises to 4. The window close, a KMAC reset
+  // and a CMD.start drop it.
+  logic [7:0] cy_kec_code = '0;
+  logic cy_kec_v = 1'b0;
+  always @(posedge clk_i) begin
+    if (!cy_own_kunsup || !cy_ip[4] || cy_kx_start) begin
+      cy_kec_v <= 1'b0;
+    end else if (rd_ev && cy_rd_known && (ar_addr_q == KMAC_ERR_CODE_REG_ADDR)) begin
+      cy_kec_code <= rd_data[31:24];
+      cy_kec_v    <= 1'b1;
+    end else if (cy_ku_rise && (kmac_unsup_pass == 4) && cy_kec_v) begin
+      u_sep_kmac_err_class_cg.sample(cy_kec_code);
+      cy_kec_v <= 1'b0;
+    end
+  end
+
+  // cSHAKE and KMAC cells of the mode-and-strength leaf whose digest check
+  // passed. `pfx` is 1 when the PREFIX words decode (cSHAKE with N empty, KMAC
+  // with N = "KMAC"); `s_empty` is 1 when S is the empty string
+  // (programmers_guide.md PREFIX layout; SP 800-185 encode_string("") = 01 00).
+  covergroup sep_kmac_ms_cg with function sample (
+      logic en, logic [1:0] mode, logic [2:0] strength, logic pfx, logic s_empty
+  );
+    option.per_instance = 1;
+    option.name = "sep_kmac_ms_cg";
+    cp_prefix_custom: coverpoint {
+      en, s_empty
+    } iff ((mode == KmacCshake) && pfx) {
+      bins cshake_s_set = {2'b00};
+      bins cshake_s_empty = {2'b01};
+      bins kmac_s_set = {2'b10};
+      bins kmac_s_empty = {2'b11};
+    }
+    cp_cell_digest_ok: coverpoint {
+      en, strength
+    } iff (mode == KmacCshake) {
+      bins cshake_128 = {{1'b0, KmacL128}};
+      bins cshake_256 = {{1'b0, KmacL256}};
+      bins kmac_128 = {{1'b1, KmacL128}};
+      bins kmac_256 = {{1'b1, KmacL256}};
+    }
+  endgroup
+  sep_kmac_ms_cg u_sep_kmac_ms_cg = new();
+
+  // Pass label of sep_kmac_mode_strength_rand_test (owner 787): 1 after the
+  // digest check of a cell passed, 0 before the next cell starts. The leaf
+  // writes it through the u_sep_fcov handle. The cell outcome is held at
+  // kmac_cell_done and samples on the rise of the label inside the window; the
+  // window close, a KMAC reset and a CMD.start drop it. The label gates a
+  // sample; it is never a DUT value and drives nothing.
+  int unsigned kmac_mode_pass = 0;
+  wire cy_own_kms = (graded_owner == FcovOwnSepKmacModeStrengthRandTest);
+  logic cy_kms_pass_q = 1'b0;
+  logic [31:0] cy_kms_p0 = '0;  // last PREFIX_0 write
+  logic [31:0] cy_kms_p1 = '0;  // last PREFIX_1 write
+  logic cy_kms_v = 1'b0;
+  logic cy_kms_en = 1'b0;
+  logic [1:0] cy_kms_mode = '0;
+  logic [2:0] cy_kms_str = '0;
+  logic cy_kms_pfx = 1'b0;
+  logic cy_kms_se = 1'b0;
+  always @(posedge clk_i) begin
+    cy_kms_pass_q <= (kmac_mode_pass != 0);
+    if (!cy_ip[4]) begin
+      cy_kms_p0 <= '0;
+      cy_kms_p1 <= '0;
+    end else if (wr_ev && (wr_strb == 4'hF)) begin
+      if (aw_addr_q == KMAC_PREFIX_0__REG_ADDR) cy_kms_p0 <= wr_data;
+      if (aw_addr_q == KMAC_PREFIX_1__REG_ADDR) cy_kms_p1 <= wr_data;
+    end
+    if (!cy_own_kms || !cy_ip[4] || cy_kx_start) begin
+      cy_kms_v <= 1'b0;
+    end else if (kmac_cell_done) begin
+      cy_kms_v    <= 1'b1;
+      cy_kms_en   <= kmac_en_q;
+      cy_kms_mode <= kmac_mode_q;
+      cy_kms_str  <= kmac_str_q;
+      if (kmac_en_q) begin
+        cy_kms_pfx <= (cy_kms_p0 == 32'h4D4B_2001) && (cy_kms_p1[15:0] == 16'h4341);
+        cy_kms_se  <= (cy_kms_p1[31:16] == 16'h0001);
+      end else begin
+        cy_kms_pfx <= (cy_kms_p0[15:0] == 16'h0001);
+        cy_kms_se  <= (cy_kms_p0[31:16] == 16'h0001);
+      end
+    end else if (cy_kms_v && (kmac_mode_pass != 0) && !cy_kms_pass_q) begin
+      u_sep_kmac_ms_cg.sample(cy_kms_en, cy_kms_mode, cy_kms_str, cy_kms_pfx, cy_kms_se);
+      cy_kms_v <= 1'b0;
+    end
+  end
+
+  // ---------------------------------------------------------------------
   // ABR: cp_parked_cmd (owner sep_abr_command_matrix_rand_test) and
   // cp_abr_pic (owner sep_abr_mldsa_keygen_kat_test), sep_abr_completion_cg.
   // ---------------------------------------------------------------------
@@ -28700,8 +29042,8 @@ module sep_fcov (
     logic sf_v;  // 0 failing startup window held, 1 push with BOOT_PHASE_DONE 0
     logic [1:0] tm;
     logic tm_v;  // fall with 0 BOOT_PHASE_DONE 0, 1 BOOT_PHASE_DONE 1, 2 failing pattern
-    logic te;
-    logic te_v;  // stored HEALTH_TEST_CTRL.ENABLE 0 value 6, 1 value 5
+    logic [1:0] te;
+    logic te_v;  // stored HEALTH_TEST_CTRL.ENABLE 0 value 6, 1 value 5, 2 value 0
     logic [1:0] wc;
     logic wc_v;  // stored window 0 below 1024, 1 1024, 2 2048, 3 above 2048
     logic [3:0] ts;
@@ -28740,7 +29082,7 @@ module sep_fcov (
       bins failing_pattern = {2'd2};
     }
     cp_test_enable_set: coverpoint s.te iff (s.te_v) {
-      bins enable_6 = {1'b0}; bins enable_5 = {1'b1};
+      bins enable_6 = {2'd0}; bins enable_5 = {2'd1}; bins enable_0 = {2'd2};
     }
     cp_window_class: coverpoint s.wc iff (s.wc_v) {
       bins below_1024 = {2'd0};
@@ -28772,7 +29114,7 @@ module sep_fcov (
       bins ones_status_bit_3_apt_high_total = {2'd3};
     }
     // Not graded (docs/SEP_FCOV.adoc, crypto and entropy, Bins not graded):
-    // the owner logs the repetition count after the disable on OBS-HT-REPCOUNT-AFTER,
+    // the owner logs the repetition count after the disable on INFO-HT-REPCOUNT-AFTER,
     // so no value of it is a bin.
     // verilator lint_off COVERIGN
     cp_disable_clears: coverpoint s.dc iff (s.dc_v) {
@@ -28867,12 +29209,12 @@ module sep_fcov (
     }
     cp_sm_err: coverpoint s.se iff (s.se_v) {
       bins set = {2'd0};
-      // While the integrity error persists ERR latches again whatever a write
-      // does, so a write of 0 cannot fail; the owner logs it as OBS-SM-ERR-W0.
+      // A write of 0 cannot fail while the integrity error persists (INFO-SM-ERR-CAUSE-W0);
+      // a write of 0 with no cause left is in this cell too, graded by CHK-SM-ERR-W0.
       ignore_bins w0_keeps = {2'd1};
-      // No text states whether a write of 1 clears ERR while the integrity
-      // error that set it persists; the owner logs that read as OBS-SM-ERR-W1C.
-      ignore_bins w1c_clears = {2'd2};
+      // A write of 1 clears ERR once the state machine error output that set it
+      // is gone (CHK-SM-ERR-W1C).
+      bins w1c_clears = {2'd2};
       bins reset_clears = {2'd3};
     }
   endgroup
@@ -28916,6 +29258,18 @@ module sep_fcov (
     logic [1:0] dv;
     logic dv_v;  // SAMPLE_CLK_DIV change, lane 0 on: 0 up, 1 down to >= count, 2 down below count
     logic rs_v;  // DOWNSAMPLE_RATE changed while the gated stream is stopped, then a gated strobe
+    logic [1:0] pf;
+    logic pf_v;  // {BYPASS_ENTROPY_COMPRESSOR, SHA256_WHITENING_ENABLE} with FIFO_CTRL.ENABLE 0
+    logic [2:0] mc;
+    logic mc_v;  // {BYPASS_ENTROPY_COMPRESSOR, mask class 0 few, 1 half, 2 all}, feedback on
+    logic lp;
+    logic lp_v;  // RING_OSC_ENABLE population: 0 no lane, 1 one lane
+    logic di;
+    logic di_v;  // stored DOWNSAMPLE_RATE at a CHK-COND-DS-INTERVAL pass: 0 rate 1, 1 rate 2 to 15
+    logic [4:0] fop;
+    logic fop_v;  // {op 0 push, 1 pop, 2 push and pop, LEVEL class before the op}
+    logic [2:0] cl;
+    logic cl_v;  // LEVEL class before a push with ENTROPY_CHURN_ENABLE 1
   } cz_cond_t;
 
   covergroup sep_esrc_conditioning_cg with function sample (cz_cond_t s);
@@ -29001,6 +29355,57 @@ module sep_fcov (
       bins decrease_below_count = {2'd2};
     }
     cp_ds_resume: coverpoint s.rs_v iff (s.rs_v) {bins rate_write_while_stopped = {1'b1};}
+    x_path_fifo_off: coverpoint s.pf iff (s.pf_v) {
+      bins bypass_whitened_fifo_off = {2'b11};
+      bins bypass_raw_fifo_off = {2'b10};
+      bins compressor_whitened_fifo_off = {2'b01};
+      bins compressor_raw_fifo_off = {2'b00};
+    }
+    x_decor_mask_class: coverpoint s.mc iff (s.mc_v) {
+      bins compressor_few = {3'b0_00};
+      bins compressor_half = {3'b0_01};
+      bins compressor_all = {3'b0_10};
+      bins bypass_few = {3'b1_00};
+      bins bypass_half = {3'b1_01};
+      bins bypass_all = {3'b1_10};
+    }
+    cp_lane_pop: coverpoint s.lp iff (s.lp_v) {bins no_lane = {1'b0}; bins one_lane = {1'b1};}
+    cp_ds_interval: coverpoint s.di iff (s.di_v) {bins rate_1 = {1'b0}; bins rate_2_to_15 = {1'b1};}
+    // LEVEL classes: 0, 1, mid (2 to 61), 62_63, 64.
+    x_fifo_op_level: coverpoint s.fop iff (s.fop_v) {
+      bins push_level_0 = {5'b00_000};
+      bins push_level_1 = {5'b00_001};
+      bins push_level_mid = {5'b00_010};
+      bins push_level_62_63 = {5'b00_011};
+      bins push_level_64 = {5'b00_100};
+      bins pop_level_1 = {5'b01_001};
+      bins pop_level_mid = {5'b01_010};
+      bins pop_level_62_63 = {5'b01_011};
+      bins pop_level_64 = {5'b01_100};
+      bins push_pop_level_1 = {5'b10_001};
+      bins push_pop_level_mid = {5'b10_010};
+      // A FIFO_RDATA read of an empty FIFO returns undefined data and sets
+      // FIFO_UNDERFLOW (entropy_source.rdl:305); the flags leg grades the flag.
+      ignore_bins pop_level_0 = {5'b01_000};
+      ignore_bins push_pop_level_0 = {5'b10_000};
+      // The stream offers SHA-256 output in 8-word bursts, so a pop window that
+      // starts at 62 or 63 and holds a push can reach a full FIFO and lose a
+      // word; the live pop leg grades no window from 63, grades a window from 62
+      // only when at most two words arrive in it, and aims no push and pop
+      // window at 62.
+      ignore_bins push_pop_level_62_63 = {5'b10_011};
+      // A push and a pop at LEVEL 64 have no stated result: the register text
+      // states only that a write while full is discarded (entropy_source.rdl:129).
+      ignore_bins push_pop_level_64 = {5'b10_100};
+    }
+    x_churn_level: coverpoint s.cl iff (s.cl_v) {
+      bins level_0 = {3'd0};
+      bins level_1 = {3'd1};
+      bins level_mid = {3'd2};
+      bins level_62_63 = {3'd3};
+      // A write while full is discarded (entropy_source.rdl:129): no word is churned.
+      ignore_bins level_64 = {3'd4};
+    }
   endgroup
 
   typedef struct packed {
@@ -29079,7 +29484,7 @@ module sep_fcov (
       bins hw_port0_acknowledged = {2'd2};
     }
     // CMD_RDY after the acknowledge is not stated (csrng.adoc SW_CMD_STS: polled
-    // before a command); the owner logs it (OBS-CSRNG-RDY-AFTER-ACK): not scored.
+    // before a command); the owner logs it (INFO-CSRNG-RDY-AFTER-ACK): not scored.
     cp_sw_handshake: coverpoint s.hs iff (s.hs_v) {
       bins cmd_rdy_before = {2'd0};
       bins cmd_ack_after = {2'd1};
@@ -29377,7 +29782,7 @@ module sep_fcov (
         e.tm_v = 1'b1;
       end
       5: begin
-        e.te   = v[0];
+        e.te   = v[1:0];
         e.te_v = 1'b1;
       end
       6: begin
@@ -29523,6 +29928,31 @@ module sep_fcov (
         e.dv_v = 1'b1;
       end
       22: e.rs_v = 1'b1;
+      23: begin
+        e.pf   = v[1:0];
+        e.pf_v = 1'b1;
+      end
+      24: begin
+        e.mc   = v[2:0];
+        e.mc_v = 1'b1;
+      end
+      25: begin
+        e.lp   = v[0];
+        e.lp_v = 1'b1;
+      end
+      26: begin
+        e.di   = v[0];
+        e.di_v = 1'b1;
+      end
+      // x_fifo_op_level: index 27 push, 28 pop, 29 push and pop; v is the LEVEL class.
+      27, 28, 29: begin
+        e.fop   = {2'(pt - 27), v[2:0]};
+        e.fop_v = 1'b1;
+      end
+      30: begin
+        e.cl   = v[2:0];
+        e.cl_v = 1'b1;
+      end
       // Index 11 (cp_obs_lock); every other index has its own arm above.
       default: e.lk_v = 1'b1;
     endcase
@@ -29855,12 +30285,13 @@ module sep_fcov (
   localparam int unsigned CzPaHalt = 5;  // CHK-PF-HALT
   localparam int unsigned CzPaRecoverE = 6;  // CHK-PF-RECOVER, exit by MODULE_ENABLE
   localparam int unsigned CzPaRecoverR = 7;  // CHK-PF-RECOVER, exit by TRNG reset
-  localparam int unsigned CzPaSmErr = 8;  // CHK-SM-ERR (set, reset_clears)
+  localparam int unsigned CzPaSmErr = 8;  // CHK-SM-ERR (set, reset_clears), CHK-SM-ERR-W1C
   logic [8:0] cz_pa_q = '0;
   wire  [8:0] cz_pa_rel = 9'(esrc_pa_pass) & ~cz_pa_q;
   always @(posedge clk_i) cz_pa_q <= 9'(esrc_pa_pass);
-  // Pass label of the counter checks of sep_esrc_conditioning_matrix_rand_test
-  // (bits CzCnt*). cp_sample_clk_div, cp_first_strobe and cp_ds_first_push
+  // Pass label of the checks of sep_esrc_conditioning_matrix_rand_test (bits
+  // CzCnt*). cp_sample_clk_div, cp_first_strobe, cp_ds_first_push,
+  // x_path_fifo_off, x_decor_mask_class, cp_lane_pop and cp_ds_interval
   // sample the stored value only when the bit of the check that grades it
   // rises. The leaf writes the bit through the u_sep_fcov handle after that
   // check passes, while the graded value is still stored, holds it two clocks
@@ -29869,9 +30300,33 @@ module sep_fcov (
   localparam int unsigned CzCntPeriod = 0;  // CHK-COND-PERIOD-RATIO
   localparam int unsigned CzCntFirstStrobe = 1;  // CHK-COND-FIRST-STROBE
   localparam int unsigned CzCntFirstPush = 2;  // CHK-COND-FIRST-PUSH
-  logic [2:0] cz_cnt_q = '0;
-  wire  [2:0] cz_cnt_rel = 3'(esrc_cnt_pass) & ~cz_cnt_q;
-  always @(posedge clk_i) cz_cnt_q <= 3'(esrc_cnt_pass);
+  // CHK-COND-CTRL-CELL, one bit per cell {BYPASS_ENTROPY_COMPRESSOR,
+  // SHA256_WHITENING_ENABLE} with FIFO_CTRL.ENABLE 0: bit 3 (1,1), 4 (1,0),
+  // 5 (0,1), 6 (0,0).
+  localparam int unsigned CzCntCtrlCell = 3;
+  localparam int unsigned CzCntDecorMask = 7;  // CHK-COND-DECOR-MASK
+  localparam int unsigned CzCntLanesOff = 8;  // CHK-COND-LANES-OFF
+  localparam int unsigned CzCntOneLane = 9;  // CHK-COND-ONE-LANE
+  localparam int unsigned CzCntDsInterval = 10;  // CHK-COND-DS-INTERVAL
+  logic [10:0] cz_cnt_q = '0;
+  wire  [10:0] cz_cnt_rel = 11'(esrc_cnt_pass) & ~cz_cnt_q;
+  always @(posedge clk_i) cz_cnt_q <= 11'(esrc_cnt_pass);
+  // Pass label of sep_esrc_fifo_flow_rand_test (bits CzFifo*), the release of
+  // x_fifo_op_level and x_churn_level. The sampler holds each cell at its DUT
+  // event inside the window and samples it only when the bit of the check
+  // that grades it rises; every rise then drops all held cells, so a cell is
+  // released only by the check of the leg that drove it. The leaf writes the
+  // bit through the u_sep_fcov handle after that check passes, holds it two
+  // clocks and writes 0. It gates a sample; it is never a DUT value and drives
+  // nothing.
+  int unsigned esrc_fifo_pass = 0;
+  localparam int unsigned CzFifoFill = 0;  // CHK-FIFO-FILL
+  localparam int unsigned CzFifoPop = 1;  // CHK-FIFO-POP
+  localparam int unsigned CzFifoPopLive = 2;  // CHK-FIFO-POP-LIVE, one graded window
+  localparam int unsigned CzFifoChurn = 3;  // CHK-FIFO-CHURN
+  logic [3:0] cz_fifo_q = '0;
+  wire  [3:0] cz_fifo_rel = 4'(esrc_fifo_pass) & ~cz_fifo_q;
+  always @(posedge clk_i) cz_fifo_q <= 4'(esrc_fifo_pass);
   // A hardware set request: the {d, de} pair of a register field, both 1.
   function automatic logic cz_dd(input logic [1:0] p);
     return p === 2'b11;
@@ -30112,7 +30567,11 @@ module sep_fcov (
   // under that owner only the cells of that source are taken, and each is
   // held as pending until a check that reads the bit passes (esrc_pa_pass):
   // 0 {status 0, enable 0}, 1 {status 0, enable 1}, 2 {status 1, enable 1},
-  // 3 the hardware raise.
+  // 3 the hardware raise. The bit of CHK-SM-ERR releases these cells only while
+  // no MAIN_SM_STATUS read of the window has shown ERR 1 with the state machine
+  // error output 0 (cz_se_gone): that state follows the error-output inject,
+  // which also drives the PERSISTENT_FAILURE term, and the check that releases
+  // the bit then grades ERR only.
   localparam int unsigned CzPaPfSrc = ENTROPY_SOURCE_INTR_STATUS_PERSISTENT_FAILURE_SHIFT / 4;
   localparam logic [8:0] CzPaIrNc = 9'((1 << CzPaNotrip) | (1 << CzPaConsec));
   localparam logic [8:0] CzPaIrRel[4] = '{
@@ -30122,9 +30581,11 @@ module sep_fcov (
       9'((1 << CzPaTripCount) | (1 << CzPaSmErr))
   };
   logic [3:0] cz_pa_ir = '0;
+  logic cz_se_gone = 1'b0;  // ERR 1 read with esrc_sm_err_i 0 since the window opened
+  wire [8:0] cz_pa_ir_rel = cz_pa_rel & ~(cz_se_gone ? 9'(1 << CzPaSmErr) : 9'h0);
   always @(posedge clk_i) begin
     for (int k = 0; k < 4; k++) begin
-      if (cz_pa_ir[k] && ((cz_pa_rel & CzPaIrRel[k]) != 9'h0)) begin
+      if (cz_pa_ir[k] && ((cz_pa_ir_rel & CzPaIrRel[k]) != 9'h0)) begin
         if (k == 3) cy_intr(7, 6'(CzPaPfSrc));
         else cy_intr(6, 6'({3'(CzPaPfSrc), (k == 2), (k != 0)}));
         cz_pa_ir[k] <= 1'b0;
@@ -30785,6 +31246,7 @@ module sep_fcov (
     if (cy_own_eshp && cz_es_on && cz_sv_ev) begin
       if (cz_ht_en == 3'd6) cz_sth(5, 4'd0);
       if (cz_ht_en == 3'd5) cz_sth(5, 4'd1);
+      if (cz_ht_en == 3'd0) cz_sth(5, 4'd2);
     end
     if (cy_own_eshp && cz_es_on && cz_sv_ev && !$isunknown(cz_wsize)) begin
       if (cz_wsize < 16'd1024) cz_sth(6, 4'd0);
@@ -31579,6 +32041,129 @@ module sep_fcov (
     end
   end
 
+  // x_path_fifo_off, x_decor_mask_class, cp_lane_pop, cp_ds_interval (1.45):
+  // the stored value at the rise of the esrc_cnt_pass bit of the check that
+  // grades it. A stored value other than the graded one samples nothing.
+  // x_decor_mask_class needs the feedback on for every lane
+  // (DECORRELATOR_CTRL.BYPASS 0); its class is few (1 to 3 mask bits set),
+  // half (4) or all (0xFF).
+  localparam logic [1:0] CzCtrlCells[4] = '{2'b11, 2'b10, 2'b01, 2'b00};
+  wire [11:0] cz_dbyp = esrc_reg_out_i.DECORRELATOR_CTRL.BYPASS.value;
+  wire [1:0] cz_path = {
+    esrc_reg_out_i.CTRL.BYPASS_ENTROPY_COMPRESSOR.value,
+    esrc_reg_out_i.CTRL.SHA256_WHITENING_ENABLE.value
+  };
+  wire cz_path_known = !$isunknown(cz_path);
+  wire cz_fen0 = (esrc_reg_out_i.FIFO_CTRL.ENABLE.value === 1'b0);
+
+  always @(posedge clk_i) begin
+    if (cy_own_escond && cz_es_on) begin
+      for (int c = 0; c < 4; c++) begin
+        if (cz_cnt_rel[CzCntCtrlCell+c] && cz_fen0 && cz_path_known && (cz_path == CzCtrlCells[c]))
+          cz_cond(23, {2'b00, CzCtrlCells[c]});
+      end
+      if (cz_cnt_rel[CzCntDecorMask] && (cz_dbyp === 12'h000) && cz_bmask_known &&
+          cz_path_known) begin
+        if (cz_bmask == 8'hFF) cz_cond(24, {1'b0, cz_path[1], 2'd2});
+        else if ($countones(cz_bmask) == 4) cz_cond(24, {1'b0, cz_path[1], 2'd1});
+        else if (($countones(cz_bmask) >= 1) && ($countones(cz_bmask) <= 3)) begin
+          cz_cond(24, {1'b0, cz_path[1], 2'd0});
+        end
+      end
+      if (cz_cnt_rel[CzCntLanesOff] && (cz_roen === 12'h000)) cz_cond(25, 4'd0);
+      if (cz_cnt_rel[CzCntOneLane] && !$isunknown(cz_roen) && ($countones(cz_roen) == 1)) begin
+        cz_cond(25, 4'd1);
+      end
+      if (cz_cnt_rel[CzCntDsInterval] && cz_bypass && !$isunknown(cz_drate)) begin
+        if (cz_drate == 10'd1) cz_cond(26, 4'd0);
+        else if ((cz_drate >= 10'd2) && (cz_drate <= 10'd15)) cz_cond(26, 4'd1);
+      end
+    end
+  end
+
+  // x_fifo_op_level, x_churn_level (1.46): main FIFO operations of owner 146,
+  // each with the class of LEVEL before it (0, 1, mid 2 to 61, 62_63, 64).
+  // A push is a write-pointer step, or a stream word offered with
+  // FIFO_CTRL.ENABLE 1 while LEVEL has read 64 for two clocks (a discarded
+  // write); a pop is a read-pointer step. Each cell is held at its event and
+  // samples on the rise of the esrc_fifo_pass bit of its check: push cells
+  // with churn off on CzFifoFill, pops with ENABLE 0 since the last FIFO_CTRL
+  // write on CzFifoPop, churn pushes since the churn enable on CzFifoChurn.
+  // A pop window runs from one FIFO_STATUS read to the next; a window with
+  // ENABLE 1 and exactly one pop is a pop (no push in it) or a push and pop
+  // cell with the class at its first read, and only the last window before
+  // the rise of CzFifoPopLive samples. Every rise, a window open or a clock
+  // outside the window drops all held cells.
+  function automatic logic [2:0] cz_lvl_cls(input logic [6:0] l);
+    if (l == 7'd0) return 3'd0;
+    if (l == 7'd1) return 3'd1;
+    if (l <= 7'd61) return 3'd2;
+    if (l <= 7'd63) return 3'd3;
+    return 3'd4;
+  endfunction
+  wire cz_fs_rd = rd_ev && (ar_addr_q == ENTROPY_SOURCE_FIFO_STATUS_REG_ADDR);
+  wire cz_fc_wr = cz_w1 && (cz_w1_a == ENTROPY_SOURCE_FIFO_CTRL_REG_ADDR);
+  logic [4:0] cz_fo_push = '0;
+  logic [4:0] cz_fo_pop = '0;
+  logic [4:0] cz_fo_churn = '0;
+  logic [2:0] cz_fo_wcls = '0;  // pop window: LEVEL class at its first read
+  int unsigned cz_fo_wpops = 0;
+  logic cz_fo_wpush = 1'b0;
+  logic cz_fo_wen = 1'b1;  // ENABLE 1 at every pop of the window
+  logic cz_fo_lv = 1'b0;  // last closed pop window: held, op index, class
+  int unsigned cz_fo_lop = 0;
+  logic [2:0] cz_fo_lcls = '0;
+
+  always @(posedge clk_i) begin
+    logic push;
+    logic pop;
+    logic [2:0] cls;
+    push = (cz_fwp != cz_fwp_q);
+    pop  = (cz_frp != cz_frp_q);
+    cls  = cz_lvl_cls(cz_flvl_q);
+    if (cy_own_esfifo && cz_es_on) begin
+      for (int c = 0; c < 5; c++) begin
+        if (cz_fifo_rel[CzFifoFill] && cz_fo_push[c]) cz_cond(27, 4'(c));
+        if (cz_fifo_rel[CzFifoPop] && cz_fo_pop[c]) cz_cond(28, 4'(c));
+        if (cz_fifo_rel[CzFifoChurn] && cz_fo_churn[c]) cz_cond(30, 4'(c));
+      end
+      if (cz_fifo_rel[CzFifoPopLive] && cz_fo_lv) cz_cond(cz_fo_lop, {1'b0, cz_fo_lcls});
+    end
+    if (!cy_own_esfifo || !cz_es_on || cz_win_open || (cz_fifo_rel != 4'h0) || $isunknown(
+            {cz_flvl, cz_flvl_q, cz_fwp, cz_fwp_q, cz_frp, cz_frp_q, cz_fen0}
+        )) begin
+      cz_fo_push  <= '0;
+      cz_fo_pop   <= '0;
+      cz_fo_churn <= '0;
+      cz_fo_wpops <= 0;
+      cz_fo_wpush <= 1'b0;
+      cz_fo_wen   <= 1'b1;
+      cz_fo_lv    <= 1'b0;
+    end else begin
+      if (cz_fen && !cz_churn && (push || (cz_cvld && (cz_flvl == 7'd64) &&
+                                           (cz_flvl_q == 7'd64)))) begin
+        cz_fo_push[cls] <= 1'b1;
+      end
+      if (cz_fc_wr) cz_fo_pop <= '0;
+      else if (pop && cz_fen0) cz_fo_pop[cls] <= 1'b1;
+      if (cz_churn && !cz_churn_q) cz_fo_churn <= '0;
+      else if (push && cz_fen && cz_churn) cz_fo_churn[cls] <= 1'b1;
+      if (cz_fs_rd) begin
+        cz_fo_lv    <= (cz_fo_wpops == 1) && cz_fo_wen;
+        cz_fo_lop   <= cz_fo_wpush ? 29 : 28;
+        cz_fo_lcls  <= cz_fo_wcls;
+        cz_fo_wcls  <= cls;
+        cz_fo_wpops <= 0;
+        cz_fo_wpush <= 1'b0;
+        cz_fo_wen   <= 1'b1;
+      end else begin
+        if (pop) cz_fo_wpops <= cz_fo_wpops + 1;
+        if (pop && cz_fen0) cz_fo_wen <= 1'b0;
+        if (push) cz_fo_wpush <= 1'b1;
+      end
+    end
+  end
+
   // ---------------------------------------------------------------------
   // CSRNG and EDN error codes. A set request is the de/d pair of an
   // ERR_CODE field; the vector carries it at the register bit of the field.
@@ -32157,8 +32742,9 @@ module sep_fcov (
       if (cz_dd(edn_hw2reg_i.recov_alert_sts.csrng_ack_err)) cz_edn(7, 2'd0);
       if (cs_ack) begin
         // Code 3 samples only at a Generate acknowledge
-        // (CHK-CSRNG-UNINST-REFUSE); the owner logs the CMD_STS of its
-        // repeated Instantiate.
+        // (CHK-CSRNG-UNINST-REFUSE). The owner grades the CMD_STS of a repeated
+        // Instantiate (CHK-CSRNG-INVSEQ-STS) and of an Uninstantiate of an
+        // instantiated instance (CHK-CSRNG-UNINST-STS) outside these bins.
         case (csrng_hw2reg_i.sw_cmd_sts.cmd_sts.d)
           3'd1: cz_ccmd(3, 3'd1);
           3'd3: if (cz_cs_acmd == 4'h3) cz_ccmd(3, 3'd3);
@@ -33198,10 +33784,13 @@ module sep_fcov (
   // sep_esrc_fault_alert_cg cp_sm_err (ESRC_RDL MAIN_SM_STATUS.ERR, sticky,
   // write one to clear). Each cell is a pair of OKAY MAIN_SM_STATUS reads:
   // set (0, then 1 after a counter-copy inject), cleared by the TRNG reset
-  // (1, TRNG reset window, 0). Both are held as pending at the second read
-  // and sample on the rise of esrc_pa_pass bit 8 (CHK-SM-ERR, which also
-  // grades PERSISTENT_FAILURE); a window open drops them. The writes of 0
-  // and 1 run with the window closed and are ignore_bins.
+  // (1, TRNG reset window, 0), cleared by a write of 1 (1, a write of 1, 0,
+  // with esrc_sm_err_i, the state machine error output, 0 from the first read
+  // to the second and no inject or TRNG reset between). Each is held as
+  // pending at the second read and samples on the rise of esrc_pa_pass bit 8
+  // (CHK-SM-ERR, which also grades PERSISTENT_FAILURE, or CHK-SM-ERR-W1C); a
+  // window open drops them. The writes while the counter-copy cause persists
+  // run with the window closed; the write of 0 is an ignore_bins.
   // ---------------------------------------------------------------------
   localparam logic [31:0] CzErrMask = 32'(ENTROPY_SOURCE_MAIN_SM_STATUS_ERR_MASK);
   logic       cz_se_v = 1'b0;    // a MAIN_SM_STATUS read since the window opened
@@ -33209,21 +33798,27 @@ module sep_fcov (
   logic [1:0] cz_se_w = '0;      // 0 no write, 1 a write of 0, 2 a write of 1 since that read
   logic       cz_se_inj = 1'b0;  // a counter-copy inject since that read
   logic       cz_se_rst = 1'b0;  // a TRNG reset window since that read
+  logic       cz_se_live = 1'b0; // esrc_sm_err_i 1 at that read or since
   logic       cz_se_inj_q = 1'b0;
-  logic [1:0] cz_se_pend = '0;   // pending {reset_clears, set}
+  logic [2:0] cz_se_pend = '0;   // pending {w1c_clears, reset_clears, set}
   always @(posedge clk_i) begin
     cz_se_inj_q <= esrc_cntr_inj_i;
     if (cz_pa_rel[CzPaSmErr]) begin
       if (cz_se_pend[0]) cz_falt(8, 6'd0);
       if (cz_se_pend[1]) cz_falt(8, 6'd3);
+      if (cz_se_pend[2]) cz_falt(8, 6'd2);
       cz_se_pend <= '0;
     end
-    if (cz_win_open || in_reset) cz_se_pend <= '0;
+    if (cz_win_open || in_reset) begin
+      cz_se_pend <= '0;
+      cz_se_gone <= 1'b0;
+    end
     if (!cy_own_espa || in_reset) begin
       cz_se_v <= 1'b0;
     end else begin
       if (esrc_cntr_inj_i && !cz_se_inj_q) cz_se_inj <= 1'b1;
       if (cz_trng_rise) cz_se_rst <= 1'b1;
+      if (esrc_sm_err_i) cz_se_live <= 1'b1;
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_MAIN_SM_STATUS_REG_ADDR)) begin
         cz_se_w <= ((wr_data & CzErrMask) != 32'h0) ? 2'd2 : 2'd1;
       end
@@ -33233,12 +33828,17 @@ module sep_fcov (
         if (cz_se_v) begin
           if (!cz_se_rd && e && cz_se_inj && !cz_se_rst) cz_se_pend[0] <= 1'b1;
           if (cz_se_rd && !e && (cz_se_w == 2'd0) && cz_se_rst) cz_se_pend[1] <= 1'b1;
+          if (cz_se_rd && !e && (cz_se_w == 2'd2) && !cz_se_inj && !cz_se_rst && !cz_se_live &&
+              !esrc_sm_err_i)
+            cz_se_pend[2] <= 1'b1;
         end
-        cz_se_v   <= 1'b1;
-        cz_se_rd  <= e;
-        cz_se_w   <= 2'd0;
-        cz_se_inj <= 1'b0;
-        cz_se_rst <= 1'b0;
+        if (e && !esrc_sm_err_i) cz_se_gone <= 1'b1;
+        cz_se_v    <= 1'b1;
+        cz_se_rd   <= e;
+        cz_se_w    <= 2'd0;
+        cz_se_inj  <= 1'b0;
+        cz_se_rst  <= 1'b0;
+        cz_se_live <= esrc_sm_err_i;
       end
     end
   end
@@ -33363,6 +33963,11 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   localparam int unsigned CzCwRing = 64;
   localparam int unsigned CzSwRing = 96;
+  // cp_biw_scored, cp_seed_handshake and cp_esrc_sink take their events only
+  // while CTRL.BYPASS_ENTROPY_COMPRESSOR reads 0. The default entry also runs
+  // a compressor bypass flow in the same window; its FIFO words and seeds are
+  // bypass words, not compressor output.
+  wire cz_e2e_compress = (esrc_reg_out_i.CTRL.BYPASS_ENTROPY_COMPRESSOR.value === 1'b0);
   logic [31:0] cz_cw[CzCwRing] = '{default: '0};
   logic [CzCwRing-1:0] cz_cw_v = '0;
   int unsigned cz_cw_wp = 0;
@@ -33419,7 +34024,7 @@ module sep_fcov (
       cz_sd_ok  <= 0;
       cz_sd_bad <= 1'b0;
     end
-    if (cz_own_e2e && !in_reset) begin
+    if (cz_own_e2e && !in_reset && cz_e2e_compress) begin
       if (!cz_fifo_closed && rd_ev && cy_rd_known &&
           (ar_addr_q == ENTROPY_SOURCE_FIFO_RDATA_REG_ADDR) && (cz_ar_flvl != 7'd0)) begin
         logic hit;
@@ -33432,6 +34037,8 @@ module sep_fcov (
         if (cz_seed_words_held(drbg_es_bits_i)) cz_sd_ok <= cz_sd_ok + 1;
         else cz_sd_bad <= 1'b1;
       end
+    end
+    if (cz_own_e2e && !in_reset) begin
       if (drbg_genbits_vld_i === 1'b1) begin
         if (drbg_genbits_fips_i === 1'b1) cz_e2e_hit[2] <= 1'b1;
         else cz_cond(14, 4'd0);
@@ -34185,6 +34792,8 @@ module sep_fcov (
   localparam logic [31:0] EfStatus = EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_ADDR;
   localparam logic [31:0] EfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
   localparam logic [31:0] EfRdCtrl = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_ADDR;
+  localparam logic [31:0] EfPgAddr = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR;
+  localparam logic [31:0] EfRdAddr = EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_ADDR;
   localparam logic [31:0] EfPgData = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_ADDR;
   localparam logic [31:0] EfRdData = EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_ADDR;
   localparam logic [31:0] EfRdTmo = EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR;
@@ -34201,11 +34810,11 @@ module sep_fcov (
   localparam logic [31:0] EfDemote2 = SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR;
 
   // Field masks of the interface control registers (efuse_interface_ctrl.adoc).
-  localparam logic [31:0] EfPgAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK;
+  localparam logic [31:0] EfPgAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK;
   localparam logic [31:0] EfPgDataMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_DATA_MASK;
   localparam logic [31:0] EfPgGoMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK;
   localparam logic [31:0] EfPgEnMask = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_PROGRAM_ENABLE_MASK;
-  localparam logic [31:0] EfRdAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_ADDR_MASK;
+  localparam logic [31:0] EfRdAddrMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_EFUSE_ADDR_MASK;
   localparam logic [31:0] EfRdGoMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_EFUSE_READ_GO_MASK;
   localparam logic [31:0] EfRdEnMask = EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_ENABLE_MASK;
   localparam logic [31:0] EfReqErrMask =
@@ -34518,6 +35127,10 @@ module sep_fcov (
       bins program_req_timeout_rd = {4'd7};
       bins program_if_read_data_rd = {4'd8};
       bins read_if_read_data_rd = {4'd9};
+      bins program_addr_rd = {4'd10};
+      bins program_addr_wr = {4'd11};
+      bins read_addr_rd = {4'd12};
+      bins read_addr_wr = {4'd13};
     }
     // The TOKEN_MATCH_FAULT read is not declared.
     x_token_blk_op: coverpoint s.tb iff (s.tb_v) {
@@ -34826,16 +35439,16 @@ module sep_fcov (
     logic sp_v;  // x_slot_prog: {bad, (slot - 1) * 2 + write-lock}
     logic [7:0] sr;
     logic sr_v;  // x_slot_read: {bad, (slot - 1) * 2 + read-lock}
-    logic [3:0] ko;
-    logic ko_v;  // x_kind_op: {bad, kind * 2 + op}
+    logic [4:0] ko;
+    logic ko_v;  // x_kind_op: {bad, source, kind * 2 + op}
     logic [1:0] nf;
     logic nf_v;  // x_neighbor_free: {0 previous / 1 next, 0 program / 1 read}
     logic [1:0] ex;
     logic ex_v;  // x_exempt: 0 LC_STATE, 1 LOCKS, 2 LOCKS_SPARE
     logic sl;
     logic sl_v;  // cp_sense_fills_locked: 0 secret, 1 other
-    logic [3:0] sw;
-    logic sw_v;  // x_shadow_write_lock: {bad, field * 2 + write-lock}
+    logic [4:0] sw;
+    logic sw_v;  // x_shadow_write_lock: {bad, source, field * 2 + write-lock}
     logic [1:0] lo;
     logic lo_v;  // cp_lock_order
     logic pv;
@@ -34862,9 +35475,16 @@ module sep_fcov (
     x_slot_read: coverpoint s.sr iff (s.sr_v) {
       bins cells[] = {[8'd0 : 8'd79]}; illegal_bins wrong_outcome = {[8'd128 : 8'd207]};
     }
-    // Kind 0 none, 1 write, 2 read, 3 write and read; op 0 program, 1 read.
+    // Kind 0 none, 1 write, 2 read, 3 write and read; op 0 program, 1 read;
+    // source 0 frontdoor, 1 JTAG. The JTAG cells are the programs of the
+    // write-lock kinds; a JTAG read or a JTAG program of a kind without a
+    // write-lock is not a cell.
     x_kind_op: coverpoint s.ko iff (s.ko_v) {
-      bins cells[] = {[4'd0 : 4'd7]}; illegal_bins wrong_outcome = {[4'd8 : 4'd15]};
+      bins cells[] = {[5'd0 : 5'd7]};
+      bins jtag_cells[] = {5'd10, 5'd14};
+      ignore_bins jtag_other = {5'd8, 5'd9, 5'd11, 5'd12, 5'd13, 5'd15, 5'd25, 5'd27, 5'd29, 5'd31};
+      illegal_bins wrong_outcome = {[5'd16 : 5'd23]};
+      illegal_bins jtag_wrong_outcome = {5'd24, 5'd26, 5'd28, 5'd30};
     }
     x_neighbor_free: coverpoint s.nf iff (s.nf_v) {
       bins previous_program = {2'b0_0};
@@ -34879,9 +35499,13 @@ module sep_fcov (
       bins secret_field = {1'b0}; bins other_field = {1'b1};
     }
     // Field 0 SIP_DIS, 1 SYS_DIS, 2 REQUIRED_SIGNERS, 3 REQUIRED_ALGS: lock
-    // clear changes the shadow (OR), lock set leaves it unchanged.
+    // clear changes the shadow (OR), lock set leaves it unchanged. Source 0
+    // frontdoor (cells), 1 JTAG (jtag_cells).
     x_shadow_write_lock: coverpoint s.sw iff (s.sw_v) {
-      bins cells[] = {[4'd0 : 4'd7]}; illegal_bins wrong_outcome = {[4'd8 : 4'd15]};
+      bins cells[] = {[5'd0 : 5'd7]};
+      bins jtag_cells[] = {[5'd8 : 5'd15]};
+      illegal_bins wrong_outcome = {[5'd16 : 5'd23]};
+      illegal_bins jtag_wrong_outcome = {[5'd24 : 5'd31]};
     }
     cp_lock_order: coverpoint s.lo iff (s.lo_v) {
       bins write_before_lock_lands = {2'd0};
@@ -35185,8 +35809,8 @@ module sep_fcov (
     logic dr_v;  // x_digest_replay: {channel, Match}
     logic ss;
     logic ss_v;  // cp_stops_sense: 0 match during sense, 1 before sense
-    logic [2:0] sf;
-    logic sf_v;  // x_state_strap_feat: state * 2 + strap
+    logic [3:0] sf;
+    logic sf_v;  // x_state_strap_feat: cell class * 2 + strap
     logic rv;
     logic rv_v;  // cp_reset_values_hold
     logic xs;
@@ -35205,9 +35829,10 @@ module sep_fcov (
     cp_stops_sense: coverpoint s.ss iff (s.ss_v) {
       bins match_during_sense = {1'b0}; bins match_before_sense = {1'b1};
     }
-    // State 0 TEST_DEV, 1 PROD, 2 RMA_SIP.
+    // Cell class 0 TEST_DEV, 1 PROD, 2 RMA_SIP, 3 PROD_END, 4 RMA_CHIPLET,
+    // 5 INVALID.
     x_state_strap_feat: coverpoint s.sf iff (s.sf_v) {
-      bins cells[] = {[3'd0 : 3'd5]};
+      bins cells[] = {[4'd0 : 4'd11]};
     }
     // The LC_STATE word holds its reset value 0x0F, every other word 0.
     cp_reset_values_hold: coverpoint s.rv iff (s.rv_v) {
@@ -35221,7 +35846,7 @@ module sep_fcov (
   endgroup
 
   typedef struct packed {
-    logic [2:0] ca;
+    logic [3:0] ca;
     logic ca_v;  // cp_case
     logic [3:0] fl;
     logic fl_v;  // cp_flags: {read_status, read_addr, program_addr, req}
@@ -35245,14 +35870,15 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_efuse_if_status_cg";
     cp_case: coverpoint s.ca iff (s.ca_v) {
-      bins pre_sense_prog = {3'd0};
-      bins read_no_enable = {3'd1};
-      bins read_oob = {3'd2};
-      bins prog_oob = {3'd3};
-      bins prog_wlocked = {3'd4};
-      bins read_rlocked = {3'd5};
-      bins both_enables = {3'd6};
-      bins prog_data0 = {3'd7};
+      bins pre_sense_prog = {4'd0};
+      bins read_no_enable = {4'd1};
+      bins read_oob = {4'd2};
+      bins prog_oob = {4'd3};
+      bins prog_wlocked = {4'd4};
+      bins read_rlocked = {4'd5};
+      bins both_enables = {4'd6};
+      bins prog_data0 = {4'd7};
+      bins prog_no_enable = {4'd9};
     }
     // Sampled for read_no_enable, read_oob, prog_oob, prog_wlocked and the
     // accepted twins.
@@ -35481,14 +36107,11 @@ module sep_fcov (
     return 1'b0;
   endfunction
 
-  // Post-guard shim command (READ 2'b00, PROGRAM 2'b01, PROGRAM_READ_BACK
-  // 2'b10, interface.adoc Fuse Command Protocol) and response.
+  // Post-guard shim command (READ 1'b0, PROGRAM 1'b1, interface.adoc Fuse
+  // Command Protocol) and response.
   wire ef_cmd_v = (shim_cmd_i.valid === 1'b1);
   wire ef_cmd_rd = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_READ);
-  // A program command is PROGRAM or PROGRAM_READ_BACK: the read-back flag of
-  // EFUSE_PROGRAM_CTRL selects the second, and both burn the bit.
-  wire ef_cmd_pg = ef_cmd_v && ((shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM) ||
-                                (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK));
+  wire ef_cmd_pg = ef_cmd_v && (shim_cmd_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM);
   wire [12:0] ef_cmd_addr = 13'(shim_cmd_i.address);
   wire ef_resp_v = (shim_resp_i.valid === 1'b1);
 
@@ -35770,13 +36393,13 @@ module sep_fcov (
       e.sr_v = 1'b0;
       e.sr = '0;
     end
-    if (e.ko_v && e.ko[3]) begin
+    if (e.ko_v && e.ko[4]) begin
       ill.ko = e.ko;
       ill.ko_v = 1'b1;
       e.ko_v = 1'b0;
       e.ko = '0;
     end
-    if (e.sw_v && e.sw[3]) begin
+    if (e.sw_v && e.sw[4]) begin
       ill.sw = e.sw;
       ill.sw_v = 1'b1;
       e.sw_v = 1'b0;
@@ -36135,7 +36758,7 @@ module sep_fcov (
         e.sr_v = 1'b1;
       end
       2: begin
-        e.ko = v[3:0];
+        e.ko = v[4:0];
         e.ko_v = 1'b1;
       end
       3: begin
@@ -36151,7 +36774,7 @@ module sep_fcov (
         e.sl_v = 1'b1;
       end
       6: begin
-        e.sw = v[3:0];
+        e.sw = v[4:0];
         e.sw_v = 1'b1;
       end
       7: begin
@@ -36281,7 +36904,7 @@ module sep_fcov (
     e = '0;
     case (which)
       0: begin
-        e.ca = v[2:0];
+        e.ca = v[3:0];
         e.ca_v = 1'b1;
       end
       1: begin
@@ -36336,12 +36959,12 @@ module sep_fcov (
     u_sep_sec_dis_activation_cg.sample(e);
   endtask
 
-  task automatic ef_rob(input int unsigned which, input logic [2:0] v);
+  task automatic ef_rob(input int unsigned which, input logic [3:0] v);
     ef_rob_t e;
     e = '0;
     case (which)
       0: begin
-        e.dr = v;
+        e.dr = v[2:0];
         e.dr_v = 1'b1;
       end
       1: begin
@@ -36397,6 +37020,8 @@ module sep_fcov (
         EfPgTmo: if (!wr) ef_geo(5, 6'd7);
         EfPgData: if (!wr) ef_geo(5, 6'd8);
         EfRdData: if (!wr) ef_geo(5, 6'd9);
+        EfPgAddr: ef_geo(5, wr ? 6'd11 : 6'd10);
+        EfRdAddr: ef_geo(5, wr ? 6'd13 : 6'd12);
         default: ;
       endcase
       if (in_win(a, EfTokSip, EfTokChip)) ef_geo(6, wr ? 6'd1 : 6'd0);
@@ -36692,10 +37317,18 @@ module sep_fcov (
           endcase
           ef_act(2, {feat_ctrl_i !== '1, dcell});
         end
-        // x_state_strap_feat: sampled with sec_dis_i 0.
-        if (!ef_sd && (ef_lc inside {EfTd, EfProd, EfRs}) && !$isunknown(secure_tm_i)) begin
-          ef_rob(2,
-                 3'((ef_lc == EfTd ? 0 : ef_lc == EfProd ? 1 : 2) * 2) + 3'(secure_tm_i === 1'b1));
+        // x_state_strap_feat: sampled with sec_dis_i 0, every state class.
+        if (!ef_sd && !$isunknown(secure_tm_i)) begin
+          logic [3:0] scell;
+          case (ef_lc)
+            EfTd: scell = 4'd0;
+            EfProd: scell = 4'd1;
+            EfRs: scell = 4'd2;
+            EfPe: scell = 4'd3;
+            EfRc: scell = 4'd4;
+            default: scell = 4'd5;
+          endcase
+          ef_rob(2, 4'(scell * 2) + 4'(secure_tm_i === 1'b1));
         end
       end
 
@@ -36850,15 +37483,16 @@ module sep_fcov (
 
   // Case of a request (efuse_interface_ctrl.adoc): 0 pre_sense_prog,
   // 1 read_no_enable, 2 read_oob, 3 prog_oob, 4 prog_wlocked, 5
-  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 15 none.
+  // read_rlocked, 6 both_enables, 7 prog_data0, 8 accepted twin, 9
+  // prog_no_enable (data 1, program_enable 0), 15 none.
   function automatic logic [3:0] ef_pg_case(input logic [15:0] a, input logic d, input logic en,
                                             input logic sensed);
     if (!sensed) return 4'd0;
     if (a >= 16'(EfFuseBits)) return 4'd3;
     if (ef_wlock(ef_slot_of(11'(a[12:3])))) return 4'd4;
     if (!d) return 4'd7;
-    if (en) return 4'd8;
-    return 4'd15;
+    if (!en) return 4'd9;
+    return 4'd8;
   endfunction
   function automatic logic [3:0] ef_rg_case(input logic [15:0] a, input logic en, input logic pen);
     if (!en) return 4'd1;
@@ -36868,6 +37502,13 @@ module sep_fcov (
     return 4'd8;
   endfunction
   logic [3:0] ef_pg_cs = 4'd15, ef_rg_cs = 4'd15;
+
+  // Mirrors of EFUSE_PROGRAM_ADDR and EFUSE_READ_ADDR: a go acts on the last
+  // address written before it. An address above 16 bits is out of range, so it
+  // saturates to 16'hFFFF and keeps its out-of-range case.
+  logic [31:0] ef_pg_addr_q = '0, ef_rg_addr_q = '0;
+  wire [15:0] ef_pg_addr16 = (ef_pg_addr_q > 32'h0000_FFFF) ? 16'hFFFF : 16'(ef_pg_addr_q);
+  wire [15:0] ef_rg_addr16 = (ef_rg_addr_q > 32'h0000_FFFF) ? 16'hFFFF : 16'(ef_rg_addr_q);
 
   // Window of x_case_cmd for pre_sense_prog: reset release to sense done.
   logic ef_ps_go = 1'b0, ef_ps_prog = 1'b0;
@@ -36901,7 +37542,7 @@ module sep_fcov (
       wl = ef_wlock(s);
       rl = ef_rlock(s);
       ef_lk(0, {landed == wl, 7'((s - 6'd1) * 2) + 7'(wl)});
-      ef_lk(2, 8'({landed == wl, rl, wl, 1'b0}));
+      ef_lk(2, 8'({landed == wl, 1'b0, rl, wl, 1'b0}));
       if (!wl && !rl && landed) begin
         if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd0);
         sn = s + 6'd1;
@@ -36979,11 +37620,15 @@ module sep_fcov (
       ef_rg_lock_open <= 1'b0;
       ef_rg_idle_open <= 1'b0;
       ef_rg_win_open <= 1'b0;
+      ef_pg_addr_q <= 32'(EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_DEFAULT);
+      ef_rg_addr_q <= 32'(EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT);
     end else begin
+      if (wr_okay && (aw_addr_q == EfPgAddr)) ef_pg_addr_q <= wr_data & EfPgAddrMask;
+      if (wr_okay && (aw_addr_q == EfRdAddr)) ef_rg_addr_q <= wr_data & EfRdAddrMask;
       // Program go.
       if (ef_pg_go) begin
         ef_pg_v <= 1'b1;
-        ef_pg_addr <= 16'(wr_data & EfPgAddrMask);
+        ef_pg_addr <= ef_pg_addr16;
         ef_pg_data <= |(wr_data & EfPgDataMask);
         ef_pg_en <= |(wr_data & EfPgEnMask);
         ef_pg_sensed <= (fuse_sense_done_i === 1'b1);
@@ -36992,13 +37637,13 @@ module sep_fcov (
         ef_pg_rqe <= ef_aw_flags[0] || ef_aw_flx;
         ef_pg_clean <= !ef_aw_flx && !ef_aw_rderr && (ef_aw_flags == 3'b000);
         ef_pg_tok <= {tok_chp_i == EfCodeMatch, tok_sip_i == EfCodeMatch};
-        ef_pg_seen <= ef_aw_pcmd_v && (13'(wr_data & EfPgAddrMask) == ef_aw_pcmd_addr) &&
-            ((wr_data & EfPgAddrMask) < 32'(EfFuseBits));
-        ef_pg_pre <= ef_aw_shadow[32*(wr_data[12:5])+:32];
+        ef_pg_seen <= ef_aw_pcmd_v && (13'(ef_pg_addr_q) == ef_aw_pcmd_addr) &&
+            (ef_pg_addr_q < 32'(EfFuseBits));
+        ef_pg_pre <= ef_aw_shadow[32*(ef_pg_addr_q[12:5])+:32];
         ef_pg_lock_open <= 1'b1;
         ef_pg_idle_open <= 1'b1;
         ef_pg_cnt <= 0;
-        ef_pg_cs <= ef_pg_case(16'(wr_data & EfPgAddrMask), |(wr_data & EfPgDataMask),
+        ef_pg_cs <= ef_pg_case(ef_pg_addr16, |(wr_data & EfPgDataMask),
                                |(wr_data & EfPgEnMask), fuse_sense_done_i === 1'b1);
         if (fuse_sense_done_i !== 1'b1) ef_ps_go <= 1'b1;
       end else if (ef_pg_v) begin
@@ -37030,7 +37675,8 @@ module sep_fcov (
               end
             end else begin
               ef_ifs(0, 7'(ef_pg_cs));
-              if (ef_pg_clean) begin
+              // x_case_flags has no prog_no_enable cell: its case field is three bits.
+              if (ef_pg_clean && (ef_pg_cs != 4'd9)) begin
                 ef_ifs(2, {ef_pg_cs[2:0], ef_flags});
                 if (ef_pg_cs inside {4'd3, 4'd4}) ef_ifs(1, 7'(ef_flags));
               end
@@ -37067,7 +37713,7 @@ module sep_fcov (
       // Read go.
       if (ef_rg_go) begin
         ef_rg_v <= 1'b1;
-        ef_rg_addr <= 16'(wr_data & EfRdAddrMask);
+        ef_rg_addr <= ef_rg_addr16;
         ef_rg_en <= |(wr_data & EfRdEnMask);
         ef_rg_pen <= ef_pen_q;
         ef_rg_rqe <= ef_aw_flags[0] || ef_aw_flx;
@@ -37077,10 +37723,8 @@ module sep_fcov (
         ef_rg_idle_open <= 1'b1;
         ef_rg_win_open <= 1'b0;
         ef_rg_cnt <= 0;
-        ef_rg_cs <= ef_rg_case(16'(wr_data & EfRdAddrMask), |(wr_data & EfRdEnMask), ef_pen_q);
-        if (ef_rg_case(
-                16'(wr_data & EfRdAddrMask), |(wr_data & EfRdEnMask), ef_pen_q
-            ) == 4'd6) begin
+        ef_rg_cs <= ef_rg_case(ef_rg_addr16, |(wr_data & EfRdEnMask), ef_pen_q);
+        if (ef_rg_case(ef_rg_addr16, |(wr_data & EfRdEnMask), ef_pen_q) == 4'd6) begin
           ef_be_arm <= 1'b1;
           ef_be_rcmd <= ef_aw_rcmd_v;
         end
@@ -37099,7 +37743,8 @@ module sep_fcov (
               )) begin
             // Refused only on a known efuse_req_error of 1.
             ef_lk(1, {(rd_data & EfReqErrMask) !== EfReqErrMask, 7'((s - 6'd1) * 2 + 1)});
-            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b1, ef_wlock(s), 1'b1}));
+            ef_lk(2, 8'({(rd_data & EfReqErrMask) !== EfReqErrMask, 1'b0, 1'b1, ef_wlock(s), 1'b1
+                  }));
           end
         end
         if (ef_rg_idle_open && (((ef_rg_cnt >= EfReqWait) && ef_idle && (ef_rg_cs != 4'd6)) ||
@@ -37203,7 +37848,7 @@ module sep_fcov (
           bad = (rd_data != ef_word(off[9:0]));
           if (bad || (ef_word(off[9:0]) != 32'h0)) begin
             ef_lk(1, {bad, 7'((s - 6'd1) * 2)});
-            ef_lk(2, 8'({bad, 1'b0, ef_wlock(s), 1'b1}));
+            ef_lk(2, 8'({bad, 1'b0, 1'b0, ef_wlock(s), 1'b1}));
             if (!ef_wlock(s) && !bad) begin
               if (ef_wlock(s - 6'd1) || ef_rlock(s - 6'd1)) ef_lk(3, 8'd1);
               sn = s + 6'd1;
@@ -37323,6 +37968,121 @@ module sep_fcov (
     end
   end
 
+  // ---------------------------------------------------------------------
+  // JTAG source of x_kind_op (program) and x_shadow_write_lock, lock leaf
+  // only. A JTAG write is qualified by the state at its JTAG AW: the LOCKS
+  // words, sense done, secure_tm_i and, for a program go, efuse_req_error
+  // known 0. The address, the W data and the target word before the write
+  // are the JTAG latches ef_sw_jaw, ef_sw_jw and ef_sw_jpre. A JTAG program
+  // go (known B response) lands when a program command to its bit address reaches the
+  // shim after its AW; the outcome is taken at the first frontdoor STATUS
+  // read with program_busy 0 at least EfReqWait clocks after the B. A JTAG
+  // shadow write is compared EfWrSettle clocks after its B; a second JTAG
+  // write that completes inside the settle drops the first.
+  // ---------------------------------------------------------------------
+  logic [95:0] ef_ja_locks = '0;  // {LOCKS_SPARE, LOCKS} at the JTAG AW
+  logic ef_ja_ok = 1'b0;  // sense done and secure_tm_i known 0
+  logic ef_ja_rqe = 1'b0;  // efuse_req_error not known 0
+  logic ef_ja_pcmd_v = 1'b0;  // a program command reached the shim since the JTAG AW
+  logic [12:0] ef_ja_pcmd_addr = '0;
+  logic ef_jg_v = 1'b0, ef_jg_seen = 1'b0, ef_jg_wl = 1'b0, ef_jg_rl = 1'b0;
+  logic [15:0] ef_jg_addr = '0;
+  int unsigned ef_jg_cnt = 0;
+  logic ef_jsw_v = 1'b0, ef_jsw_wl = 1'b0;
+  logic [1:0] ef_jsw_f = '0;
+  logic [9:0] ef_jsw_off = '0;
+  logic [31:0] ef_jsw_pre = '0, ef_jsw_data = '0;
+  int unsigned ef_jsw_cnt = 0;
+
+  function automatic logic ef_ja_lock(input logic [95:0] l, input logic [5:0] s, input logic r);
+    if (s < 6'd32) return l[2*s+r];
+    if (s < 6'(EfSlots)) return l[64+2*(s-6'd32)+r];
+    return 1'b0;
+  endfunction
+
+  always @(posedge clk_i) begin
+    logic j_b, wl;
+    logic [5:0] s;
+    logic [10:0] off;
+    logic [15:0] pa;
+    logic [31:0] now;
+    if ((jtag_req_i.aw_valid === 1'b1) && (jtag_resp_i.aw_ready === 1'b1)) begin
+      ef_ja_locks <= {ef_locks_sp, ef_locks};
+      ef_ja_ok <= (fuse_sense_done_i === 1'b1) && (secure_tm_i === 1'b0);
+      ef_ja_rqe <= (req_err_i !== 1'b0);
+      ef_ja_pcmd_v <= ef_cmd_pg;
+      ef_ja_pcmd_addr <= ef_cmd_addr;
+    end else if (ef_cmd_pg) begin
+      ef_ja_pcmd_v <= 1'b1;
+      ef_ja_pcmd_addr <= ef_cmd_addr;
+    end
+    j_b = (jtag_resp_i.b_valid === 1'b1) && (jtag_req_i.b_ready === 1'b1);
+    if (in_reset) begin
+      ef_jg_v <= 1'b0;
+      ef_jsw_v <= 1'b0;
+    end else if (j_b) begin
+      ef_jg_v <= 1'b0;
+      ef_jsw_v <= 1'b0;
+      if (ef_own_lock && ef_ja_ok) begin
+        pa = 16'(ef_sw_jw & EfPgAddrMask);
+        s = ef_slot_of({1'b0, pa[12:3]});
+        // Program go with program_enable and data 1 to a fuse bit of a field.
+        if (!ef_ja_rqe && (ef_sw_jaw == EfPgCtrl) && !$isunknown(
+                jtag_resp_i.b.resp
+            ) && !$isunknown(
+                ef_sw_jw
+            ) && ((ef_sw_jw & EfPgGoMask) != 32'h0) && ((ef_sw_jw & EfPgEnMask) != 32'h0) &&
+                ((ef_sw_jw & EfPgDataMask) != 32'h0) && (pa < 16'(EfFuseBits)) && (s != EfNoSlot) &&
+                (s != 6'd0)) begin
+          ef_jg_v <= 1'b1;
+          ef_jg_addr <= pa;
+          ef_jg_wl <= ef_ja_lock(ef_ja_locks, s, 1'b0);
+          ef_jg_rl <= ef_ja_lock(ef_ja_locks, s, 1'b1);
+          ef_jg_seen <= ef_ja_pcmd_v && (16'(ef_ja_pcmd_addr) == pa);
+          ef_jg_cnt <= 0;
+        end
+        // Shadow write of a new bit to SIP_DIS, SYS_DIS, REQUIRED_SIGNERS or
+        // REQUIRED_ALGS.
+        off = 11'(ef_sw_jaw - EfMapBase);
+        s = ef_slot_of(off);
+        if ((ef_win(
+                ef_sw_jaw
+            ) == EfWShadow) && (s inside {EfSlotSipDis, EfSlotSysDis, EfSlotSigners, EfSlotAlgs}) &&
+                !$isunknown(
+                {ef_sw_jw, ef_sw_jpre}
+            ) && ((ef_sw_jw & ~ef_sw_jpre) != 32'h0)) begin
+          ef_jsw_v <= 1'b1;
+          ef_jsw_cnt <= 0;
+          ef_jsw_off <= off[9:0];
+          ef_jsw_pre <= ef_sw_jpre;
+          ef_jsw_data <= ef_sw_jw;
+          ef_jsw_wl <= ef_ja_lock(ef_ja_locks, s, 1'b0);
+          ef_jsw_f <= (s == EfSlotSipDis) ? 2'd0 : (s == EfSlotSysDis) ? 2'd1 :
+              (s == EfSlotSigners) ? 2'd2 : 2'd3;
+        end
+      end
+    end else begin
+      if (ef_jg_v) begin
+        if (ef_cmd_pg && (16'(ef_cmd_addr) == ef_jg_addr)) ef_jg_seen <= 1'b1;
+        if (ef_jg_cnt < EfReqWait) ef_jg_cnt <= ef_jg_cnt + 1;
+        if (ef_status_rd && (efuse_program_busy_i === 1'b0) && (ef_jg_cnt >= EfReqWait)) begin
+          ef_jg_v <= 1'b0;
+          ef_lk(2, 8'({ef_jg_seen == ef_jg_wl, 1'b1, ef_jg_rl, ef_jg_wl, 1'b0}));
+        end
+      end
+      if (ef_jsw_v && (ef_jsw_cnt < EfWrSettle)) begin
+        ef_jsw_cnt <= ef_jsw_cnt + 1;
+      end else if (ef_jsw_v) begin
+        ef_jsw_v <= 1'b0;
+        now = ef_word(ef_jsw_off);
+        wl = ef_jsw_wl;
+        ef_lk(6, 8'({
+              wl ? (now !== ef_jsw_pre) : (now !== (ef_jsw_pre | ef_jsw_data)), 1'b1, ef_jsw_f, wl
+              }));
+      end
+    end
+  end
+
   // cp_sense_fills_locked and cp_round_count at sense done. The previous
   // sensed copy survives the cold reset between two senses.
   logic [EfFuseBits-1:0] ef_rc_prev = '0;
@@ -37421,7 +38181,7 @@ module sep_fcov (
                 ef_pw_data
             ) && ((ef_pw_data & ~pre) != 32'h0)) begin
           wr_ok = wl ? (now === pre) : (now === (pre | ef_pw_data));
-          ef_lk(6, 8'({!wr_ok, f, wl}));
+          ef_lk(6, 8'({!wr_ok, 1'b0, f, wl}));
           if (!wl && wr_ok) ef_lk(7, 8'd0);
           if (wl && wr_ok) ef_lk(7, 8'd1);
         end
@@ -37700,7 +38460,7 @@ module sep_fcov (
                   ef_tc(2, {1'b0, code == EfCodeMatch, 4'(c * 3) + 4'(ef_go_shape[c])});
                 if ((c < 2) && ef_go_sensed[c] && (code == EfCodeMatch))
                   ef_tc(3, {3'd0, 2'(c), 1'b1});
-                if (ef_go_replay[c]) ef_rob(0, {2'(c), code == EfCodeMatch});
+                if (ef_go_replay[c]) ef_rob(0, {1'b0, 2'(c), code == EfCodeMatch});
               end
               if (ef_go_others_ok[c] && (ef_code[o1] === ef_code_q[o1]) &&
                   (ef_code[o2] === ef_code_q[o2]))
@@ -38037,13 +38797,13 @@ module sep_fcov (
       ef_ss_cnt <= ef_ss_cnt + 1;
       if ((efuse_sdis_hold_bound != 0) && (ef_ss_cnt + 1 == efuse_sdis_hold_bound)) begin
         if (ef_own_sdt && !ef_ss_bad && (efuse_shadow_i === ef_ss_snap)) begin
-          ef_rob(1, {2'b00, ef_ss_phase});
+          ef_rob(1, {3'b000, ef_ss_phase});
           // cp_reset_values_hold: at the end of the same bounded hold, in the
           // window that starts at a reset release, when every shadow word read
           // its reset value (0x0F for the LC_STATE word, 0 for every other
           // word) at the release and on every clock of the hold. A design that senses under the match loads a word
           // inside the bound, so the bin cannot fill on the release clock.
-          if (ef_ss_phase && (ef_ss_snap == EfShadowResetValue)) ef_rob(3, 3'd1);
+          if (ef_ss_phase && (ef_ss_snap == EfShadowResetValue)) ef_rob(3, 4'd1);
         end
       end
     end
@@ -38386,11 +39146,11 @@ module sep_fcov (
     if (!ef_own_ovr || in_reset) begin
       ef_xs_pend <= 1'b0;
     end else if (ovr_pass_rise[1] && ef_xs_pend) begin
-      ef_rob(4, 3'b000);
+      ef_rob(4, 4'b0000);
       ef_xs_pend <= 1'b0;
     end
     if (cond && (!ef_xs_q || ((secure_tm_i === 1'b1) != ef_xs_stm_q))) begin
-      if ((secure_tm_i === 1'b1) && ef_own_stmss) ef_rob(4, 3'b001);
+      if ((secure_tm_i === 1'b1) && ef_own_stmss) ef_rob(4, 4'b0001);
       else if ((secure_tm_i === 1'b0) && ef_own_ovr) ef_xs_pend <= 1'b1;
     end
   end
@@ -39400,6 +40160,7 @@ module sep_fcov (
   // eFuse program control (efuse_interface_ctrl.adoc), at its SEP address.
   localparam logic [31:0] KmEfPgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
   localparam logic [31:0] KmEfPgGo = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK;
+  localparam logic [31:0] KmEfPgAddr = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_REG_ADDR;
   // DRBG sampler DATA-read states (architecture.adoc, table "Key Manager
   // DRBG sampler states"): idle, request, byte assembly, respond, timeout,
   // stream error.
@@ -40129,12 +40890,13 @@ module sep_fcov (
     // with 0xBADCAB1E)}.
     cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
       bins shadow_okay = {4'b000_0};
+      bins shadow_slverr = {4'b000_1};
       bins ctrl_okay = {4'b001_0};
       bins token_okay = {4'b010_0};
       bins gap_1141c_slverr = {4'b011_1};
       bins gap_11574_slverr = {4'b100_1};
       bins reserved_11600_slverr = {4'b101_1};
-      ignore_bins no_such_response = {4'b000_1, 4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
+      ignore_bins no_such_response = {4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
     }
     // {path (0 KM, 1 host), class (0 unlocked spare, 1 write-locked field, 2
     // secure test strap set)}.
@@ -40666,6 +41428,48 @@ module sep_fcov (
   sep_km_sideload_delivery_cg  u_sep_km_sideload_delivery_cg  = new();
   sep_km_abr_shared_key_cg     u_sep_km_abr_shared_key_cg     = new();
   sep_km_vault_wipe_cg         u_sep_km_vault_wipe_cg         = new();
+
+  // ---------------------------------------------------------------------
+  // S-box inputs of the KM SRAM scrambler (sep_km_sram_scrambler_key_rand_test).
+  // The leaf writes km_sbox_in through the u_sep_fcov handle, one accepted
+  // scrambled store of its 64-store run at a time, after the checks of that
+  // run pass: bit 45 valid, [44:32] the 13-bit plaintext word index, [31:0]
+  // W ^ Rkey from its plan and the specification round key. The sampler
+  // samples on each rise of bit 45. A data lane is the S-box input of that
+  // nibble (hw/ip/scrambler/doc/architecture.adoc, "Scrambling"). An address
+  // lane is the plaintext lane value; all 64 stores use one key, so every
+  // value of a lane maps to every S-box input value of that lane, whatever
+  // key bits the address path XORs. km_sbox_in is a model value, never a
+  // DUT value, and drives nothing.
+  // ---------------------------------------------------------------------
+  covergroup sep_km_sram_sbox_in_cg with function sample (logic [44:0] s);
+    option.per_instance = 1;
+    option.name = "sep_km_sram_sbox_in_cg";
+    cp_data_lane0: coverpoint s[3:0] {bins val[] = {[0 : 15]};}
+    cp_data_lane1: coverpoint s[7:4] {bins val[] = {[0 : 15]};}
+    cp_data_lane2: coverpoint s[11:8] {bins val[] = {[0 : 15]};}
+    cp_data_lane3: coverpoint s[15:12] {bins val[] = {[0 : 15]};}
+    cp_data_lane4: coverpoint s[19:16] {bins val[] = {[0 : 15]};}
+    cp_data_lane5: coverpoint s[23:20] {bins val[] = {[0 : 15]};}
+    cp_data_lane6: coverpoint s[27:24] {bins val[] = {[0 : 15]};}
+    cp_data_lane7: coverpoint s[31:28] {bins val[] = {[0 : 15]};}
+    // Word index lanes [12:9] (sbox4), [8:6], [5:3], [2:0] (sbox3).
+    cp_addr_lane0: coverpoint s[44:41] {
+      bins val[] = {[0 : 15]};
+    }
+    cp_addr_lane1: coverpoint s[40:38] {bins val[] = {[0 : 7]};}
+    cp_addr_lane2: coverpoint s[37:35] {bins val[] = {[0 : 7]};}
+    cp_addr_lane3: coverpoint s[34:32] {bins val[] = {[0 : 7]};}
+  endgroup
+
+  sep_km_sram_sbox_in_cg u_sep_km_sram_sbox_in_cg = new();
+  logic [45:0] km_sbox_in = '0;
+  logic km_sbox_in_q = 1'b0;
+  always @(posedge clk_i) begin
+    km_sbox_in_q <= (km_sbox_in[45] === 1'b1);
+    if (km_own_scr && (km_sbox_in[45] === 1'b1) && !km_sbox_in_q && !$isunknown(km_sbox_in))
+      u_sep_km_sram_sbox_in_cg.sample(km_sbox_in[44:0]);
+  end
 
   // ---------------------------------------------------------------------
   // Pass label of sep_km_cpu_protect_rand_test (km_cpu_pass, bits Kcp*).
@@ -42801,6 +43605,11 @@ module sep_fcov (
   logic [13:0] km_pg_cnt = '0;
   logic km_pg_host = 1'b0, km_pg_tm = 1'b0, km_pg_busy_seen = 1'b0;
   logic [2:0] km_pg_tgt = '0;
+  // Mirror of EFUSE_PROGRAM_ADDR, written by an OKAY write of the KM path or
+  // the host: a go programs the last address written before it. An address
+  // above 16 bits saturates to 16'hFFFF, which is in no field.
+  logic [31:0] km_pg_addr_q = '0;
+  wire [15:0] km_pg_addr16 = (km_pg_addr_q > 32'h0000_FFFF) ? 16'hFFFF : 16'(km_pg_addr_q);
   logic km_pg_err_seen = 1'b0;
   logic km_pg_err_aw = 1'b0;  // efuse_req_err at the start of the last KM write
   logic km_pg_err0 = 1'b0;  // efuse_req_err at the start of the go write
@@ -42844,6 +43653,13 @@ module sep_fcov (
         end
       end else km_pg_cnt <= km_pg_cnt + 14'd1;
     end
+    if (kw_ev && (kw_resp == KmOkay) &&
+        (kw_addr == KmEfCtrlBase + (KmEfPgAddr - EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)))
+      km_pg_addr_q <= (kw_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK) >>
+          EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT;
+    else if (wr_ev && (aw_addr_q == KmEfPgAddr))
+      km_pg_addr_q <= (wr_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_MASK) >>
+          EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_ADDR_EFUSE_ADDR_SHIFT;
     if (kw_ev && (kw_addr == KmEfCtrlBase + (KmEfPgCtrl - EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR)) &&
         |(kw_data & KmEfPgGo)) begin
       km_pg_cnt <= 14'd1;
@@ -42854,9 +43670,7 @@ module sep_fcov (
       km_pg_busy_seen <= 1'b0;
       km_pg_err_seen <= 1'b0;
       km_pg_err0 <= km_pg_err_aw;
-      km_pg_tgt <= km_ef_target(16'((kw_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_MASK) >>
-                                    EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_ADDR_SHIFT),
-                                {ef_locks_sp, ef_locks});
+      km_pg_tgt <= km_ef_target(km_pg_addr16, {ef_locks_sp, ef_locks});
     end else if (wr_ev && (aw_addr_q == KmEfPgCtrl) && |(wr_data & KmEfPgGo)) begin
       km_pg_cnt <= 14'd1;
       km_pg_host <= 1'b1;

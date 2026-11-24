@@ -75,6 +75,24 @@ class smu_test_cfg extends ocah_test_cfg;
   bit debug_control_tdr_negative;  // +SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE
   bit boot_gate_negative;  // +SMU_BOOT_GATE_SCOREBOARD_NEGATIVE
   bit j2a_ref_model_negative;  // +SMU_J2A_SCOREBOARD_NEGATIVE
+  bit mbx_jtag_ready_negative;  // +SMU_MBX_JTAG_READY_NEGATIVE
+  bit mbx_status_negative;  // +SMU_MBX_STATUS_NEGATIVE
+  bit mbx_err_flags_negative;  // +SMU_MBX_ERR_FLAGS_NEGATIVE
+  bit mbx_irqen_negative;  // +SMU_MBX_IRQEN_NEGATIVE
+  bit mbx_irqen_clr_negative;  // +SMU_MBX_IRQEN_CLR_NEGATIVE
+  bit wdt_sanity_gate_open_negative;  // +SMU_WDT_SANITY_GATE_OPEN_NEGATIVE
+  bit wdt_cmp_default_negative;  // +SMU_WDT_CMP_DEFAULT_NEGATIVE
+  bit wdt_ctrl_locked_negative;  // +SMU_WDT_CTRL_LOCKED_NEGATIVE
+  bit wdt_key_unlocked_negative;  // +SMU_WDT_KEY_UNLOCKED_NEGATIVE
+  bit wdt_ctrl_unlocked_negative;  // +SMU_WDT_CTRL_UNLOCKED_NEGATIVE
+  bit wdt_unlock_negative;  // +SMU_WDT_UNLOCK_NEGATIVE
+  bit wdt_restore_negative;  // +SMU_WDT_RESTORE_NEGATIVE
+  bit wdt_to_gate_open_negative;  // +SMU_WDT_TO_GATE_OPEN_NEGATIVE
+  bit wdt_to_cmp_negative;  // +SMU_WDT_TO_CMP_NEGATIVE
+  bit wdt_to_ip0_pre_negative;  // +SMU_WDT_TO_IP0_PRE_NEGATIVE
+  bit wdt_to_en_negative;  // +SMU_WDT_TO_EN_NEGATIVE
+  bit wdt_ip0_negative;  // +SMU_WDT_IP0_NEGATIVE
+  bit wdt_to_restore_negative;  // +SMU_WDT_TO_RESTORE_NEGATIVE
 
   // --- evidence policy of the env-owned aggregate JTAG recorder ----------
   smu_evidence_policy_t jtag_policy;
@@ -98,6 +116,24 @@ class smu_test_cfg extends ocah_test_cfg;
     debug_control_tdr_negative = ocah_knobs::is_set("SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE");
     boot_gate_negative         = ocah_knobs::is_set("SMU_BOOT_GATE_SCOREBOARD_NEGATIVE");
     j2a_ref_model_negative     = ocah_knobs::is_set("SMU_J2A_SCOREBOARD_NEGATIVE");
+    mbx_jtag_ready_negative = ocah_knobs::is_set("SMU_MBX_JTAG_READY_NEGATIVE");
+    mbx_status_negative = ocah_knobs::is_set("SMU_MBX_STATUS_NEGATIVE");
+    mbx_err_flags_negative = ocah_knobs::is_set("SMU_MBX_ERR_FLAGS_NEGATIVE");
+    mbx_irqen_negative = ocah_knobs::is_set("SMU_MBX_IRQEN_NEGATIVE");
+    mbx_irqen_clr_negative = ocah_knobs::is_set("SMU_MBX_IRQEN_CLR_NEGATIVE");
+    wdt_sanity_gate_open_negative = ocah_knobs::is_set("SMU_WDT_SANITY_GATE_OPEN_NEGATIVE");
+    wdt_cmp_default_negative = ocah_knobs::is_set("SMU_WDT_CMP_DEFAULT_NEGATIVE");
+    wdt_ctrl_locked_negative = ocah_knobs::is_set("SMU_WDT_CTRL_LOCKED_NEGATIVE");
+    wdt_key_unlocked_negative = ocah_knobs::is_set("SMU_WDT_KEY_UNLOCKED_NEGATIVE");
+    wdt_ctrl_unlocked_negative = ocah_knobs::is_set("SMU_WDT_CTRL_UNLOCKED_NEGATIVE");
+    wdt_unlock_negative = ocah_knobs::is_set("SMU_WDT_UNLOCK_NEGATIVE");
+    wdt_restore_negative = ocah_knobs::is_set("SMU_WDT_RESTORE_NEGATIVE");
+    wdt_to_gate_open_negative = ocah_knobs::is_set("SMU_WDT_TO_GATE_OPEN_NEGATIVE");
+    wdt_to_cmp_negative = ocah_knobs::is_set("SMU_WDT_TO_CMP_NEGATIVE");
+    wdt_to_ip0_pre_negative = ocah_knobs::is_set("SMU_WDT_TO_IP0_PRE_NEGATIVE");
+    wdt_to_en_negative = ocah_knobs::is_set("SMU_WDT_TO_EN_NEGATIVE");
+    wdt_ip0_negative = ocah_knobs::is_set("SMU_WDT_IP0_NEGATIVE");
+    wdt_to_restore_negative = ocah_knobs::is_set("SMU_WDT_TO_RESTORE_NEGATIVE");
   endfunction
 
   // Arm the aggregate JTAG recorder: zero checks or a missing ID fails.
@@ -112,7 +148,8 @@ class smu_test_cfg extends ocah_test_cfg;
           "%s ref_clk_period_ns=%0d smu_clk_period_ns=%0d periph_clk_period_ns=%0d ",
           "sep_wdt_clk_period_ns=%0d tck_period_ns=%0d settle_cycles=%0d idcode_negative=%0d ",
           "ic_reset_negative=%0d debug_control_negative=%0d boot_gate_negative=%0d ",
-          "j2a_negative=%0d"
+          "j2a_negative=%0d mbx_negative=%0d%0d%0d%0d%0d ",
+          "wdt_sanity_negative=%0d%0d%0d%0d%0d%0d%0d wdt_timeout_negative=%0d%0d%0d%0d%0d%0d"
         },
         super.convert2string(),
         ref_clk_period_ns,
@@ -125,7 +162,25 @@ class smu_test_cfg extends ocah_test_cfg;
         ic_reset_tdr_negative,
         debug_control_tdr_negative,
         boot_gate_negative,
-        j2a_ref_model_negative
+        j2a_ref_model_negative,
+        mbx_jtag_ready_negative,
+        mbx_status_negative,
+        mbx_err_flags_negative,
+        mbx_irqen_negative,
+        mbx_irqen_clr_negative,
+        wdt_sanity_gate_open_negative,
+        wdt_cmp_default_negative,
+        wdt_ctrl_locked_negative,
+        wdt_key_unlocked_negative,
+        wdt_ctrl_unlocked_negative,
+        wdt_unlock_negative,
+        wdt_restore_negative,
+        wdt_to_gate_open_negative,
+        wdt_to_cmp_negative,
+        wdt_to_ip0_pre_negative,
+        wdt_to_en_negative,
+        wdt_ip0_negative,
+        wdt_to_restore_negative
     );
   endfunction
 

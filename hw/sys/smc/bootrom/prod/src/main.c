@@ -23,11 +23,8 @@ int main(void) {
     /* Boot announcement */
     simputs("=== SMC Production ROM v1.0 ===\n");
 
-    /* NOTE: MBIST and memory repair status validation has already been
-     * performed in assembly startup code (__metal_mbist_early_check and
-     * __metal_memory_repair_check) before any stack operations.
-     * If we reach this point, memory integrity has been validated.
-     * Scratchpad register 15 contains MBIST status (0x600DCAFE = passed). */
+    /* Scratch register 15 holds the boot hart's memory-health result: 0x600DCAFE, a bypass
+     * code, or a failure or MBIST abort code that SMC_CONFIG.dft_ignore_error let through. */
 
     /* Phase 0: Initialize POST codes and basic systems */
     smc_post_code_init();

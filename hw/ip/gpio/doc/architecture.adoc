@@ -79,7 +79,9 @@ The LSIO return path uses the unsynchronized pad input while either LSIO
 request is active. This return path is independent of the data/direction
 priority: a software LSIO request can enable readback even when registers
 own an output field. During cold reset, the LSIO return path also carries
-the pad input.
+the pad input. Otherwise it carries `LSIO_PAD2CORE_IDLE`, which an
+integration sets to the idle level of the function the pad carries, so a
+peripheral whose pads are not selected sees its inputs at rest.
 
 === SMC Pad Ring
 

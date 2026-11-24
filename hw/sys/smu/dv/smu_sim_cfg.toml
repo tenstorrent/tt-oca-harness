@@ -219,6 +219,7 @@ sources = [
   "hw/sys/smu/dv/cov/sv/smu_fcov_sep_csr_pkg.sv",
   "hw/sys/smu/dv/cov/sv/smu_remap_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_filter_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lifecycle_fcov.sv",
 ]
 
 [build.verilator]
@@ -746,6 +747,7 @@ incdirs = [
   "hw/sys/smc/regs/gen/svh",
   "hw/sys/sep/regs/gen/svh",
   "hw/sys/dtp/dv/uvm/env",
+  "hw/sys/dtp/dv/uvm/seq_lib",
   "hw/sys/smu/dv/uvm/env",
   "hw/sys/smu/dv/uvm/seq_lib",
   "hw/sys/smu/dv/uvm/tests",
@@ -786,6 +788,7 @@ sources = [
   "hw/sys/smu/dv/cov/sv/smu_fcov_sep_csr_pkg.sv",
   "hw/sys/smu/dv/cov/sv/smu_remap_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_filter_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lifecycle_fcov.sv",
   # The embedded DTP's bench layer: its bench configuration package (dtp_types reads the
   # bridge geometries and the IDCODE it publishes), its three TB interface partitions (the
   # reference models and the TAP checker read the DTP observables through them; dtp_env
@@ -797,6 +800,7 @@ sources = [
   "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
   "hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
+  "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
   # The SMU bench.
   "hw/sys/smu/dv/tb/smu_tb_if.sv",
   "hw/sys/smu/dv/uvm/env/smu_env_pkg.sv",
@@ -823,6 +827,6 @@ build_dir = "hw/sys/smu/dv/build/uvm"
 # The SV-UVM view reports its coverage figures against a policy with the same
 # scope and exclusion files as the cocotb view's and no `[[thresholds]]` row:
 # a threshold rule scopes to a tool and a target, both views compile
-# compile_smu_chiplet, and the five SV-UVM leaves are not the set the cocotb
+# compile_smu_chiplet, and the eight SV-UVM leaves are not the set the cocotb
 # policy's `user` floor is written for.
 policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_wrapper_uvm_coverage_policy.toml"

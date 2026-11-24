@@ -26,6 +26,18 @@ import logging
 
 from cocotb.triggers import ClockCycles
 
+# The register the ROM's early checks read (DFX_CTRL_STATUS_SMU_REG_ADDR in smc_rom_defs.h).
+DFX_CTRL_STATUS_SMU = 0xC000_B800
+# dfx_ctrl_status.rdl fields of that register.
+DFX_FIELDS = {
+    "mem_repair_done": 0,
+    "mem_repair_success": 1,
+    "mem_repair_abort": 2,
+    "mbist_done": 4,
+    "mbist_pass": 8,
+    "mbist_abort": 12,
+}
+
 # Written by the ROM into scratch 15 while the check is still running.
 MBIST_STATUS_IN_PROGRESS = 0x1234_5678
 
@@ -34,11 +46,57 @@ MBIST_STATUS_MEM_REPAIR_FAIL = 0xBADC_0FFE
 MBIST_STATUS_MBIST_FAIL = 0xDEAD_BEEF
 MBIST_STATUS_MBIST_TIMEOUT = 0xDEAD_C0DE
 
+# Final scratch 15 values when a bypass strap skips a check.
+MBIST_STATUS_MEM_REPAIR_BYPASSED = 0x1234_0001
+MBIST_STATUS_MEM_BIST_BYPASSED = 0x1234_0002
+
 EXPECTED_STATUS = {
     "mem_repair_fail": MBIST_STATUS_MEM_REPAIR_FAIL,
     "mbist_fail": MBIST_STATUS_MBIST_FAIL,
     "mbist_timeout": MBIST_STATUS_MBIST_TIMEOUT,
 }
+
+# The DFX_CTRL_STATUS_SMU fields each scenario's line pattern must latch.
+SCENARIO_FIELDS = {
+    "mem_repair_fail": {
+        "mem_repair_done": 1,
+        "mem_repair_success": 0,
+        "mem_repair_abort": 0,
+        "mbist_done": 1,
+        "mbist_pass": 1,
+        "mbist_abort": 0,
+    },
+    "mbist_fail": {
+        "mem_repair_done": 1,
+        "mem_repair_success": 1,
+        "mem_repair_abort": 0,
+        "mbist_done": 1,
+        "mbist_pass": 0,
+        "mbist_abort": 0,
+    },
+    "mbist_timeout": {
+        "mem_repair_done": 1,
+        "mem_repair_success": 1,
+        "mem_repair_abort": 0,
+        "mbist_done": 1,
+        "mbist_pass": 0,
+        "mbist_abort": 1,
+    },
+    "mbist_and_mem_repair_fail": {
+        "mem_repair_done": 1,
+        "mem_repair_success": 0,
+        "mem_repair_abort": 0,
+        "mbist_done": 1,
+        "mbist_pass": 0,
+        "mbist_abort": 0,
+    },
+}
+
+FUSE_SENSE_WAIT_CYCLES = 200_000
+
+
+def dfx_fields(value: int) -> dict[str, int]:
+    return {name: (value >> bit) & 1 for name, bit in DFX_FIELDS.items()}
 
 
 class SmcDftStatusDriver:
@@ -52,41 +110,44 @@ class SmcDftStatusDriver:
         self.log = logging.getLogger("cocotb.dft_status")
 
     def report(self, scenario: str) -> None:
-        """Drive the line pattern for one scenario, in the ROM's read order.
+        """Drive the line pattern for one scenario.
 
         Call after bring_up() and before the target's release_cpu(): the lines have to
         carry the result when the ROM first reads DFX_CTRL_STATUS, which is early in its
-        boot.
-
-        mem repair reports first because the ROM reads it first; a mem-repair failure is
-        expected to stop the boot before MBIST matters, but MBIST is still reported so the
-        ROM's second check sees a real result rather than the skip path.
+        boot. There is no separate timeout input: the ROM's timeout branch is entered on
+        done with pass low and abort high.
         """
-        if scenario not in EXPECTED_STATUS:
+        if scenario not in SCENARIO_FIELDS:
             raise AssertionError(
                 f"unknown DFT scenario {scenario!r}; expected one of "
-                f"{', '.join(sorted(EXPECTED_STATUS))}"
+                f"{', '.join(sorted(SCENARIO_FIELDS))}"
             )
+        self.harness.set_dft_result(self.instance, **SCENARIO_FIELDS[scenario])
+        self.log.info("%s reported DFT scenario %s", self.instance, scenario)
 
-        self.harness.set_dft_result(
-            self.instance,
-            mem_repair_done=1,
-            mem_repair_success=0 if scenario == "mem_repair_fail" else 1,
+    async def read_smc_config(self) -> int:
+        """The instance's SMC_CONFIG eFuse shadow, read once fuse sensing completes."""
+        # smc_occp_dual_defs, which every caller imports first, puts smc_reg on sys.path.
+        from smc_reg import SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+
+        done = getattr(self.harness.dut, f"{self.instance}_fuse_sense_done_o")
+        for _ in range(FUSE_SENSE_WAIT_CYCLES):
+            if int(done.value):
+                return await self.csr.read("SMC_CONFIG", SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR)
+            await ClockCycles(self.clk, 1)
+        raise AssertionError(
+            f"{self.instance} fuse_sense_done never rose within {FUSE_SENSE_WAIT_CYCLES} cycles"
         )
 
-        if scenario == "mbist_timeout":
-            # There is no separate timeout input. The ROM's timeout branch is entered on
-            # done with pass low and abort high.
-            self.harness.set_dft_result(self.instance, mbist_pass=0, mbist_abort=1, mbist_done=1)
-        else:
-            self.harness.set_dft_result(
-                self.instance,
-                mbist_abort=0,
-                mbist_pass=0 if scenario == "mbist_fail" else 1,
-                mbist_done=1,
+    def check_status_register(self, scenario: str, value: int) -> None:
+        """Fail unless DFX_CTRL_STATUS_SMU latched exactly the scenario's line pattern."""
+        seen = dfx_fields(value)
+        if seen != SCENARIO_FIELDS[scenario]:
+            raise AssertionError(
+                f"{self.instance}: DFX_CTRL_STATUS_SMU={value:#010x} decodes to {seen}, but "
+                f"{scenario} drives {SCENARIO_FIELDS[scenario]}; the ROM would branch on lines "
+                "this test did not report"
             )
-
-        self.log.info("%s reported DFT scenario %s", self.instance, scenario)
 
     async def wait_for_status(
         self, scenario: str, scratch_addr: int, poll_iters: int, poll_cycles: int

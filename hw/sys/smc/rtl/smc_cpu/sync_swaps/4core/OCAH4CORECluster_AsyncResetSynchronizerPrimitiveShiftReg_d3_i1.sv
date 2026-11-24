@@ -15,7 +15,7 @@ module OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i1 (
   output io_q                           // Synchronized data bit, held high while reset is high.
 );
 
-  wire io_setbypass, io_set_synced, reset_n;
+  wire io_set_synced, reset_n;
 
   prim_inv u_reset_inv (
     .in_i  (reset),
@@ -32,14 +32,7 @@ module OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i1 (
   prim_or2 u_setbypass_or (
     .in0_i (io_set_synced),
     .in1_i (reset),
-    .out_o (io_setbypass)
-  );
-
-  prim_rst_mux2_hf_n u_setbypass (
-    .rst0_ni(io_setbypass),
-    .rst1_ni(1'b0),
-    .sel_i  (1'b0),
-    .rst_no (io_q)
+    .out_o (io_q)
   );
 
 endmodule

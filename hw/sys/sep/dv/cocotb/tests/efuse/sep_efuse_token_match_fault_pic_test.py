@@ -44,7 +44,7 @@ comes before the firmware prints ``CHK-PIC-CLAIM PASS``. The line also logs
 
 The leaf applies no reset after the fault, so the clear is
 ``INFO-RAS-TOKEN_MATCH_FAULT-CLEAR``; the rise delay after the inject is
-``OBS-RAS-TOKEN_MATCH_FAULT-DELAY``.
+``INFO-RAS-TOKEN_MATCH_FAULT-DELAY``.
 """
 
 from __future__ import annotations
@@ -169,7 +169,7 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
             clocks_after_inject_release=held_after_release,
             exp_min=_RAS_HOLD_CYCLES,
         )
-        chk.obs(
+        chk.info(
             f"{_RAS}-DELAY", inject_to_rise_clk=rise - m_inj.clk if rise is not None else "none"
         )
         chk.info(

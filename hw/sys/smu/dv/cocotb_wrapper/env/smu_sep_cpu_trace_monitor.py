@@ -13,9 +13,11 @@ so a wrapper run that hangs, traps, or fails reports more than a PC profile:
     calls (``jal``/``jalr``/``c.jal``/``c.jalr`` linking ra/t0), returns
     (``jalr``/``c.jr`` through ra/t0), and ``mret``, maintaining a call stack
     that symbolizes into a firmware backtrace from the staged nm listing.
-  * **Trap records** -- a retirement flagged as an exception is captured with
-    ecause/interrupt/tval and pushed as a synthetic stack frame (popped by
-    ``mret``), so a backtrace shows the trap and where it hit.
+  * **Trap records** -- a retirement flagged as an exception is counted, kept
+    (the most recent ``_TRAP_RECORDS``) with ecause/interrupt/tval and pushed
+    as a synthetic stack frame (popped by ``mret``), so a backtrace shows the
+    trap and where it hit. The first ``_TRAP_WARN_LIMIT`` traps after each SEP
+    reset release are logged as warnings; the rest are tallied only.
   * **Hang watch** -- after the first retirement, a long retirement-free gap
     out of reset logs a one-shot warning with a full dump. Diagnostic only:
     a core idling in ``wfi`` or a terminal loop is legitimate.
@@ -73,6 +75,8 @@ _MCAUSE_NAMES = {
 
 _RING_DEPTH = 512
 _STACK_CAP = 64
+_TRAP_RECORDS = 64
+_TRAP_WARN_LIMIT = 8
 # A PC this far past the nearest preceding symbol is not inside that function:
 # it falls in the gap between two loaded images. Report bare hex instead.
 _MAX_SYM_OFF = 0x1_0000
@@ -206,7 +210,9 @@ class SmuSepCpuTraceMonitor(uvm_component):
         # Index 0 is the outermost frame.
         self.stack: list[_CallFrame | _TrapFrame] = []
         self.max_depth = 0
-        self.trap_events: list[TrapRecord] = []
+        self.trap_count = 0
+        self.trap_events: deque[TrapRecord] = deque(maxlen=_TRAP_RECORDS)
+        self._traps_warned = 0
         self.reset_flushes = 0
         self.resync_notes = 0
         self._fill_target = False
@@ -253,16 +259,25 @@ class SmuSepCpuTraceMonitor(uvm_component):
                 top.target = r.pc
             self._fill_target = False
         if r.exc:
+            self.trap_count += 1
             self.trap_events.append(TrapRecord(r.cycle, r.pc, r.ecause, r.interrupt, r.tval))
             self._push(_TrapFrame(r.pc, r.ecause, r.interrupt, r.tval))
-            self.logger.warning(
-                "trap at cycle %d: %s pc=0x%08x (%s) tval=0x%08x",
-                r.cycle,
-                _cause_str(r.ecause, r.interrupt),
-                r.pc,
-                self.symbolize(r.pc),
-                r.tval,
-            )
+            if self._traps_warned < _TRAP_WARN_LIMIT:
+                self._traps_warned += 1
+                tail = (
+                    "; further traps are tallied, not logged, until the next SEP reset"
+                    if self._traps_warned == _TRAP_WARN_LIMIT
+                    else ""
+                )
+                self.logger.warning(
+                    "trap at cycle %d: %s pc=0x%08x (%s) tval=0x%08x%s",
+                    r.cycle,
+                    _cause_str(r.ecause, r.interrupt),
+                    r.pc,
+                    self.symbolize(r.pc),
+                    r.tval,
+                    tail,
+                )
             return
         flow = _decode_flow(r.insn)
         if flow is None:
@@ -342,6 +357,7 @@ class SmuSepCpuTraceMonitor(uvm_component):
                     self.reset_flushes += 1
                 was_in_reset = True
                 idle = 0
+                self._traps_warned = 0
                 continue
             was_in_reset = False
             if self._rd(sig["sep_trace_valid_o"]):
@@ -386,7 +402,7 @@ class SmuSepCpuTraceMonitor(uvm_component):
             self.last_pc,
             self.symbolize(self.last_pc),
             self.max_depth,
-            len(self.trap_events),
+            self.trap_count,
             self.reset_flushes,
             self.resync_notes,
         )

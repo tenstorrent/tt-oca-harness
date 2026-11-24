@@ -91,6 +91,15 @@ timeout_sec = 1800
 tags = ["ci", "irq", "ext"]
 run_modes = ["smoke"]
 
+# Wrapper ext_interrupts_i[255:17] through the synchronizer, one input at a time and all at once.
+[[tests]]
+name = "smc_ext_irq_upper_walk_test"
+module = "smc_ext_irq_upper_walk_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "ext"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "irq"
 tests = [
@@ -105,6 +114,7 @@ tests = [
     "smc_hang_detector_window_rand_test",
     "smc_temp_interrupt_test",
     "smc_ext_interrupts_pin_test",
+    "smc_ext_irq_upper_walk_test",
 ]
 
 [[tests]]

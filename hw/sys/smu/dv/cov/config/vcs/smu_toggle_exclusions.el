@@ -1132,9 +1132,9 @@ Toggle ext_trng_axil_req_o.aw.addr [27:24] "logic ext_trng_axil_req_o.aw.addr[31
 Toggle 1to0 ext_trng_axil_req_o.aw.addr [28] "logic ext_trng_axil_req_o.aw.addr[31:0]"
 Toggle ext_trng_axil_req_o.aw.addr [31:29] "logic ext_trng_axil_req_o.aw.addr[31:0]"
 
-ANNOTATION: "SMU-TGL-EFUSE-COMMAND-LENGTH: bits [7:1] of the fuse-command word count. The read and program interfaces ask for one word (efuse_read_interface.sv 144, efuse_program_interface.sv 158) and the sense for the whole shadow file, 256 words of the 8192-bit arrays (efuse_shadow_regs.sv 57, 428-429; sep_efuse_pkg.sv 291, smc_efuse_pkg.sv 124), so only bits 0 and 8 move. Retired by a fuse-command source that asks for another word count."
-Toggle smc_efuse_shim_command_req_o.access_length_words [7:1] "logic smc_efuse_shim_command_req_o.access_length_words[8:0]"
-Toggle sep_efuse_shim_command_req_o.access_length_words [7:1] "logic sep_efuse_shim_command_req_o.access_length_words[8:0]"
+ANNOTATION: "SMU-TGL-EFUSE-COMMAND-LENGTH: bits [5:1] and [12:8] of the SMC fuse-command word count, which is 13 bits wide to count the harness map and the largest supplementary region (smc_efuse_pkg.sv 99-101, 110). The read and program interfaces ask for one word (efuse_read_interface.sv 152, efuse_program_interface.sv 164) and the sense for the 64 harness words plus the 128 words of the example supplementary region that smu_wrapper enables by default, 192 words (efuse_shadow_regs.sv 517-518; smu_wrapper.sv 41; smc_supplementary_fuse_example_pkg.sv 15), so only bits 0, 6 and 7 move. Retired by a fuse-command source that asks for another word count."
+Toggle smc_efuse_shim_command_req_o.read_word_count [5:1] "logic smc_efuse_shim_command_req_o.read_word_count[12:0]"
+Toggle smc_efuse_shim_command_req_o.read_word_count [12:8] "logic smc_efuse_shim_command_req_o.read_word_count[12:0]"
 
 ANNOTATION: "SMU-TGL-SMC-EXTERNAL-WINDOW: address bits [29:23] of the SMC external window. The SMC peripheral crossbar sends only 0xC040_0000-0xC07F_FFFF there (smc_periph_axi_lite_xbar.sv 145-149, smc_addr.h SMC_TOP_SMC_EXTERNAL), where those bits are 0. Retired by an SMC external window that moves or grows past 4 MiB."
 Toggle smc_external_req_o.ar.addr [29:23] "logic smc_external_req_o.ar.addr[31:0]"
@@ -2003,9 +2003,9 @@ Toggle ext_trng_axil_req.aw.addr [27:24] "logic ext_trng_axil_req.aw.addr[31:0]"
 Toggle 1to0 ext_trng_axil_req.aw.addr [28] "logic ext_trng_axil_req.aw.addr[31:0]"
 Toggle ext_trng_axil_req.aw.addr [31:29] "logic ext_trng_axil_req.aw.addr[31:0]"
 
-ANNOTATION: "SMU-TGL-EFUSE-COMMAND-LENGTH: bits [7:1] of the fuse-command word count. The read and program interfaces ask for one word (efuse_read_interface.sv 144, efuse_program_interface.sv 158) and the sense for the whole shadow file, 256 words of the 8192-bit arrays (efuse_shadow_regs.sv 57, 428-429; sep_efuse_pkg.sv 291, smc_efuse_pkg.sv 124), so only bits 0 and 8 move. Retired by a fuse-command source that asks for another word count."
-Toggle smc_efuse_shim_command_req.access_length_words [7:1] "logic smc_efuse_shim_command_req.access_length_words[8:0]"
-Toggle sep_efuse_shim_command_req.access_length_words [7:1] "logic sep_efuse_shim_command_req.access_length_words[8:0]"
+ANNOTATION: "SMU-TGL-EFUSE-COMMAND-LENGTH: bits [5:1] and [12:8] of the SMC fuse-command word count, which is 13 bits wide to count the harness map and the largest supplementary region (smc_efuse_pkg.sv 99-101, 110). The read and program interfaces ask for one word (efuse_read_interface.sv 152, efuse_program_interface.sv 164) and the sense for the 64 harness words plus the 128 words of the example supplementary region that smu_wrapper enables by default, 192 words (efuse_shadow_regs.sv 517-518; smu_wrapper.sv 41; smc_supplementary_fuse_example_pkg.sv 15), so only bits 0, 6 and 7 move. Retired by a fuse-command source that asks for another word count."
+Toggle smc_efuse_shim_command_req.read_word_count [5:1] "logic smc_efuse_shim_command_req.read_word_count[12:0]"
+Toggle smc_efuse_shim_command_req.read_word_count [12:8] "logic smc_efuse_shim_command_req.read_word_count[12:0]"
 
 ANNOTATION: "SMU-TGL-SMC-EXTERNAL-WINDOW: address bits [29:23] of the SMC external window. The SMC peripheral crossbar sends only 0xC040_0000-0xC07F_FFFF there (smc_periph_axi_lite_xbar.sv 145-149, smc_addr.h SMC_TOP_SMC_EXTERNAL), where those bits are 0. Retired by an SMC external window that moves or grows past 4 MiB."
 Toggle smc_external_req.ar.addr [29:23] "logic smc_external_req.ar.addr[31:0]"

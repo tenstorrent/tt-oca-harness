@@ -519,7 +519,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
         finally:
             close_graded_window(self.logger)
             if getattr(self, "drbg_sb", None) is not None:
-                self.drbg_sb.stop()
+                await self.drbg_sb.stop()
         await self.acc.stop()
         self.chk.finish()
 
@@ -538,7 +538,7 @@ class sep_drbg_sink_mix_rand_test(sep_base_test):
 
     async def _end_run(self) -> None:
         await self.stop_fifo_drain()
-        self.drbg_sb.stop()
+        await self.drbg_sb.stop()
 
     async def _until(self, pred, bound: int) -> int | None:
         for n in range(bound + 1):

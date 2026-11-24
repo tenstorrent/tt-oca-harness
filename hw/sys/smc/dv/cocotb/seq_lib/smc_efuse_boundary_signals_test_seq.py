@@ -4,7 +4,7 @@
 
 Expected-value provenance:
 
-* ``LOCKS`` -- read from ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run
+* ``HARNESS_LOCKS`` -- read from ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run
   time via ``efuse_preload_word_at`` rather than a hand-transcribed literal,
   which cannot detect the asset and the model disagreeing. That asset is what
   ``efuse_bank_model.sv`` ``$readmemh``s under the bench-wide
@@ -13,8 +13,8 @@ Expected-value provenance:
   ([NO-UNJUSTIFIED-PRELOAD]).
 * ``EFUSE_PROGRAM_INTERFACE_READ_DATA`` -- the generated RDL reset
   ``EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset``
-  (``hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h``); no program read-back
-  has been issued in this testcase, so the register must still hold it. That
+  (``hw/ip/efuse/regs/gen/c/efuse_interface_ctrl.h``); no program has been
+  issued in this testcase, so the register must still hold it. That
   reset is ``0x0`` and the field is ``sw = r``, so this compare is a
   transport/decode probe and **not** a liveness proof: a dead or unmapped
   window satisfies it equally. Since the field is driven only in the program
@@ -38,7 +38,7 @@ from .smc_addr_map import efuse_ifc_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
 
-LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
 PROG_IF_RD = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_BASE_ADDR")
 PROG_IF_RD_RESET = efuse_ifc_u32(
@@ -169,9 +169,9 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
         else:
             raise AssertionError(f"RELEASE: tb_rst_warm_smc_clk_n stayed 0 last={last_warm}")
 
-        # Exact expectation from the generated RDL reset: no program read-back
-        # has been issued in this testcase, so DOUT must still be at its reset
-        # value ([EXACT-EXPECTATION]).
+        # Exact expectation from the generated RDL reset: no program has been
+        # issued in this testcase, so DOUT must still be at its reset value
+        # ([EXACT-EXPECTATION]).
         prog = await self.csr_read("EFUSE_PROG_IF_RD", PROG_IF_RD, expected=PROG_IF_RD_RESET)
         # Positive control for the compare above (see the PROG_IF_RD_RESET note):
         # the writable sibling at +0x14 in the same register block is read at
