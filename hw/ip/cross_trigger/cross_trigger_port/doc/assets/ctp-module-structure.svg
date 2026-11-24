@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1009" viewBox="0 0 1040 1009" role="img" aria-labelledby="title desc">
 <title id="title">Cross Trigger Port module structure</title>
-<desc id="desc">Gate-level structure of cross_trigger_port. The u_reg CSR block, reached over AXI-Lite, drives the named nets mode_wire_or_i, invert_i, handshake_reset_i and stretch_mult_i into u_core, the cross_trigger_port_core instance. In u_core, ct_src_i feeds u_pulse_stretcher, and u_handshake_ctrl through an AND gate whose other, inverted input is mode_wire_or_i. The handshake controller is reset by the OR of handshake_reset_i and mode_wire_or_i. Seven 2:1 muxes, each selected by mode_wire_or_i, choose the pad controls: input 1, drawn upper, is taken in wire-OR mode and input 0, drawn lower, in point-to-point mode. Each mux output is registered before it reaches a GPIO pad. The CT_Req_out pad output enable is the stretched pulse in wire-OR mode and 1 in point-to-point mode; its output data is invert_i in wire-OR mode and the handshake request XOR invert_i in point-to-point mode. The CT_Ack_out pad drives the handshake acknowledge XOR invert_i in point-to-point mode and is disabled in wire-OR mode. Pad inputs from CT_Req_out, CT_Ack_in and CT_Req_in pass through two synchroniser registers and an XOR with invert_i. The synchronised CT_Req_out input feeds a falling-edge detector (a register and an AND gate with one inverted input) that gives the wire-OR received pulse. CT_Ack_in and CT_Req_in feed the handshake controller through AND gates with p2p_din_valid, the registered CT_Req_in pad input enable delayed by two more registers; the ungated CT_Req_in level also feeds u_edge_detector, whose output is unused. Two more mode_wire_or_i muxes on the left select busy_o (stretched pulse or handshake busy) and ct_dst_o (wire-OR pulse or handshake pulse), each registered.</desc>
+<desc id="desc">Gate-level structure of cross_trigger_port. The u_reg CSR block, reached over AXI-Lite, drives the named nets mode_i, invert_i, handshake_reset_i and stretch_mult_i into u_core, the cross_trigger_port_core instance, where mode_wire_or is high while mode_i selects wire-OR. The CSRs select only wire-OR and point-to-point mode, so the toggle-mode logic of the core is not drawn. In u_core, ct_src_i feeds u_pulse_stretcher, and u_handshake_ctrl through an AND gate whose other, inverted input is mode_wire_or. The handshake controller is reset by the OR of handshake_reset_i and mode_wire_or. Seven 2:1 muxes, each selected by mode_wire_or, choose the pad controls: input 1, drawn upper, is taken in wire-OR mode and input 0, drawn lower, in point-to-point mode. Each mux output is registered before it reaches a GPIO pad. The CT_Req_out pad output enable is the stretched pulse in wire-OR mode and 1 in point-to-point mode; its output data is invert_i in wire-OR mode and the handshake request XOR invert_i in point-to-point mode. The CT_Ack_out pad drives the handshake acknowledge XOR invert_i in point-to-point mode and is disabled in wire-OR mode. Pad inputs from CT_Req_out, CT_Ack_in and CT_Req_in pass through two synchroniser registers and an XOR with invert_i. The synchronised CT_Req_out input feeds a falling-edge detector (a register and an AND gate with one inverted input) that gives the wire-OR received pulse. CT_Ack_in and CT_Req_in feed the handshake controller through AND gates with din_valid, the registered CT_Req_in pad input enable delayed by two more registers; the ungated CT_Req_in level also feeds u_edge_detector, whose output pulses ct_dst_o only in toggle mode. Two more mode_wire_or muxes on the left select busy_o (stretched pulse or handshake busy) and ct_dst_o (wire-OR pulse or handshake pulse), each registered.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -99,7 +99,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="140" y="78" text-anchor="start">cross_trigger_port_reg</text>
 <text class="s" x="350" y="82" text-anchor="middle">CONFIG.MODE</text>
 <path class="sigplain" d="M350,92 L350,106"/>
-<text class="net" x="356" y="108" text-anchor="start">mode_wire_or_i</text>
+<text class="net" x="356" y="108" text-anchor="start">mode_i</text>
 <text class="s" x="490" y="82" text-anchor="middle">CONFIG.INVERT</text>
 <path class="sigplain" d="M490,92 L490,106"/>
 <text class="net" x="496" y="108" text-anchor="start">invert_i</text>
@@ -154,7 +154,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="mx" x="789" y="212" text-anchor="middle">1</text>
 <text class="mx" x="789" y="227" text-anchor="middle">0</text>
 <path class="sigo" d="M792,183 L792,195"/>
-<text class="net" x="787" y="193" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="787" y="193" text-anchor="end">mode_wire_or</text>
 <text class="s" x="768" y="228.5" text-anchor="end">1</text>
 <path class="sigplain" d="M771,224 L780,224"/>
 <path class="sigo" d="M804,215 L823,215"/>
@@ -164,7 +164,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="mx" x="789" y="272" text-anchor="middle">1</text>
 <text class="mx" x="789" y="287" text-anchor="middle">0</text>
 <path class="sigo" d="M792,243 L792,255"/>
-<text class="net" x="787" y="253" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="787" y="253" text-anchor="end">mode_wire_or</text>
 <text class="net" x="768" y="270.5" text-anchor="end">invert_i</text>
 <path class="sigplain" d="M771,266 L780,266"/>
 <path class="sigo" d="M804,275 L823,275"/>
@@ -174,7 +174,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="mx" x="789" y="332" text-anchor="middle">1</text>
 <text class="mx" x="789" y="347" text-anchor="middle">0</text>
 <path class="sigo" d="M792,303 L792,315"/>
-<text class="net" x="787" y="313" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="787" y="313" text-anchor="end">mode_wire_or</text>
 <text class="s" x="768" y="330.5" text-anchor="end">1</text>
 <path class="sigplain" d="M771,326 L780,326"/>
 <text class="s" x="768" y="348.5" text-anchor="end">0</text>
@@ -186,7 +186,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="mx" x="789" y="437" text-anchor="middle">1</text>
 <text class="mx" x="789" y="452" text-anchor="middle">0</text>
 <path class="sigo" d="M792,408 L792,420"/>
-<text class="net" x="787" y="418" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="787" y="418" text-anchor="end">mode_wire_or</text>
 <text class="s" x="768" y="435.5" text-anchor="end">0</text>
 <path class="sigplain" d="M771,431 L780,431"/>
 <text class="s" x="768" y="453.5" text-anchor="end">1</text>
@@ -198,7 +198,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="mx" x="789" y="592" text-anchor="middle">1</text>
 <text class="mx" x="789" y="607" text-anchor="middle">0</text>
 <path class="sigo" d="M792,563 L792,575"/>
-<text class="net" x="787" y="573" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="787" y="573" text-anchor="end">mode_wire_or</text>
 <text class="s" x="768" y="590.5" text-anchor="end">0</text>
 <path class="sigplain" d="M771,586 L780,586"/>
 <text class="s" x="768" y="608.5" text-anchor="end">1</text>
@@ -210,7 +210,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="mx" x="789" y="697" text-anchor="middle">1</text>
 <text class="mx" x="789" y="712" text-anchor="middle">0</text>
 <path class="sigo" d="M792,668 L792,680"/>
-<text class="net" x="787" y="678" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="787" y="678" text-anchor="end">mode_wire_or</text>
 <text class="s" x="768" y="695.5" text-anchor="end">0</text>
 <path class="sigplain" d="M771,691 L780,691"/>
 <text class="s" x="768" y="713.5" text-anchor="end">1</text>
@@ -222,7 +222,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="mx" x="789" y="757" text-anchor="middle">1</text>
 <text class="mx" x="789" y="772" text-anchor="middle">0</text>
 <path class="sigo" d="M792,728 L792,740"/>
-<text class="net" x="787" y="738" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="787" y="738" text-anchor="end">mode_wire_or</text>
 <text class="s" x="768" y="755.5" text-anchor="end">0</text>
 <path class="sigplain" d="M771,751 L780,751"/>
 <path class="sigo" d="M804,760 L823,760"/>
@@ -288,13 +288,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M330,222 L330,460 L362,460"/>
 <path class="sigplain" d="M250,476 L305,476"/>
 <path class="sigo" d="M315,476 L355,476"/>
-<text class="net" x="246" y="480.5" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="246" y="480.5" text-anchor="end">mode_wire_or</text>
 <path class="sigo" d="M395,468 L417,468"/>
 <path class="gate" d="M268,140.64 L292,132 L292,168 L268,159.36 Z"/>
 <text class="mx" x="283" y="147" text-anchor="middle">1</text>
 <text class="mx" x="283" y="162" text-anchor="middle">0</text>
 <path class="sigo" d="M280,182 L280,170"/>
-<text class="net" x="275" y="184" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="275" y="184" text-anchor="end">mode_wire_or</text>
 <rect class="reg" x="208" y="135" width="28" height="30" rx="2"/>
 <path class="sigplain" d="M217,165 L222,158 L227,165"/>
 <path class="sigo" d="M268,150 L239,150"/>
@@ -302,7 +302,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="mx" x="283" y="386" text-anchor="middle">1</text>
 <text class="mx" x="283" y="401" text-anchor="middle">0</text>
 <path class="sigo" d="M280,421 L280,409"/>
-<text class="net" x="275" y="423" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="275" y="423" text-anchor="end">mode_wire_or</text>
 <rect class="reg" x="208" y="374" width="28" height="30" rx="2"/>
 <path class="sigplain" d="M217,404 L222,397 L227,404"/>
 <path class="sigo" d="M268,389 L239,389"/>
@@ -322,7 +322,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M412,845 L431,845"/>
 <text class="net" x="408" y="849.5" text-anchor="end">handshake_reset_i</text>
 <path class="sigo" d="M412,865 L431,865"/>
-<text class="net" x="408" y="869.5" text-anchor="end">mode_wire_or_i</text>
+<text class="net" x="408" y="869.5" text-anchor="end">mode_wire_or</text>
 <path class="sigo" d="M466,855 L495,855 L495,818"/>
 <path class="sigplain" d="M420,440 L350,440"/>
 <path class="sigplain" d="M350,440 L350,227"/>
@@ -350,11 +350,11 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M862,595 L862,530 L831,530"/>
 <path class="sigo" d="M800,530 L781,530"/>
 <path class="sigplain" d="M750,530 L645,530"/>
-<text class="s" x="652" y="524" text-anchor="start">p2p_din_valid</text>
+<text class="s" x="652" y="524" text-anchor="start">din_valid</text>
 <path class="sigo" d="M570,769 L657,769"/>
 <rect class="core" x="576" y="662" width="110" height="44" rx="6"/>
 <text class="s" x="631" y="680.5" text-anchor="middle">u_edge_detector</text>
-<text class="si" x="631" y="697.5" text-anchor="middle">output unused</text>
+<text class="si" x="631" y="697.5" text-anchor="middle">toggle mode only</text>
 <circle cx="660" cy="640" r="3.5" fill="#5b6670"/>
 <path class="sigo" d="M660,640 L660,659"/>
 <path class="sigo" d="M695,380 L613,380"/>
