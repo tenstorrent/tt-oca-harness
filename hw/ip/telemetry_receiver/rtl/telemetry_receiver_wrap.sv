@@ -5,16 +5,21 @@
 //
 // Register accesses and the receivers use clk_i / rst_ni; ATB streams use clk_telemetry_i /
 // rst_telemetry_ni.
-// Receiver i decodes at TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR plus i times
-// TELEMETRY_RECEIVER_0__REG_MAP_SIZE; other addresses get DECERR with read data 0xBADCAB1E.
+// Receiver i owns the TELEMETRY_RECEIVER_0__REG_MAP_STRIDE-byte slot at
+// TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR plus i times the stride. The first
+// TELEMETRY_RECEIVER_0__REG_MAP_SIZE bytes of the slot reach the receiver; the rest of the slot
+// gets SLVERR with read data 0 and never reaches it. Addresses outside every slot get DECERR
+// with read data 0xBADCAB1E.
 // The demux allows one outstanding transaction per channel.
-// Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async. afready_i passes
+// Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async carrying {atid, atdata}
+// beats. atready_o is that FIFO's wready_o: it is low only while the FIFO is full, and high
+// otherwise, including while the write side is in reset. afready_i passes
 // through a 2-flop synchronizer clocked by clk_telemetry_i, and afvalid_o through one
 // clocked by clk_i.
-// Either reset clears both sides of every ATB FIFO; atready_o stays high while the write side
-// is in reset, so beats offered then are dropped.
+// Either reset clears both sides of every ATB FIFO; beats offered while the write side is in
+// reset are dropped, since the FIFO does not store them.
 // NUM_TELEMETRY_RECEIVERS must be between 1 and MaxNumTelemetryReceivers.
-// NumRegMaps is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
+// NumRegMaps is NUM_TELEMETRY_RECEIVERS plus the two error slaves.
 // Each receiver's debug nibble matches telemetry_receiver's four-bit debug bus.
 
 module telemetry_receiver_wrap #(
@@ -22,13 +27,16 @@ module telemetry_receiver_wrap #(
   parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 32, // Per-receiver beat FIFO depth.
 
   parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0,   // Instance 0 register-map byte base address.
-  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0,   // Per-instance register-map size in bytes; instances are
-                                                                                                               // contiguous.
+  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_STRIDE    = 0,   // Byte spacing between instance base addresses.
+  parameter bit [telemetry_receiver_wrap_pkg::RegAddrWidth-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0,   // Per-instance register-map size in bytes; at most the
+                                                                                                               // stride.
 
-  localparam int unsigned NumRegMaps                               = NUM_TELEMETRY_RECEIVERS + 1, // Decode targets: instances + error slave.
+  localparam int unsigned NumRegMaps                               = NUM_TELEMETRY_RECEIVERS + 2, // Decode targets: instances + two error slaves.
   localparam type         telemetry_receiver_wrap_reg_map_select_t = logic [$clog2(NumRegMaps)-1:0], // Register-map select type.
 
-  localparam telemetry_receiver_wrap_reg_map_select_t UndefinedRegMap = // Select index for the error slave.
+  localparam telemetry_receiver_wrap_reg_map_select_t PastEndRegMap = // Select index for the SLVERR slave.
+        telemetry_receiver_wrap_reg_map_select_t'(NumRegMaps-2),
+  localparam telemetry_receiver_wrap_reg_map_select_t UndefinedRegMap = // Select index for the DECERR slave.
         telemetry_receiver_wrap_reg_map_select_t'(NumRegMaps-1)
 ) (
   input  logic clk_i,                                       // Register-domain clock; also clocks
@@ -49,7 +57,7 @@ module telemetry_receiver_wrap #(
 
   input  telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0] atdata_i, // Per-receiver ATB data, in the clk_telemetry_i domain.
   input  telemetry_receiver_pkg::atb_id_t         [NUM_TELEMETRY_RECEIVERS-1:0] atid_i, // Per-receiver ATB ID; crosses into clk_i and is stored with each beat.
-  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atready_o, // Per-receiver ATB ready; high while the crossing FIFO has space.
+  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atready_o, // Per-receiver ATB ready; low only while the crossing FIFO is full.
   input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atvalid_i, // Per-receiver ATB valid.
   output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afvalid_o, // Per-receiver ATB flush valid.
   input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afready_i, // Per-receiver ATB flush ready.
@@ -82,13 +90,23 @@ module telemetry_receiver_wrap #(
     axil_ar_select = UndefinedRegMap;
 
     for (int i = 0; i < NUM_TELEMETRY_RECEIVERS; i++) begin
-      if (axil_req_i.aw.addr >= TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_SIZE &&
-                axil_req_i.aw.addr <  TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + (i + 1) * TELEMETRY_RECEIVER_0__REG_MAP_SIZE) begin
-        axil_aw_select = telemetry_receiver_wrap_reg_map_select_t'(i);
+      if (axil_req_i.aw.addr >= TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_STRIDE &&
+                axil_req_i.aw.addr <  TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + (i + 1) * TELEMETRY_RECEIVER_0__REG_MAP_STRIDE) begin
+        if (axil_req_i.aw.addr < TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_STRIDE +
+                                 TELEMETRY_RECEIVER_0__REG_MAP_SIZE) begin
+          axil_aw_select = telemetry_receiver_wrap_reg_map_select_t'(i);
+        end else begin
+          axil_aw_select = PastEndRegMap;
+        end
       end
-      if (axil_req_i.ar.addr >= TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_SIZE &&
-                axil_req_i.ar.addr <  TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + (i + 1) * TELEMETRY_RECEIVER_0__REG_MAP_SIZE) begin
-        axil_ar_select = telemetry_receiver_wrap_reg_map_select_t'(i);
+      if (axil_req_i.ar.addr >= TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_STRIDE &&
+                axil_req_i.ar.addr <  TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + (i + 1) * TELEMETRY_RECEIVER_0__REG_MAP_STRIDE) begin
+        if (axil_req_i.ar.addr < TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR + i * TELEMETRY_RECEIVER_0__REG_MAP_STRIDE +
+                                 TELEMETRY_RECEIVER_0__REG_MAP_SIZE) begin
+          axil_ar_select = telemetry_receiver_wrap_reg_map_select_t'(i);
+        end else begin
+          axil_ar_select = PastEndRegMap;
+        end
       end
     end
   end
@@ -137,6 +155,24 @@ module telemetry_receiver_wrap #(
 
     .axil_req_i     (axil_reqs [UndefinedRegMap]),
     .axil_resp_o    (axil_resps[UndefinedRegMap])
+  );
+
+  prim_axi_lite_err_slv #(
+    .AXI_ADDR_WIDTH (telemetry_receiver_wrap_pkg::RegAddrWidth),
+    .AXI_DATA_WIDTH (telemetry_receiver_wrap_pkg::RegDataWidth),
+    .axil_req_t     (telemetry_receiver_wrap_pkg::axil_req_t),
+    .axil_resp_t    (telemetry_receiver_wrap_pkg::axil_resp_t),
+    .RESP           (axi_pkg::RESP_SLVERR),
+    .RESP_WIDTH     (telemetry_receiver_wrap_pkg::RegDataWidth),
+    .RESP_DATA      (32'h0),
+    .MAX_TRANS      (1)
+  ) u_past_end_err_slv (
+    .clk_i,
+    .rst_ni,
+    .test_en_i,
+
+    .axil_req_i     (axil_reqs [PastEndRegMap]),
+    .axil_resp_o    (axil_resps[PastEndRegMap])
   );
 
 
@@ -300,6 +336,9 @@ module telemetry_receiver_wrap #(
   `OCAH_ASSERT_STATIC(
       paramCheckNumTelemetryReceivers_A,
       NUM_TELEMETRY_RECEIVERS > 0 && NUM_TELEMETRY_RECEIVERS <= telemetry_receiver_wrap_pkg::MaxNumTelemetryReceivers)
+  `OCAH_ASSERT_STATIC(
+      paramCheckRegMapSize_A,
+      TELEMETRY_RECEIVER_0__REG_MAP_SIZE > 0 && TELEMETRY_RECEIVER_0__REG_MAP_SIZE <= TELEMETRY_RECEIVER_0__REG_MAP_STRIDE)
 
   `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(AtreadyKnownO_A, atready_o)

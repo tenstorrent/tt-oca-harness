@@ -30,27 +30,8 @@
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>BUFFER_POP</ipxact:name>
-              <ipxact:description>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
-Writing `1` pops the buffer and thus updates the data in the
-`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`
-registers.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>write-only</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
               <ipxact:name>TELEMETRY_RX_FLUSH</ipxact:name>
-              <ipxact:description>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
-pointer. Stored payload bytes are not cleared. In particular, a later short
-message can retain trailing counter values and validity from an earlier
-message. This operation does not erase storage.</ipxact:description>
+              <ipxact:description>Telemetry Receiver Flush. Writing `1` discards all beats queued in the buffer.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -67,7 +48,9 @@ message. This operation does not erase storage.</ipxact:description>
 transmitter. The flushing is done via the ATB AF interface. This bit clears
 itself when the transmitter acknowledges the flush. Writing `0` while a
 flush is pending withdraws the request, so other fields of this register
-must be updated with a read-modify-write while the bit is set.</ipxact:description>
+must be updated with a read-modify-write while the bit is set. The
+transmitter can finish a flush only while the buffer has space, so firmware
+must read `TELEMETRY_DATA` while this bit is set.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -80,11 +63,9 @@ must be updated with a read-modify-write while the bit is set.</ipxact:descripti
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>BUFFER_THRESHOLD</ipxact:name>
-              <ipxact:description>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
-asserted when the number of entries in the buffer is greater than this value.
-Only the low log2(queue depth)+1 bits are compared, so values alias modulo
-twice the queue depth, and only values below the queue depth can assert the
-interrupt.</ipxact:description>
+              <ipxact:description>Telemetry Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
+asserted when the number of beats in the buffer is greater than this value.
+Only values below the buffer depth can assert the interrupt.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -102,7 +83,7 @@ interrupt.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUFFER_EMPTY</ipxact:name>
-              <ipxact:description>Telemetry Message Buffer Empty.</ipxact:description>
+              <ipxact:description>Telemetry Buffer Empty. Set when the buffer holds no beats.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -115,7 +96,7 @@ interrupt.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>BUFFER_FULL</ipxact:name>
-              <ipxact:description>Telemetry Message Buffer Full.</ipxact:description>
+              <ipxact:description>Telemetry Buffer Full. Set when the buffer holds the maximum number of beats.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -133,25 +114,9 @@ interrupt.</ipxact:description>
             <ipxact:addressOffset>'h8</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>MISSING_LAST</ipxact:name>
-              <ipxact:description>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
-received a Last Packet flag when the maximum number of packets a message can
-consist of has been received.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
               <ipxact:name>BUFFER_THRESHOLD</ipxact:name>
-              <ipxact:description>Telemetry Message Buffer Threshold Interrupt. Asserted when the number of
-telemetry messages in the Telemetry Message Buffer is greater than
+              <ipxact:description>Telemetry Buffer Threshold Interrupt. Asserted when the number of beats in the
+buffer is greater than
 `CTRL.BUFFER_THRESHOLD`.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
@@ -170,20 +135,8 @@ telemetry messages in the Telemetry Message Buffer is greater than
             <ipxact:addressOffset>'hc</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>MISSING_LAST</ipxact:name>
-              <ipxact:description>Last Packet Missing Interrupt Enable.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
               <ipxact:name>BUFFER_THRESHOLD</ipxact:name>
-              <ipxact:description>Telemetry Message Buffer Threshold Interrupt Enable.</ipxact:description>
+              <ipxact:description>Telemetry Buffer Threshold Interrupt Enable.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -200,21 +153,8 @@ telemetry messages in the Telemetry Message Buffer is greater than
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>MISSING_LAST</ipxact:name>
-              <ipxact:description>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>write-only</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
               <ipxact:name>BUFFER_THRESHOLD</ipxact:name>
-              <ipxact:description>Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the
+              <ipxact:description>Telemetry Buffer Threshold Interrupt Test. Writing `1` forces the
 interrupt and writing `0` releases it.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
@@ -227,65 +167,53 @@ interrupt and writing `0` releases it.</ipxact:description>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>TELEMETRY_PROBE_ID</ipxact:name>
-            <ipxact:description>Telemetry Probe ID Register</ipxact:description>
+            <ipxact:name>TELEMETRY_DATA</ipxact:name>
+            <ipxact:description>Telemetry Data Register. One read returns `DATA`, `ATID` and `VALID` of the oldest beat
+in the buffer and removes that beat. A read while the buffer is empty returns
+`0x0000_0000` and removes nothing.</ipxact:description>
             <ipxact:addressOffset>'h14</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>PROBE_ID</ipxact:name>
-              <ipxact:description>Probe ID. Contains the Probe ID field of the telemetry message at the bottom of
-the Telemetry Message Buffer.</ipxact:description>
+              <ipxact:name>DATA</ipxact:name>
+              <ipxact:description>ATB Data. Contains `atdata` of the oldest beat in the buffer.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>5</ipxact:bitWidth>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-only</ipxact:access>
+              <ipxact:readAction>modify</ipxact:readAction>
             </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>TELEMETRY_COUNTER_VLDS</ipxact:name>
-            <ipxact:description>Telemetry Counter Valid Bits Register</ipxact:description>
-            <ipxact:addressOffset>'h18</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>COUNTER_VLDS</ipxact:name>
-              <ipxact:description>Counter Valid Bits. Indicates which of the counter values in the telemetry
-message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for
-the `i`-th counter.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:name>ATID</ipxact:name>
+              <ipxact:description>ATB ID. Contains `atid` of the oldest beat in the buffer.</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:bitWidth>7</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-only</ipxact:access>
+              <ipxact:readAction>modify</ipxact:readAction>
             </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>TELEMETRY_COUNTER</ipxact:name>
-            <ipxact:description>Telemetry Counter Register</ipxact:description>
-            <ipxact:dim>32</ipxact:dim>
-            <ipxact:addressOffset>'h80</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>COUNTER</ipxact:name>
-              <ipxact:description>Counter Value. Contains one of the 32 counter values in the telemetry message
-at the bottom of the Telemetry Message Buffer.</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:name>VALID</ipxact:name>
+              <ipxact:description>Beat Valid. Set when the buffer holds a beat, so `DATA` and `ATID` are valid.</ipxact:description>
+              <ipxact:bitOffset>31</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-only</ipxact:access>
+              <ipxact:readAction>modify</ipxact:readAction>
             </ipxact:field>
           </ipxact:register>
         </ipxact:registerFile>
