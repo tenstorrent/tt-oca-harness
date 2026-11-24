@@ -149,10 +149,9 @@ class smc_lock_pipelined_write_test_seq extends smc_wdt_base_test_seq;
         if (op.complete && op.overlap) overlapped_legs++;
         if (k inside {P1, P5}) begin
           int unsigned gap = op.b_gap.size() > 0 ? op.b_gap[0] : 0;
-          check_evidence(ChkBhold, k == P5 ?
-                         $sformatf("%s first B held >= %0d cycles (gap=%0d)", op.label,
-                                   HoldCycles, gap) :
-                         $sformatf("%s first B not held (gap=%0d)", op.label, gap),
+          check_evidence(ChkBhold, k == P5 ? $sformatf(
+                         "%s first B held >= %0d cycles (gap=%0d)", op.label, HoldCycles, gap
+                         ) : $sformatf("%s first B not held (gap=%0d)", op.label, gap),
                          64'(gap >= HoldCycles), 64'(k == P5));
         end
         csr_read(smc_wdt_addr(core, WDT_COUNT), observed, "WDT count after pipeline");

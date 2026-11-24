@@ -97,8 +97,8 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     mem_read(SmcZeroerSizeAddr, size_value, "Zeroer size armed");
     mem_read(SmcZeroerDestAddr, dest_value, "Zeroer destination armed");
     prerequisite(ChkSetup, size_value == WindowBytes && dest_value == destination,
-                 "Zeroer command armed", $sformatf("size=%h destination=%h", size_value,
-                 dest_value));
+                 "Zeroer command armed", $sformatf("size=%h destination=%h", size_value, dest_value
+                 ));
   endtask
 
   protected task inspect_window(output bit unchanged, output int unsigned zero_words,

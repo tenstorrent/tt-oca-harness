@@ -81,11 +81,10 @@ class smc_lock_pipeline_write_seq extends ocah_axi_master_sequence;
           !ops[i].timed_out && ops[i].resp_list.size() == 1;
       if (i < aw_at.size() && i < w_at.size() && i < b_at.size()) begin
         `uvm_info("PLOCK-PIPELINE",
-                  $sformatf(
-                      {"%s op=%0d addr=0x%0h size=%0d strb=0x%02h AW=%0d W=%0d B=%0d ",
-                       "BVALID=%0d gap=%0d response=%s"},
-                      label, i, ops[i].address, ops[i].size, ops[i].strobes[0], aw_at[i], w_at[i],
-                      b_at[i], bvalid_at[i], b_gap[i], ops[i].worst_resp().name()), UVM_LOW)
+                  $sformatf({"%s op=%0d addr=0x%0h size=%0d strb=0x%02h AW=%0d W=%0d B=%0d ",
+                             "BVALID=%0d gap=%0d response=%s"}, label, i, ops[i].address,
+                              ops[i].size, ops[i].strobes[0], aw_at[i], w_at[i], b_at[i],
+                              bvalid_at[i], b_gap[i], ops[i].worst_resp().name()), UVM_LOW)
       end
     end
     if (complete && next_op < ops.size() && previous_op < ops.size())
