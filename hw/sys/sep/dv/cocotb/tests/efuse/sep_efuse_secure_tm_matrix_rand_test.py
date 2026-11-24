@@ -32,7 +32,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``security_disable_o`` = 1 and an all-ones ``FEAT_CTRL``.
   CHK-STM-BLOCK-RESP  each strap-1 frontdoor target write completes with SLVERR:
                     secure test mode adds a shadow write lock on the four targets
-                    (``hw/ip/efuse/doc/architecture.adoc:407-408``;
+                    (``hw/ip/efuse/doc/architecture.adoc:411-412``;
                     ``otp_fuse_controller.adoc:181-183``), and a shadow write that a
                     lock blocks completes with SLVERR
                     (``otp_fuse_controller.adoc:112-114``).
@@ -43,8 +43,8 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``program_status`` 1 (Error) in ``EFUSE_PROGRAM_CTRL`` after
                     ``W_prog``: a program start in secure test mode completes with an
                     error without issuing a command
-                    (``hw/ip/efuse/doc/architecture.adoc:401``;
-                    ``efuse_interface_ctrl.rdl:96-97`` ``program_done``,
+                    (``hw/ip/efuse/doc/architecture.adoc:405``;
+                    ``efuse_interface_ctrl.rdl:90-91`` ``program_done``,
                     ``:102-103`` ``program_status``). Control
                     (``CTRL-STM-PROG-FRESH``): before that go both bits read their RDL
                     reset value 0. Both bits hold until the next start, and a refused
@@ -106,10 +106,10 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     SLVERR or DECERR; an unreadable code (-1 from the JTAG port) is a
                     recorded failure. A write that gets no B response fails the
                     access itself (bus timeout).
-  CTRL-STM-PROG-ISSUED  after each program go of both straps, the software-owned
-                    fields of ``EFUSE_PROGRAM_CTRL`` (``efuse_addr``, ``efuse_data``,
-                    ``program_enable``) read back equal to
-                    the go, so a strap-1 go that did not land fails.
+  CTRL-STM-PROG-ISSUED  after each program go of both straps, ``EFUSE_PROGRAM_ADDR``
+                    and the software-owned fields of ``EFUSE_PROGRAM_CTRL``
+                    (``efuse_data``, ``program_enable``) read back equal to the
+                    writes, so a strap-1 go that did not land fails.
   CTRL-STM-PROG-FRESH  before the first strap-1 go, ``program_done`` and
                     ``program_status`` read their RDL reset value 0, so
                     CHK-STM-PROG-STATUS reads the completion of that go.
@@ -159,6 +159,7 @@ from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
     DIGEST_FIELDS,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
     SECRET_FIELDS,
     ST_PROD,
@@ -173,6 +174,7 @@ from env.sep_efuse_plan import (
     field_word,
     lc_state_class,
     plan,
+    program_addr_word,
     program_ctrl_word,
     shadow_addr,
     zero_bits,
@@ -230,11 +232,9 @@ _TAG_PROG1, _TAG_PROG0, _TAG_SECRET, _TAG_JTAG = 1, 2, 3, 4
 _PASS_HOLD = 2  # clocks a step tag stays on the pass label
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error")
 # Software-owned (sw=rw, hw=r) fields of EFUSE_PROGRAM_CTRL: they read back as written.
-_PG_RW = (
-    EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
-    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
-    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
-)
+_PG_RW = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_PROGRAM_CTRL", "efuse_data"
+) | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
 _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 _PG_RESET = EFUSE_INTERFACE_CTRL.reset32("EFUSE_PROGRAM_CTRL")
@@ -451,7 +451,8 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         k, b = p.draw.choice("digest_prog_bit", zeros)
         addr = bit_address(f, k, b)
         mark = self.shim.mark()
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(addr))
+        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(addr))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word())
         await ClockCycles(cocotb.top.clk_i, w_prog)
         status = await self.fd.rd(PROGRAM_CTRL_ADDR)
         await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
@@ -496,19 +497,24 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         for i, cls in enumerate(STM_PROGRAM_CLASSES):
             pr = progs[cls]
             mark = self.shim.mark()
-            go = program_ctrl_word(pr["addr"])
+            addr_word = program_addr_word(pr["addr"])
+            go = program_ctrl_word()
+            await self.fd.wr(PROGRAM_ADDR_ADDR, addr_word)
             await self.fd.wr(PROGRAM_CTRL_ADDR, go)
             await ClockCycles(cocotb.top.clk_i, w_prog)
             status = await self.fd.rd(PROGRAM_CTRL_ADDR)
+            addr_rb = await self.fd.rd(PROGRAM_ADDR_ADDR)
             await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
             cmds[cls] = self.shim.programs_since(mark)
             self._ctrl(
                 "STM-PROG-ISSUED",
-                (status & _PG_RW) == (go & _PG_RW),
+                (status & _PG_RW) == (go & _PG_RW) and addr_rb == addr_word,
                 strap=self._strap,
                 cls=cls,
                 wrote=f"0x{go & _PG_RW:08x}",
                 readback=f"0x{status & _PG_RW:08x}",
+                addr_wrote=f"0x{addr_word:08x}",
+                addr_readback=f"0x{addr_rb:08x}",
             )
             fields = dict(
                 strap=self._strap,

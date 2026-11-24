@@ -434,7 +434,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         """Grade CHK1..CHK4 of the running bring-up, then stop its tasks."""
         await self.stop_fifo_drain()
         assert self.drbg_sb.report(), "entropy scoreboard report failed"
-        self.drbg_sb.stop()
+        await self.drbg_sb.stop()
 
     async def _chain_uninit(self) -> None:
         """TRNG reset (bit 5 low, then high) with no bring-up after it."""
