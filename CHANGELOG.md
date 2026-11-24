@@ -12,6 +12,8 @@ minor release it updates.
 
 ### RTL bugs
 
+- A TRNG reset zeroed an EDN word already acknowledged to AES, KMAC or OTBN,
+  which took 0, and OTBN RND failed its FIPS check (#3731).
 - Entropy source `ANY_FAIL_COUNT` counted the last failing health-test window
   again at the end of the clean window after it (#3730).
 - Entropy source raw-noise observe FIFO could repeat a sample, and lose the
