@@ -1187,7 +1187,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 await NextTimeStep()
             close_graded_window(self.logger)
             if self.sb is not None:
-                self.sb.stop()
+                await self.sb.stop()
         await ingress.stop()
         self.chk.info(
             "DRBG-SEED-INGRESS",
@@ -1246,7 +1246,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
     async def _trng_reset(self) -> None:
         dut = cocotb.top
         if self.sb is not None:
-            self.sb.stop()
+            await self.sb.stop()
             self.sb = None
         await self.swrst.park("trng")
         rise = await self._wait_probe(dut.trng_reset_active_probe_o, False, "trng reset rise")

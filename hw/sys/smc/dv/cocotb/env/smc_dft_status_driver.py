@@ -82,7 +82,17 @@ SCENARIO_FIELDS = {
         "mbist_pass": 0,
         "mbist_abort": 1,
     },
+    "mbist_and_mem_repair_fail": {
+        "mem_repair_done": 1,
+        "mem_repair_success": 0,
+        "mem_repair_abort": 0,
+        "mbist_done": 1,
+        "mbist_pass": 0,
+        "mbist_abort": 0,
+    },
 }
+
+FUSE_SENSE_WAIT_CYCLES = 200_000
 
 
 def dfx_fields(value: int) -> dict[str, int]:
@@ -100,42 +110,36 @@ class SmcDftStatusDriver:
         self.log = logging.getLogger("cocotb.dft_status")
 
     def report(self, scenario: str) -> None:
-        """Drive the line pattern for one scenario, in the ROM's read order.
+        """Drive the line pattern for one scenario.
 
         Call after bring_up() and before the target's release_cpu(): the lines have to
         carry the result when the ROM first reads DFX_CTRL_STATUS, which is early in its
-        boot.
-
-        mem repair reports first because the ROM reads it first; a mem-repair failure is
-        expected to stop the boot before MBIST matters, but MBIST is still reported so the
-        ROM's second check sees a real result rather than the skip path.
+        boot. There is no separate timeout input: the ROM's timeout branch is entered on
+        done with pass low and abort high.
         """
-        if scenario not in EXPECTED_STATUS:
+        if scenario not in SCENARIO_FIELDS:
             raise AssertionError(
                 f"unknown DFT scenario {scenario!r}; expected one of "
-                f"{', '.join(sorted(EXPECTED_STATUS))}"
+                f"{', '.join(sorted(SCENARIO_FIELDS))}"
             )
-
-        self.harness.set_dft_result(
-            self.instance,
-            mem_repair_done=1,
-            mem_repair_success=0 if scenario == "mem_repair_fail" else 1,
-            mem_repair_abort=0,
-        )
-
-        if scenario == "mbist_timeout":
-            # There is no separate timeout input. The ROM's timeout branch is entered on
-            # done with pass low and abort high.
-            self.harness.set_dft_result(self.instance, mbist_pass=0, mbist_abort=1, mbist_done=1)
-        else:
-            self.harness.set_dft_result(
-                self.instance,
-                mbist_abort=0,
-                mbist_pass=0 if scenario == "mbist_fail" else 1,
-                mbist_done=1,
-            )
-
+        self.harness.set_dft_result(self.instance, **SCENARIO_FIELDS[scenario])
         self.log.info("%s reported DFT scenario %s", self.instance, scenario)
+
+    async def read_smc_config(self) -> int:
+        """The instance's SMC_CONFIG eFuse shadow, read once fuse sensing completes."""
+        # smc_occp_dual_defs, which every caller imports first, puts smc_reg on sys.path.
+        from smc_reg import SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+
+        done = getattr(self.harness.dut, f"{self.instance}_fuse_sense_done_o")
+        for _ in range(FUSE_SENSE_WAIT_CYCLES):
+            if int(done.value):
+                return await self.csr.read(
+                    "SMC_CONFIG", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+                )
+            await ClockCycles(self.clk, 1)
+        raise AssertionError(
+            f"{self.instance} fuse_sense_done never rose within {FUSE_SENSE_WAIT_CYCLES} cycles"
+        )
 
     def check_status_register(self, scenario: str, value: int) -> None:
         """Fail unless DFX_CTRL_STATUS_SMU latched exactly the scenario's line pattern."""
