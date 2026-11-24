@@ -150,9 +150,10 @@ tb/tb_top.sv                  one framework-neutral core: interface instances, D
                               run_test()
   dtp_tb_if                   control domain: clock and period, resets and counters,
                               named debug disables, TAP-state and debug-TDR observables,
-                              request-activity and READY-stall counters, CSR port
-                              spill-register and crossbar demux counters, the JTAG2AXI
-                              read-armed reset and response holds, SVA enables
+                              request-activity, READY-stall, and bridge-port
+                              open-request counters, CSR port spill-register and
+                              crossbar demux counters, the JTAG2AXI read-armed reset
+                              and response holds, SVA enables
   dtp_scan_if                 scan domain: scan-chain controls, iJTAG and STAP host scan
                               outputs, forwarded STAP pins, downstream-TAP attach enables
   dtp_xtrig_if                cross-trigger domain: CTM req/ack pairs, CTP pad quartets,
@@ -185,8 +186,9 @@ tb/tb_top.sv                  one framework-neutral core: interface instances, D
 instantiates the TB interfaces, the `dtp` DUT elaborated from the bench
 configuration table (`tb/dtp_dv_cfg_pkg.sv`, whose cocotb copy
 `cocotb/env/dtp_dv_cfg.py` is checked against it at bring-up), the adapters
-between the DUT's packed structs and the interface members, the reset, request-activity, and
-READY-stall counters, the CSR port spill-register and crossbar demux counters, the
+between the DUT's packed structs and the interface members, the reset, request-activity,
+READY-stall, and bridge-port open-request counters, the CSR port spill-register and crossbar
+demux counters, the
 functional-coverage modules, and the protocol SVA checkers. Both
 realizations consume the same interface instances: SV-UVM through
 `uvm_config_db`, cocotb through the hierarchical handles `DtpTbIf`
@@ -207,6 +209,7 @@ out; `dtp_tb_if` publishes the build's own, which the bypass reference models re
 |SMC fabric AXI4 |`+axi_smc_dbg_*+` structs flattened onto `u_smc_axi_slave_if` (responder) and mirrored onto `u_m_axi_if` (monitor); real geometry ID 2 / ADDR 56 / DATA 64 / USER 12 in the VIP configs; an R beat the responder answers with SLVERR or DECERR carries the errored-beat word its injection armed; the responder answers seeded random BUSER and RUSER (`randomize_resp_user`), and `tb_top` drives RLAST low while RVALID is low
 |Debug disables |One named `dtp_tb_if.dbg_disable_<field>` member per `dbg_disable_i` path (init 1 = fail-closed), bound by field name into the typed `sep_lifecycle_ctrl_pkg::dbg_disable_t` that `tb_top` forwards to `dbg_disable_i`; cocotb deposits the members by name and SV-UVM writes them through `dtp_tb_if.drive_dbg_disable`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly. The path-to-field binding is the "DTP debug-disable paths" table of `hw/sys/dtp/doc/jtag.adoc`; SV-UVM holds it once, as `dtp_dbg_path_e` with `dtp_dbg_path_set` / `dtp_dbg_path_disabled` in `uvm/env/dtp_types.svh`, and every driven vector and every gating prediction starts from a path
 |JTAG2AXI response holds |`dtp_tb_if.j2a_b_hold` and `j2a_r_hold`, one bit per bridge in the `sys_rst_on_ar_arm` order (0 `smc_axi`, 1 `smc_otp`, 2 `sep_otp`): while a bit is set, `tb_top` accepts that bridge's write or read responses from its responder into a four-entry queue and shows the bridge none of them, and once the bit clears the bridge takes them in order. The responder sees each response accepted, so it takes the next request while earlier responses wait; `<target>_b_held` and `<target>_r_held` report each queue's occupancy. A sequence sets a hold only while its channel carries no response, and `DTP_J2A_HOLD_VALID_HELD` asserts that no VALID the bridge sees falls before its handshake. cocotb sets a bridge's holds through `DtpTbIf.hold_responses`, and SV-UVM through the JTAG2AXI base sequence's `hold_responses` on the virtual interface
+|JTAG2AXI port timing |Each bridge responder adds no READY stall and no B or R delay unless a sequence gives a channel a seeded `ocah_axi_vip` delay stream (`enable_random_backpressure`, `set_response_delay`; SV-UVM also `set_w_before_aw`). `tb_top` counts, per bridge port, the cycles in which AWVALID or ARVALID is high while an accepted request waits for its B or last R, onto `dtp_tb_if.<prefix>_open_request_count`, and the cycle of the handshake that closes the request does not count
 |BSR |Looped back; the chain controls mirrored onto `dtp_scan_if`
 |iJTAG SIB host chains |One `prim_jtag_scan_reg` instrument stub per SIB (4, 5, 6 bits behind secure DFT, non-secure DFT, DFD) that captures its own update register, so open-SIB subsets have distinct chain lengths and a written value reads back on the next scan; the chain controls and host scan outputs mirrored onto `dtp_scan_if`
 |STAP host ports |Loopback (`tdi <- tdo`) by default; `dtp_scan_if.stap_<x>_ds_en` splices the downstream `u_stap_<x>_ds_if` TAP behind the port for the STAP-selection and zero-length-bypass scenarios; the forwarded TAP pins mirrored onto `dtp_scan_if`, with a per-port flag that records whether the forwarded TMS differed from the primary TMS at the last rising TCK edge, which the forwarding windows require to stay low, and a per-port count of forwarded TRST assertions, which the STAP-selection scenarios require to stay flat across the gate
@@ -302,7 +305,7 @@ from the observation under check.
 |`xtrig_csr` |`dtp_xtrig_csr_ref_model` (`dtp_xtrig_csr_model`) on the XTRIG monitor stream |Passive XTRIG AXI-Lite monitor items (read data) |Every OKAY read of a CSR with a readback contract (CTM selects, CTP CONFIG, STRETCH_MULT) equals the shadow rebuilt from the observed writes and cleared on every reset (`dtp_tb_if` reset counters), and every OKAY read of a hole (a word inside the matrix register extent or a port window that no register backs) reads 0; an access reaches the word that contains its address |every cross-trigger test
 |`xtrig_decode` |`dtp_xtrig_decode_ref_model` (stateless) on the XTRIG monitor stream |Passive XTRIG AXI-Lite monitor items (response) |Every access completes with the response the network memory map gives the word it addresses: DECERR in the matrix aperture past its register extent (`0x0D0` to `0x1FF`) and past the last port window (`0x300` and up), OKAY on every register and hole |the read-decode backpressure test, the outstanding test, and the two deterministic CSR sweeps
 |`jtag2axi_req` |`dtp_jtag2axi_req_ref_model` (`dtp_jtag2axi_model` through `dtp_jtag2axi_tracker`) on the scan and event streams and the three bridge port streams |Passive monitor items of the three bridge ports, one lane per port |Every bridge transaction is the system bus access the bridge's Debug Module registers describe when the triggering DMI operation reaches it (direction, address, size, one beat, strobes, strobed write data), in order; no access starts while `sberror` is set or for a size or alignment the bridge rejects, and none reaches the port while the bridge's lifecycle disable is asserted |every test arming a bridge recorder
-|`jtag2axi_status` |`dtp_jtag2axi_status_ref_model` (`dtp_jtag2axi_model` through `dtp_jtag2axi_tracker`) on the same streams |Reconstructed DR scans (the DTMCS or DMI capture) |While the PTAP 3DCR select is clear, a DTMCS capture is version 1, abits 7, and idle 7 with the sticky DMI status in `dmistat`, and a DMI capture is the last loaded address, the last loaded data or the read response, and the sticky DMI status; the `dtp_jtag2axi_status_item` carries the expected value and the mask of the bits with a contract, which leaves out the data a completed write loads into `sbdata` |every test arming a bridge recorder
+|`jtag2axi_status` |`dtp_jtag2axi_status_ref_model` (`dtp_jtag2axi_model` through `dtp_jtag2axi_tracker`) on the same streams |Reconstructed DR scans (the DTMCS or DMI capture) |While the PTAP 3DCR select is clear, a DTMCS capture is version 1, abits 7, and idle 7 with the sticky DMI status in `dmistat`, and a DMI capture is the last loaded address, the last loaded data or the read response, and the sticky DMI status; the `dtp_jtag2axi_status_item` carries the expected value and the mask of the bits with a contract, which leaves out the data a completed write loads into `sbdata`, and for an `sbcs` read whose bus access the port completes between the read's Update-DR and the capture that returns it, an alternate value with `sbbusy` 0 and the `sberror` of that response, which the comparison also accepts |every test arming a bridge recorder
 |===
 
 Composed scans (a wider instruction scan spanning the STAP chain, or a DR
@@ -486,6 +489,7 @@ seed.
 |JTAG2AXI read |Read the first word back through `sbaddress0` with `sbreadonaddr`, poll sbcs, compare `sbdata0` with the written word
 |JTAG2AXI sizes |On each bridge, read and write every size at every offset in a beat of distinct bytes, check the whole beat after each write, and run an `sbautoincrement` stream at every size, across address bit 32 on the SMC fabric bridge
 |JTAG2AXI errors |On each bridge, start every access size above the data width with each trigger, and have the responder answer a write and a read with SLVERR and with DECERR, armed with the expectation of each response in the AXI checks; check `sberror`, try an `sbdata0` and an `sbaddress0` access while it is set, clear it, and recover; keep one error per bridge while the later bridges run
+|JTAG2AXI back-pressure |On each bridge, give the responder's READY stalls and B and R delays seeded streams of no, short, and long stalls of up to two `sbcs` polls and a mix, every mode on every channel; write, read back, and write and read seeded lanes under each, and check that the port raised no request while one was open
 |===
 
 Additional stimulus categories cover STAP/3DCR, iJTAG, XTRIG CSR, CTP, CTM,
@@ -633,8 +637,9 @@ conventions under `uvm/` with identical basenames, one class per file:
 . `tb/dtp_tb_if.sv`, `tb/dtp_scan_if.sv`, `tb/dtp_xtrig_if.sv` — the
   DTP-local TB interfaces: the control domain (clock and period, resets and
   reset counters, the one-hot TAP state and the debug-TDR observables,
-  named debug disables, request-activity and READY-stall counters, the CSR port
-  spill-register and crossbar demux counters, SVA enables), the scan domain
+  named debug disables, request-activity, READY-stall, and bridge-port
+  open-request counters, the CSR port spill-register and crossbar demux
+  counters, SVA enables), the scan domain
   (scan-chain controls, forwarded STAP pins, downstream-TAP attach
   enables), and the cross-trigger pins with the shared wires and the ports'
   receive pulses.

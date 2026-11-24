@@ -358,6 +358,12 @@ localparam string DtpJ2aAutoincCheckId = "CHK-J2A-AUTOINC";
 // The sberror an error access leaves, keeps while the bridge refuses
 // accesses and an sbcs write clears.
 localparam string DtpJ2aSbaErrorCheckId = "CHK-J2A-SBA-ERROR";
+// The transfer attributes of every bus request a bridge drives.
+localparam string DtpJ2aAxiAttrCheckId = "CHK-J2A-AXI-ATTR";
+// The bus requests a bridge presents while one of its transfers is open.
+localparam string DtpJ2aOneXferCheckId = "CHK-J2A-ONE-XFER";
+// The AxCACHE of every request the AXI4 bridge drives.
+localparam bit [3:0] DtpJ2aAxiCache = 4'b0010;
 
 // One function per bridge: the widths come from the bench configuration
 // tb_top elaborates the DUT with (dtp_dv_cfg_pkg), and the TDR opcodes from

@@ -5,12 +5,17 @@
 `OcahAxiLiteSlaveDriver` is the cocotbext-backed AXI4-Lite RAM responder,
 extended with the OCAH fault controls (one-shot non-OKAY response injection
 with an errored-beat read word, and bounded READY backpressure) via
-`OcahFaultMixin` shared with the AXI4 slave driver. The test-facing
-backdoor/fault API lives in `OcahAxiLiteSlaveSequence`.
+`OcahFaultMixin` shared with the AXI4 slave driver, and with a per-response
+B and R delay. The test-facing backdoor/fault API lives in
+`OcahAxiLiteSlaveSequence`.
 """
 
 from __future__ import annotations
 
+import itertools
+from collections.abc import Iterable, Iterator
+
+from cocotb.triggers import ClockCycles
 from cocotbext.axi import AxiLiteBus
 from cocotbext.axi.axil_ram import AxiLiteRamRead, AxiLiteRamWrite
 from cocotbext.axi.constants import AxiProt, AxiResp
@@ -38,6 +43,7 @@ class _FaultAxiLiteRamWrite(AxiLiteRamWrite):
             )
             b = self.b_channel._transaction_obj()
             b.bresp = self.fault_owner.write_errors.pop(addr, AxiResp.OKAY)
+            delay = self.fault_owner.next_response_delay(read=False)
 
             if b.bresp == AxiResp.OKAY:
                 start_offset = None
@@ -50,6 +56,8 @@ class _FaultAxiLiteRamWrite(AxiLiteRamWrite):
                             await self._write(addr + start_offset, data[start_offset:offset])
                         start_offset = None
 
+            if delay:
+                await ClockCycles(self.clock, delay)
             await self.b_channel.send(b)
             self.log.info(
                 "AXI-Lite write addr=0x%08x awprot=%s strb=0x%x resp=%s",
@@ -72,6 +80,9 @@ class _FaultAxiLiteRamRead(AxiLiteRamRead):
             prot = AxiProt(int(getattr(ar, "arprot", AxiProt.NONSECURE)))
             r = self.r_channel._transaction_obj()
             r.rresp, r.rdata = self.fault_owner.take_read_error(addr, 8 * self.byte_lanes)
+            delay = self.fault_owner.next_response_delay(read=True)
+            if delay:
+                await ClockCycles(self.clock, delay)
             if r.rresp == AxiResp.OKAY:
                 data = await self._read(addr, self.byte_lanes)
                 r.rdata = int.from_bytes(data, "little")
@@ -101,6 +112,8 @@ class OcahAxiLiteSlaveDriver(Memory, OcahFaultMixin):
     ):
         self.write_if = None
         self.read_if = None
+        self.write_delays: Iterator[int] | None = None
+        self.read_delays: Iterator[int] | None = None
         self._init_fault_state(name)
         Memory.__init__(self, size, mem, **kwargs)
         self.write_if = _FaultAxiLiteRamWrite(
@@ -135,6 +148,36 @@ class OcahAxiLiteSlaveDriver(Memory, OcahFaultMixin):
             reset_active_level=reset_active_level,
             log=self.log,
         )
+
+    def set_response_delay(
+        self, delays: int | Iterable[int], *, read: bool = True, write: bool = True
+    ) -> None:
+        """Delay each response by the next value of ``delays``, in clock cycles.
+
+        An integer delays every response by that many cycles; an iterable is
+        drawn once per response in request order, and responses after it is
+        exhausted are not delayed. A read takes its memory data after the delay.
+        """
+        if write:
+            self.write_delays = (
+                itertools.repeat(int(delays)) if isinstance(delays, int) else iter(delays)
+            )
+        if read:
+            self.read_delays = (
+                itertools.repeat(int(delays)) if isinstance(delays, int) else iter(delays)
+            )
+        self.log.info("Response delay set read=%d write=%d", read, write)
+
+    def clear_response_delay(self) -> None:
+        self.write_delays = None
+        self.read_delays = None
+
+    def next_response_delay(self, *, read: bool) -> int:
+        """Cycles the next B (``read`` false) or R response waits once it is ready."""
+        delays = self.read_delays if read else self.write_delays
+        if delays is None:
+            return 0
+        return max(int(next(delays, 0)), 0)
 
     def init_signals(self) -> None:
         """Drive the B/R payload signals to a deterministic 0 idle.

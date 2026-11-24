@@ -177,6 +177,12 @@ interface dtp_tb_if;
   logic [31:0] sep_otp_axil_aw_stall_count;
   logic [31:0] sep_otp_axil_w_stall_count;
   logic [31:0] sep_otp_axil_ar_stall_count;
+  // JTAG2AXI bridge-port open-request counters (driven by tb_top): cycles
+  // with AWVALID or ARVALID high while an earlier accepted AW or AR on the
+  // port awaits its B or last R, the closing handshake's cycle excluded.
+  logic [31:0] smc_axi_open_request_count;
+  logic [31:0] smc_otp_axil_open_request_count;
+  logic [31:0] sep_otp_axil_open_request_count;
 
   // XTRIG crossbar demux state behind the CSR port (driven by tb_top from
   // the AXI-Lite demux of the cross-trigger network): the AW lock flag,

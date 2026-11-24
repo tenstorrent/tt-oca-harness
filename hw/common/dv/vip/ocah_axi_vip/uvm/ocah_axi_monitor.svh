@@ -9,7 +9,8 @@
 // per RID and publish at RLAST against the per-ARID address queue. AXI4-Lite
 // integrations tie awlen=0/wlast=1/rlast=1/ids=0 (see ocah_axi_if), so the
 // same reconstruction path serves both protocols. Sampled values are masked
-// to cfg.{addr,data,id}_width. All pending state flushes while aresetn is low.
+// to cfg.{addr,data,id}_width. AxCACHE, AxUSER and WUSER are recorded on AXI4
+// only. All pending state flushes while aresetn is low.
 //
 // Publishes raw observations only; checking belongs to the ref model and
 // scoreboard subscribers (same ownership split as ocah_jtag_master_monitor).
@@ -38,6 +39,8 @@ class ocah_axi_monitor extends uvm_monitor;
     int unsigned size;
     bit [1:0]    burst;
     bit [2:0]    prot;
+    bit [3:0]    cache;
+    bit [63:0]   user;
     int unsigned length;
     time         start_time;
   } addr_info_t;
@@ -45,6 +48,7 @@ class ocah_axi_monitor extends uvm_monitor;
   typedef struct {
     bit [63:0] data;
     bit [7:0]  strb;
+    bit [63:0] user;
   } w_beat_t;
 
   protected addr_info_t m_aw_q[$];
@@ -73,6 +77,10 @@ class ocah_axi_monitor extends uvm_monitor;
 
   protected function bit [63:0] mask_addr(bit [63:0] value);
     return (cfg.addr_width >= 64) ? value : (value & ((64'd1 << cfg.addr_width) - 1));
+  endfunction
+
+  protected function bit axi4();
+    return cfg.protocol == OCAH_AXI_PROTO_AXI4;
   endfunction
 
   protected function bit [63:0] mask_data(bit [63:0] value);
@@ -153,6 +161,8 @@ class ocah_axi_monitor extends uvm_monitor;
     info.size       = int'(cfg.vif.mon_cb.awsize);
     info.burst      = cfg.vif.mon_cb.awburst;
     info.prot       = cfg.vif.mon_cb.awprot;
+    info.cache      = axi4() ? cfg.vif.mon_cb.awcache : '0;
+    info.user       = axi4() ? 64'(cfg.vif.mon_cb.awuser) : '0;
     info.length     = int'(cfg.vif.mon_cb.awlen) + 1;
     info.start_time = $time;
     m_aw_q.push_back(info);
@@ -163,6 +173,7 @@ class ocah_axi_monitor extends uvm_monitor;
     if (!(cfg.vif.mon_cb.wvalid === 1'b1 && cfg.vif.mon_cb.wready === 1'b1)) return;
     beat.data = mask_data(cfg.vif.mon_cb.wdata);
     beat.strb = cfg.vif.mon_cb.wstrb[7:0];
+    beat.user = axi4() ? 64'(cfg.vif.mon_cb.wuser) : '0;
     m_cur_w.push_back(beat);
     if (cfg.vif.mon_cb.wlast === 1'b1) begin
       m_wburst_q.push_back(m_cur_w);
@@ -202,11 +213,14 @@ class ocah_axi_monitor extends uvm_monitor;
     foreach (beats[i]) begin
       wr_item.data_words.push_back(beats[i].data);
       wr_item.strobes.push_back(beats[i].strb);
+      if (axi4()) wr_item.wusers.push_back(beats[i].user);
     end
     wr_item.size           = info.size;
     wr_item.burst          = ocah_axi_burst_e'(info.burst);
     wr_item.transaction_id = id;
     wr_item.prot           = info.prot;
+    wr_item.cache          = info.cache;
+    wr_item.user           = info.user;
     wr_item.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.bresp));
     wr_item.expected_beats = info.length;
     wr_item.start_time     = info.start_time;
@@ -223,6 +237,8 @@ class ocah_axi_monitor extends uvm_monitor;
     info.size       = int'(cfg.vif.mon_cb.arsize);
     info.burst      = cfg.vif.mon_cb.arburst;
     info.prot       = cfg.vif.mon_cb.arprot;
+    info.cache      = axi4() ? cfg.vif.mon_cb.arcache : '0;
+    info.user       = axi4() ? 64'(cfg.vif.mon_cb.aruser) : '0;
     info.length     = int'(cfg.vif.mon_cb.arlen) + 1;
     info.start_time = $time;
     m_ar_q[info.id].push_back(info);
@@ -275,6 +291,8 @@ class ocah_axi_monitor extends uvm_monitor;
       rd_item.size           = info.size;
       rd_item.burst          = ocah_axi_burst_e'(info.burst);
       rd_item.prot           = info.prot;
+      rd_item.cache          = info.cache;
+      rd_item.user           = info.user;
       rd_item.expected_beats = info.length;
       rd_item.start_time     = info.start_time;
       rd_item.end_time = $time;

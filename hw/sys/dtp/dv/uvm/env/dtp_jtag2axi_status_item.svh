@@ -3,9 +3,10 @@
 //
 // Expected capture of a JTAG2AXI DTMCS or DMI scan, published by
 // dtp_jtag2axi_status_ref_model for the scoreboard to pair with the
-// reconstructed scan: the captured value on the bits of `mask`. compare = 0
-// pairs and drops without a record (a scan that is not a bridge capture, or
-// one taken through the PTAP 3DCR select). The cocotb twin is
+// reconstructed scan: the captured value on the bits of `mask`, or
+// `alternate` on those bits when `alt_valid` is set. compare = 0 pairs and
+// drops without a record (a scan that is not a bridge capture, or one taken
+// through the PTAP 3DCR select). The cocotb twin is
 // env/dtp_jtag2axi_status_item.py.
 
 class dtp_jtag2axi_status_item extends ocah_sequence_item;
@@ -16,6 +17,8 @@ class dtp_jtag2axi_status_item extends ocah_sequence_item;
   dtp_j2a_scan_kind_e kind = DTP_J2A_SCAN_NONE;
   bit [63:0]          expected;
   bit [63:0]          mask;
+  bit                 alt_valid;
+  bit [63:0]          alternate;
 
   function new(string name = "dtp_jtag2axi_status_item");
     super.new(name);
@@ -28,18 +31,28 @@ class dtp_jtag2axi_status_item extends ocah_sequence_item;
     compare  = rhs_item.compare;
     target   = rhs_item.target;
     kind     = rhs_item.kind;
-    expected = rhs_item.expected;
-    mask     = rhs_item.mask;
+    expected  = rhs_item.expected;
+    mask      = rhs_item.mask;
+    alt_valid = rhs_item.alt_valid;
+    alternate = rhs_item.alternate;
+  endfunction
+
+  // Whether `captured` equals `expected`, or `alternate` when valid, on `mask`.
+  function bit accepts(bit [63:0] captured);
+    if ((captured & mask) == (expected & mask)) return 1'b1;
+    return alt_valid && (captured & mask) == (alternate & mask);
   endfunction
 
   virtual function string convert2string();
+    string alt_s = alt_valid ? $sformatf(" or 0x%0h", alternate & mask) : "";
     if (!compare)
       return $sformatf("no-contract %s %s @%0t %s", target, kind.name(), timestamp, context_s);
     return $sformatf(
-        "%s %s 0x%0h/0x%0h @%0t %s",
+        "%s %s 0x%0h%s/0x%0h @%0t %s",
         target,
         kind.name(),
         expected & mask,
+        alt_s,
         mask,
         timestamp,
         context_s

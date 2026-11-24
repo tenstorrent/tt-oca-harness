@@ -8,12 +8,13 @@
 // address armed for a direction answers the programmed non-OKAY response
 // ONCE, skips the memory update (writes), and returns the armed errored-beat
 // word, zero unless given (reads) — plus per-direction one-shot response-ID
-// corruption, a one-shot missing RLAST per beat-aligned read address, and
-// per-channel bounded READY backpressure. This table makes the responder
+// corruption, a one-shot missing RLAST per beat-aligned read address,
+// per-channel bounded or seeded random READY backpressure, and seeded B and R
+// response delays. This table makes the responder
 // MISBEHAVE; the separate passive ocah_axi_config arm_expected_resp table is
 // what classifies the observed non-OKAY as EXPECTED for the scoreboard;
 // tests arm both through their sequence layer. It also holds the one-shot
-// W-before-AW write order and the response USER policy.
+// and persistent W-before-AW write orders and the response USER policy.
 
 class ocah_axi_slave_config extends uvm_object;
   `uvm_object_utils(ocah_axi_slave_config)
@@ -47,6 +48,25 @@ class ocah_axi_slave_config extends uvm_object;
   // AW waits (a subordinate may accept write data before the address,
   // IHI 0022 A3.3.1). The driver clears it when that write starts.
   bit w_before_aw;
+
+  // Persistent write order (set_w_before_aw): each write's address and first
+  // data beat run their own READY windows, so the AW and W READY patterns
+  // decide which handshake lands first, or both on one edge.
+  bit w_before_aw_always;
+
+  // Seeded READY stalls per channel (enable_random_backpressure): each READY
+  // window on the channel is low for the next drawn count of cycles, then
+  // high for one. A source set here takes precedence over *_stall_cycles; a
+  // source given for several channels is shared by them.
+  ocah_axi_delays aw_stalls;
+  ocah_axi_delays w_stalls;
+  ocah_axi_delays ar_stalls;
+
+  // Seeded response delays (set_response_delay): BVALID waits the next drawn
+  // count of cycles after the last W beat, and the first RVALID after the AR
+  // handshake. A null source answers without a delay.
+  ocah_axi_delays b_delays;
+  ocah_axi_delays r_delays;
 
   // Stable name for log messages.
   string name_tag = "ocah_axi_slave";
@@ -200,10 +220,38 @@ class ocah_axi_slave_config extends uvm_object;
               UVM_LOW)
   endfunction
 
+  // Enable seeded READY stalls on the selected channels ("aw", "w", "ar"):
+  // each READY window is low for stalls.next() cycles, then high for one.
+  function void enable_random_backpressure(string channels[$], ocah_axi_delays stalls);
+    if (stalls == null)
+      `uvm_fatal(get_type_name(), $sformatf(
+                 "%s: enable_random_backpressure needs a source", name_tag))
+    foreach (channels[i]) begin
+      case (channels[i])
+        "aw": aw_stalls = stalls;
+        "w":  w_stalls  = stalls;
+        "ar": ar_stalls = stalls;
+        default:
+                    `uvm_fatal(get_type_name(), $sformatf(
+                        "%s: unknown backpressure channel '%s' (expected aw/w/ar)",
+                        name_tag, channels[i]))
+      endcase
+    end
+    `uvm_info(get_type_name(), $sformatf(
+              "%s: enabled random backpressure channels=%p max=%0d",
+              name_tag,
+              channels,
+              stalls.max_value()
+              ), UVM_LOW)
+  endfunction
+
   function void disable_backpressure();
     aw_stall_cycles = 0;
     w_stall_cycles  = 0;
     ar_stall_cycles = 0;
+    aw_stalls       = null;
+    w_stalls        = null;
+    ar_stalls       = null;
     `uvm_info(get_type_name(), $sformatf("%s: disabled backpressure", name_tag), UVM_LOW)
   endfunction
 
@@ -213,6 +261,33 @@ class ocah_axi_slave_config extends uvm_object;
     w_before_aw = 1'b1;
     `uvm_info(get_type_name(), $sformatf("%s: armed W-before-AW for the next write", name_tag),
               UVM_LOW)
+  endfunction
+
+  // While `enable` is set, accept the address and the first data beat of
+  // each later write in READY windows of their own.
+  function void set_w_before_aw(bit enable);
+    w_before_aw_always = enable;
+    `uvm_info(get_type_name(), $sformatf("%s: W-before-AW on every write=%0d", name_tag, enable),
+              UVM_LOW)
+  endfunction
+
+  // Delay each later B (`write`) and the first R beat of each later read
+  // (`read`) by delays.next() cycles.
+  function void set_response_delay(ocah_axi_delays delays, bit read = 1'b1, bit write = 1'b1);
+    if (delays == null)
+      `uvm_fatal(get_type_name(), $sformatf("%s: set_response_delay needs a source", name_tag))
+    if (read) r_delays = delays;
+    if (write) b_delays = delays;
+    `uvm_info(
+        get_type_name(), $sformatf(
+        "%s: response delay read=%0d write=%0d max=%0d", name_tag, read, write, delays.max_value()),
+        UVM_LOW)
+  endfunction
+
+  function void clear_response_delay();
+    b_delays = null;
+    r_delays = null;
+    `uvm_info(get_type_name(), $sformatf("%s: cleared response delay", name_tag), UVM_LOW)
   endfunction
 
   // Answer every later B and R beat with a BUSER and RUSER value drawn per

@@ -25,6 +25,7 @@ OcahAxiRefModel       — Shadow memory + expected-response reference model.
 OcahAxiScoreboard     — Evidence-emitting scoreboard over monitor item streams.
 OcahAxiProtocolWatcher / OcahAxiLiteProtocolWatcher — cycle-level rule watchers.
 OcahAxiConfig         — Bus geometry; binds an interface scope at the real widths.
+OcahAxiDelays         — Seeded cycle-count stream for responder stalls and response delays.
 
 Quick-start
 -----------
@@ -51,6 +52,7 @@ See ``examples/example_register_access.py`` for a more complete example.
 from typing import Any
 
 from .ocah_axi_checker import OcahAxiChecker, OcahAxiCheckerError
+from .ocah_axi_delays import OcahAxiDelays
 from .ocah_axi_item import (
     OcahAxiItem,
     OcahAxiLiteReadItem,
@@ -188,6 +190,7 @@ from .ocah_axi_master_config import AxiTimingProfile
 __all__ = [
     # Per-channel timing control (AW/W ordering, response backpressure)
     "AxiTimingProfile",
+    "OcahAxiDelays",
     "apply_profile",
     "clear_profile",
     # Master side (AXI4 and AXI4-Lite)

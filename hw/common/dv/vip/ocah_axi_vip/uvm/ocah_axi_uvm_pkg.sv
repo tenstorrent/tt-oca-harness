@@ -12,6 +12,8 @@
 // Contents (include order is load-bearing):
 //   ocah_axi_types.svh            — resp/protocol/dir/burst enums (cocotb-
 //                                   matching encodings) + worst-resp helpers
+//   ocah_axi_delays.svh           — seeded delay source for responder READY
+//                                   stalls and response delays
 //   ocah_axi_item.svh             — completed-transaction record (max
 //                                   widths); doubles as the master sequence
 //                                   item and result object
@@ -55,6 +57,7 @@ package ocah_axi_uvm_pkg;
   `include "uvm_macros.svh"
 
   `include "ocah_axi_types.svh"
+  `include "ocah_axi_delays.svh"
   `include "ocah_axi_item.svh"
   `include "ocah_axi_config.svh"
   `include "ocah_axi_slave_config.svh"

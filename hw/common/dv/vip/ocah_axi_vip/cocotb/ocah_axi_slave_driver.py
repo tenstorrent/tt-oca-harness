@@ -51,6 +51,17 @@ def _pause_pattern(stall_cycles: int):
         yield False
 
 
+def _stall_windows(stalls: Iterator[int]):
+    """READY low for each count drawn from ``stalls``, then high for one cycle.
+
+    READY stays high once a finite stream is exhausted.
+    """
+    for count in stalls:
+        for _ in range(max(int(count), 0)):
+            yield True
+        yield False
+
+
 class OcahAxiResetGate:
     """Holds cocotbext stream endpoints in their local reset until the reset input is inactive.
 
@@ -197,6 +208,22 @@ class OcahFaultMixin:
         if "ar" in selected:
             self.read_if.ar_channel.set_pause_generator(_pause_pattern(stall_cycles))
         self.log.info("Enabled AXI backpressure channels=%s stall=%d", selected, stall_cycles)
+
+    def enable_random_backpressure(self, *, channels: Iterable[str], stalls: Iterable[int]) -> None:
+        """Drive READY low for each drawn count, then high for one cycle, on selected channels.
+
+        A count of 0 is one high cycle. Channels given one ``stalls`` iterable
+        draw from its one stream, each window as its channel reaches it.
+        """
+        selected = set(channels)
+        stream = iter(stalls)
+        if "aw" in selected:
+            self.write_if.aw_channel.set_pause_generator(_stall_windows(stream))
+        if "w" in selected:
+            self.write_if.w_channel.set_pause_generator(_stall_windows(stream))
+        if "ar" in selected:
+            self.read_if.ar_channel.set_pause_generator(_stall_windows(stream))
+        self.log.info("Enabled random AXI backpressure channels=%s", selected)
 
     def disable_backpressure(self) -> None:
         for channel in (
