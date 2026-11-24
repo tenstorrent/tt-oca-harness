@@ -53,9 +53,16 @@ if { [sizeof_collection $avs_refclk_family] && [sizeof_collection $avs_periph_fa
     set_clock_groups -logically_exclusive -group $avs_refclk_family -group $avs_periph_family
 }
 
-# SPI.CLK on the GPIO pads.
-create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO -master_clock SPICLK -divide_by 1 -source [get_pins u_smc/spi_clk_i]
-create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [get_pins u_smc/spi_clk_i]
+# SPI.CLK is the SEP SPI host's SCK, a flop output toggled on SMUCLK, so it and the
+# copy driven onto core2pad_o[9] belong to the SMUCLK domain. The copy returning on
+# pad2core_i[9] crosses the pad and stays its own domain. Without SEP, spi_clk_i is
+# tied off.
+if { [sizeof_collection [get_cells -quiet gen_sep.u_sep]] > 0 } {
+    create_generated_clock [get_pins u_smc/spi_clk_i] -name SPICLK -master_clock SMUCLK -divide_by 2 -source [get_ports "clk_smu_i"]
+    create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO -master_clock SPICLK -divide_by 1 -source [get_pins u_smc/spi_clk_i]
+    create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [get_pins u_smc/spi_clk_i]
+    cdc_group_extra SMUCLK {SPICLK SPICLK_OUT_GPIO}
+}
 
 # External entropy sample clock. The SEP replay ran sep.resets.tcl before this clock
 # existed, so its power-good sequence to the clock is declared here.
@@ -75,110 +82,19 @@ set_cdc_ignore_path \
     -type cdc_crossing \
     -comments "GPIO core2pad outputs: SMCCLK register to async pad, no sync needed"
 
-# Separate from the generic async-crossing ignore above: pad outputs are also
-# structurally reconvergent at the padring mux (per-pad DATA_CTRL fields such as
-# interface_enable, lsio_select, lsio_disable, core2pad vs protocol sources —
-# SPI clock, AVS clock, UART TX, etc.). There is no in-block receiving flop past
-# the primary output. Static CDC may still run glitch-stage checks on that
-# terminal reconvergence; we scope glitch suppression to the port without
-# dropping ordinary crossing analysis (the separate `-type cdc_crossing` ignore
-# stays in place). Broadening the ignore to wipe all crossing-class checks on
-# these ports would hide real unsynchronized-path issues—avoid that.
-#
-# User-path glitch APIs (`set_user_ignore_path`, `configure_userpath_glitch`)
-# target a different optional analysis family than CDC-path glitch suppression;
-# product documentation distinguishes them. Use `set_cdc_ignore_path` with
-# `-type` glitch / clock_path_glitch for pad-drive glitch noise on outputs.
-#
-# Keep `-type {glitch clock_path_glitch}` additive to `-type cdc_crossing`.
-# Include clock_path_glitch so bits that behave as exported clocks under muxing
-# remain covered if the tool classifies them that way in a future rev.
+# The pads also reconverge at the padring mux, where per-pad DATA_CTRL fields
+# (interface_enable, lsio_select, lsio_disable) choose between the core2pad
+# register and a protocol source. No in-block flop receives the result, so the
+# glitch checks on every output stop at the port. The exported SPI clock
+# (core2pad_o[9]) and AVS clock (core2pad_o[49]) keep the clock-path glitch
+# check: a select change while one of those clocks runs glitches the clock the
+# external device samples on.
+set core2pad_clock_pads [get_ports {core2pad_o[9] core2pad_o[49]}]
 set_cdc_ignore_path \
     -to [get_ports {core2pad_o*}] \
-    -type {glitch clock_path_glitch} \
-    -comments "GPIO core2pad: limit glitch-stage checks on terminal outputs; padring mux reconvergence is intentional. Ordinary CDC crossing handling stays via the separate cdc_crossing ignore."
-
-################################################################################
-# AVS SDATA SERIAL SAMPLE CHAIN AS A USER-DEFINED SYNCHRONIZER (CDC only)
-################################################################################
-# `avs_sdata_capture` (32-bit) and `avs_sdata_interrupt_detect` (2-bit) are
-# both shift registers clocked on `negedge avs_clk` that shift in the
-# asynchronous `avs_sdata_i` input (= `pad2core_i[51]`). The first stage of
-# each chain IS the metastability-resolving flop, and downstream stages
-# provide additional settling time. Functionally these are user-defined
-# multi-flop synchronizers, but VC SpyGlass cannot infer this on its own
-# because the shift registers also do useful work (frame capture / 2-of-2
-# interrupt qualification).
-#
-# Declare both chains as data synchronizers so the tool stops reporting
-# `NO_SYNC_METHOD` on the input flop. The AVS protocol guarantees the slave
-# drives `sdata` synchronously to its received `avs_clk` edges, so the actual
-# CDC risk is bounded to occasional metastability events that the multi-stage
-# shift register absorbs.
-
-# NOTE on syntax:
-#   `configure_cdc_data_sync` requires `-from_obj` / `-to_obj` (and
-#   `-from_clock` / `-to_clock`) — bare `-from` / `-to` are ambiguous
-#   in VC SpyGlass CDC and trigger CMD-011 / CMD-012 at read-in, which
-#   silently drops the UDS declaration and resurfaces the underlying
-#   CDC_UNSYNC_NOSCHEME.
-#
-# NOTE on target pin:
-#   VC SpyGlass anchors data-sync declarations at the Q output of the
-#   first-stage flop (the synchronizer output), not the D input. Passing
-#   D* pins triggers `TCL_COMMAND_INVALID ... Design Objects are not valid
-#   destination(s) of any crossing` and the declaration is ignored.
-#   We therefore target `.../Q[0]` — the LSB of each shift register is
-#   the one that directly captures `avs_sdata_i` (= `pad2core_i[51]`);
-#   higher bits are tap-delay stages that move previously captured data.
-#
-# NOTE on -sync_check_type value:
-#   The valid keyword is `enable_with_des_domain` (NOT `enable_with_dest_domain`
-#   — note the missing 't' in "des"). VC SpyGlass rejects the longer spelling
-#   with `CMD-031: value 'enable_with_dest_domain' for option '-sync_check_type'
-#   is not valid. Specify one of: enable_with_des_domain, enable_with_qual,
-#   qual_only`. The error is non-fatal — the surrounding `if` block continues
-#   executing — but the `configure_cdc_data_sync` call itself is dropped, so
-#   no UDS gets declared and `NO_SYNC_METHOD` reappears on the first-stage
-#   flop. (We carry this typo-warning here because the spelling is
-#   counter-intuitive and the failure mode is silent at the report level.)
-#
-# NOTE on sync_check_type semantics:
-#   Both shift-register first stages are enabled flops — synthesis infers
-#   the enable from the `cur_state != ...` / `cur_state == ...` guard in
-#   the `always_ff` block. `cur_state` lives on `negedge avs_clk`, so the
-#   enable is a valid destination-domain qualifier. VC SpyGlass cannot
-#   prove this on its own because `cur_state` transitions depend on CSRs
-#   that cross from the SMC system clock; it emits `NO_SYNC_METHOD: Enable Criteria not
-#   satisfied, no valid qualifier`. `-sync_check_type enable_with_des_domain`
-#   tells the tool "accept the native flop enable as the qualifier as long
-#   as it's in the destination domain", which is the correct semantic for
-#   this design.
-
-# avs_sdata_capture[31:0] - protocol frame shift register
-if { $::cdc_app eq "cdc" } {
-    set avs_sdata_capture_q0_pin \
-        [get_pins -quiet {u_smc/u_smc_peripherals/u_avsbus_controller/avs_sdata_capture/Q[0]}]
-    if { [sizeof_collection $avs_sdata_capture_q0_pin] > 0 } {
-        configure_cdc_data_sync \
-            -from_obj [get_ports {pad2core_i[51]}] \
-            -to_obj $avs_sdata_capture_q0_pin \
-            -sync_check_type enable_with_des_domain
-        puts "INFO: Declared avs_sdata_capture/Q\[0\] as UDS for pad2core_i\[51\] (enable_with_des_domain)"
-    } else {
-        puts "WARNING: Found no avs_sdata_capture/Q\[0\] pin -- UDS for AVS sdata capture not applied"
-    }
-
-    # avs_sdata_interrupt_detect[1:0] - 2-stage qualifier for slave-issued interrupts
-    set avs_sdata_intdet_q0_pin \
-        [get_pins -quiet {u_smc/u_smc_peripherals/u_avsbus_controller/avs_sdata_interrupt_detect/Q[0]}]
-    if { [sizeof_collection $avs_sdata_intdet_q0_pin] > 0 } {
-        configure_cdc_data_sync \
-            -from_obj [get_ports {pad2core_i[51]}] \
-            -to_obj $avs_sdata_intdet_q0_pin \
-            -sync_check_type enable_with_des_domain
-        puts "INFO: Declared avs_sdata_interrupt_detect/Q\[0\] as UDS for pad2core_i\[51\] (enable_with_des_domain)"
-    } else {
-        puts "WARNING: Found no avs_sdata_interrupt_detect/Q\[0\] pin -- UDS for AVS sdata interrupt detect not applied"
-    }
-}
+    -type glitch \
+    -comments "GPIO core2pad: padring mux reconvergence at a terminal output with no in-block receiver."
+set_cdc_ignore_path \
+    -to [remove_from_collection [get_ports {core2pad_o*}] $core2pad_clock_pads] \
+    -type clock_path_glitch \
+    -comments "GPIO core2pad: padring mux reconvergence at a terminal output; the exported SPI and AVS clock pads stay checked."

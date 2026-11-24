@@ -99,5 +99,5 @@ source -echo [file join $ocah_smu_cdc_dir smu.pad_boundary.tcl]
 # generated clock registered by the files above (cdc_group_extra); domains whose clocks
 # do not exist in this configuration are dropped with an INFO.
 # ---------------------------------------------------------------------------------
-cdc_apply_async_groups {REFCLK SMUCLK PERIPHERALCLK SPICLK TELEMETRYCLK JTAG_TCK SEP_WDT_CLK ENTROPY_ROSC_CLK ck_feedthru} \
+cdc_apply_async_groups {REFCLK SMUCLK PERIPHERALCLK SPICLK_IN_GPIO TELEMETRYCLK JTAG_TCK SEP_WDT_CLK ENTROPY_ROSC_CLK ck_feedthru} \
     -exclude {{AVS_*_FROM_REFCLK* AVS_*_FROM_PERIPHERALCLK*}}

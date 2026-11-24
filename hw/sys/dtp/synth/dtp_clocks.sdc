@@ -36,7 +36,9 @@ create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
 ########################################################
 # TCK is routed combinationally from the PTAP client port to each downstream
 # JTAG host. create_generated_clock tells the tool these are clock signals so
-# it does not time them as data paths from the JTAG_TCK source.
+# it does not time them as data paths from the JTAG_TCK source. Block-top only:
+# a parent names the clocks on its own ports.
+if {[cdc_is_block_top]} {
 
 create_generated_clock -name JTAG_TCK_BSR_OUT \
     -master_clock JTAG_TCK \
@@ -105,5 +107,4 @@ create_generated_clock -name JTAG_TCK_DFT_OUT \
     -source [get_ports "jtag_ptap_client_tap_ctrl_i*tck"] \
     -combinational \
     [get_ports "jtag_dft_host_scan_ctrl_o*tck"]
-
-
+}

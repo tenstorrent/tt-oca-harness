@@ -26,6 +26,7 @@ source -echo [file join $ocah_sep_flows_dir synth constraints hier_reuse_procs.t
 # the files the synthesis SDC composes, without its CDC max-delay layer.
 source -echo [file join $ocah_sep_flows_dir synth constraints clock_periods.tcl]
 source -echo [file join $ocah_sep_cdc_dir ../synth/sep_clocks.sdc]
+source -echo [file join $ocah_sep_cdc_dir ../synth/sep_entropy_clocks.sdc]
 source -echo [file join $ocah_sep_cdc_dir ../synth/sep_clock_groups.sdc]
 source -echo [file join $ocah_sep_cdc_dir ../synth/sep_io_delays.sdc]
 

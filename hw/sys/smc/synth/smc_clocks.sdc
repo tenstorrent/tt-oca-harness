@@ -139,12 +139,10 @@ if { $avs_mapped } {
           PERIPHERALCLK clock-sense stops are not applied"
 }
 
-# Now the clock mux output is fed into a clock divider.
-# For CDC setup, the exact divide ratio is less important than the
-# source-clock relationship, so the fixed `/4` is acceptable here.
-# Important RTL nuance: `prim_prog_clk_div_posedge` can also bypass the divider
-# internally, so `avs_clock_o` may be launched either by the muxed parent clock
-# or by the divided clock depending on mode.
+# The mux output feeds a programmable divider. The ratios stamped below (REFCLK /2,
+# PERIPHERALCLK /4) stand in for the programmed one: CDC needs only the source-clock
+# relationship. `prim_prog_clk_div_posedge` can also bypass the divider, so
+# `avs_clock_o` is launched by either the muxed parent clock or the divided clock.
 # AVS clock when sourced from REFCLK (modes 10/11, DEFAULT)
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK \
     -master_clock REFCLK \
@@ -250,10 +248,12 @@ if {[cdc_is_block_top]} {
 #
 # For CDC, the bypass and divided modes are functionally the SAME AVS clock
 # (just different frequencies), so we stop the upstream `AVS_CLKMUX_OUTPUT_*`
-# clocks at the post-divider mux output. Downstream AVS-domain flops then
-# see only `AVS_CLK_FROM_REFCLK` / `AVS_CLK_FROM_PERIPHERALCLK`, which are
-# already declared `-logically_exclusive` below (only one source-mode is
-# active at a time).
+# clocks at the post-divider mux output. Downstream AVS-domain flops are then
+# attributed to `AVS_CLK_DIV_CLK_O_FROM_REFCLK` / `_FROM_PERIPHERALCLK`, the
+# clocks stamped on `u_clk_div/clk_o`, which are declared `-logically_exclusive`
+# below (only one source-mode is active at a time). `AVS_CLK_FROM_*` and
+# `AVS_DIV_TOGGLE_*` sit upstream of that stamp and clock no flop; they are kept
+# as the masters of the exported GPIO clocks and for STA.
 if { $avs_mapped } {
     set_clock_sense -stop_propagation \
         [get_pins "${avs_hier}/u_clk_div/u_postdiv_mux/clk_o"] \
@@ -273,14 +273,12 @@ if {[sizeof_collection $avs_refclk_family] && [sizeof_collection $avs_periph_fam
 }
 
 # SPI
-# SPICLK has no parent-level equivalent (at SMU, spi_clk_i is driven internally by SEP),
-# so it is created at both levels: on the port at block top, on the instance pin above.
-create_clock -add -name SPICLK            -period $clock_periods(SPICLK_PERIOD)                [cdc_port_or_pin "spi_clk_i"]
-
-# SPI.CLK on the GPIO pads. Block-top only: a parent stamps these on its own pads.
+# SPI.CLK and its GPIO pad copies. Block-top only: a parent defines the clock its SPI
+# host drives onto spi_clk_i and stamps the pads itself.
 if {[cdc_is_block_top]} {
-    create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO  -master_clock SPICLK -divide_by 1 -source [cdc_port_or_pin "spi_clk_i"]
-    create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [cdc_port_or_pin "spi_clk_i"]
+    create_clock -add -name SPICLK -period $clock_periods(SPICLK_PERIOD) [get_ports "spi_clk_i"]
+    create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO  -master_clock SPICLK -divide_by 1 -source [get_ports "spi_clk_i"]
+    create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [get_ports "spi_clk_i"]
 }
 
 # I2C
