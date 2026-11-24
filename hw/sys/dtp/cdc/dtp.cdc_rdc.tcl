@@ -33,6 +33,3 @@ source -echo [file join $ocah_dtp_cdc_dir ../synth/dtp_io_delays.sdc]
 source -echo [file join $ocah_dtp_flows_dir cdc cdc_rdc_setup.tcl]
 
 source -echo [file join $ocah_dtp_cdc_dir dtp.resets.tcl]
-if { $::cdc_app eq "cdc" } {
-    source -echo [file join $ocah_dtp_cdc_dir dtp.static_signals.tcl]
-}

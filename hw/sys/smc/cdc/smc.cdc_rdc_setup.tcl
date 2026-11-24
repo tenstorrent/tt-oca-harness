@@ -6,8 +6,7 @@
 # smc.cdc_rdc_setup.tcl - SMC-specific CDC/RDC instance constraints
 #
 # Block-specific, instance-level annotation for the SMC block in OCAH.
-# Shared type-level setup (synchronizer / IP / convergence config and the
-# collect_prim_flop_3sync_qpins helper) lives in
+# Shared type-level setup (synchronizer / IP / convergence config) lives in
 # `flows/cdc/cdc_rdc_setup.tcl`, sourced first.
 # Sourced by both vccdc and vcrdc flows (see
 # `cdc/smc.cdc_rdc.tcl`).
@@ -307,8 +306,8 @@ unset -nocomplain _plic_readback_nets
 # Further intentional fan-in convergence points (same rationale as above):
 #   - plic/fanin/* and gateways_gateway_*/inFlight: the PLIC's OR/priority tree
 #     over independent IRQ lanes (rocket-chip generated).
-#   - u_ref_cnt_gray2bin/z_o*: gray-decode of the synced refclk counter (single-bit
-#     transition per source edge; see the global prim_gray2bin annotation).
+#   - u_ref_cnt_gray2bin/z_o*: gray-decode of the synced DFD refclk counter, which
+#     only increments, so one bit changes per source edge.
 #   - avsbus interrupt_o / AVS_INTERRUPT readback-overflow next-state: OR of
 #     independent event flags into a level interrupt / its CSR mirror.
 #   - peripheral_interrupts_o: vector of independent per-source interrupts.

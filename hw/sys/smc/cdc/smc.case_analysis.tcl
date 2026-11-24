@@ -28,7 +28,6 @@ _smc_case 0 {scan_rst_ni}
 # JTAG reset overrides are quasi-static debug strapping; pin them low for RDC
 _smc_case 0 {jtag_reset_ctrl_i.ovrd*}
 _smc_case 0 {jtag_reset_ctrl_i.val*}
-_smc_case 0 {tdr_dbg_ctrl_clock_stop_en_i}
 
 _smc_case 1 {ext_boot_seq_done_i}
 
