@@ -12,6 +12,8 @@ minor release it updates.
 
 ### RTL bugs
 
+- CSRNG `HW_EXC_STS` cleared one cycle after a hardware instance exception,
+  so software read 0 (#3733).
 - CSRNG CTR_DRBG V counter saturated at V[31:0] = `0xFFFFFFFF` instead of
   wrapping, so a Generate repeated its last block (#3732).
 - A TRNG reset zeroed an EDN word already acknowledged to AES, KMAC or OTBN,
