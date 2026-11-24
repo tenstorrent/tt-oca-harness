@@ -101,7 +101,7 @@ BIN_TO_SPI    := $(TOOLS_DIR)/bin_to_spi_preload.py
 OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.o \
 	$(BUILD_DIR)/boot_straps.o $(BUILD_DIR)/pll_init.o \
 	$(BUILD_DIR)/sep_spi.o $(BUILD_DIR)/sep_ot_spi.o $(BUILD_DIR)/sep_dma.o \
-	$(BUILD_DIR)/oca_boot.o $(BUILD_DIR)/rom_handoff.o \
+	$(BUILD_DIR)/oca_boot.o $(BUILD_DIR)/rom_handoff.o $(BUILD_DIR)/rom_gate_ledger.o \
 	$(BUILD_DIR)/rom_mem_clear.o $(BUILD_DIR)/status_ring.o \
 	$(BUILD_DIR)/hmac_sha256.o $(BUILD_DIR)/measurement.o $(BUILD_DIR)/fuse_lock.o \
 	$(BUILD_DIR)/lifecycle.o \

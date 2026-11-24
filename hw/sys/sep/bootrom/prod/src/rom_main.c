@@ -44,7 +44,8 @@
 //   [S26]  confirm fuse secrets locked
 //   [S27]  boot-state record → measurement slot 1
 //   [S28]  stack canary check -- before [S29], which does not return
-//   [S29]  BL1 handoff (copy → jump); BL1 signals PASS, not BL0
+//   [S29]  BL1 handoff (copy → gate-ledger self-check → PMP release → jump);
+//          BL1 signals PASS, not BL0
 //   [S30]  unified error convergence (rom_err_fail)
 
 #include <stdbool.h>
@@ -58,6 +59,7 @@
 #include "harden.h"
 #include "rom_smc.h"
 #include "fuse_lock.h"
+#include "gate_ledger.h"
 #include "hmac_sha256.h"
 #include "lifecycle.h"
 #include "measurement.h"
@@ -478,6 +480,7 @@ rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_sta
         rom_err_fail(ROM_ERR_FUSE_SECRETS_NOT_LOCKED);
     }
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SECRETS_LOCKED);
+    gate_stamp_fuselock();
 
     // ── [S25] DEMOTE_1 write (deferred from the decision above) ──
     // Ordered after the secret lock deliberately: the demotion register is the

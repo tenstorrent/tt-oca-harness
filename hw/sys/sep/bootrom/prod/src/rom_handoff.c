@@ -1,18 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// OROM BL1 handoff: find image, copy to ICCM, jump.
-//
-// BL1 handoff sequence:
-//   1. find_toc_entry(SEP_BL1) — scan TOC for BL1 image
-//   2. sep_dma_copy()          — DMA BL1 from SRAM to its ICCM load address
-//   3. jump_to_bl1()           — transfer control to BL1 entry point
-//
-// OROM BL1 handoff: find image, copy to SRAM, jump.
+// OROM BL1 handoff ([S29]):
 //
 //   1. locate BL1 in the payload TOC via oca_toc_image_at()
 //   2. sep_dma_copy() BL1 to the TOC entry's load address
-//   3. jump_to_bl1()  -- transfer control
+//   3. rom_handoff_selfcheck() -- gate ledger, manifest locus, fuse locks
+//   4. EXEC_IMAGE / STARTING_BL1, PMP release, jump_to_bl1()
 //
 // BL1 executes from ICCM: the IFU fetches it there, and vector.S's warm-reset
 // handler check only accepts an ICCM address.  Nothing BL1 loads or stores can
@@ -29,6 +23,7 @@
 
 #include "bl0_state.h"
 #include "errors.h"
+#include "gate_ledger.h"
 #include "harden.h"
 #include "oca_boot.h"
 #include "oca_validator.h"
@@ -276,7 +271,10 @@ uint32_t rom_handoff_bl1(void) {
     // its own .rodata/.data: it executes from ICCM but cannot read ICCM.
     get_bl0_state()->bl1_image_src_addr = (uint32_t)(uintptr_t)bl1.bytes;
 
-    // ── Step 3: Jump to BL1 ──
+    // ── Step 3: Pre-hand-off self-check; halts with 0xF004 on any failure ──
+    rom_handoff_selfcheck();
+
+    // ── Step 4: Jump to BL1 ──
     uint32_t entry_addr = load_addr + entry_off;
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_EXEC_IMAGE);
