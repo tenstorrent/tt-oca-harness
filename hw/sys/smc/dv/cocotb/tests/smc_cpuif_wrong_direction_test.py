@@ -19,11 +19,11 @@ from smc_base_test import smc_base_test
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
 # sequence that silently stopped issuing accesses.
 #
-# 40 targets at one access at least, plus the before/after probe reads that
+# 39 targets at one access at least, plus the before/after probe reads that
 # bracket each of the 11 blocks (22). Every write carries two further reads --
 # the register or its FIFO level either side -- except the two free-running
 # timer counters, so the real count is higher; the floor counts the minimum.
-CPUIF_WRONG_DIRECTION_MIN_CSR_ACCESSES = 40 + 22
+CPUIF_WRONG_DIRECTION_MIN_CSR_ACCESSES = 39 + 22
 
 
 @pyuvm.test()

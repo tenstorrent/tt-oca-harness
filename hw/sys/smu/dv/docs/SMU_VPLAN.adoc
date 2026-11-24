@@ -536,7 +536,7 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_smc_gpio_pad_output_test` |smu |3 |Every GPIO pad driven from its own DATA_CTRL, with a code no other pad shares, follows CORE2PAD and loops it back to its own interrupt lane, and transmit alone drives the pad with its interrupt lane low
 |`smu_smc_boundary_lane_sweep_test` |smu |3 |Every lane of the multi-lane SMC-facing wrapper buses is driven both ways and compared against the SMC register or interrupt vector that owns it, and each aggregate names the lane count it expects.
 |`smu_smc_efuse_shadow_sense_reset_test` |smu |3 |After a real SMC fuse sense, `smc_shadow_regs_o` carries the sensed eFuse image at every register offset `smc_addr.h` gives the map, and it reads the zero every `smc_efuse_map.rdl` field resets to while `rst_cold_ni` is held; the image programs every fuse bit, so both samples are taken on the full width of the port.
-|`smu_telemetry_atb_capture_test` |smu |2 |One complete ATB telemetry message entered at the wrapper pins is captured by each receiver and read back, the ATB flush handshake completes at the pins, and the port applies backpressure when its receiver stops.
+|`smu_telemetry_atb_capture_test` |smu |2 |ATB beats entered at the wrapper pins are read back exactly and in order through each receiver's `TELEMETRY_DATA`, the ATB flush handshake completes at the pins, and a full receiver holds the port off without dropping a beat.
 |`smu_smc_peripheral_irq_test` |smu |2 |The raw GPIO and UART interrupt vectors `port_table.adoc` brings out of the wrapper follow their sources both ways.
 |`smu_cla_action_test` |smu |2 |The SMC CLA node 0 custom actions, cross-trigger outputs and clock-halt report, programmed over JTAG2AXI, reach the SMU nets they drive and clear again.
 |`smu_dtp_debug_control_fields_test` |smu |3 |The DEBUG_CONTROL TDR resets to zero, stores bits 0 to 3, reports bit 4 from the clock-stop request lane, drives the stop output from `jtag_clock_stop`, and clears on TRST, Test-Logic-Reset and power-on reset.
@@ -545,8 +545,8 @@ read "3, parked", and none is); the Scenario column is the one-line intent.
 |`smu_smc_aperture_reset_state_test` |smu |3 |The SMC aperture bases, region size, `smc_region_size_o` and the peripheral clock-gate enables read their reset state.
 |`smu_smc_scratch_bridge_readback_test` |smu |3 |Each of the sixteen SMC CPU control SCRATCH registers reads 0 after reset and reads back a distinct value written over JTAG2AXI.
 |`smu_ss_config_lane_drive_test` |smu |3 |Each bit of the SS_CONFIG register written over JTAG2AXI appears on its own lane of `ss_config_o`.
-|`smu_telemetry_queue_threshold_test` |smu |3 |Telemetry receiver 0 queues eight messages, exposes the second to eighth in arrival order as the queue is popped, reports empty and full, and raises the buffer-threshold status while the queue is above the threshold.
-|`smu_telemetry_reset_state_test` |smu |3 |The three telemetry receivers read an empty queue and zero control, interrupt and message registers after reset.
+|`smu_telemetry_queue_threshold_test` |smu |3 |Telemetry receiver 0 holds 32 beats, returns them through `TELEMETRY_DATA` in arrival order, reports empty and full, and raises the buffer-threshold status while the number of beats held is above the threshold.
+|`smu_telemetry_reset_state_test` |smu |3 |The three telemetry receivers read an empty FIFO, zero control and interrupt registers, and `TELEMETRY_DATA` 0 after reset.
 |`smu_xtrig_cold_reset_clears_ctn_test` |smu |3 |The cold reset returns the cross-trigger network registers to their reset values, drops a point-to-point request in flight, and holds the clock-stop output low.
 |`smu_xtrig_ctm_select_walk_test` |smu |3 |Every bit of the matrix CT_DST_SELECT field stores and reads back, the bits spread over a CT_SRC register of each of three port-index groups.
 |`smu_xtrig_ctn_csr_rw_test` |smu |3 |The cross-trigger port CONFIG and STRETCH_MULT and the matrix CT_SRC registers store what is written, STATUS writes change nothing, and the port windows stay independent.
@@ -3383,40 +3383,39 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `smc_under_smu`, `hosted`, `all`; `timeout_sec` 3600; tags `smc`, `telemetry`, `sep`, `p0`, `real_rtl`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+expected_sep=1`.
 
-*Randomization*: RAND-NONE: directed, the ATB message is the fixed DV-owned frame transcribed from the documented format, driven on each receiver's lane, and the flush and backpressure legs are fixed handshakes; nothing is drawn.
+*Randomization*: RAND-NONE: directed, the beats are fixed DV-chosen `{atid, atdata}` pairs driven on each receiver's lane, and the flush and backpressure legs are fixed handshakes; nothing is drawn.
 
-*Objective*: One complete ATB telemetry message entered at the wrapper pins is captured by each receiver and read back, the ATB flush handshake completes at the pins, and the ATB port applies backpressure when its receiver stops.
+*Objective*: ATB beats entered at the wrapper pins are captured by each receiver and read back through `TELEMETRY_DATA` exactly and in order, the ATB flush handshake completes at the pins, and a full receiver holds the ATB port off without dropping a beat.
 
 *Test Coverage*:
 
-* Receiver 0 is read empty with PROBE_ID, COUNTER_VLDS and TELEMETRY_COUNTER[0] clear before any beat is driven (`hw/ip/telemetry_receiver/doc/memmap.adoc`, "Reset Behavior"; field resets from the generated `telemetry_receiver.h`), so the capture leg starts from a known state and the later non-zero reads are transitions the reads themselves witnessed.
-* With the telemetry clock gate proved open, a complete last-flagged message whose every beat handshook on `telemetry_atready_o` leaves the buffer non-empty, reports the framed probe id, one valid bit for the one counter's worth of valid blocks sent and that counter reassembled from the byte every valid block carried, and CTRL.BUFFER_POP returns it to empty.
-* The frame is a DV-owned table in `seq_lib/smu_telemetry_atb_capture_seq.py` transcribed from the "Message Format" table of `hw/ip/telemetry_receiver/doc/index.adoc` (eight little-endian beats per 64-bit packet, `last_packet` at bit 63, `probe_id` at bits [60:56] of the first packet, seven 9-bit valid-plus-data blocks per packet, a counter as four consecutive blocks valid only when all four are valid), `doc/interface.adoc` (ATB_DATA_WIDTH 8, PACKET_WIDTH 64) and the generated `regs/gen/c/telemetry_receiver.h` (PROBE_ID width, COUNTER_VLDS bit `i` is counter `i`). The probe-id and last-packet compares therefore test the receiver against the documented format, not against itself.
-* Specification gap: the document does not state which of the seven block positions is block 0, whether a block's valid bit is its top or bottom bit, or which block begins counter 0. The frame is built independent of all three (header block invalid under either orientation, every other block all ones), so what is proven for the counter is the round trip of a DV-chosen byte through COUNTER_VLDS and TELEMETRY_COUNTER[0]; most-significant-byte-first order and block placement are not discriminated until the specification fixes them.
-* S5 to S7 repeat the capture on every receiver, each on its own lane with every ATB ID bit raised and then lowered, repeat the flush handshake on receivers 1 and 2, and run `clk_telemetry_i` (10 ns) faster than the receiver's `clk_smu_i` (12 ns) so that back-to-back beats outrun the ATB crossing FIFO and `telemetry_atready_o` falls after at least one accepted beat (`doc/interface.adoc`, "Back-pressure"); the number of beats accepted before the fall is recorded, since no document gives the crossing FIFO depth (spec gap). A complete message is queued before the beats, and CTRL.TELEMETRY_RX_FLUSH "discards queued messages and resets the assembly write pointer" (`telemetry_receiver.rdl`), so after the flush the buffer reads empty and a complete message sent afterwards is captured with its own probe id.
+* Receiver 0 reads STATUS.BUFFER_EMPTY set and `TELEMETRY_DATA` 0 before any beat is driven (`hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl`, TELEMETRY_DATA: a read of the empty FIFO returns 0 and removes nothing), so the capture leg starts from a known state.
+* With the telemetry clock gate proved open, five beats, each with an ATID and data byte no other beat shares, handshake on `telemetry_atready_o` and read back through `TELEMETRY_DATA` as `{VALID, ATID, DATA}` words equal to the beats driven, in order; the FIFO then reads empty. The expected word is built from the generated `telemetry_receiver.h` field masks.
+* S5 repeats the capture on every receiver, each on its own lane, with a beat whose every ATID and data bit is 1, one whose every bit is 0 (read back as `VALID` alone, distinct from an empty read) and one of its own; after each receiver is drained all three receivers read empty, so no beat reached another lane's FIFO.
+* S7, on every receiver: 41 beats are offered with no reads. The receiver FIFO holds 32 (`smc_config_pkg::TelemetryReceiverBufferDepth`) and the wrapper's ATB crossing FIFO 8, so STATUS.BUFFER_FULL sets, exactly 40 beats are accepted and `telemetry_atready_o` stays low for 64 `clk_telemetry_i` cycles with the last beat held on the pins. Draining returns all 41 in order, the held beat included, so nothing was dropped or overwritten. Four beats are then queued, CTRL.TELEMETRY_RX_FLUSH discards them, the FIFO reads empty, and three beats sent after the flush read back alone. `clk_telemetry_i` (10 ns) runs faster than the receiver's `clk_smu_i` (12 ns).
 * CTRL.TELEMETRY_TX_FLUSH raises `telemetry_afvalid_o`; the request holds while `telemetry_afready_i` is low and retires when it is raised, at the pin and in the register field: `telemetry_afvalid_o` reads 1 after the register read that shows the field held, in the same step as `telemetry_afready_i` is raised, and 0 after it, so the pin's fall follows the acknowledgment. Lowering `telemetry_afready_i` again, read back at the wrapper port, leaves the request retired, so every receiver's acknowledgment both rises and falls at the pin. The expected behaviour is the `TELEMETRY_TX_FLUSH` field description in `regs/telemetry_receiver.rdl` (self-clearing on flush completion over the ATB AF interface) with `afvalid_o` / `afready_i` as request and acknowledgment in `doc/interface.adoc`.
 
 *Test Procedure*:
 
 [arabic]
-. Read receiver 0 STATUS, PROBE_ID, COUNTER_VLDS and TELEMETRY_COUNTER[0] at reset.
-. Prove the telemetry clock gate open, drive the message framed per the DV-owned table beat by beat on the wrapper ATB pins, requiring `telemetry_atready_o` on each beat.
-. Read the receiver registers, compare the probe id, the valid bits and counter 0 against the framed message, pop the buffer and read it empty again.
+. Read receiver 0 STATUS and `TELEMETRY_DATA` at reset.
+. Prove the telemetry clock gate open and drive five beats on lane 0, each held on the pins until `telemetry_atready_o` takes it.
+. Read `TELEMETRY_DATA` five times, compare each word with the beat driven, and read the FIFO empty.
 . Set CTRL.TELEMETRY_TX_FLUSH, hold `telemetry_afready_i` low and read the request held; sample `telemetry_afvalid_o` high, raise `telemetry_afready_i` and read the request retired; lower it and read it low at the wrapper port with the request still retired.
-. For each receiver, drive a message framed with its own probe id on its own ATB lane with every ATB ID bit high, return the lane to zero data and ID, read the probe id, pop the buffer and read it empty.
+. For each receiver, drive its three beats on its own lane, read them back, and read every receiver empty.
 . Repeat the flush handshake on receivers 1 and 2.
-. With `clk_telemetry_i` running faster than `clk_smu_i`, on each receiver's lane in turn send a complete message and read the buffer non-empty, hold `telemetry_atvalid_i` high until `telemetry_atready_o` falls while counting accepted beats, drop it and wait for ready to rise; pulse CTRL.TELEMETRY_RX_FLUSH and read the buffer empty; send a complete message again, read its probe id and pop it.
+. On each receiver's lane in turn, offer 41 beats with no reads, poll STATUS.BUFFER_FULL, count the beats accepted when `telemetry_atready_o` falls and again 64 cycles later, drain and compare all 41, and read the FIFO empty; queue four beats, wait for INTR_STATUS.BUFFER_THRESHOLD at a threshold of 3, pulse CTRL.TELEMETRY_RX_FLUSH and read the FIFO empty; send three beats and read them back.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMU-TEL-RESET` |receiver 0 reads STATUS.BUFFER_EMPTY set with PROBE_ID, COUNTER_VLDS and TELEMETRY_COUNTER[0] clear before any beat is driven
-|`CHK-SMU-TEL-CAPTURE` |a complete last-flagged ATB message framed per the documented format, whose every beat handshook on telemetry_atready_o, leaves the buffer non-empty, reports the framed probe id, one valid bit for the one counter's worth of valid blocks sent and counter 0 equal to the byte that filled them, and CTRL.BUFFER_POP returns it to empty
+|`CHK-SMU-TEL-RESET` |receiver 0 reads STATUS.BUFFER_EMPTY set and `TELEMETRY_DATA` 0 before any beat is driven
+|`CHK-SMU-TEL-CAPTURE` |with the telemetry clock gate proved open, five beats that handshook on `telemetry_atready_o` read back through `TELEMETRY_DATA` as the exact `{VALID, ATID, DATA}` words, in order, and the FIFO then reads empty
 |`CHK-SMU-TEL-FLUSH` |CTRL.TELEMETRY_TX_FLUSH raises telemetry_afvalid_o and the request holds while telemetry_afready_i is low, with the pin still 1 when telemetry_afready_i rises; raising it retires the request at the pin and clears the register field, and lowering it again at the wrapper port leaves the request retired, on every receiver
-|`CHK-SMU-TEL-EVERY-RECEIVER` |each receiver takes a message on its own ATB lane, reports the probe id framed for it, and pops back to empty
-|`CHK-SMU-TEL-BACKPRESSURE` |on every receiver, with a message queued, back-to-back beats on a telemetry clock faster than the receiver clock make `telemetry_atready_o` fall after at least one accepted beat, it rises again once the beats stop, the RX flush empties the buffer, and a message sent after the flush reads back its own probe id
+|`CHK-SMU-TEL-EVERY-RECEIVER` |each receiver returns exactly the beats driven on its own lane, including all-ones and all-zeros ATID and data, and every receiver reads empty afterwards
+|`CHK-SMU-TEL-BACKPRESSURE` |on every receiver, 41 beats offered with no reads set STATUS.BUFFER_FULL, exactly 40 are accepted and `telemetry_atready_o` stays low with one held; the drain returns all 41 in order; CTRL.TELEMETRY_RX_FLUSH empties queued beats and beats sent after it read back alone
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
@@ -3787,35 +3786,34 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 *Source Module*: `smu_telemetry_queue_threshold_test` (`cocotb_wrapper/tests/`; the sequence `smu_telemetry_queue_threshold_test_seq` in `cocotb_wrapper/seq_lib/`)
 
-*BFM / Model*: `ocah_jtag_vip` primary TAP and the SMC JTAG2AXI bridge (with `tb_smc_jtag2axi_security_disable` read as open) for every receiver register access; the bench ATB lane 0 pins `tb_telemetry_atdata`, `tb_telemetry_atid` (driven with ATB ID `0x2A`), `tb_telemetry_atvalid` and `tb_telemetry_atready`, sampled on `clk_ref_i`; telemetry receiver 0 registers CTRL, STATUS, TELEMETRY_PROBE_ID, INTR_STATUS and INTR_TEST; SMC base configuration CLOCK_GATE_CONTROL for the telemetry clock gate; the run mode `sep_rtl` plusargs `+expected_sep=1`, `+rom_hex=smc_rom_default.hex`, `+smc_efuse_hex=smc_efuse_default.hex`, `+sep_efuse_hex=sep_efuse_default.hex`, `+sep_boot_rom_hex=sep_boot_rom_default.hex`, `+sep_itcm_hex=sep_itcm_default.hex`, `+sep_dtcm_hex=sep_dtcm_default.hex`, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` and `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`; `elaboration` firmware mode
+*BFM / Model*: `ocah_jtag_vip` primary TAP and the SMC JTAG2AXI bridge (with `tb_smc_jtag2axi_security_disable` read as open) for every receiver register access; the bench ATB lane 0 pins `tb_telemetry_atdata`, `tb_telemetry_atid`, `tb_telemetry_atvalid` and `tb_telemetry_atready`, sampled on `clk_ref_i`; telemetry receiver 0 registers CTRL, STATUS, TELEMETRY_DATA, INTR_STATUS and INTR_TEST; SMC base configuration CLOCK_GATE_CONTROL for the telemetry clock gate; the run mode `sep_rtl` plusargs `+expected_sep=1`, `+rom_hex=smc_rom_default.hex`, `+smc_efuse_hex=smc_efuse_default.hex`, `+sep_efuse_hex=sep_efuse_default.hex`, `+sep_boot_rom_hex=sep_boot_rom_default.hex`, `+sep_itcm_hex=sep_itcm_default.hex`, `+sep_dtcm_hex=sep_dtcm_default.hex`, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` and `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`; `elaboration` firmware mode
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 3000; tags `smc`, `telemetry`, `sep`, `real_rtl`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 3, so three seeds per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+expected_sep=1`.
 
-*Randomization*: RAND-REP: the leaf completes the fill to the depth of 8 before the first pop in every run, so the full and arrival-order cells (`CHK-TELQ-EMPTY-FULL`, `CHK-TELQ-ORDER`) are reached in every run, and the seed draws three thresholds written to `CTRL.BUFFER_THRESHOLD` (0 to 8, the queue depth; `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl`, `BUFFER_THRESHOLD`: the status is asserted while the number of entries is greater than the value, so a threshold of 8 is never exceeded) and the positions of the second and third threshold writes at two distinct events among the sixteen fill and pop events (the first write precedes the first fill), with this filter: the first threshold and every threshold whose write precedes a fill (a position at or below the queue depth) are drawn from 0 to 7, so the threshold in force at the write of 1 with eight queued is always exceeded and that leg's source is live; only a threshold whose write precedes a pop may draw 8; every flag compare expects 1 exactly when the number queued is greater than the threshold in force: `CHK-TELQ-THRESHOLD-LIVE` after every fill and every pop, `CHK-TELQ-THRESHOLD-CLEAR` after the write of 1 with eight queued and after each threshold write, their PASS lines carrying the drawn threshold and the occupancy; the directed flip cell stays pinned beside the draws: with five queued after the third pop the threshold is written 3 (status 1), raised to 5 (status 0, the queue unchanged), set back to 3 (status 1) and the drawn threshold in force is restored and compared again; 3 seeds per regression (`reseed = 3`).
+*Randomization*: RAND-REP: the leaf completes the fill to the depth of 32 beats before the first read in every run, so the full and arrival-order cells (`CHK-TELQ-EMPTY-FULL`, `CHK-TELQ-ORDER`) are reached in every run, and the seed draws three thresholds written to `CTRL.BUFFER_THRESHOLD` (0 to 32, the FIFO depth; `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl`, `BUFFER_THRESHOLD`: the status is asserted while the number of beats held is greater than the value, so a threshold of 32 is never exceeded) and the positions of the second and third threshold writes at two distinct events among the 64 fill and read events (the first write precedes the first fill), with this filter: the first threshold and every threshold whose write precedes a fill (a position at or below the depth) are drawn from 0 to 31, so the threshold in force at the write of 1 with the FIFO full is always exceeded and that leg's source is live; only a threshold whose write precedes a read may draw 32; every flag compare expects 1 exactly when the number of beats held is greater than the threshold in force: `CHK-TELQ-THRESHOLD-LIVE` after every fill and every read, `CHK-TELQ-THRESHOLD-CLEAR` after the write of 1 with the FIFO full and after each threshold write, their PASS lines carrying the drawn threshold and the occupancy; the directed flip cell stays pinned beside the draws: with 29 held after the third read the threshold is written 28 (status 1), raised to 29 (status 0, the FIFO unchanged), set back to 28 (status 1) and the drawn threshold in force is restored and compared again; 3 seeds per regression (`reseed = 3`).
 
-*Objective*: receiver 0 queues eight ATB messages, exposes the second to eighth in arrival order as the queue is popped, reports empty and full at the queue ends, and raises the buffer-threshold interrupt status while the number of queued messages is above the programmed threshold.
+*Objective*: receiver 0 holds 32 ATB beats, returns them through `TELEMETRY_DATA` in arrival order, reports empty and full at the FIFO ends, and raises the buffer-threshold interrupt status while the number of beats held is above the programmed threshold.
 
 *Test Coverage*:
 
-* With the telemetry clock gate read open, a CTRL.BUFFER_POP write on the empty queue leaves STATUS.BUFFER_EMPTY set and TELEMETRY_PROBE_ID at 0; `hw/ip/telemetry_receiver/doc/architecture.adoc` ("Message Queue and Readout") says a pop advances the queue only when it is nonempty and an empty-queue read returns zero.
-* With CTRL.BUFFER_THRESHOLD at the first seed-drawn threshold (0 to 7), eight messages are sent one at a time, each as eight ATB beats forming one last-flagged packet whose probe id, 1 to 8 in turn, the leaf places in bits [60:56] and whose block layout is not observed (`hw/ip/telemetry_receiver/doc/index.adoc`, "Message Format"). After each message STATUS.BUFFER_EMPTY reads 0, and STATUS.BUFFER_FULL reads 0 for the first seven messages and 1 after the eighth, the default queue depth of eight in `hw/ip/telemetry_receiver/doc/index.adoc` and `interface.adoc`.
-* After each message INTR_STATUS.BUFFER_THRESHOLD reads 1 exactly when the number queued is greater than the threshold in force, since the status is live while the occupancy is strictly greater than the threshold (`architecture.adoc`, "Interrupts"; `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl`); the second and third seed-drawn thresholds are written before seed-drawn fill or pop events, and the status is read and compared the same way after each write.
-* A write of 1 to INTR_STATUS.BUFFER_THRESHOLD with eight queued leaves it at its live value, 1, since the threshold in force there (the first drawn threshold, or the last one written before a fill) is drawn from 0 to 7 and eight is greater than it, as the document says writing the status bit does not clear the source.
-* Eight successive pops expose probe ids 2 to 8 and then 0 on the emptied queue; after each pop INTR_STATUS.BUFFER_THRESHOLD reads 1 exactly when the number still queued is greater than the threshold in force.
-* With five queued after the third pop, the threshold written 3 reads the status 1, raised to 5 with the queue unchanged reads 0, set back to 3 reads 1, and the restored drawn threshold reads the live value for five queued; the pinned cell is run on every seed.
-* On the empty queue, writing 1 to INTR_TEST.BUFFER_THRESHOLD makes INTR_STATUS.BUFFER_THRESHOLD read 1 and writing 0 releases it to 0, as the RDL gives.
-* The probe id of the first message, visible at the head before the first pop, is not read; arrival order is compared only for probe ids 2 to 8, as each pop exposes the next.
-* INTR_STATUS.BUFFER_THRESHOLD is read as a register only, so the interrupt output at the SMU boundary is out of scope. The behaviour of a ninth message arriving on a full queue is out of scope.
+* With the telemetry clock gate read open, a `TELEMETRY_DATA` read of the empty FIFO returns 0 and leaves STATUS.BUFFER_EMPTY set (`telemetry_receiver.rdl`, TELEMETRY_DATA: an empty read removes nothing).
+* With CTRL.BUFFER_THRESHOLD at the first seed-drawn threshold (0 to 31), 32 beats are sent one at a time, each with an ATID and data byte no other beat shares. STATUS is read after the first, 31st and 32nd beats: BUFFER_EMPTY reads 0 at all three, and BUFFER_FULL reads 0 after the first and 31st and 1 after the 32nd, the depth `smc_config_pkg::TelemetryReceiverBufferDepth`. Reading STATUS after every beat would push the leaf past its `timeout_sec`, since each JTAG2AXI access is slow on this bench.
+* After each beat INTR_STATUS.BUFFER_THRESHOLD reads 1 exactly when the number of beats held is greater than the threshold in force (`telemetry_receiver.rdl`, `BUFFER_THRESHOLD`); the second and third seed-drawn thresholds are written before seed-drawn fill or read events, and the status is read and compared the same way after each write.
+* A write of 1 to INTR_STATUS.BUFFER_THRESHOLD with the FIFO full leaves it at its live value, 1, since the threshold in force there is drawn from 0 to 31; writing the status bit does not clear the source.
+* 32 successive `TELEMETRY_DATA` reads return the 32 beats as `{VALID, ATID, DATA}` words in arrival order, and a 33rd read returns 0; after each read INTR_STATUS.BUFFER_THRESHOLD reads 1 exactly when the number still held is greater than the threshold in force.
+* With 29 held after the third read, the threshold written 28 reads the status 1, raised to 29 with the FIFO unchanged reads 0, set back to 28 reads 1, and the restored drawn threshold reads the live value for 29 held; the pinned cell is run on every seed.
+* On the empty FIFO, writing 1 to INTR_TEST.BUFFER_THRESHOLD makes INTR_STATUS.BUFFER_THRESHOLD read 1 and writing 0 releases it to 0, as the RDL gives.
+* INTR_STATUS.BUFFER_THRESHOLD is read as a register only, so the interrupt output at the SMU boundary is out of scope. A beat offered to a full FIFO is covered by `smu_telemetry_atb_capture_test` (`CHK-SMU-TEL-BACKPRESSURE`).
 
 *Test Procedure*:
 
 [arabic]
 . Wait for reset done, reset the TAP, read the IDCODE, require the JTAG2AXI gate open and read CLOCK_GATE_CONTROL, requiring the telemetry clock gate enable clear.
-. Error injection. Point: CTRL.BUFFER_POP of receiver 0 over JTAG2AXI. Kind: a pop on the empty queue. Expected response: STATUS.BUFFER_EMPTY stays set and TELEMETRY_PROBE_ID reads 0. Read STATUS and TELEMETRY_PROBE_ID.
-. Draw the three thresholds and the positions of the second and third threshold writes from the seed and log them; write the first threshold to CTRL.BUFFER_THRESHOLD, then send eight messages with probe ids 1 to 8, reading STATUS and INTR_STATUS after each and writing a drawn threshold before the fill at its drawn position.
-. Error injection. Point: INTR_STATUS.BUFFER_THRESHOLD of receiver 0 with eight messages queued. Kind: a write of 1 to the status bit while its source is live. Expected response: the status is not cleared and reads 1. Read it.
-. Pop eight times, reading TELEMETRY_PROBE_ID and INTR_STATUS after each pop and writing a drawn threshold before the pop at its drawn position, reading INTR_STATUS after each threshold write; after the third pop write the threshold 3, 5 and 3 and then the drawn threshold in force back, reading INTR_STATUS after each.
-. Write 1 and then 0 to INTR_TEST.BUFFER_THRESHOLD, reading INTR_STATUS after each, and restore CTRL and the ATB pins.
+. Error injection. Point: TELEMETRY_DATA of receiver 0 over JTAG2AXI. Kind: a read of the empty FIFO. Expected response: the read returns 0 and STATUS.BUFFER_EMPTY stays set. Read TELEMETRY_DATA and STATUS.
+. Draw the three thresholds and the positions of the second and third threshold writes from the seed and log them; write the first threshold to CTRL.BUFFER_THRESHOLD, then send 32 beats, reading INTR_STATUS after each and STATUS after the first, 31st and 32nd, and writing a drawn threshold before the fill at its drawn position.
+. Error injection. Point: INTR_STATUS.BUFFER_THRESHOLD of receiver 0 with the FIFO full. Kind: a write of 1 to the status bit while its source is live. Expected response: the status is not cleared and reads 1. Read it.
+. Read TELEMETRY_DATA 32 times, comparing each word with the beat sent and reading INTR_STATUS after each read, writing a drawn threshold before the read at its drawn position and reading INTR_STATUS after each threshold write; after the third read write the threshold 28, 29 and 28 and then the drawn threshold in force back, reading INTR_STATUS after each. Read TELEMETRY_DATA once more and compare it with 0.
+. Write 1 and then 0 to INTR_TEST.BUFFER_THRESHOLD, reading INTR_STATUS after each, and restore CTRL.
 . Log the last state of the JTAG2AXI and ATB beat waits, require none expired, and require both wait sites to have run.
 
 *Checkers*:
@@ -3823,18 +3821,18 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-TELQ-POP-EMPTY` |a pop on the empty queue leaves BUFFER_EMPTY set and PROBE_ID 0
-|`CHK-TELQ-EMPTY-FULL` |BUFFER_EMPTY reads 0 after each message and BUFFER_FULL sets only on the eighth
-|`CHK-TELQ-THRESHOLD-LIVE` |after every fill and every pop INTR_STATUS.BUFFER_THRESHOLD is 1 when the number queued is above the seed-drawn threshold in force and 0 otherwise, and reads 1 with the threshold at 3 and five queued before and after the pinned raise to 5
-|`CHK-TELQ-ORDER` |successive pops expose probe ids 2 to 8 in arrival order, then 0 when empty
-|`CHK-TELQ-THRESHOLD-CLEAR` |a write of 1 to the status with eight queued and each seed-drawn threshold write leave INTR_STATUS.BUFFER_THRESHOLD at the live value, 1 only when the number queued is above the threshold; raising the threshold to 5 with five queued reads 0, and restoring the drawn threshold reads the live value
+|`CHK-TELQ-POP-EMPTY` |a TELEMETRY_DATA read of the empty FIFO returns 0 and leaves BUFFER_EMPTY set
+|`CHK-TELQ-EMPTY-FULL` |BUFFER_EMPTY reads 0 after the first, 31st and 32nd beats, and BUFFER_FULL is clear after the first and 31st and set after the 32nd
+|`CHK-TELQ-THRESHOLD-LIVE` |after every fill and every read INTR_STATUS.BUFFER_THRESHOLD is 1 when the number of beats held is above the seed-drawn threshold in force and 0 otherwise, and reads 1 with the threshold at 28 and 29 held before and after the pinned raise to 29
+|`CHK-TELQ-ORDER` |successive TELEMETRY_DATA reads return the 32 beats in arrival order, then 0 when empty
+|`CHK-TELQ-THRESHOLD-CLEAR` |a write of 1 to the status with the FIFO full and each seed-drawn threshold write leave INTR_STATUS.BUFFER_THRESHOLD at the live value, 1 only when the number of beats held is above the threshold; raising the threshold to 29 with 29 held reads 0, and restoring the drawn threshold reads the live value
 |`CHK-TELQ-THRESHOLD-TEST` |INTR_TEST.BUFFER_THRESHOLD forces the status to 1 and releases it to 0
 |`CHK-TIMEOUT-PATHS` |none of the bounded JTAG2AXI and ATB beat waits expires
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: INTR_STATUS.BUFFER_THRESHOLD is read as a register only, so the interrupt output at the SMU boundary is out of scope. The behaviour of a ninth message arriving on a full queue is out of scope.
+*Scope limit*: INTR_STATUS.BUFFER_THRESHOLD is read as a register only, so the interrupt output at the SMU boundary is out of scope.
 
 '''''
 
@@ -3847,28 +3845,28 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 *Source Module*: `smu_telemetry_reset_state_test` (`cocotb_wrapper/tests/`; the sequence `smu_telemetry_reset_state_test_seq` in `cocotb_wrapper/seq_lib/`)
 
-*BFM / Model*: `ocah_jtag_vip` primary TAP and the SMC JTAG2AXI bridge (with `tb_smc_jtag2axi_security_disable` read as open); the registers CTRL, STATUS, INTR_STATUS, INTR_ENABLE, INTR_TEST, TELEMETRY_PROBE_ID, TELEMETRY_COUNTER_VLDS and TELEMETRY_COUNTER of the three telemetry receivers at the addresses of the generated SMC address header; SMC base configuration CLOCK_GATE_CONTROL; the run mode `sep_rtl` plusargs `+expected_sep=1`, `+rom_hex=smc_rom_default.hex`, `+smc_efuse_hex=smc_efuse_default.hex`, `+sep_efuse_hex=sep_efuse_default.hex`, `+sep_boot_rom_hex=sep_boot_rom_default.hex`, `+sep_itcm_hex=sep_itcm_default.hex`, `+sep_dtcm_hex=sep_dtcm_default.hex`, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` and `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`; `elaboration` firmware mode
+*BFM / Model*: `ocah_jtag_vip` primary TAP and the SMC JTAG2AXI bridge (with `tb_smc_jtag2axi_security_disable` read as open); the registers CTRL, STATUS, INTR_STATUS, INTR_ENABLE, INTR_TEST and TELEMETRY_DATA of the three telemetry receivers at the addresses of the generated SMC address header; SMC base configuration CLOCK_GATE_CONTROL; the run mode `sep_rtl` plusargs `+expected_sep=1`, `+rom_hex=smc_rom_default.hex`, `+smc_efuse_hex=smc_efuse_default.hex`, `+sep_efuse_hex=sep_efuse_default.hex`, `+sep_boot_rom_hex=sep_boot_rom_default.hex`, `+sep_itcm_hex=sep_itcm_default.hex`, `+sep_dtcm_hex=sep_dtcm_default.hex`, `+skip_fuse_sense`, `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` and `+sep_shadow_reg_preload=hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload`; `elaboration` firmware mode
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `hosted`, `all`; `timeout_sec` 3000; tags `smc`, `telemetry`, `sep`, `real_rtl`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`; plusargs `+expected_sep=1`.
 
 *Randomization*: RAND-NONE: directed, the leaf only reads the registers of the three receivers for their reset values and writes nothing; nothing is drawn.
 
-*Objective*: before any ATB beat is driven, the three telemetry receivers read their documented reset state, with an empty queue and zero control, interrupt and message registers.
+*Objective*: before any ATB beat is driven, the three telemetry receivers read their documented reset state, with an empty FIFO, zero control and interrupt registers, and `TELEMETRY_DATA` 0.
 
 *Test Coverage*:
 
 * On each of the three receivers STATUS reads BUFFER_EMPTY set and BUFFER_FULL clear, the field resets of `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl`; only the two defined status fields are compared.
 * On each receiver CTRL, INTR_STATUS, INTR_ENABLE and INTR_TEST read 0, as the RDL gives and as `hw/ip/telemetry_receiver/doc/architecture.adoc` ("Reset and Flush") says reset clears the control and interrupt registers.
-* On each receiver TELEMETRY_PROBE_ID and TELEMETRY_COUNTER_VLDS read 0, and TELEMETRY_COUNTER[0] reads 0, with TELEMETRY_COUNTER[1] to TELEMETRY_COUNTER[31] also read on receiver 0; the architecture document says an empty-queue read returns zero although queue payload storage is not reset.
+* On each receiver `TELEMETRY_DATA` reads 0, the value `telemetry_receiver.rdl` gives a read of the empty FIFO; that read removes nothing, so it leaves the reset state as it found it.
 * CLOCK_GATE_CONTROL is read and its value is logged and never compared, so a closed telemetry clock gate does not fail the leaf and the receiver registers are read as the bridge returns them.
-* The leaf writes nothing and drives no ATB beat, so the behaviour of the registers after a message, a pop or a flush is out of scope here.
+* The leaf writes nothing and drives no ATB beat, so the behaviour of the registers after a beat, a read that removes one or a flush is out of scope here.
 
 *Test Procedure*:
 
 [arabic]
 . Wait for reset done, reset the TAP, read the IDCODE, require the JTAG2AXI gate open and read CLOCK_GATE_CONTROL for the log.
 . For each receiver read STATUS, CTRL, INTR_STATUS, INTR_ENABLE and INTR_TEST and compare each with its reset value.
-. For each receiver read TELEMETRY_PROBE_ID, TELEMETRY_COUNTER_VLDS and TELEMETRY_COUNTER[0], and for receiver 0 also TELEMETRY_COUNTER[1] to TELEMETRY_COUNTER[31], and compare each with 0.
+. For each receiver read `TELEMETRY_DATA` and compare it with 0.
 . Log the last state of the JTAG2AXI wait and require it did not expire.
 
 *Checkers*:
@@ -3877,13 +3875,13 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 |===
 |Checker |Description
 |`CHK-TELR-CTRL-STATUS` |STATUS reads BUFFER_EMPTY set and BUFFER_FULL clear, and CTRL, INTR_STATUS, INTR_ENABLE and INTR_TEST read 0, on all three receivers
-|`CHK-TELR-MESSAGE-ZERO` |TELEMETRY_PROBE_ID, TELEMETRY_COUNTER_VLDS and the counters read 0 on the empty queue
+|`CHK-TELR-DATA-ZERO` |`TELEMETRY_DATA` reads 0 on the empty FIFO of all three receivers
 |`CHK-TIMEOUT-PATHS` |the bounded JTAG2AXI wait does not expire
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
-*Scope limit*: The leaf writes nothing and drives no ATB beat, so the behaviour of the registers after a message, a pop or a flush is out of scope here.
+*Scope limit*: The leaf writes nothing and drives no ATB beat, so the behaviour of the registers after a beat, a read that removes one or a flush is out of scope here.
 
 '''''
 
@@ -13107,7 +13105,7 @@ Every Phase 3 stimulus that has a legal matrix is a pure function of the run see
 |`smu_telemetry_queue_threshold_test` (144)
 |MISC
 |RAND-REP
-|three thresholds written to `CTRL.BUFFER_THRESHOLD` (0 to 8, the queue depth, `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl`; the first and any written before a fill from 0 to 7, so the write of 1 with eight queued sees a live source) and the positions of the second and third threshold writes at two distinct events among the sixteen fill and pop events, the fill to depth 8 completed before the first pop in every run; every flag compare expects 1 exactly when the number queued is greater than the threshold in force, graded by `CHK-TELQ-THRESHOLD-LIVE` and `CHK-TELQ-THRESHOLD-CLEAR`; the flip cell at five queued (threshold 3, 5, 3, then the drawn one restored) is pinned into every run; 3 seeds per regression (`reseed = 3`).
+|three thresholds written to `CTRL.BUFFER_THRESHOLD` (0 to 32, the FIFO depth in beats, `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl`; the first and any written before a fill from 0 to 31, so the write of 1 with the FIFO full sees a live source) and the positions of the second and third threshold writes at two distinct events among the 64 fill and read events, the fill to depth 32 completed before the first read in every run; every flag compare expects 1 exactly when the number of beats held is greater than the threshold in force, graded by `CHK-TELQ-THRESHOLD-LIVE` and `CHK-TELQ-THRESHOLD-CLEAR`; the flip cell at 29 held (threshold 28, 29, 28, then the drawn one restored) is pinned into every run; 3 seeds per regression (`reseed = 3`).
 |`smu_telemetry_reset_state_test` (145)
 |MISC
 |RAND-NONE

@@ -5,135 +5,82 @@
 Sources: hw/ip/telemetry_receiver/doc/architecture.adoc (Reset and Flush, Interrupts),
 hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl, doc/programmer/src/smc-programming.adoc.
 
-ATB framing from telemetry_receiver/doc/index.adoc (Telemetry packet fields) and
-architecture.adoc (Assembly and Decode): eight beats LSB first, bit 63 last packet, probe ID
-[60:56] of the first packet, block i at bits [9i+8:9i] with its valid bit at 9i+8.
+``CTRL.TELEMETRY_RX_FLUSH`` discards every beat queued in the receiver FIFO. Beats still in the
+wrapper's ATB crossing FIFO are not in the receiver yet, so a flush written while a source is
+streaming keeps a contiguous tail of the stream. ``INTR_TEST`` is not buffer state and the
+flush leaves it alone.
 """
 
 from __future__ import annotations
-
-import re
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import (
-    _REPO,
-    _SMC_ADDR_H,
-    TELEMETRY_CG_EN,
-    _field_mask,
-    smc_addr,
-    smc_indexed_addr,
-)
+from .smc_addr_map import TELEMETRY_CG_EN, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-
-_TELEMETRY_H = (
-    _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
+from .smc_telemetry_atb_capture_test_seq import (
+    BUFFER_EMPTY_BM,
+    CTRL,
+    ENABLE_THRESHOLD_BM,
+    HELD_CAPACITY,
+    INTR_ENABLE,
+    INTR_STATUS,
+    INTR_THRESHOLD_BM,
+    RX_FLUSH_BM,
+    STATUS,
+    TELEMETRY_DATA,
+    THRESHOLD_BP,
+    VALID_BM,
+    Beat,
+    _beat,
+    _HeldSource,
+    _rx_addr,
+    _stream,
+    _tel,
+    _word,
+    wait_more_than,
 )
 
-
-def _tel(symbol: str) -> int:
-    return _field_mask(_TELEMETRY_H, symbol)
-
-
-def _rx_addr(register: str) -> int:
-    return smc_indexed_addr(
-        f"SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{register}_BASE_ADDR", 0
-    )
-
-
-def _counter_addr(receiver: int, index: int) -> int:
-    symbol = "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR"
-    match = re.search(
-        rf"#define\s+{symbol}\(\w+,\s*\w+\)\s+\((0x[0-9A-Fa-f]+)\s*\+\s*\(\w+\s*\*\s*"
-        r"(0x[0-9A-Fa-f]+)\)\s*\+\s*\(\w+\s*\*\s*(0x[0-9A-Fa-f]+)\)\)",
-        _SMC_ADDR_H.read_text(encoding="utf-8"),
-    )
-    assert match, f"{symbol} not in {_SMC_ADDR_H}"
-    base, receiver_stride, index_stride = (int(group, 0) for group in match.groups())
-    return base + receiver * receiver_stride + index * index_stride
-
-
-CTRL = _rx_addr("CTRL")
-STATUS = _rx_addr("STATUS")
-INTR_STATUS = _rx_addr("INTR_STATUS")
-INTR_ENABLE = _rx_addr("INTR_ENABLE")
-PROBE_ID = _rx_addr("TELEMETRY_PROBE_ID")
-COUNTER_VLDS = _rx_addr("TELEMETRY_COUNTER_VLDS")
-COUNTER_FIRST = _counter_addr(0, 0)
-COUNTER_WORDS = 4
+INTR_TEST = _rx_addr("INTR_TEST")
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
-
-BUFFER_POP_BM = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm")
-RX_FLUSH_BM = _tel("TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm")
-THRESHOLD_BP = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp")
-BUFFER_EMPTY_BM = _tel("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
-PROBE_ID_BM = _tel("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm")
-INTR_MISSING_LAST = _tel("TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_bm")
-INTR_THRESHOLD = _tel("TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_bm")
-ENABLE_MISSING_LAST = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__MISSING_LAST_bm")
-ENABLE_THRESHOLD = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_bm")
+TEST_THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__INTR_TEST__BUFFER_THRESHOLD_bm")
 
 THRESHOLD = 1
-ONE_SHOT_PROBE_ID = 0x1B
 CTRL_THRESHOLD = THRESHOLD << THRESHOLD_BP
 CTRL_FLUSH = CTRL_THRESHOLD | RX_FLUSH_BM
-CTRL_POP = CTRL_THRESHOLD | BUFFER_POP_BM
 
-# ATB framing: beats, last-packet bit and probe ID from architecture.adoc; block i at bits
-# [9i+8:9i] and the probe ID inside block 6's data byte from index.adoc "Telemetry packet fields".
-_ATB_BEAT_BITS = 8
-_ATB_PACKET_BITS = 64
-_BEATS_PER_PACKET = _ATB_PACKET_BITS // _ATB_BEAT_BITS
-_ATB_BLOCK_BITS = 9
-_ATB_PROBE_ID_BITS = 5
-_ATB_PROBE_ID_LSB = 56
-_ATB_LAST_PACKET_BIT = 63
-_ATB_NEXT_BLOCK_LSB = 54
-_ATB_ID = 0x21
-_ALL_ONES_BLOCK = (1 << _ATB_BLOCK_BITS) - 1
-PARTIAL_BEAT = 0x2A
-PARTIAL_BEATS = 5
-MAX_PACKETS = 16
+POPULATE_BEATS = _stream(0x01, 0x10, 3)
+ONE_SHOT_BEAT = (0x1B, 0x2B)
+RESTART_BEAT = (0x1A, 0x3A)
+# As many beats as the receiver and the crossing FIFO hold, so the whole tail that
+# survives the flush is buffered by the time the source finishes.
+AROUND_BEATS = _stream(0x40, 0x81, HELD_CAPACITY)
+AROUND_RECOVERY_BEAT = (0x14, 0x4C)
+FORCE_BEATS = _stream(0x60, 0xC1, 2)
 
 BUFFER_POLL_BOUND = 200
-ATB_READY_BOUND = 64
 IRQ_WAIT_BOUND = 64
 QUIET_CYCLES = 64
 IN_FLIGHT_BEATS = 2
 FUSE_SENSE_MAX_CYCLES = 200_000
 
-STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
+STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6")
 FENCE_TERMS = (
     "SETUP_DONE",
     "POPULATED_FLUSH_DONE",
     "ONE_SHOT_DONE",
     "RESTART_DONE",
-    "MID_MESSAGE_DONE",
     "BEATS_AROUND_DONE",
-    "MISSING_LAST_KEPT",
+    "TEST_FORCE_KEPT",
 )
 CHECKER_FOR_STEP = {
     "S2": "CHK-TELEMETRY-RX-FLUSH-EMPTIES",
     "S3": "CHK-TELEMETRY-RX-FLUSH-ONE-SHOT",
     "S4": "CHK-TELEMETRY-RX-FLUSH-RESTART",
-    "S5": "CHK-TELEMETRY-RX-FLUSH-MID-MESSAGE",
-    "S6": "CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND",
-    "S7": "CHK-TELEMETRY-RX-FLUSH-KEEPS-MISSING-LAST",
+    "S5": "CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND",
+    "S6": "CHK-TELEMETRY-RX-FLUSH-KEEPS-TEST-FORCE",
 }
-
-
-def _frame_message(probe_id: int) -> int:
-    packet = 1 << _ATB_LAST_PACKET_BIT
-    packet |= (probe_id & ((1 << _ATB_PROBE_ID_BITS) - 1)) << _ATB_PROBE_ID_LSB
-    for block_lsb in range(0, _ATB_NEXT_BLOCK_LSB, _ATB_BLOCK_BITS):
-        packet |= _ALL_ONES_BLOCK << block_lsb
-    return packet
-
-
-def _frame_unflagged() -> int:
-    return _frame_message(0x0A) & ~(1 << _ATB_LAST_PACKET_BIT)
 
 
 def _level(signal) -> int:
@@ -143,7 +90,7 @@ def _level(signal) -> int:
 
 
 class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
-    """Flush receiver 0 with a populated queue, a partial message, beats in flight and an IRQ."""
+    """Flush receiver 0 with a populated FIFO, beats in flight and an INTR_TEST force."""
 
     def __init__(self, name: str = "smc_telemetry_rx_flush_test_seq") -> None:
         super().__init__(name)
@@ -151,8 +98,6 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
         self._chk_log: list[tuple[str, str, int]] = []
         self._waits: list[list[str]] = []
         self._wait_index: dict[str, int] = {}
-        self._beats_accepted = 0
-        self._beats_stalled = 0
 
     def _note_wait(self, name: str, bound: str, last: str = "not-ended") -> None:
         if name in self._wait_index:
@@ -211,54 +156,20 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
             f"{BUFFER_POLL_BOUND} polls (last STATUS=0x{status:08x})"
         )
 
-    async def _drive_beat(self, dut, value: int, label: str) -> None:
-        dut.tb_telemetry0_atdata.value = value & 0xFF
-        dut.tb_telemetry0_atid.value = _ATB_ID
-        dut.tb_telemetry0_atvalid.value = 1
-        await RisingEdge(dut.clk_smc_i)
-        for _ in range(ATB_READY_BOUND):
-            if _level(dut.tb_telemetry0_atready):
-                self._beats_accepted += 1
-                return
-            self._beats_stalled += 1
-            await RisingEdge(dut.clk_smc_i)
-        dut.tb_telemetry0_atvalid.value = 0
-        raise AssertionError(
-            f"{label}: ATB beat not accepted, tb_telemetry0_atready low for "
-            f"{ATB_READY_BOUND} clk_smc_i cycles"
-        )
-
-    async def _send_beats(self, dut, packet: int, count: int, label: str) -> None:
-        self._note_wait("atb_beat_accept", f"{ATB_READY_BOUND}cycles fail-on-expiry=AssertionError")
-        mask = (1 << _ATB_BEAT_BITS) - 1
-        try:
-            for beat in range(count):
-                await self._drive_beat(dut, (packet >> (beat * _ATB_BEAT_BITS)) & mask, label)
-        finally:
-            dut.tb_telemetry0_atvalid.value = 0
-        self._note_wait("atb_beat_accept", "", f"{label} {count} beats accepted")
-
-    async def _send_message(self, probe_id: int, label: str) -> None:
-        await self._send_beats(
-            cocotb.top, _frame_message(probe_id), _BEATS_PER_PACKET, f"message_{label}"
-        )
-
     async def _flush_and_wait(self, label: str) -> None:
         await self.csr_write(f"{label}_FLUSH", CTRL, CTRL_FLUSH)
         await self._wait_buffer(True, f"{label}_FLUSHED")
 
-    async def _read_head(self, label: str) -> list[int]:
-        words = [
-            await self.csr_read(f"{label}_PROBE", PROBE_ID) & PROBE_ID_BM,
-            await self.csr_read(f"{label}_VLDS", COUNTER_VLDS),
-        ]
-        for index in range(COUNTER_WORDS):
-            words.append(await self.csr_read(f"{label}_COUNTER{index}", COUNTER_FIRST + 4 * index))
-        return words
+    async def _read_data(self, label: str) -> int:
+        return await self.csr_read(f"{label}_DATA", TELEMETRY_DATA)
 
-    async def _pop_to_empty(self, label: str) -> None:
-        await self.csr_write(f"{label}_POP", CTRL, CTRL_POP)
-        await self._wait_buffer(True, f"{label}_DRAINED")
+    async def _drain_one(self, beat: Beat, label: str) -> int:
+        """Read `beat` once it has crossed, then require an empty FIFO; returns the polls."""
+        polls = await self._wait_buffer(False, label)
+        await self.csr_read(f"{label}_DATA", TELEMETRY_DATA, expected=_word(beat))
+        await self.csr_read(f"{label}_DATA_EMPTY", TELEMETRY_DATA, expected=0)
+        await self.csr_read(f"{label}_STATUS_EMPTY", STATUS, expected=BUFFER_EMPTY_BM)
+        return polls
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -270,9 +181,6 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
         self._note_wait(
             "fuse_sense", f"{FUSE_SENSE_MAX_CYCLES}cycles fail-on-expiry=AssertionError"
         )
-        self._note_wait(
-            "missing_last_packets", f"{MAX_PACKETS}packets fail-on-expiry=AssertionError"
-        )
 
         # S1: setup
         await self.wait_fuse_sense_done(FUSE_SENSE_MAX_CYCLES)
@@ -283,38 +191,35 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
         await self.csr_read("CLOCK_GATE_CONTROL_TEL_ON_RB", CLOCK_GATE_CONTROL, expected=ungated)
         await self._flush_and_wait("SETUP")
         await self.csr_write("SETUP_INTR_ENABLE", INTR_ENABLE, 0)
-        await self.csr_write("SETUP_INTR_CLR", INTR_STATUS, INTR_MISSING_LAST)
+        await self.csr_write("SETUP_INTR_TEST", INTR_TEST, 0)
         self._stamp("S1")
 
         # S2: populated flush
+        await _HeldSource(dut, POPULATE_BEATS).task
+        await wait_more_than(self, "POPULATE", len(POPULATE_BEATS) - 1)
         await self.csr_write("POP_THRESHOLD", CTRL, CTRL_THRESHOLD)
-        await self.csr_write("POP_INTR_ENABLE", INTR_ENABLE, ENABLE_THRESHOLD)
-        for probe_id in (0x01, 0x02, 0x03):
-            await self._send_message(probe_id, f"populate_{probe_id:02x}")
-            await self._wait_buffer(False, f"POPULATE_{probe_id:02x}")
-        before = await self._read_head("POP_BEFORE")
-        assert before[0] == 0x01 and any(before[1:]), (
-            f"head registers before the flush are not a live message: {before}"
-        )
+        await self.csr_write("POP_INTR_ENABLE", INTR_ENABLE, ENABLE_THRESHOLD_BM)
+        status_before = await self.csr_read("POP_STATUS_BEFORE", STATUS)
+        assert not status_before & BUFFER_EMPTY_BM, f"STATUS 0x{status_before:x} before the flush"
         intr = await self.csr_read("POP_INTR_BEFORE", INTR_STATUS)
-        assert intr & INTR_THRESHOLD, f"three messages above threshold 1: INTR_STATUS 0x{intr:x}"
+        assert intr & INTR_THRESHOLD_BM, f"three beats above threshold 1: INTR_STATUS 0x{intr:x}"
         await self._wait_irq0(1, "populated_rise")
         await self.csr_write("POP_FLUSH", CTRL, CTRL_FLUSH)
         polls = await self._wait_buffer(True, "POP_FLUSHED")
-        after = await self._read_head("POP_AFTER")
-        assert after == [0] * (2 + COUNTER_WORDS), f"head registers after the flush: {after}"
+        after = await self._read_data("POP_AFTER")
+        assert after == 0, f"TELEMETRY_DATA after the flush reads 0x{after:08x}"
         intr = await self.csr_read("POP_INTR_AFTER", INTR_STATUS)
-        assert not intr & INTR_THRESHOLD, f"INTR_STATUS.BUFFER_THRESHOLD still set (0x{intr:x})"
+        assert not intr & INTR_THRESHOLD_BM, f"INTR_STATUS.BUFFER_THRESHOLD still set (0x{intr:x})"
         await self._wait_irq0(0, "populated_fall")
+        await self.csr_write("POP_INTR_DISABLE", INTR_ENABLE, 0)
         self._stamp("S2")
         self._emit(
             "S2",
             "CHK-TELEMETRY-RX-FLUSH-EMPTIES",
-            "three messages (probe IDs 0x01 0x02 0x03) gave BUFFER_EMPTY 0, INTR_STATUS "
-            "BUFFER_THRESHOLD 1, irq[0] 1 and head words %s; after one flush BUFFER_EMPTY 1 in "
-            "%d poll(s) (bound %d), PROBE_ID, COUNTER_VLDS and COUNTER[0..3] all 0, "
+            "three beats gave STATUS 0x%08x, INTR_STATUS BUFFER_THRESHOLD 1 and irq[0] 1; after "
+            "one flush BUFFER_EMPTY 1 in %d poll(s) (bound %d), TELEMETRY_DATA 0, "
             "BUFFER_THRESHOLD 0 and irq[0] 0",
-            [hex(word) for word in before],
+            status_before,
             polls,
             BUFFER_POLL_BOUND,
         )
@@ -328,166 +233,133 @@ class smc_telemetry_rx_flush_test_seq(SmcCsrSeq):
                 await self._hold_irq0(0, QUIET_CYCLES, "one_shot_quiet")
             await self.csr_write(f"ONE_SHOT_FLUSH_{repeat}", CTRL, CTRL_FLUSH)
             await self._wait_buffer(True, f"ONE_SHOT_{repeat}")
-            head = await self._read_head(f"ONE_SHOT_{repeat}")
-            assert head == [0] * (2 + COUNTER_WORDS), f"head after an empty flush: {head}"
+            data = await self._read_data(f"ONE_SHOT_{repeat}")
+            assert data == 0, f"TELEMETRY_DATA after an empty flush: 0x{data:08x}"
             intr = await self.csr_read(f"ONE_SHOT_INTR_{repeat}", INTR_STATUS)
-            assert not intr & (INTR_THRESHOLD | INTR_MISSING_LAST), (
-                f"an empty flush raised INTR_STATUS 0x{intr:x}"
-            )
+            assert not intr & INTR_THRESHOLD_BM, f"an empty flush raised INTR_STATUS 0x{intr:x}"
             ctrl = await self.csr_read(f"ONE_SHOT_CTRL_{repeat}", CTRL)
             assert not ctrl & RX_FLUSH_BM, f"CTRL.TELEMETRY_RX_FLUSH reads 1 (0x{ctrl:x})"
             ctrl_reads.append(ctrl)
-        await self._send_message(ONE_SHOT_PROBE_ID, "one_shot_after")
-        await self._wait_buffer(False, "ONE_SHOT_AFTER")
-        probe = await self.csr_read("ONE_SHOT_AFTER_PROBE", PROBE_ID) & PROBE_ID_BM
-        assert probe == ONE_SHOT_PROBE_ID, (
-            f"PROBE_ID after the repeated flushes is 0x{probe:02x}, want 0x{ONE_SHOT_PROBE_ID:02x}"
-        )
-        await self._pop_to_empty("ONE_SHOT_AFTER")
+        await _HeldSource(dut, [ONE_SHOT_BEAT]).task
+        await self._drain_one(ONE_SHOT_BEAT, "ONE_SHOT_AFTER")
         self._stamp("S3")
         self._emit(
             "S3",
             "CHK-TELEMETRY-RX-FLUSH-ONE-SHOT",
             "CTRL bit 4 read 0 after the flush and after two further flushes (CTRL reads %s; "
             "TELEMETRY_RX_FLUSH is sw=w in the RDL, so the read is 0); each empty flush left "
-            "BUFFER_EMPTY 1, the head registers 0 and no interrupt source, and a message sent "
-            "after the repeated flushes was kept with PROBE_ID 0x%02x",
+            "BUFFER_EMPTY 1, TELEMETRY_DATA 0 and no interrupt source, and a beat sent after the "
+            "repeated flushes read back as 0x%08x, the only beat in the FIFO",
             [hex(word) for word in ctrl_reads],
-            probe,
+            _word(ONE_SHOT_BEAT),
         )
 
         # S4: restart
-        await self._send_message(0x1A, "restart")
-        polls = await self._wait_buffer(False, "RESTART")
-        probe = await self.csr_read("RESTART_PROBE", PROBE_ID) & PROBE_ID_BM
-        assert probe == 0x1A, f"PROBE_ID after the flush is 0x{probe:02x}, want 0x1A"
-        await self._pop_to_empty("RESTART")
+        await _HeldSource(dut, [RESTART_BEAT]).task
+        polls = await self._drain_one(RESTART_BEAT, "RESTART")
         self._stamp("S4")
         self._emit(
             "S4",
             "CHK-TELEMETRY-RX-FLUSH-RESTART",
-            "a message sent after the flush cleared BUFFER_EMPTY in %d poll(s) (bound %d) and "
-            "PROBE_ID read 0x%02x",
+            "a beat sent after the flush cleared BUFFER_EMPTY in %d poll(s) (bound %d) and "
+            "TELEMETRY_DATA read 0x%08x, then 0",
             polls,
             BUFFER_POLL_BOUND,
-            probe,
+            _word(RESTART_BEAT),
         )
 
-        # S5: mid-message flush
-        partial = int.from_bytes(bytes([PARTIAL_BEAT]) * _BEATS_PER_PACKET, "little")
-        await self._send_beats(dut, partial, PARTIAL_BEATS, "partial")
-        await self.csr_write("MID_FLUSH", CTRL, CTRL_FLUSH)
-        await self._send_message(0x15, "mid_recovery")
-        polls = await self._wait_buffer(False, "MID_NEXT")
-        probe = await self.csr_read("MID_PROBE", PROBE_ID) & PROBE_ID_BM
-        assert probe == 0x15, f"PROBE_ID after the mid-message flush is 0x{probe:02x}, want 0x15"
-        await self._pop_to_empty("MID")
-        self._stamp("S5")
-        self._emit(
-            "S5",
-            "CHK-TELEMETRY-RX-FLUSH-MID-MESSAGE",
-            "%d of %d beats of an unfinished packet and one flush (no second flush): the next "
-            "complete message read PROBE_ID 0x%02x in %d poll(s) and one pop emptied the queue "
-            "(exactly one message; the specification does not state the probe latch rule)",
-            PARTIAL_BEATS,
-            _BEATS_PER_PACKET,
-            probe,
-            polls,
-        )
-
-        # S6: beats around the pulse
-        self._beats_accepted = 0
-        self._beats_stalled = 0
+        # S5: beats around the pulse
         self._note_wait(
-            "beats_around_in_flight", f"{ATB_READY_BOUND}cycles fail-on-expiry=AssertionError"
+            "beats_around_in_flight", f"{BUFFER_POLL_BOUND}cycles fail-on-expiry=AssertionError"
         )
-        beats_task = cocotb.start_soon(
-            self._send_beats(dut, _frame_message(0x13), _BEATS_PER_PACKET, "beats_around")
-        )
-        for _ in range(ATB_READY_BOUND):
-            if self._beats_accepted >= IN_FLIGHT_BEATS:
+        source = _HeldSource(dut, AROUND_BEATS)
+        for _ in range(BUFFER_POLL_BOUND):
+            if source.sent >= IN_FLIGHT_BEATS:
                 break
             await RisingEdge(dut.clk_smc_i)
         else:
-            raise AssertionError(
-                f"only {self._beats_accepted} beats accepted in {ATB_READY_BOUND} cycles"
-            )
-        in_flight = self._beats_accepted
+            raise AssertionError(f"only {source.sent} beats accepted in {BUFFER_POLL_BOUND} cycles")
+        in_flight = source.sent
         self._note_wait("beats_around_in_flight", "", f"{in_flight} beats accepted before write")
         await self.csr_write("BEATS_FLUSH", CTRL, CTRL_FLUSH)
-        at_write = self._beats_accepted
-        await beats_task
-        accepted, stalled = self._beats_accepted, self._beats_stalled
+        at_write = source.sent
+        assert at_write < len(AROUND_BEATS), (
+            f"all {len(AROUND_BEATS)} beats were accepted before the flush write returned; "
+            f"none is certain to arrive after the flush"
+        )
+        await source.task
         await ClockCycles(dut.clk_smc_i, QUIET_CYCLES)
-        quiet_status = await self.csr_read("BEATS_QUIET_STATUS", STATUS)
-        quiet_probe = await self.csr_read("BEATS_QUIET_PROBE", PROBE_ID) & PROBE_ID_BM
+        survivors: list[Beat] = []
+        for _ in range(len(AROUND_BEATS) + 1):
+            word = await self._read_data(f"BEATS_TAIL_{len(survivors)}")
+            if word == 0:
+                break
+            assert word & VALID_BM, f"BEATS: read 0x{word:08x} has VALID clear"
+            survivors.append(_beat(word))
+        dropped = len(AROUND_BEATS) - len(survivors)
+        assert survivors == AROUND_BEATS[dropped:], (
+            f"the {len(survivors)} beats read after the flush are not the contiguous tail of "
+            f"the stream: {survivors}"
+        )
+        assert dropped, "the flush written with beats queued discarded none of them"
+        assert len(survivors) >= len(AROUND_BEATS) - at_write, (
+            f"{len(AROUND_BEATS) - at_write} beats were accepted after the flush write returned, "
+            f"but only {len(survivors)} read back"
+        )
         await self._flush_and_wait("BEATS")
-        await self._send_message(0x14, "beats_recovery")
-        polls = await self._wait_buffer(False, "BEATS_NEXT")
-        probe = await self.csr_read("BEATS_PROBE", PROBE_ID) & PROBE_ID_BM
-        assert probe == 0x14, f"PROBE_ID after the quiet flush is 0x{probe:02x}, want 0x14"
-        await self._pop_to_empty("BEATS")
-        self._stamp("S6")
+        await _HeldSource(dut, [AROUND_RECOVERY_BEAT]).task
+        polls = await self._drain_one(AROUND_RECOVERY_BEAT, "BEATS_NEXT")
+        self._stamp("S5")
         self._emit(
-            "S6",
+            "S5",
             "CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND",
-            "%d beats accepted before the flush write and %d when it returned, %d accepted in "
-            "total of %d presented with %d stalled cycle(s) (not compared); STATUS after "
-            "%d quiet cycles 0x%08x with PROBE_ID 0x%02x; after one quiet flush the next message "
-            "read PROBE_ID 0x%02x in %d poll(s) as exactly one message",
+            "%d beats accepted before the flush write and %d when it returned, of %d offered; "
+            "after %d quiet cycles the %d beats read back were the contiguous tail of the stream "
+            "in order, every beat accepted after the write returned among them (%d discarded); "
+            "after one quiet flush the next beat read back alone in %d poll(s)",
             in_flight,
             at_write,
-            accepted,
-            _BEATS_PER_PACKET,
-            stalled,
+            len(AROUND_BEATS),
             QUIET_CYCLES,
-            quiet_status,
-            quiet_probe,
-            probe,
+            len(survivors),
+            dropped,
             polls,
         )
 
-        # S7: flush against MISSING_LAST
-        await self.csr_write("MISSING_INTR_CLR", INTR_STATUS, INTR_MISSING_LAST)
-        packets = 0
-        for packets in range(1, MAX_PACKETS + 1):
-            await self._send_beats(dut, _frame_unflagged(), _BEATS_PER_PACKET, "unflagged")
-            intr = await self.csr_read(f"MISSING_{packets}_INTR", INTR_STATUS)
-            if intr & INTR_MISSING_LAST:
-                self._note_wait(
-                    "missing_last_packets", "", f"MISSING_LAST set after {packets} packets"
-                )
-                break
-        else:
-            raise AssertionError(f"MISSING_LAST never set over {MAX_PACKETS} unflagged packets")
-        await self.csr_write("MISSING_INTR_ENABLE", INTR_ENABLE, ENABLE_MISSING_LAST)
-        await self._wait_irq0(1, "missing_rise")
-        await self.csr_write("MISSING_FLUSH", CTRL, CTRL_FLUSH)
-        intr_flush = await self.csr_read("MISSING_INTR_FLUSH", INTR_STATUS)
-        assert intr_flush & INTR_MISSING_LAST, f"the flush cleared MISSING_LAST (0x{intr_flush:x})"
-        await self._hold_irq0(1, QUIET_CYCLES, "missing_hold")
-        intr_hold = await self.csr_read("MISSING_INTR_HOLD", INTR_STATUS)
-        assert intr_hold & INTR_MISSING_LAST, f"MISSING_LAST fell while held (0x{intr_hold:x})"
-        await self.csr_write("MISSING_INTR_W1C", INTR_STATUS, INTR_MISSING_LAST)
-        intr_clear = await self.csr_read("MISSING_INTR_CLEARED", INTR_STATUS)
-        assert not intr_clear & INTR_MISSING_LAST, (
-            f"a written one did not clear MISSING_LAST (0x{intr_clear:x})"
+        # S6: flush against an INTR_TEST force
+        await _HeldSource(dut, FORCE_BEATS).task
+        await wait_more_than(self, "FORCE", len(FORCE_BEATS) - 1)
+        await self.csr_write("FORCE_INTR_ENABLE", INTR_ENABLE, ENABLE_THRESHOLD_BM)
+        await self.csr_write("FORCE_INTR_TEST", INTR_TEST, TEST_THRESHOLD_BM)
+        await self._wait_irq0(1, "force_rise")
+        await self.csr_write("FORCE_FLUSH", CTRL, RX_FLUSH_BM)
+        await self._wait_buffer(True, "FORCE_FLUSHED")
+        intr_flush = await self.csr_read("FORCE_INTR_FLUSH", INTR_STATUS)
+        assert intr_flush & INTR_THRESHOLD_BM, (
+            f"the flush released the INTR_TEST force (INTR_STATUS 0x{intr_flush:x})"
         )
-        await self._wait_irq0(0, "missing_fall")
-        await self.csr_write("MISSING_INTR_DISABLE", INTR_ENABLE, 0)
-        await self._flush_and_wait("END")
-        await self.csr_write("END_THRESHOLD_OFF", CTRL, 0)
-        self._stamp("S7")
+        test_flush = await self.csr_read("FORCE_TEST_FLUSH", INTR_TEST, expected=TEST_THRESHOLD_BM)
+        await self._hold_irq0(1, QUIET_CYCLES, "force_hold")
+        await self.csr_write("FORCE_INTR_TEST_RELEASE", INTR_TEST, 0)
+        intr_clear = await self.csr_read("FORCE_INTR_RELEASED", INTR_STATUS)
+        assert not intr_clear & INTR_THRESHOLD_BM, (
+            f"INTR_TEST written to 0 left BUFFER_THRESHOLD set (0x{intr_clear:x})"
+        )
+        await self._wait_irq0(0, "force_fall")
+        await self.csr_write("FORCE_INTR_DISABLE", INTR_ENABLE, 0)
+        await self.csr_read("END_DATA", TELEMETRY_DATA, expected=0)
+        self._stamp("S6")
         self._emit(
-            "S7",
-            "CHK-TELEMETRY-RX-FLUSH-KEEPS-MISSING-LAST",
-            "MISSING_LAST set on packet %d and irq[0] 1; after CTRL.TELEMETRY_RX_FLUSH "
-            "INTR_STATUS read 0x%x, irq[0] stayed 1 for %d cycles and INTR_STATUS read 0x%x; "
-            "a written one cleared it (0x%x) and irq[0] fell",
-            packets,
+            "S6",
+            "CHK-TELEMETRY-RX-FLUSH-KEEPS-TEST-FORCE",
+            "with INTR_TEST.BUFFER_THRESHOLD written to 1 and %d beats queued, "
+            "CTRL.TELEMETRY_RX_FLUSH emptied the FIFO while INTR_STATUS read 0x%x and INTR_TEST "
+            "0x%x, and irq[0] stayed 1 for %d cycles; INTR_TEST written to 0 released it "
+            "(INTR_STATUS 0x%x) and irq[0] fell",
+            len(FORCE_BEATS),
             intr_flush,
+            test_flush,
             QUIET_CYCLES,
-            intr_hold,
             intr_clear,
         )
 

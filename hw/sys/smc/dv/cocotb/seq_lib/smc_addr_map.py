@@ -233,6 +233,11 @@ def generated_past_extent_resp(unit: str) -> tuple[str, str]:
     return past["rresp"], past["bresp"]
 
 
+def generated_hole_rresp(unit: str) -> set[str]:
+    """Read response names the RDL gives the holes inside ``unit``'s decoded extent."""
+    return {resp["rresp"] for _where, resp in _component_row(unit)["hole_responses"]}
+
+
 def generated_unit_at(offset: int) -> str | None:
     """Unit whose decoded extent contains ``offset`` (from ``LOCAL_BASE``), else None."""
     addr = LOCAL_BASE_RESET + offset

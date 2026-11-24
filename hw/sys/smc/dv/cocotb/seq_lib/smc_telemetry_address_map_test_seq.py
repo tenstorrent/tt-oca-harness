@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC telemetry receiver wrapper address map: offsets, counters, past-extent, unbacked.
+"""SMC telemetry receiver wrapper address map: offsets, data windows, past-extent, unbacked.
 
-Sources: smc/doc/memmap.adoc, telemetry_receiver/doc/{memmap,interface}.adoc, smc.rdl.
+Sources: smc/doc/memmap.adoc, telemetry_receiver/doc/{memmap,interface}.adoc, smc.rdl and the
+generated memory map, which gives a hole inside a receiver slot and an access past the third
+slot the same response: DECERR, read data 0xBADCAB1E.
 """
 
 from __future__ import annotations
@@ -11,122 +13,86 @@ import os
 import random
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
-    _REPO,
     TELEMETRY_CG_EN,
-    _field_mask,
-    _parse_indexed_bases,
+    generated_hole_rresp,
+    generated_past_extent_resp,
     smc_addr,
-    smc_indexed_addr,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_telemetry_atb_capture_test_seq import (
+    BUFFER_DEPTH,
+    BUFFER_EMPTY_BM,
+    ENABLE_THRESHOLD_BM,
+    RX_FLUSH_BM,
+    THRESHOLD_BP,
+    _HeldSource,
+    _rx_addr,
+    _tel,
+    _word,
+    pop_expect,
+)
 
-_TELEMETRY_H = (
-    _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
-)
-_TELEMETRY_ADDR_H = (
-    _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver_addr.h"
-)
 _PREFIX = "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER"
-
-
-def _tel(symbol: str) -> int:
-    return _field_mask(_TELEMETRY_H, symbol)
-
-
-def _reg(register: str, rx: int) -> int:
-    return smc_indexed_addr(f"{_PREFIX}_{register}_BASE_ADDR", rx)
-
-
 _WINDOW_BASE = smc_addr("SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR")
 _STRIDE = smc_addr(f"{_PREFIX}_STRIDE")
 _EXTENT = smc_addr(f"{_PREFIX}_TOTAL_SIZE")
 _NUM_RX = smc_addr(f"{_PREFIX}_NUM")
-_COUNTER_BASE, _COUNTER_STRIDE = _parse_indexed_bases(_TELEMETRY_ADDR_H)[
-    "TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR"
-]
-_NUM_COUNTERS = smc_addr(f"{_PREFIX}_TELEMETRY_COUNTER_NUM")
+_RX_SIZE = smc_addr(f"{_PREFIX}_SIZE")
 _CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
-
-_BUFFER_POP = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm")
-_RX_FLUSH = _tel("TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm")
 _THR_BM = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bm")
-_THR_BP = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp")
-_EMPTY_BM = _tel("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
 
 # Register types of one aperture with their generated reset values.
 _REG_TYPES = (
     ("CTRL", 0x0),
-    ("STATUS", _EMPTY_BM),
+    ("STATUS", BUFFER_EMPTY_BM),
     ("INTR_STATUS", 0x0),
     ("INTR_ENABLE", 0x0),
     ("INTR_TEST", 0x0),
-    ("TELEMETRY_PROBE_ID", 0x0),
-    ("TELEMETRY_COUNTER_VLDS", 0x0),
+    ("TELEMETRY_DATA", 0x0),
 )
-_INTR_ENABLE_PATTERNS = (0x01, 0x10, 0x11)
-# Messages one queue holds unpopped: BUFFER_DEPTH, default 8 (telemetry_receiver
-# interface.adoc) with no SMC override.
-_QUEUE_DEPTH = 8
+# INTR_ENABLE has one writable bit; receiver 1 takes the other value, so a receiver 1 window
+# aliased onto 0 or 2 fails its readback. The drawn thresholds tell all three apart.
+_INTR_ENABLE_PATTERNS = (ENABLE_THRESHOLD_BM, 0x0, ENABLE_THRESHOLD_BM)
 
 # Offsets named by steps S4 to S6.
 _PAST_EXTENT_OFFSETS = (_EXTENT, _EXTENT + 0x4, _EXTENT + 0x80, 0xFFC)
 _FOURTH_WRITE_OFFSET = _EXTENT + 0xC
 _FOURTH_READ_OFFSET = _EXTENT + 0x4
-_UNBACKED_PROBES = ((0, 0x1C), (0, 0x20), (0, 0x7C), (2, 0x1C))
+_UNBACKED_PROBES = tuple(
+    (rx, off) for rx in range(_NUM_RX) for off in (_RX_SIZE, 0x1C, 0x20, 0x7C, 0xFC)
+)
 _UNBACKED_WRITE = 0x11
 _FOURTH_WRITE = 0x11
-
-# ATB framing: 8-bit beats, 64-bit packet, 9-bit blocks (telemetry_receiver/doc/interface.adoc,
-# architecture.adoc); the last-packet bit 63, probe ID [60:56] and block i at [9i+8:9i] are in
-# doc/index.adoc (Telemetry packet fields).
-_BEAT_BITS = 8
-_BEATS_PER_PACKET = 64 // _BEAT_BITS
-_BLOCK_BITS = 9
-_PROBE_ID_LSB = 56
-_PROBE_ID_BITS = 5
-_LAST_PACKET_BIT = 63
-_NEXT_BLOCK_LSB = 54
-_PROBE_ID_BM = _tel("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm")
-_PROBE_ID_BP = _tel("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bp")
-_ATIDS = (0x00, 0x11, 0x22)
+_UNIT = "smc_telemetry_receiver_wrap"
+assert generated_hole_rresp(_UNIT) == {"DECERR"}, "the generated map changed the hole response"
+assert generated_past_extent_resp(_UNIT) == ("DECERR", "DECERR"), "past-extent response changed"
+_DECERR = 3
+_ERR_DATA = SmcCsrSeq.ERR_SLAVE_SIGNATURE
 
 _FUSE_SENSE_MAX_CYCLES = 200_000
-_ATB_READY_BOUND = 64
 _BUFFER_POLL_BOUND = 200
 _FLUSH_POLL_BOUND = 64
 _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6")
 _FENCE = (
     "SETUP_DONE",
     "OFFSETS_AND_PATTERNS",
-    "COUNTER_WINDOWS",
-    "PAST_EXTENT_MEASURED",
-    "UNBACKED_MEASURED",
+    "DATA_WINDOWS",
+    "PAST_EXTENT_DECERR",
+    "UNBACKED_DECERR",
     "NO_FOURTH_RECEIVER",
 )
 _CHK_ORDER = (
     ("CHK-TELEMETRY-APERTURE-REGS", "S2"),
-    ("CHK-TELEMETRY-COUNTER-WINDOW", "S3"),
+    ("CHK-TELEMETRY-DATA-WINDOW", "S3"),
     ("CHK-TELEMETRY-PAST-EXTENT", "S4"),
     ("CHK-TELEMETRY-UNBACKED-OFFSETS", "S5"),
     ("CHK-TELEMETRY-NO-FOURTH-RECEIVER", "S6"),
 )
-
-
-def _counter_addr(rx: int, index: int) -> int:
-    return _WINDOW_BASE + rx * _STRIDE + _COUNTER_BASE + index * _COUNTER_STRIDE
-
-
-def _all_valid_packet(probe_id: int) -> int:
-    packet = 1 << _LAST_PACKET_BIT
-    packet |= (probe_id & ((1 << _PROBE_ID_BITS) - 1)) << _PROBE_ID_LSB
-    for block_lsb in range(0, _NEXT_BLOCK_LSB, _BLOCK_BITS):
-        packet |= ((1 << _BLOCK_BITS) - 1) << block_lsb
-    return packet
 
 
 class smc_telemetry_address_map_test_seq(SmcCsrSeq):
@@ -136,7 +102,6 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         self.stamps: dict[str, int] = {}
         self.chk_after: list[tuple[str, str]] = []
         self.waits: list[tuple[str, str, str]] = []
-        self.past_extent: dict[int, tuple[int, int, int]] = {}
 
     def _stamp(self, step: str) -> None:
         self.stamps[step] = int(get_sim_time("ps"))
@@ -160,36 +125,21 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         assert item.resp_code is not None and not item.timed_out, f"{name}: no response"
         return item.resp_code, item.rdata
 
-    async def _send_packet(self, rx: int, packet: int) -> None:
-        dut = cocotb.top
-        atdata = getattr(dut, f"tb_telemetry{rx}_atdata")
-        atid = getattr(dut, f"tb_telemetry{rx}_atid")
-        atvalid = getattr(dut, f"tb_telemetry{rx}_atvalid")
-        atready = getattr(dut, f"tb_telemetry{rx}_atready")
-        for beat in range(_BEATS_PER_PACKET):
-            atdata.value = (packet >> (beat * _BEAT_BITS)) & 0xFF
-            atid.value = _ATIDS[rx]
-            atvalid.value = 1
-            await RisingEdge(dut.clk_smc_i)
-            accepted = False
-            for _ in range(_ATB_READY_BOUND):
-                raw = atready.value
-                assert raw.is_resolvable, f"tb_telemetry{rx}_atready is X/Z: {raw}"
-                if int(raw):
-                    accepted = True
-                    break
-                await RisingEdge(dut.clk_smc_i)
-            atvalid.value = 0
-            assert accepted, (
-                f"ATB beat {beat} into receiver {rx} never accepted: "
-                f"tb_telemetry{rx}_atready low for {_ATB_READY_BOUND} clk_smc_i cycles"
-            )
+    async def _expect_decerr(self, name: str, addr: int, write: int) -> tuple[int, int, int]:
+        """Read and write `addr`; both must answer DECERR and the read 0xBADCAB1E."""
+        rresp, rdata = await self._measure(f"{name}_RD", addr)
+        wresp = (await self._measure(f"{name}_WR", addr, write))[0]
+        assert (rresp, rdata, wresp) == (_DECERR, _ERR_DATA, _DECERR), (
+            f"{name} @ 0x{addr:08x}: read resp {rresp} data 0x{rdata:08x}, write resp {wresp}; "
+            f"the generated map gives DECERR, 0x{_ERR_DATA:08x} / DECERR"
+        )
+        return rresp, rdata, wresp
 
     async def _wait_empty(self, rx: int, empty: bool, label: str) -> int:
         status = 0
         for polls in range(1, _BUFFER_POLL_BOUND + 1):
-            status = await self.csr_read(f"TLM{rx}_STATUS_{label}", _reg("STATUS", rx))
-            if bool(status & _EMPTY_BM) == empty:
+            status = await self.csr_read(f"TLM{rx}_STATUS_{label}", _rx_addr("STATUS", rx))
+            if bool(status & BUFFER_EMPTY_BM) == empty:
                 return polls
             await ClockCycles(cocotb.top.clk_smc_i, 1)
         raise AssertionError(
@@ -201,7 +151,7 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         snap = {}
         for rx in range(_NUM_RX):
             for reg in ("STATUS", "INTR_ENABLE", "INTR_STATUS", "CTRL"):
-                snap[(rx, reg)] = await self.csr_read(f"{label}_{rx}_{reg}", _reg(reg, rx))
+                snap[(rx, reg)] = await self.csr_read(f"{label}_{rx}_{reg}", _rx_addr(reg, rx))
         return snap
 
     async def body(self) -> None:
@@ -211,20 +161,19 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
             assert hasattr(dut, f"tb_telemetry{rx}_atvalid"), f"tb_telemetry{rx}_* ports missing"
 
         rng = random.Random(self.seed)
-        counts = [rng.randint(1, _QUEUE_DEPTH) for _ in range(_NUM_RX)]
+        counts = [rng.randint(1, BUFFER_DEPTH) for _ in range(_NUM_RX)]
         order = list(range(_NUM_RX))
         rng.shuffle(order)
-        thresholds = rng.sample(range(1, (_THR_BM >> _THR_BP) + 1), _NUM_RX)
-        # A distinct non-zero probe ID per queued message, so TELEMETRY_PROBE_ID before each
-        # pop tells the queue advancing by one from standing still (0 is the empty read).
-        probe_ids = [rng.sample(range(1, 1 << _PROBE_ID_BITS), counts[rx]) for rx in range(_NUM_RX)]
-        drawn = (
-            f"seed {self.seed} counts {counts} order {order} thresholds "
-            + ",".join(f"0x{t:03x}" for t in thresholds)
-            + " probe_ids "
-            + " ".join(
-                f"rx{rx}:" + ",".join(f"0x{p:02x}" for p in ids) for rx, ids in enumerate(probe_ids)
-            )
+        thresholds = rng.sample(range(1, (_THR_BM >> THRESHOLD_BP) + 1), _NUM_RX)
+        # One beat per (ATID, data) pair drawn without repeats across all receivers, so a beat
+        # read back in any aperture names the receiver and the position it was sent to.
+        pairs = rng.sample(range(1 << 15), sum(counts))
+        beats = []
+        for rx in range(_NUM_RX):
+            taken, pairs = pairs[: counts[rx]], pairs[counts[rx] :]
+            beats.append([(p >> 8, p & 0xFF) for p in taken])
+        drawn = f"seed {self.seed} counts {counts} order {order} thresholds " + ",".join(
+            f"0x{t:03x}" for t in thresholds
         )
         cocotb.log.info("RAND-SEED: %d; RAND-DRAW: %s", self.seed, drawn)
 
@@ -238,7 +187,7 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         await self.csr_write("CLOCK_GATE_CONTROL_TEL_ON", _CLOCK_GATE_CONTROL, ungated)
         await self.csr_read("CLOCK_GATE_CONTROL_TEL_ON_RB", _CLOCK_GATE_CONTROL, expected=ungated)
         for rx in range(_NUM_RX):
-            await self.csr_write(f"TLM{rx}_RX_FLUSH", _reg("CTRL", rx), _RX_FLUSH)
+            await self.csr_write(f"TLM{rx}_RX_FLUSH", _rx_addr("CTRL", rx), RX_FLUSH_BM)
             polls = await self._wait_empty(rx, True, "FLUSH")
             assert polls <= _FLUSH_POLL_BOUND
         self.waits.append(
@@ -249,151 +198,120 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         # S2
         for rx in range(_NUM_RX):
             for reg, reset in _REG_TYPES:
-                got = await self.csr_read(f"TLM{rx}_{reg}", _reg(reg, rx), expected=reset)
+                got = await self.csr_read(f"TLM{rx}_{reg}", _rx_addr(reg, rx), expected=reset)
                 assert got == reset, f"receiver {rx} {reg} read 0x{got:08x}, reset 0x{reset:08x}"
         for rx in range(_NUM_RX):
             await self.csr_write(
-                f"TLM{rx}_IE_WR", _reg("INTR_ENABLE", rx), _INTR_ENABLE_PATTERNS[rx]
+                f"TLM{rx}_IE_WR", _rx_addr("INTR_ENABLE", rx), _INTR_ENABLE_PATTERNS[rx]
             )
-            await self.csr_write(f"TLM{rx}_THR_WR", _reg("CTRL", rx), thresholds[rx] << _THR_BP)
+            await self.csr_write(
+                f"TLM{rx}_THR_WR", _rx_addr("CTRL", rx), thresholds[rx] << THRESHOLD_BP
+            )
         for rx in range(_NUM_RX):
             ie = await self.csr_read(
-                f"TLM{rx}_IE_RB", _reg("INTR_ENABLE", rx), expected=_INTR_ENABLE_PATTERNS[rx]
+                f"TLM{rx}_IE_RB", _rx_addr("INTR_ENABLE", rx), expected=_INTR_ENABLE_PATTERNS[rx]
             )
-            ctrl = await self.csr_read(f"TLM{rx}_THR_RB", _reg("CTRL", rx))
-            thr = (ctrl & _THR_BM) >> _THR_BP
+            ctrl = await self.csr_read(f"TLM{rx}_THR_RB", _rx_addr("CTRL", rx))
+            thr = (ctrl & _THR_BM) >> THRESHOLD_BP
             assert ie == _INTR_ENABLE_PATTERNS[rx], f"receiver {rx} INTR_ENABLE 0x{ie:x}"
             assert thr == thresholds[rx], (
                 f"receiver {rx} BUFFER_THRESHOLD read 0x{thr:x}, wrote "
                 f"0x{thresholds[rx]:x} (CTRL=0x{ctrl:08x})"
             )
         for rx in range(_NUM_RX):
-            await self.csr_write(f"TLM{rx}_IE_RESTORE", _reg("INTR_ENABLE", rx), 0)
-            await self.csr_write(f"TLM{rx}_THR_RESTORE", _reg("CTRL", rx), 0)
+            await self.csr_write(f"TLM{rx}_IE_RESTORE", _rx_addr("INTR_ENABLE", rx), 0)
+            await self.csr_write(f"TLM{rx}_THR_RESTORE", _rx_addr("CTRL", rx), 0)
         for rx in range(_NUM_RX):
-            await self.csr_read(f"TLM{rx}_IE_RESTORE_RB", _reg("INTR_ENABLE", rx), expected=0)
-            await self.csr_read(f"TLM{rx}_THR_RESTORE_RB", _reg("CTRL", rx), expected=0)
+            await self.csr_read(f"TLM{rx}_IE_RESTORE_RB", _rx_addr("INTR_ENABLE", rx), expected=0)
+            await self.csr_read(f"TLM{rx}_THR_RESTORE_RB", _rx_addr("CTRL", rx), expected=0)
         self._stamp("S2")
         self._chk(
             "CHK-TELEMETRY-APERTURE-REGS",
             "S2",
-            "%d register types x %d apertures read OKAY at window base + 0x%x * i + 0x00 to 0x18 "
+            "%d register types x %d apertures read OKAY at window base + 0x%x * i + 0x00 to 0x%x "
             "with reset values; INTR_ENABLE %s and the drawn BUFFER_THRESHOLD %s written to "
             "receivers 0 to 2 read back as their own and restored to 0; zero reset values are "
             "bench-limited (2-state zero init); drawn=%s",
             len(_REG_TYPES),
             _NUM_RX,
             _STRIDE,
+            _RX_SIZE - 4,
             ",".join(f"0x{p:02x}" for p in _INTR_ENABLE_PATTERNS),
             ",".join(f"0x{p:03x}" for p in thresholds),
             drawn,
         )
 
-        # S3: each receiver in the drawn order takes its drawn number of messages, and every
-        # message in turn is read in all three apertures before its pop.
-        windows: dict[int, list[str]] = {}
-        swept = False
+        # S3: each receiver in the drawn order takes its drawn number of beats, and every beat
+        # is read back in that receiver's aperture while the other two read empty.
+        windows: dict[int, str] = {}
         for rx in order:
-            for probe_id in probe_ids[rx]:
-                await self._send_packet(rx, _all_valid_packet(probe_id))
-            lines = []
-            for msg in range(counts[rx]):
-                await self._wait_empty(rx, False, f"MSG{msg}")
-                probe = await self.csr_read(
-                    f"TLM{rx}_PROBE_MSG{msg}", _reg("TELEMETRY_PROBE_ID", rx)
+            await _HeldSource(dut, beats[rx], rx=rx).task
+            for index, beat in enumerate(beats[rx]):
+                await pop_expect(self, f"TLM{rx}_BEAT{index}", beat, rx)
+            for other in range(_NUM_RX):
+                await self.csr_read(
+                    f"TLM{other}_DATA_AFTER_RX{rx}", _rx_addr("TELEMETRY_DATA", other), expected=0
                 )
-                head = (probe & _PROBE_ID_BM) >> _PROBE_ID_BP
-                assert head == probe_ids[rx][msg], (
-                    f"message {msg} in receiver {rx}: TELEMETRY_PROBE_ID reads 0x{probe:08x} "
-                    f"(probe 0x{head:02x}), expected the message's own 0x{probe_ids[rx][msg]:02x} "
-                    f"(the queue did not advance to it)"
-                )
-                vals = []
-                for other in range(_NUM_RX):
-                    c0 = await self.csr_read(
-                        f"TLM{other}_C0_RX{rx}_MSG{msg}", _counter_addr(other, 0)
-                    )
-                    c1 = await self.csr_read(
-                        f"TLM{other}_C1_RX{rx}_MSG{msg}", _counter_addr(other, 1)
-                    )
-                    want = (0xFFFFFFFF, 0x0) if other == rx else (0x0, 0x0)
-                    assert (c0, c1) == want, (
-                        f"message {msg} in receiver {rx}: receiver {other} COUNTER[0]=0x{c0:08x} "
-                        f"COUNTER[1]=0x{c1:08x}, expected 0x{want[0]:08x} 0x{want[1]:08x}"
-                    )
-                    vals.append((c0, c1))
-                if rx == 1 and not swept:
-                    for idx in range(_NUM_COUNTERS):
-                        await self.csr_read(f"TLM1_COUNTER_{idx}", _counter_addr(1, idx))
-                    swept = True
-                await self.csr_write(f"TLM{rx}_POP{msg}", _reg("CTRL", rx), _BUFFER_POP)
-                lines.append(
-                    f"probe 0x{head:02x} " + " ".join(f"(0x{a:08x},0x{b:08x})" for a, b in vals)
-                )
-            await self._wait_empty(rx, True, "POP")
-            windows[rx] = lines
-        assert swept, "receiver 1 took no message, so its 32 counters were not swept"
+            await self._wait_empty(rx, True, "DRAINED")
+            windows[rx] = f"rx{rx}: {counts[rx]} beats, last 0x{_word(beats[rx][-1]):08x}"
         self.waits.append(
             ("buffer_status_poll", f"{_BUFFER_POLL_BOUND} polls", "STATUS.BUFFER_EMPTY")
         )
-        self.waits.append(("atb_beat_accept", f"{_ATB_READY_BOUND} cycles", "atready=1"))
+        self.waits.append(("data_read", "200 reads", "TELEMETRY_DATA valid"))
         self._stamp("S3")
         for rx in order:
             self._chk(
-                "CHK-TELEMETRY-COUNTER-WINDOW",
+                "CHK-TELEMETRY-DATA-WINDOW",
                 "S3",
-                "%d message(s) in receiver %d: before each pop TELEMETRY_PROBE_ID reads the "
-                "message's own drawn probe ID and COUNTER[0]/[1] at offsets "
-                "0x%x/0x%x of receivers 0..2 read %s; BUFFER_EMPTY 1 after the last pop; all "
-                "%d counters of receiver 1 answered OKAY in 4-byte steps; drawn=%s",
-                counts[rx],
+                "%s: each read back in order through TELEMETRY_DATA at offset 0x%x of receiver "
+                "%d, after which TELEMETRY_DATA of receivers 0..%d read 0 and BUFFER_EMPTY 1; "
+                "drawn=%s",
+                windows[rx],
+                _rx_addr("TELEMETRY_DATA", 0) - _WINDOW_BASE,
                 rx,
-                _COUNTER_BASE,
-                _COUNTER_BASE + _COUNTER_STRIDE,
-                " | ".join(windows[rx]),
-                _NUM_COUNTERS,
+                _NUM_RX - 1,
                 drawn,
             )
 
         # S4
+        self.env.axi_monitor.expected_decerr_addrs.update(
+            [_WINDOW_BASE + off for off in (*_PAST_EXTENT_OFFSETS, _FOURTH_WRITE_OFFSET)]
+            + [_WINDOW_BASE + rx * _STRIDE + off for rx, off in _UNBACKED_PROBES]
+        )
         before = await self._snapshot("PE_PRE")
-        receiver_status = before[(0, "STATUS")]
-        measured = []
         for off in _PAST_EXTENT_OFFSETS:
-            addr = _WINDOW_BASE + off
-            rresp, rdata = await self._measure(f"PE_RD_{off:x}", addr)
-            wresp = (await self._measure(f"PE_WR_{off:x}", addr, _FOURTH_WRITE))[0]
-            assert not (rresp <= 1 and rdata == receiver_status), (
-                f"past-extent read at +0x{off:x} answered OKAY with receiver STATUS-like data "
-                f"0x{rdata:08x}"
-            )
-            self.past_extent[off] = (rresp, rdata, wresp)
-            measured.append(f"+0x{off:x}:rresp={rresp},rdata=0x{rdata:08x},wresp={wresp}")
+            await self._expect_decerr(f"PE_{off:x}", _WINDOW_BASE + off, _FOURTH_WRITE)
+        after = await self._snapshot("PE_POST")
+        assert after == before, f"past-extent accesses changed receiver registers: {after}"
         self._stamp("S4")
         self._chk(
             "CHK-TELEMETRY-PAST-EXTENT",
             "S4",
-            "measured, not compared (not specified, measured): %s",
-            " ".join(measured),
+            "reads and writes at window offsets %s answered DECERR, the reads with 0x%08x, and "
+            "STATUS/INTR_ENABLE/INTR_STATUS/CTRL of receivers 0..%d read unchanged",
+            ", ".join(f"0x{o:x}" for o in _PAST_EXTENT_OFFSETS),
+            _ERR_DATA,
+            _NUM_RX - 1,
         )
 
         # S5
-        measured = []
         for rx, off in _UNBACKED_PROBES:
-            addr = _WINDOW_BASE + rx * _STRIDE + off
-            rresp, rdata = await self._measure(f"UB_RD_{rx}_{off:x}", addr)
-            wresp = (await self._measure(f"UB_WR_{rx}_{off:x}", addr, _UNBACKED_WRITE))[0]
-            measured.append(f"rx{rx}+0x{off:x}:rresp={rresp},rdata=0x{rdata:08x},wresp={wresp}")
+            await self._expect_decerr(
+                f"UB_{rx}_{off:x}", _WINDOW_BASE + rx * _STRIDE + off, _UNBACKED_WRITE
+            )
         after = await self._snapshot("UB_POST")
         assert after == before, f"unbacked accesses changed receiver registers: {before} -> {after}"
         self._stamp("S5")
         self._chk(
             "CHK-TELEMETRY-UNBACKED-OFFSETS",
             "S5",
-            "measured, not compared (not specified, measured); receiver "
-            "STATUS/INTR_ENABLE/INTR_STATUS/CTRL "
-            "unchanged: %s",
-            " ".join(measured),
+            "reads and writes of 0x%x at slot offsets %s of receivers 0..%d answered DECERR, the "
+            "reads with 0x%08x, and STATUS/INTR_ENABLE/INTR_STATUS/CTRL of every receiver read "
+            "unchanged",
+            _UNBACKED_WRITE,
+            ", ".join(f"0x{o:x}" for o in sorted({o for _, o in _UNBACKED_PROBES})),
+            _NUM_RX - 1,
+            _ERR_DATA,
         )
 
         # S6
@@ -401,12 +319,9 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
             0
         ]
         rresp, rdata = await self._measure("NF_RD", _WINDOW_BASE + _FOURTH_READ_OFFSET)
-        pe_rresp, pe_rdata, pe_wresp = self.past_extent[_FOURTH_READ_OFFSET]
-        assert rresp == pe_rresp, (
-            f"fourth-aperture read resp {rresp} differs from past-extent read resp {pe_rresp}"
-        )
-        assert wresp == pe_wresp, (
-            f"fourth-aperture write resp {wresp} differs from past-extent write resp {pe_wresp}"
+        assert (rresp, rdata, wresp) == (_DECERR, _ERR_DATA, _DECERR), (
+            f"fourth-aperture read resp {rresp} data 0x{rdata:08x}, write resp {wresp}; expected "
+            f"the past-extent DECERR, 0x{_ERR_DATA:08x} / DECERR"
         )
         final = await self._snapshot("NF_POST")
         assert final == before, f"fourth-aperture access changed receiver registers: {final}"
@@ -417,16 +332,14 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-NO-FOURTH-RECEIVER",
             "S6",
             "write 0x%x at +0x%x answered resp=%d and read at +0x%x answered resp=%d rdata=0x%08x, "
-            "equal to the past-extent responses (wresp=%d rresp=%d); INTR_ENABLE and STATUS of "
-            "receivers 0 to 2 unchanged (%s)",
+            "the past-extent DECERR responses; INTR_ENABLE and STATUS of receivers 0 to 2 "
+            "unchanged (%s)",
             _FOURTH_WRITE,
             _FOURTH_WRITE_OFFSET,
             wresp,
             _FOURTH_READ_OFFSET,
             rresp,
             rdata,
-            pe_wresp,
-            pe_rresp,
             ",".join(
                 f"rx{r}:IE=0x{final[(r, 'INTR_ENABLE')]:x}/STATUS=0x{final[(r, 'STATUS')]:08x}"
                 for r in range(_NUM_RX)

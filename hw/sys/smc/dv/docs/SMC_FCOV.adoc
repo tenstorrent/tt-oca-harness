@@ -316,7 +316,7 @@ depth, telemetry, UART, and OCTS.
 |`c_gpio_core2pad_active`, `c_gpio_core2pad_en_active`, `c_gpio_pad2core_en_active`, `c_gpio_single_pad_enabled`, `c_gpio_multi_pad_enabled`, `c_gpio_output_value_driven`, `c_gpio_boot_stall_pad_*`, `c_pad_output_low` |Pad activity. The single-pad point counts the output enables GPIO software owns; a pad an LSIO function selects takes that function's direction (Programmer's Guide GPIO section, Selecting and Reclaiming LSIO)
 |`c_default_output_count`, `c_default_input_count`, `c_per_instance_default_matches_map` |The `INPUT_BY_DEFAULT` map at primary-reset release (`periphs.adoc`), compared on the pads no LSIO function owns
 |`c_irq_*` |Each interrupt source asserted, the hang legs, and two sources concurrent
-|`c_axil_cdc_*`, `c_mailbox_*`, `c_single_entry_message`, `c_two_entry_message`, `c_atb_transfer_accepted`, `c_receiver_*_decode`, `c_distinct_atid_values`, `c_tx_*`, `c_controller_*`, `c_target_*`, `c_octs_count_*` |CDC bridge, mailbox, telemetry, UART, I2C controller and target transfers, OCTS counter
+|`c_axil_cdc_*`, `c_mailbox_*`, `c_single_entry_message`, `c_two_entry_message`, `c_atb_transfer_accepted`, `c_atb_backpressure`, `c_receiver_*_decode`, `c_distinct_atid_values`, `c_tx_*`, `c_controller_*`, `c_target_*`, `c_octs_count_*` |CDC bridge, mailbox, telemetry (a full receiver holding its source off among them), UART, I2C controller and target transfers, OCTS counter
 |===
 
 ==== `smc_reset_fcov`, `smc_rst_seq_fcov`, `smc_iso_fcov` and `smc_filt_fcov`

@@ -790,12 +790,6 @@ fsm = [["cur_state", "*"]]
 [[object]]
 class = "F10-FSM-REVIEWED"
 list = 2
-instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[*].u_telemetry_receiver"
-fsm = [["block_index", "*"]]
-
-[[object]]
-class = "F10-FSM-REVIEWED"
-list = 2
 instance = "smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu"
 fsm = [["state", "*"]]
 

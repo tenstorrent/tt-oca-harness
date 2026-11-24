@@ -32,8 +32,9 @@ and window read groups.
   writes are logged.
 * The system-timer window answers its 9 registers with their documented resets
   and DECERR 0xBADCAB1E past its 36-byte extent; the telemetry window answers
-  OKAY over its 768-byte extent with exactly three words reading 0x1 and DECERR
-  0xBADCAB1E past it (`memory_map.adoc`).
+  OKAY at the register words of its three receiver slots, with exactly three
+  words reading 0x1, and DECERR 0xBADCAB1E at every other word of its 768-byte
+  extent (the hole response) and past it (`memory_map.adoc`).
 * FILTER_CONFIG of all 32 filter entries takes 8-byte writes with one byte lane
   strobed while every other lane carries the complement of the saved byte.
   `data_bus_width` must read 0x3 throughout. START_ADDR / END_ADDR must read
@@ -69,8 +70,10 @@ from .smc_addr_map import (
     UART_CG_EN,
     _field_mask,
     generated_decoded_extent,
+    generated_hole_rresp,
     generated_window,
     reg_reset_word,
+    smc_addr,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_register
@@ -200,6 +203,8 @@ TIMER_APERTURE = 0x1000
 TELEM_EXTENT = 768
 TELEM_APERTURE = 0x1000
 TELEM_INSTANCES = 3
+TELEM_STRIDE = smc_addr("SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STRIDE")
+TELEM_SLOT_SIZE = smc_addr("SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE")
 
 TERMS = (
     "SETUP",
@@ -825,8 +830,27 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             f"telemetry aperture 0x{first:x}-0x{last:x}"
         )
         assert generated_decoded_extent("smc_telemetry_receiver_wrap") == TELEM_EXTENT
+        assert generated_hole_rresp("smc_telemetry_receiver_wrap") == {"DECERR"}
+        assert TELEM_STRIDE * TELEM_INSTANCES == TELEM_EXTENT
         base = LOCAL_BASE_RESET + first
-        inside = await self._window_reads("TELEM", base, range(0, TELEM_EXTENT, 4), RESP_OKAY)
+        # TELEMETRY_DATA is among the register words; its FIFO is empty, so the read removes
+        # nothing.
+        self.env.axi_monitor.expected_decerr_addrs.update(
+            base + o
+            for slot in range(0, TELEM_EXTENT, TELEM_STRIDE)
+            for o in range(slot + TELEM_SLOT_SIZE, slot + TELEM_STRIDE, 4)
+        )
+        inside, hole = [], []
+        for slot in range(0, TELEM_EXTENT, TELEM_STRIDE):
+            inside += await self._window_reads(
+                "TELEM", base, range(slot, slot + TELEM_SLOT_SIZE, 4), RESP_OKAY
+            )
+            hole += await self._window_reads(
+                "TELEM_HOLE",
+                base,
+                range(slot + TELEM_SLOT_SIZE, slot + TELEM_STRIDE, 4),
+                RESP_DECERR,
+            )
         nonzero = [(i.addr - base, i.rdata) for i in inside if i.rdata != 0]
         assert len(nonzero) == TELEM_INSTANCES and all(v == 1 for _o, v in nonzero), (
             f"telemetry in-extent nonzero words {[(hex(o), hex(v)) for o, v in nonzero]}; "
@@ -835,20 +859,23 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
         past = await self._window_reads(
             "TELEM_PAST", base, range(TELEM_EXTENT, TELEM_APERTURE, 4), RESP_DECERR
         )
-        bad = [i for i in past if i.rdata != DEADSPACE_RDATA]
+        bad = [i for i in hole + past if i.rdata != DEADSPACE_RDATA]
         assert not bad, (
-            f"{len(bad)} past-extent telemetry reads returned data other than "
+            f"{len(bad)} telemetry hole or past-extent reads returned data other than "
             f"0x{DEADSPACE_RDATA:X}: " + ", ".join(f"0x{i.addr:x}=0x{i.rdata:x}" for i in bad[:6])
         )
-        assert len(inside) == 192 and len(past) == 832, f"{len(inside)} / {len(past)} reads"
+        assert (len(inside), len(hole), len(past)) == (18, 174, 832), (
+            f"{len(inside)} / {len(hole)} / {len(past)} reads"
+        )
         await self._wr("CG_RESTORE", CLOCK_GATE_CONTROL, self.cg_saved)
         cg_back = await self._rd("CG_RESTORE_RB", CLOCK_GATE_CONTROL)
-        self._mark("TELEM-WINDOW", len(inside) + len(past))
+        self._mark("TELEM-WINDOW", len(inside) + len(hole) + len(past))
         self._chk(
             "CHK-SWEEP-TELEM-WINDOW",
-            f"{len(inside)}/192 OKAY, nonzero={len(nonzero)} (=0x1) at "
+            f"{len(inside)}/18 register words OKAY, nonzero={len(nonzero)} (=0x1) at "
             f"{','.join(f'+0x{o:x}' for o, _v in nonzero)} (positions logged; LINKED-ISSUE: "
-            f"the telemetry receiver instance offsets in their window), {len(past)}/832 DECERR "
+            f"the telemetry receiver instance offsets in their window), {len(hole)}/174 slot "
+            f"hole words DECERR 0x{DEADSPACE_RDATA:X}, {len(past)}/832 past-extent DECERR "
             f"0x{DEADSPACE_RDATA:X}; CLOCK_GATE_CONTROL restored 0x{self.cg_saved:x} read "
             f"0x{cg_back:x} (logged; whether the telemetry and UART clocks run at reset is open)",
         )

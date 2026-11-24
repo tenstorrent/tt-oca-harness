@@ -5,13 +5,12 @@
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_R5_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 """Write-one-to-clear status registers cleared a few bits at a time.
 
-Three blocks carry an interrupt status register whose bits software raises
+Two blocks carry an interrupt status register whose bits software raises
 through the matching `INTR_TEST` register and clears by writing a one back:
-the I2C `INTR_STATE`, the log engine `INTR_STATUS` and the telemetry receiver
-`INTR_STATUS`.
+the I2C `INTR_STATE` and the log engine `INTR_STATUS`.
 
 This leaf drives the half of that contract in which a set bit that a write
-carries a zero over *stays* set. On each instance of each of the three registers it
+carries a zero over *stays* set. On each instance of each of the two registers it
 
 * reads the register and requires it clear, so every bit it goes on to see set
   is one this sequence raised;
@@ -61,7 +60,6 @@ from .smc_regblock_field_sweep_utils import RegInstance, reg_instances
 
 _I2C = "SMC_TOP_SMC_I2C_WRAP_I2C_"
 _WRAP = "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_"
-_TELEMETRY = "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_"
 
 
 def _i2c_spec(register: str) -> tuple[str, str, str, str]:
@@ -82,21 +80,11 @@ def _log_engine_spec(register: str) -> tuple[str, str, str, str]:
     )
 
 
-def _telemetry_spec(register: str) -> tuple[str, str, str, str]:
-    return (
-        f"smc_telemetry_receiver_wrap/telemetry_receiver/{register}",
-        f"{_TELEMETRY}{register}_BASE_ADDR",
-        f"{_TELEMETRY}{register}_NUM",
-        f"SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{{index}}__{register}_REG_ADDR",
-    )
-
-
 # Each entry is a block name, the status register spec and the INTR_TEST spec
 # that raises its bits.
 _BLOCKS: tuple[tuple[str, tuple[str, str, str, str], tuple[str, str, str, str]], ...] = (
     ("i2c", _i2c_spec("INTR_STATE"), _i2c_spec("INTR_TEST")),
     ("log_engine", _log_engine_spec("INTR_STATUS"), _log_engine_spec("INTR_TEST")),
-    ("telemetry", _telemetry_spec("INTR_STATUS"), _telemetry_spec("INTR_TEST")),
 )
 
 # Accesses one register instance costs: the idle read, the INTR_TEST write and
@@ -474,7 +462,7 @@ class smc_intr_status_partial_clear_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-INTR-STATUS-PARTIAL-CLEAR",
             "on %d write-one-to-clear status registers "
-            "across the I2C blocks, the log engines and the telemetry receivers, the whole "
+            "across the I2C blocks and the log engines, the whole "
             "declared mask was raised through INTR_TEST, half of it was written back and "
             "went, and the %d bit(s) the write carried a zero over stayed set, which is "
             "the `oneToClear` contract; every register then took the other half and read "

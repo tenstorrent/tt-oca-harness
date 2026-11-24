@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_telemetry_queue_threshold_test - telemetry queue order, empty/full and buffer threshold."""
+"""smu_telemetry_queue_threshold_test - telemetry beat FIFO order, empty/full and buffer threshold."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_telemetry_queue_threshold_test(smu_base_test):
-    """Eight ATB messages through receiver 0: pop order, STATUS and INTR_STATUS threshold."""
+    """32 ATB beats through receiver 0: read order, STATUS and INTR_STATUS threshold."""
 
     use_shared_env = True
 

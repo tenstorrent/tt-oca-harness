@@ -29,6 +29,7 @@ from .smc_addr_map import (
     LOCAL_BASE_RESET,
     REGION_SIZE_RESET,
     generated_decoded_extent,
+    generated_hole_rresp,
     generated_past_extent_resp,
     generated_window,
     smc_addr,
@@ -159,11 +160,11 @@ ISLANDS = (
         "TELEM",
         "smc_telemetry_receiver_wrap",
         0x9000,
-        0x92FC,
+        0x9214,
         0x9300,
         0x9FFC,
         "ro(not specified)",
-        "ro(not specified)",
+        "ro(TELEMETRY_DATA, read pops; FIFO empty)",
         _D,
     ),
     Island(
@@ -433,9 +434,18 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
             first, window_end = generated_window(isl.unit)
             extent = generated_decoded_extent(isl.unit)
             rresp, bresp = generated_past_extent_resp(isl.unit)
+            last = first + extent - 4
+            if generated_hole_rresp(isl.unit) == {"DECERR"}:
+                # The last decoded word may be a DECERR hole, so the last register word
+                # stands in for it.
+                last = max(
+                    a - LOCAL_BASE_RESET
+                    for a in REG_FIELDS
+                    if first <= a - LOCAL_BASE_RESET <= last
+                )
             derived = {
                 "first": first,
-                "last": first + extent - 4,
+                "last": last,
                 "past": first + extent,
                 "end": window_end & ~3,
             }

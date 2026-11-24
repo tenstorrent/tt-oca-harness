@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Telemetry receivers driven past their message queue and assembly buffer."""
+"""Telemetry receivers 1 and 2 driven past a full FIFO: backpressure without data loss."""
 
 from __future__ import annotations
 
@@ -13,30 +13,22 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_telemetry_buffer_overflow_test(smc_base_test):
-    """Overfill the message buffer, cross the threshold, and run a message past its end.
+    """Hold receivers 1 and 2 full, check the threshold at depth, and drain with nothing lost.
 
-    Receivers 1 and 2 then run queue overflow, push-against-pop, transmitter
-    flush, MISSING_LAST and INTR_TEST legs.
+    Push-against-pop and transmitter flush legs follow, each ending with every beat read
+    back in order.
     """
 
     required_evidence = (
         "CHK-NONVAC",
         "CHK-TELEM12-FULL",
-        "CHK-TELEM12-INTR-TEST",
-        "CHK-TELEM12-MISSING-LAST",
         "CHK-TELEM12-OVERFLOW-ORDER",
         "CHK-TELEM12-PUSH-POP-WINDOW",
         "CHK-TELEM12-TX-FLUSH",
-        "CHK-TELEMETRY-BUFFER-OVERFLOW",
-        "CHK-TELEMETRY-FULL-MESSAGE",
-        "CHK-TELEMETRY-MISSING-LAST",
-        "CHK-TELEMETRY-PARTIAL-FLUSH",
-        "CHK-TELEMETRY-POP-EMPTY",
-        "CHK-TELEMETRY-THRESHOLD-ALIAS",
-        "CHK-TELEMETRY-THRESHOLD-INTR",
+        "CHK-TELEMETRY-THRESHOLD-AT-DEPTH",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 15
+    min_evidence = 7
 
     auto_protocol_vip = False
 

@@ -15,16 +15,17 @@ class smc_telemetry_atb_capture_test(smc_base_test):
     """Capture raw ATB beats on receiver 0, drain them through TELEMETRY_DATA, and flush."""
 
     required_evidence = (
-        "CHK-TELEMETRY-RAW-CAPTURE-IN-ORDER",
+        "CHK-TELEMETRY-BACK-TO-BACK-POP",
         "CHK-TELEMETRY-EMPTY-READ-NO-POP",
         "CHK-TELEMETRY-FULL-BACKPRESSURE",
-        "CHK-TELEMETRY-BACK-TO-BACK-POP",
+        "CHK-TELEMETRY-PAST-END-NO-POP",
+        "CHK-TELEMETRY-RAW-CAPTURE-IN-ORDER",
         "CHK-TELEMETRY-RX-FLUSH-WHILE-FULL",
         "CHK-TELEMETRY-THRESHOLD-BEATS",
         "CHK-TELEMETRY-TX-FLUSH-WHILE-DRAINING",
         "CHK-TELEMETRY-WRITE-NO-POP",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     auto_protocol_vip = False
 

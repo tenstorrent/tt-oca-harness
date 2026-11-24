@@ -25,9 +25,9 @@ compiles to, and both are checked here rather than assumed:
 
 Some registers need care, and the card records each choice:
 
-* `RDATA`, `ACQDATA` (I2C) and `AVS_READBACK` pop a FIFO when read, so they are
-  written but not read back; the FIFO level registers of the same block are
-  read either side instead and must not move.
+* `RDATA`, `ACQDATA` (I2C), telemetry `TELEMETRY_DATA` and `AVS_READBACK` pop
+  a FIFO when read, so they are written but not read back; the FIFO level
+  registers of the same block are read either side instead and must not move.
 * `TIMER_COUNT_LO` and `TIMER_COUNT_HI` run freely, so equality before and after
   would not mean anything; they rely on the probe guard.
 * `LSR` and `MSR` clear their error bits and deltas on any read, so each is read
@@ -75,8 +75,7 @@ _AVS = "smc_avsbus_controller"
 # brackets every block's accesses.
 _TARGETS: tuple[tuple[str, str, str, str], ...] = (
     ("telemetry_receiver", f"{_TELEMETRY}/STATUS", _WRITE_RO, _STABLE),
-    ("telemetry_receiver", f"{_TELEMETRY}/TELEMETRY_PROBE_ID", _WRITE_RO, _STABLE),
-    ("telemetry_receiver", f"{_TELEMETRY}/TELEMETRY_COUNTER_VLDS", _WRITE_RO, _STABLE),
+    ("telemetry_receiver", f"{_TELEMETRY}/TELEMETRY_DATA", _WRITE_RO, _NO_READ),
     ("ndm_reset", "smc_misc_wrap/ndm_reset/NDMRESET_REQUEST", _WRITE_RO, _STABLE),
     ("chip_config", "smc_misc_wrap/chip_config/VERSION_LO", _WRITE_RO, _STABLE),
     ("chip_config", "smc_misc_wrap/chip_config/VERSION_HI", _WRITE_RO, _STABLE),
@@ -129,6 +128,7 @@ _TARGETS: tuple[tuple[str, str, str, str], ...] = (
 # The FIFO level registers read either side of a write at a register whose read
 # pops its FIFO.
 _LEVEL_REGS = {
+    f"{_TELEMETRY}/TELEMETRY_DATA": f"{_TELEMETRY}/STATUS",
     f"{_I2C}/RDATA": f"{_I2C}/HOST_FIFO_STATUS",
     f"{_I2C}/ACQDATA": f"{_I2C}/TARGET_FIFO_STATUS",
     f"{_AVS}/AVS_READBACK": f"{_AVS}/AVS_FIFOS_STATUS",

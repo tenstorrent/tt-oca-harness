@@ -958,8 +958,8 @@ extent and its declared error response past it.
 |`smc_wdt_plic_source_ids_test` |3 |Each core's first-stage watchdog timeout pends and claims as PLIC source 329 + core.
 |`smc_periph_cg_access_error_test` |3 |Each CLOCK_GATE_CONTROL peripheral enable (AVSBus, I2C, UART, telemetry, I3C) set in turn: the gated window answers SLVERR with 0xBADCAB1E on read and SLVERR on write, and its recorded word again once ungated.
 |`smc_sideband_protocol_smoke_test` |1 |Run the AVSBus sideband CSR representative precheck.
-|`smc_telemetry_atb_capture_test` |3 |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
-|`smc_telemetry_receiver_csr_test` |2 |TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
+|`smc_telemetry_atb_capture_test` |3 |Raw ATB beats captured on telemetry receiver 0 and read back through `TELEMETRY_DATA`, backpressure from a full FIFO, and the receiver and transmitter flush paths.
+|`smc_telemetry_receiver_csr_test` |2 |TELEMETRY CSR reset, INTR_TEST -> tb_telemetry_irq_any, and one ATB beat per receiver.
 |`smc_wdt_key_csr_test` |2 |WDT writes are gated by the KEY magic value, COUNT_HI re-locks, and narrow writes are dropped, proven per core.
 |`smc_wdt_timeout_pin_test` |2 |A programmed first timeout raises `smc_ras_o.wdt_first_timeout`; uncleared, the second timeout raises `smc_ras_o.wdt_second_timeout` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |2 |Run zeroer over output-fabric payload bytes and check the model.
@@ -983,19 +983,20 @@ registers, and the dwords past the map are recorded.
 by one per `clk_smc_i` rise, never stops on any register write, and COUNT_HI/COUNT_LO read back the
 carry and the 64-bit wrap.
 |`smc_telemetry_address_map_test` |3 |The three telemetry receiver apertures decode their registers and
-counter windows separately, and accesses past the third aperture or at unbacked offsets complete
-with recorded responses and disturb no receiver.
+data windows separately, and accesses past the third slot or at unbacked slot offsets answer
+DECERR with 0xBADCAB1E and disturb no receiver.
 |`smc_telemetry_ctrl_access_test` |3 |Telemetry receiver 0 CTRL, INTR_ENABLE and INTR_TEST fields read
-back as written, a full-word CTRL write overwrites the threshold, and writes to the read-only
-registers change nothing.
+back as written, a full-word CTRL write overwrites the threshold and withdraws a pending
+transmitter flush, and writes to the read-only registers change nothing.
 |`smc_telemetry_irq_aggregate_test` |2 |Each telemetry receiver interrupt raises its own bit of
 `tb_telemetry_irq` and the aggregate `tb_telemetry_irq_any` holds until the last source clears, with
 each source working alone and masked sources staying quiet.
-|`smc_telemetry_receiver_isolation_test` |3 |Traffic and register operations on one telemetry receiver,
-alone or while the other two receive beats, leave the registers of the other receivers unchanged.
-|`smc_telemetry_rx_flush_test` |3 |`CTRL.TELEMETRY_RX_FLUSH` on receiver 0 empties a populated queue
-and clears its threshold interrupt, acts once, restarts message assembly, and leaves a pending
-MISSING_LAST interrupt untouched.
+|`smc_telemetry_receiver_isolation_test` |3 |Beats pushed into telemetry receiver i appear only at
+receiver i's `TELEMETRY_DATA`, and traffic and register operations on one receiver, alone or while
+the other two receive beats, leave the registers of the other receivers unchanged.
+|`smc_telemetry_rx_flush_test` |3 |`CTRL.TELEMETRY_RX_FLUSH` on receiver 0 empties a populated FIFO
+and clears its threshold interrupt, acts once, lets capture restart, keeps a contiguous tail of a
+stream it lands in, and leaves an `INTR_TEST` force untouched.
 |`smc_telemetry_tx_flush_test` |3 |`CTRL.TELEMETRY_TX_FLUSH` on receiver 0 raises `afvalid_o`, holds
 while `afready_i` is low, clears when it rises, keeps `BUFFER_THRESHOLD`, and is separate from the
 receiver flush.
@@ -1699,7 +1700,7 @@ the stall ends, a zero threshold never raising it and a cleared `enable` droppin
 |`smc_i2c_intr_reg_sweep_test` |3 |I2C interrupt and event registers cycled on all three instances, with the INTR_TEST to INTR_STATE round trip and the two unread read-mux rows.
 |`smc_i2c_config_regblock_sweep_test` |3 |I2C configuration registers -- control, timing, FIFO thresholds, timeouts, target identity, override and SMBus control -- cycled on all three instances with both engines held disabled.
 |`smc_i2c_fifo_reset_pulse_test` |3 |The four singlepulse I2C FIFO resets pulsed on all three instances against a measured fill level in the two FIFOs software can fill.
-|`smc_intr_status_partial_clear_test` |3 |Write-one-to-clear status registers on the I2C blocks, log engines and telemetry receivers cleared half at a time, with the rest required to survive the write.
+|`smc_intr_status_partial_clear_test` |3 |Write-one-to-clear status registers on the I2C blocks and log engines cleared half at a time, with the rest required to survive the write.
 |`smc_i2c_multi_instance_test` |3 |I2C_1/2 + I2C_CTRL CSR sweep.
 |`smc_i2c_multi_sample_test` |1 |Run the SMC OSS I2C multi-sample observability scenario.
 |`smc_i2c_p0_cfifo_test` |2 |Controller FMT FIFO empty-threshold interrupt.
@@ -1957,8 +1958,8 @@ and that flag must behave as a register.
 must be answered the way `i2c_controller_fsm` specifies for that point.
 |`smc_i2c_controller_disable_stop_test` |3 |A controller that has started a transaction owns the bus until it gives a STOP; if software clears
 `CTRL.ENABLEHOST` with the transaction still open, the controller gives that STOP itself.
-|`smc_telemetry_buffer_overflow_test` |3 |Drive telemetry receiver 0 past each of its two bounded stores, the message buffer and the assembly
-buffer, and check what the register documentation says happens at each bound.
+|`smc_telemetry_buffer_overflow_test` |3 |Drive telemetry receivers 1 and 2 past a full FIFO: the source is held off rather than any beat
+dropped, and the drain returns every beat once and in order.
 |`smc_i2c_controller_queue_shapes_test` |3 |Six shapes of the controller's format queue that no other leaf writes. Every other controller leaf
 queues one transaction at a time, gives it a STOP, and drains the receive FIFO while the read runs.
 |`smc_i2c_controller_edge_timing_test` |3 |Test the controller's decisions that depend on how SCL and SDA move relative to each other. It
@@ -2556,7 +2557,10 @@ extent and its declared error response past it.
   `smc_base_config.rdl`, so the probe table is exercised at the aperture and gate state it assumes;
   the probe table built from the generated memory map must equal the sweep's own table of first,
   last decoded, past-extent and aperture-end offsets and of each island's declared past-extent write
-  response (`smc.rdl` `ocah_past_extent_resp`).
+  response (`smc.rdl` `ocah_past_extent_resp`). Where the generated map gives the holes inside an
+  island's extent a DECERR response, the last decoded word is the island's last register word
+  (`TELEM`: receiver 2's `TELEMETRY_DATA` at 0x9214, read with its FIFO empty so the read removes
+  nothing), not the end of the extent.
 * First word of each island: reads answer OKAY, a declared hole (`RESET` first word) reads 0; every
   first word that is read-write or a hole takes a write of the value just read with an OKAY write
   response and reads it back unchanged, the eligible scratch first word (`MISC`, `SCRATCH_COLD[0]`)
@@ -3121,13 +3125,13 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
+*Objective*: TELEMETRY CSR reset, INTR_TEST -> tb_telemetry_irq_any, and one ATB beat per receiver.
 
 *Test Coverage*:
 
-* The ATB framing the sequence drives is a DV-owned table. 8-bit beats assembled LSB-first into 64-bit packets, 9-bit blocks, the 5-bit probe ID and the last-packet flag are cited to `hw/ip/telemetry_receiver/doc/interface.adoc`, `doc/architecture.adoc` and `regs/telemetry_receiver.rdl` (`TELEMETRY_PROBE_ID.PROBE_ID[4:0]`, `INTR_STATUS.MISSING_LAST`).
-* The bit positions of the probe-ID header, the last-packet flag and the first block of each packet are fixed by no document and are declared as DV-owned framing assumptions in the sequence.
-* What is scored is the CSR-visible consequence of a message framed per that table (STATUS.EMPTY clearing, PROBE_ID reading back the framed value), not that the table is the specified telemetry format.
+* All six registers of receivers 0, 1 and 2 read their generated reset values before any ATB stimulus, `TELEMETRY_DATA` 0 among them; a read of an empty FIFO removes nothing (`telemetry_receiver.rdl`).
+* Receivers 1 and 2 store and restore `INTR_ENABLE.BUFFER_THRESHOLD`. On receiver 0, `INTR_TEST.BUFFER_THRESHOLD` raises `tb_telemetry_irq_any`, `INTR_STATUS` reads exactly `BUFFER_THRESHOLD`, and writing `INTR_TEST` to 0 releases both.
+* Each receiver takes one beat with an ATB ID and a data byte no other receiver's beat shares. What is scored is the CSR-visible consequence: `STATUS.BUFFER_EMPTY` clears on that receiver and its `TELEMETRY_DATA` returns exactly that beat, then 0.
 
 *Test Procedure*:
 
@@ -3139,17 +3143,15 @@ Drive `smc_telemetry_receiver_csr_test_seq`. Each checker below is a named compa
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-TELEMETRY-RECEIVER-CSR` |Named compare in `smc_telemetry_receiver_csr_test_seq.py`; the run fails if it mismatches
-|`CHK-TELEMETRY-RECEIVER-<rx>-ATB` |Per receiver: after its ATB message STATUS leaves EMPTY within a bounded poll and TELEMETRY_PROBE_ID reads back the probe ID framed into that receiver, in `smc_telemetry_receiver_csr_test_seq.py`; expiry or a mismatch fails the run
+|`CHK-TELEMETRY-RECEIVER-CSR` |The reset sweep of all three receivers, the receiver 1 and 2 `INTR_ENABLE` store and restore, the receiver 0 INTR_TEST rise and release, and receiver 0's own beat read back through `TELEMETRY_DATA`, in `smc_telemetry_receiver_csr_test_seq.py`; any mismatch fails the run
+|`CHK-TELEMETRY-RECEIVER-<rx>-ATB` |Per receiver: after its ATB beat STATUS leaves EMPTY within a bounded poll, `TELEMETRY_DATA` returns exactly the beat sent into that receiver and then 0, in `smc_telemetry_receiver_csr_test_seq.py`; expiry or a mismatch fails the run
 |===
 
 
 *Pass Criteria*: `CHK-TELEMETRY-RECEIVER-CSR` hold after their compares. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The ATB framing is a DV-owned table; the bit positions of the probe-ID header, the
-last-packet flag and the first block of each packet are fixed by no document. What is scored is the
-CSR-visible consequence of a message framed per that table, not that the table is the specified
-telemetry format.
+*Scope limit*: Ordering, backpressure and flushes are graded by `smc_telemetry_atb_capture_test`;
+this card scores one beat per receiver.
 '''''
 
 [[sec-018-smc_wdt_key_csr_test]]
@@ -4085,55 +4087,47 @@ than 0x40). The reload sample index is printed. The `STATUS` reads around the wr
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (4-byte reads and writes; the raw access items accept
 error responses); the telemetry receiver wrapper window at
 `SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR` with three receiver apertures at the generated
-stride and per-receiver registers `CTRL`, `STATUS`, `INTR_STATUS`, `INTR_ENABLE`, `INTR_TEST`,
-`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS` and the 32 `TELEMETRY_COUNTER` registers; the bench
-ATB beat driver on `tb_telemetry0_*`, `tb_telemetry1_*` and `tb_telemetry2_*` (`atdata`, `atid`
-0x00, 0x11 and 0x22, `atvalid`, `atready`) on `clk_smc_i`; `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`;
-`tb_fuse_sense_done`
+stride and per-receiver registers `CTRL`, `STATUS`, `INTR_STATUS`, `INTR_ENABLE`, `INTR_TEST` and
+`TELEMETRY_DATA`; the bench ATB source on `tb_telemetry0_*`, `tb_telemetry1_*` and
+`tb_telemetry2_*` (`atdata`, `atid`, `atvalid`, `atready`) on `clk_smc_i`;
+`CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`; `tb_fuse_sense_done`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-REP; the seed draws the message count per receiver (1 to 8, the queue depth
-`BUFFER_DEPTH` of `hw/ip/telemetry_receiver/doc/interface.adoc`, default 8 with no SMC override),
-the order in which the three receivers are taken (each receiver's queue is filled with its drawn
-count and drained to `BUFFER_EMPTY` 1 before the next receiver's queue is filled, so the other two
-queues are empty at every compare) and the three `BUFFER_THRESHOLD` patterns (distinct, non-zero,
-masked to the field, bits [23:12]) and a distinct non-zero 5-bit probe ID per queued message (an
-`rng.sample` of 1 to 31 per receiver); `CHK-TELEMETRY-APERTURE-REGS` grades the patterns (each reads
-back as written and restores to 0) and `CHK-TELEMETRY-COUNTER-WINDOW` the counts, the order and the
-probe IDs (each message in turn shows its own probe ID in `TELEMETRY_PROBE_ID`, so the queue is seen
-to advance by one message at each pop, and `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `[1]` 0 in its own
-aperture and 0 and 0 in the others before its pop, `CTRL.BUFFER_POP` advancing the queue and reads
-not consuming it, `telemetry_receiver` `architecture.adoc`, Message Queue and Readout, and
-`BUFFER_EMPTY` reads 1 after the last pop); the `INTR_ENABLE` patterns stay pinned; 3 seeds per
-regression (`reseed = 3`).
+*Randomization*: RAND-REP; the seed draws the beat count per receiver (1 to 32, the receiver FIFO
+depth `BUFFER_DEPTH`), the order in which the three receivers are taken (each receiver's beats are
+sent and read back to an empty FIFO before the next receiver's are sent, so the other two FIFOs are
+empty at every compare), the three `BUFFER_THRESHOLD` patterns (distinct, non-zero, masked to the
+field, bits [23:12]) and an (ATID, data) pair per beat drawn without repeats across all receivers;
+`CHK-TELEMETRY-APERTURE-REGS` grades the patterns (each reads back as written and restores to 0)
+and `CHK-TELEMETRY-DATA-WINDOW` the counts, the order and the beats (each beat reads back in order
+through its own receiver's `TELEMETRY_DATA`, and the other two apertures read 0); the
+`INTR_ENABLE` patterns stay pinned; 3 seeds per regression (`reseed = 3`).
 
-*Objective*: The three telemetry receiver apertures decode their registers and
-counter windows separately, and accesses past the third aperture or at unbacked offsets complete
-with recorded responses and disturb no receiver.
+*Objective*: The three telemetry receiver apertures decode their registers and data windows
+separately, and accesses past the third slot or at unbacked slot offsets answer DECERR with
+0xBADCAB1E and disturb no receiver.
 
 *Test Coverage*:
 
-* Register offsets: for receivers 0, 1 and 2 each of the seven register types answers OKAY at its
-  offset inside the aperture and reads its reset value (`hw/ip/telemetry_receiver/doc/memmap.adoc`,
-  256 bytes per receiver; `hw/sys/smc/doc/memmap.adoc`, Memory Map; `smc.rdl`). `CTRL` reads 0 and
-  `STATUS` reads `BUFFER_EMPTY` set after the flush.
-* Isolation of the three apertures: distinct `INTR_ENABLE` (0x01, 0x10, 0x11) and drawn
+* Register offsets: for receivers 0, 1 and 2 each of the six register types answers OKAY at its
+  offset inside the aperture and reads its reset value, `TELEMETRY_DATA` 0 with the FIFO empty
+  (`hw/sys/smc/doc/memmap.adoc`, Memory Map; `smc.rdl`). `CTRL` reads 0 and `STATUS` reads
+  `BUFFER_EMPTY` set after the flush.
+* Isolation of the three apertures: `INTR_ENABLE` (0x10, 0x00, 0x10) and drawn distinct
   `CTRL.BUFFER_THRESHOLD` patterns written to receivers 0, 1 and 2 before any read each read back
   as their own, then are restored to 0.
-* Counter window (`telemetry_receiver/doc/memmap.adoc`, 32 counter registers at offsets 0x80 to
-  0xFC): each of a drawn number of all-valid one-packet messages sent to receiver i, the receivers
-  taken in a drawn order, shows its own drawn probe ID in `TELEMETRY_PROBE_ID` and
-  `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `TELEMETRY_COUNTER[1]` 0 in
-  receiver i's aperture and 0 and 0 in the other two before its pop; all 32 counters of receiver 1
-  answer OKAY in four-byte steps.
-* Past the third receiver (`hw/sys/smc/doc/memmap.adoc`, Decode Response Codes): reads and writes at
-  window offsets 0x300, 0x304, 0x380 and 0xFFC are measured. Their expected responses are not stated by the specification, so the response and data are printed and not compared, except that a read
-  must not answer OKAY with data equal to receiver 0's `STATUS`.
-* Unbacked offsets inside an aperture (0x1C, 0x20 and 0x7C of receiver 0 and 0x1C of receiver 2):
-  reads and writes are measured and printed (expected response is not stated by the specification);
-  the `STATUS`, `INTR_ENABLE`, `INTR_STATUS` and `CTRL` words of all three receivers must read
+* Data window: each of a drawn number of beats sent to receiver i, the receivers taken in a drawn
+  order, reads back in order through receiver i's `TELEMETRY_DATA`, after which `TELEMETRY_DATA` of
+  all three receivers reads 0 and receiver i's `BUFFER_EMPTY` reads 1.
+* Past the third receiver (`hw/sys/smc/doc/memmap.adoc`, Decode Response Codes; the generated
+  memory map's past-extent response): reads and writes at window offsets 0x300, 0x304, 0x380 and
+  0xFFC answer DECERR, the reads with 0xBADCAB1E, and the `STATUS`, `INTR_ENABLE`, `INTR_STATUS`
+  and `CTRL` words of all three receivers read unchanged afterwards.
+* Unbacked offsets inside a receiver slot (the generated memory map's hole response): reads and
+  writes of 0x11 at slot offsets 0x18, 0x1C, 0x20, 0x7C and 0xFC of receivers 0, 1 and 2 answer
+  DECERR, the reads with 0xBADCAB1E, and the four register words of all three receivers read
   unchanged afterwards.
 * No fourth receiver (`hw/sys/smc/doc/periphs.adoc`, Telemetry Receiver, three receivers): a write
   of 0x11 at window offset 0x30C and a read at 0x304 answer with the same responses as the
@@ -4145,27 +4139,22 @@ with recorded responses and disturb no receiver.
 [arabic]
 . Wait (bounded) for `tb_fuse_sense_done`, save `CLOCK_GATE_CONTROL`, clear `TELEMETRY_CG_EN` and
   read it back exactly, then flush each receiver and poll `STATUS.BUFFER_EMPTY` to 1.
-. For receivers 0 to 2 read the seven register types and compare each with its reset value, write
-  the distinct `INTR_ENABLE` and the drawn `BUFFER_THRESHOLD` patterns to all three, read all six
-  back and compare, restore all six to 0 and read the restore back.
-. For each receiver in the drawn order send its drawn number of all-valid single-packet messages
-  over the ATB pins, each with its drawn probe ID, then for each message poll `STATUS.BUFFER_EMPTY`
-  to 0, read `TELEMETRY_PROBE_ID` and compare it to the message's own probe ID, read
-  `TELEMETRY_COUNTER[0]` and `[1]` in all three apertures and compare, and pop with
-  `CTRL.BUFFER_POP`; for receiver 1 also read all 32 counters once; poll `BUFFER_EMPTY` back to 1
-  after the last pop.
-. Error injection. Point: window offsets 0x300, 0x304, 0x380 and 0xFFC past the third receiver
-  aperture. Kind: a read and a write at each. Expected response: each access completes and its
-  response and data word are recorded and not compared; a read answering OKAY with data equal to
-  receiver 0's `STATUS` fails. Before the accesses snapshot `STATUS`, `INTR_ENABLE`, `INTR_STATUS`
-  and `CTRL` of the three receivers.
-. Error injection. Point: the four unbacked offsets inside the apertures (0x1C, 0x20 and 0x7C of
-  receiver 0 and 0x1C of receiver 2). Kind: a read and a write at each. Expected response: the
-  responses are recorded, and a second snapshot of the three receivers compares equal with the
-  first.
+. For receivers 0 to 2 read the six register types and compare each with its reset value, write
+  the `INTR_ENABLE` and the drawn `BUFFER_THRESHOLD` patterns to all three, read all six back and
+  compare, restore all six to 0 and read the restore back.
+. For each receiver in the drawn order send its drawn beats over the ATB pins, read each back
+  through its `TELEMETRY_DATA` (re-reading while a beat is still crossing) and compare, then read
+  `TELEMETRY_DATA` of all three receivers requiring 0 and poll `BUFFER_EMPTY` to 1.
+. Register every probed address as an expected DECERR with the AXI monitor. Error injection.
+  Point: window offsets 0x300, 0x304, 0x380 and 0xFFC past the third receiver slot. Kind: a read
+  and a write at each. Expected response: DECERR on both, read data 0xBADCAB1E. Snapshot `STATUS`,
+  `INTR_ENABLE`, `INTR_STATUS` and `CTRL` of the three receivers before and after and compare.
+. Error injection. Point: slot offsets 0x18, 0x1C, 0x20, 0x7C and 0xFC of each receiver. Kind: a
+  read and a write of 0x11 at each. Expected response: DECERR on both, read data 0xBADCAB1E, and a
+  second snapshot of the three receivers compares equal with the first.
 . Error injection. Point: window offsets 0x30C and 0x304, where no fourth receiver exists. Kind: a
-  write of 0x11 at 0x30C and a read at 0x304. Expected response: the same response codes as the
-  past-extent accesses, and a third snapshot compares equal with the first. Restore
+  write of 0x11 at 0x30C and a read at 0x304. Expected response: DECERR on both with read data
+  0xBADCAB1E, the past-extent response, and a third snapshot compares equal with the first. Restore
   `CLOCK_GATE_CONTROL` and read it back exactly, print the bounded waits, require the step stamps
   and checker lines in order and print the ordered fence.
 
@@ -4174,40 +4163,33 @@ with recorded responses and disturb no receiver.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-TELEMETRY-APERTURE-REGS` |All seven register types answer OKAY with their reset values in each
-  of the three apertures, and the three distinct `INTR_ENABLE` patterns and the three drawn
-  `BUFFER_THRESHOLD` patterns each read back as their own and restore to 0; the zero reset values
-  are bench-limited (2-state zero init)
-|`CHK-TELEMETRY-COUNTER-WINDOW` |Each of the drawn number of messages in receiver i, the receivers
-  taken in the drawn order, shows its own drawn probe ID in `TELEMETRY_PROBE_ID` (distinct per
-  message, so a queue that did not advance at the pop fails) and reads `TELEMETRY_COUNTER[0]`
-  0xFFFF_FFFF and `[1]` 0 in receiver i's
-  aperture and 0 and 0 in the others before its pop, `BUFFER_EMPTY` reads 1 after the last pop, and
-  all 32 counters of receiver 1 answer OKAY at four-byte steps
-|`CHK-TELEMETRY-PAST-EXTENT` |Measures and prints the read response, read data and write response at
-  window offsets 0x300, 0x304, 0x380 and 0xFFC without comparing the values; a read answering OKAY
-  with receiver `STATUS` data fails
-|`CHK-TELEMETRY-UNBACKED-OFFSETS` |Measures and prints the responses and data at the four unbacked
-  offsets without comparing them; the `STATUS`, `INTR_ENABLE`, `INTR_STATUS` and `CTRL` words of all
-  three receivers must read unchanged afterwards
-|`CHK-TELEMETRY-NO-FOURTH-RECEIVER` |A write at window offset 0x30C and a read at 0x304 answer with
-  the same response codes as the past-extent accesses, and the register words of receivers 0 to 2
+|`CHK-TELEMETRY-APERTURE-REGS` |All six register types answer OKAY with their reset values in each
+  of the three apertures, and the `INTR_ENABLE` patterns and the three drawn `BUFFER_THRESHOLD`
+  patterns each read back as their own and restore to 0; the zero reset values are bench-limited
+  (2-state zero init)
+|`CHK-TELEMETRY-DATA-WINDOW` |Each of the drawn number of beats in receiver i, the receivers taken
+  in the drawn order, reads back in order through receiver i's `TELEMETRY_DATA`, after which
+  `TELEMETRY_DATA` of all three receivers reads 0 and `BUFFER_EMPTY` reads 1
+|`CHK-TELEMETRY-PAST-EXTENT` |Reads and writes at window offsets 0x300, 0x304, 0x380 and 0xFFC
+  answer DECERR with read data 0xBADCAB1E, and the `STATUS`, `INTR_ENABLE`, `INTR_STATUS` and
+  `CTRL` words of all three receivers read unchanged
+|`CHK-TELEMETRY-UNBACKED-OFFSETS` |Reads and writes at slot offsets 0x18, 0x1C, 0x20, 0x7C and 0xFC
+  of all three receivers answer DECERR with read data 0xBADCAB1E, and the `STATUS`, `INTR_ENABLE`,
+  `INTR_STATUS` and `CTRL` words of all three receivers read unchanged afterwards
+|`CHK-TELEMETRY-NO-FOURTH-RECEIVER` |A write at window offset 0x30C and a read at 0x304 answer
+  DECERR with read data 0xBADCAB1E, the past-extent response, and the register words of receivers 0 to 2
   stay unchanged
-|`CHK-NONVAC` |Ordered fence SETUP_DONE < OFFSETS_AND_PATTERNS < COUNTER_WINDOWS <
-  PAST_EXTENT_MEASURED < UNBACKED_MEASURED < NO_FOURTH_RECEIVER: step stamps S1 to S6 strictly
+|`CHK-NONVAC` |Ordered fence SETUP_DONE < OFFSETS_AND_PATTERNS < DATA_WINDOWS <
+  PAST_EXTENT_DECERR < UNBACKED_DECERR < NO_FOURTH_RECEIVER: step stamps S1 to S6 strictly
   increasing and the checker lines printed in order, each after its step
-|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense, buffer-empty polls, ATB beat
-  acceptance and the SEP_IN access bound); expiry of any of them raises with the last observed state
+|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense, buffer-empty polls, data reads
+  and the SEP_IN access bound); expiry of any of them raises with the last observed state
 |===
 
-*Pass Criteria*: all seven checkers hold and every sequence assert holds. The past-extent and
-unbacked responses and data are reported only. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all seven checkers hold and every sequence assert holds. Enrolled in: `all`,
+`hosted`.
 
-*Scope limit*: The responses and data of the reads and writes past the third receiver (window
-offsets 0x300, 0x304, 0x380 and 0xFFC) and at the unbacked offsets (0x1C, 0x20 and 0x7C of receiver
-0 and 0x1C of receiver 2) are printed and not compared, because the specification does not state
-them; only a read answering OKAY with receiver 0's `STATUS` data fails. The zero reset values are
-bench-limited (2-state zero init).
+*Scope limit*: The zero reset values are bench-limited (2-state zero init).
 
 '''''
 
@@ -4222,10 +4204,9 @@ bench-limited (2-state zero init).
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (4-byte accesses; raw write items accept error
 responses); telemetry receiver 0 registers `CTRL`, `STATUS`, `INTR_STATUS`, `INTR_ENABLE`,
-`INTR_TEST`, `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, `TELEMETRY_COUNTER[0]` and
-`TELEMETRY_COUNTER[31]`; the bench ATB beat driver on `tb_telemetry0_atdata`, `tb_telemetry0_atid`
-(0x21), `tb_telemetry0_atvalid` and `tb_telemetry0_atready`; `tb_telemetry0_afready` driven by the
-bench (high except in the full-word step); `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`;
+`INTR_TEST` and `TELEMETRY_DATA`; the bench ATB source on `tb_telemetry0_atdata`,
+`tb_telemetry0_atid`, `tb_telemetry0_atvalid` and `tb_telemetry0_atready`; `tb_telemetry0_afready`
+driven by the bench (high except in the full-word step); `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`;
 `tb_fuse_sense_done`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -4235,58 +4216,56 @@ bench (high except in the full-word step); `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`;
 the register description.
 
 *Objective*: Telemetry receiver 0 CTRL, INTR_ENABLE and INTR_TEST fields read
-back as written, a full-word CTRL write overwrites the threshold, and writes to the read-only
-registers change nothing.
+back as written, a full-word CTRL write overwrites the threshold and withdraws a pending
+transmitter flush, and writes to the read-only registers change nothing.
 
 *Test Coverage*:
 
 * `CTRL.BUFFER_THRESHOLD` (bits 23:12, read-write, `telemetry_receiver.rdl`) written 0x000, 0x001,
   0xFFF and 0x555 reads back exactly as the whole `CTRL` word with no other bit set.
-* `CTRL.BUFFER_POP` and `CTRL.TELEMETRY_RX_FLUSH` are write pulses (`telemetry_receiver.rdl`); each
-  alone and both together are written on an empty queue and on a queue holding a message, and `CTRL`
-  is read after each. Both are `sw=w` in the RDL, so bits 0 and 4 must read 0 after every write; a
-  queued message must leave the queue after every write.
-* Full-word write (`doc/programmer/src/smc-programming.adoc`, Buffer Management): with
-  `tb_telemetry0_afready` low `CTRL` is written with `BUFFER_THRESHOLD` 5 and `TELEMETRY_TX_FLUSH`
-  and the threshold is read back as 5; a following full-word write of only `BUFFER_POP` must leave
-  `BUFFER_THRESHOLD` at 0. Whether the pending transmitter flush request is cancelled (bit 8) is not
-  specified and is printed.
-* `INTR_ENABLE` (`MISSING_LAST` bit 0, `BUFFER_THRESHOLD` bit 4, read-write) written 0x1, 0x10, 0x11
-  and 0x0 reads back each exactly.
-* `INTR_TEST` (`BUFFER_THRESHOLD` read-write, `MISSING_LAST` write pulse): a write of 0x10 reads
-  back 0x10 and a write of 0 reads back 0. The read of bit 0 after a write of 1 must be 0, as
-  `MISSING_LAST` is `sw=w` in the RDL; the resulting `INTR_STATUS` is printed.
-* Read-only registers (`telemetry_receiver.rdl`, sw = r): writes of 0xFFFF_FFFF and 0 to `STATUS`,
-  `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, `TELEMETRY_COUNTER[0]` and `TELEMETRY_COUNTER[31]`
-  leave all five reading exactly their pre-write words, on an empty queue (`STATUS` showing
-  `BUFFER_EMPTY` set and `BUFFER_FULL` clear) and with one message of probe id 0x0B queued (neither
-  flag set, probe id 0x0B). The write responses are printed (the expected response is not
-  specified).
+* `CTRL.TELEMETRY_RX_FLUSH` is a write pulse (`telemetry_receiver.rdl`); it is written on an empty
+  FIFO and on a FIFO holding a beat, and `CTRL` is read after each. It is `sw=w` in the RDL, so bit 4
+  must read 0 after every write; a queued beat must leave the FIFO. `CTRL` bit 0 is reserved: a
+  write of it alone reads back `CTRL` 0 and leaves a queued beat for `TELEMETRY_DATA` to return.
+* Full-word write (`telemetry_receiver.rdl`, `TELEMETRY_TX_FLUSH`): with `tb_telemetry0_afready`
+  low `CTRL` is written with `BUFFER_THRESHOLD` 5 and `TELEMETRY_TX_FLUSH` and read back exactly; a
+  following full-word write of 0 must leave `CTRL` at 0, the threshold cleared and the pending
+  request withdrawn, as the RDL states for a write of 0 while a flush is pending.
+* `INTR_ENABLE` (`BUFFER_THRESHOLD` bit 4, read-write) written 0x10, 0x0, 0xFFFF_FFFF and 0x0
+  reads back 0x10, 0x0, 0x10 and 0x0.
+* `INTR_TEST` (`BUFFER_THRESHOLD` read-write): a write of 0x10 reads back 0x10 with `INTR_STATUS`
+  reading exactly `BUFFER_THRESHOLD`, a write of 0 reads back 0, and a write of 0xFFFF_FFFF reads
+  back 0x10; once released `INTR_STATUS` reads 0.
+* Read-only registers (`telemetry_receiver.rdl`, sw = r): writes of 0xFFFF_FFFF and 0 to `STATUS`
+  and `TELEMETRY_DATA` leave both reading exactly their pre-write words with the FIFO empty
+  (`STATUS` showing `BUFFER_EMPTY` set and `BUFFER_FULL` clear, `TELEMETRY_DATA` 0, whose read
+  removes nothing from an empty FIFO). With one beat queued, writes to `STATUS` leave it at its
+  pre-write word and `TELEMETRY_DATA` then returns that beat. The write responses are printed (the
+  expected response is not specified).
 
 *Test Procedure*:
 
 [arabic]
 . Wait (bounded) for `tb_fuse_sense_done`, save `CLOCK_GATE_CONTROL`, clear `TELEMETRY_CG_EN` and
   read it back exactly, hold `tb_telemetry0_afready` high, flush receiver 0 and poll
-  `STATUS.BUFFER_EMPTY`, clear `INTR_ENABLE` and write both clear bits of `INTR_STATUS`.
+  `STATUS.BUFFER_EMPTY`, clear `INTR_ENABLE` and `INTR_TEST`.
 . Write `CTRL` with only `BUFFER_THRESHOLD` 0x000, 0x001, 0xFFF and 0x555 and compare each read-back
   word exactly.
-. For `BUFFER_POP`, `TELEMETRY_RX_FLUSH` and both together, first with an empty queue and then after
-  sending a message over the ATB pins and polling `BUFFER_EMPTY` to 0, write `CTRL`, read it back
-  and print bits 0 and 4; on the filled legs poll `BUFFER_EMPTY` back to 1.
+. Write `TELEMETRY_RX_FLUSH`, first with an empty FIFO and then after sending a beat over the ATB
+  pins and polling `BUFFER_EMPTY` to 0, read `CTRL` back requiring bit 4 clear; on the filled leg
+  poll `BUFFER_EMPTY` back to 1 and read `TELEMETRY_DATA` 0. Send another beat, write `CTRL` bit 0
+  alone, require `CTRL` 0 and `STATUS` 0, and read the beat back through `TELEMETRY_DATA`.
 . Hold `tb_telemetry0_afready` low, write `CTRL` with threshold 5 and `TELEMETRY_TX_FLUSH`, require
-  threshold 5 on read-back, write `CTRL` 0x1, read `CTRL`, release `tb_telemetry0_afready` and
-  require `BUFFER_THRESHOLD` 0.
-. Write `INTR_ENABLE` 0x1, 0x10, 0x11 and 0x0 and compare each read-back exactly.
-. Write `INTR_TEST` 0x10 and compare, write 0 and compare, write 0x1 and read `INTR_TEST` and
-  `INTR_STATUS` for printing, then write 0 and clear `INTR_STATUS`.
-. Error injection. Point: the five read-only registers of receiver 0 (`STATUS`,
-  `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, `TELEMETRY_COUNTER[0]` and
-  `TELEMETRY_COUNTER[31]`). Kind: writes of 0xFFFF_FFFF and 0 to each, first with the queue empty
-  and again with one message of probe id 0x0B queued. Expected response: all five read exactly their
-  pre-write words after every write; each write response is recorded and printed, not compared.
-  Between the two rounds send a message of probe id 0x0B and poll `BUFFER_EMPTY` to 0; afterwards
-  flush and write `CTRL` 0.
+  the exact word on read-back, write `CTRL` 0, read `CTRL`, release `tb_telemetry0_afready` and
+  require `CTRL` 0.
+. Write `INTR_ENABLE` 0x10, 0x0, 0xFFFF_FFFF and 0x0 and compare each read-back.
+. Write `INTR_TEST` 0x10 and compare it and `INTR_STATUS`, write 0 and compare, write 0xFFFF_FFFF
+  and compare, then write 0 and require `INTR_STATUS` 0.
+. Error injection. Point: the read-only registers of receiver 0 (`STATUS` and `TELEMETRY_DATA`).
+  Kind: writes of 0xFFFF_FFFF and 0 to each with the FIFO empty, then to `STATUS` with one beat
+  queued. Expected response: every register read reads exactly its pre-write word after every
+  write and the queued beat is then read back; each write response is recorded and printed, not
+  compared. Afterwards flush and write `CTRL` 0.
 . Restore `CLOCK_GATE_CONTROL` and read it back exactly, require step stamps and checker lines in
   order, print the ordered fence and the bounded waits.
 
@@ -4297,35 +4276,32 @@ registers change nothing.
 |Checker |Description
 |`CHK-TELEMETRY-THRESHOLD-FIELD-RW` |`BUFFER_THRESHOLD` written 0x000, 0x001, 0xFFF and 0x555 reads
   back as the exact `CTRL` word with no other bit set
-|`CHK-TELEMETRY-CTRL-PULSE-READ` |After each pulse write on an empty and on a filled queue `CTRL`
-  bits 0 and 4 read 0 (`sw=w` in the RDL), and a queued message leaves the queue after every write
-  within the poll bound
-|`CHK-TELEMETRY-CTRL-FULL-WORD` |After a full-word write of only `BUFFER_POP`,
-  `CTRL.BUFFER_THRESHOLD` reads 0 although it read 5 before; the bit 8 outcome is printed
-|`CHK-TELEMETRY-INTR-ENABLE-BITS` |`INTR_ENABLE` reads back 0x1, 0x10, 0x11 and 0x0 exactly as
-  written
-|`CHK-TELEMETRY-INTR-TEST-ACCESS` |`INTR_TEST` reads 0x10 after a write of 0x10 and 0 after a write
-  of 0; bit 0 reads 0 after a write of 1 (`sw=w` in the RDL) and `INTR_STATUS` is measured and
-  printed without a compare
-|`CHK-TELEMETRY-RO-WRITE-IGNORED` |Writes of 0xFFFF_FFFF and 0 to the five read-only registers leave
-  every one reading its pre-write word on an empty queue and with one message queued; the write
-  responses are printed
+|`CHK-TELEMETRY-CTRL-PULSE-READ` |After each `TELEMETRY_RX_FLUSH` write on an empty and on a filled
+  FIFO `CTRL` bit 4 reads 0 (`sw=w` in the RDL) and a queued beat leaves the FIFO within the poll
+  bound; a write of reserved bit 0 reads back `CTRL` 0 and leaves the queued beat in place
+|`CHK-TELEMETRY-CTRL-FULL-WORD` |After a full-word write of 0, `CTRL` reads 0 although it read
+  threshold 5 with `TELEMETRY_TX_FLUSH` pending before
+|`CHK-TELEMETRY-INTR-ENABLE-BITS` |`INTR_ENABLE` reads back 0x10, 0x0, 0x10 and 0x0 after writes of
+  0x10, 0x0, 0xFFFF_FFFF and 0x0
+|`CHK-TELEMETRY-INTR-TEST-ACCESS` |`INTR_TEST` reads 0x10 after a write of 0x10 with `INTR_STATUS`
+  forced, 0 after a write of 0 and 0x10 after a write of all ones; `INTR_STATUS` reads 0 once it is
+  released
+|`CHK-TELEMETRY-RO-WRITE-IGNORED` |Writes of 0xFFFF_FFFF and 0 to `STATUS` and `TELEMETRY_DATA`
+  leave both reading their pre-write words with the FIFO empty, and writes to `STATUS` leave it
+  and the queued beat in place with one beat queued; the write responses are printed
 |`CHK-NONVAC` |Ordered fence SETUP_DONE < THRESHOLD_FIELD_DONE < PULSE_READS_DONE < FULL_WORD_DONE <
   INTR_ENABLE_DONE < INTR_TEST_DONE < RO_WRITES_DONE: step stamps S1 to S7 strictly increasing and
   the six checker lines printed in step order
-|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (SEP_IN access, fuse sense, buffer polls and ATB
-  beat acceptance) with the last observed state of each; expiry of any raises
+|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (SEP_IN access, fuse sense and buffer polls)
+  with the last observed state of each; expiry of any raises
 |===
 
-*Pass Criteria*: all eight checkers hold and every sequence assert holds. The pulse-bit read values,
-the bit 8 outcome, the `INTR_TEST` bit 0 read and the read-only write responses are reported only.
-Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all eight checkers hold and every sequence assert holds. The read-only write
+responses are reported only. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: Whether a full-word `BUFFER_POP` write cancels the pending transmitter flush request
-(bit 8) is not specified and is printed. The pulse-bit reads of `CTRL` bits 0 and 4 are reported
-only, and `INTR_STATUS` after the `INTR_TEST` bit 0 write is measured and printed without a
-compare. The responses of the writes to the read-only registers are printed, because the expected
-response is not specified.
+*Scope limit*: The responses of the writes to the read-only registers are printed, because the
+expected response is not specified. `smc_telemetry_atb_capture_test` grades a write to
+`TELEMETRY_DATA` with a beat queued.
 
 '''''
 
@@ -4339,11 +4315,11 @@ response is not specified.
 *Source Module*: `smc_telemetry_irq_aggregate_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; telemetry receivers 0, 1 and 2 `CTRL`, `STATUS`,
-`INTR_STATUS`, `INTR_ENABLE` and `INTR_TEST`; interrupt outputs `tb_telemetry_irq` (3 bits, bit i
-for receiver i) and `tb_telemetry_irq_any` sampled on `clk_smc_i`; the bench ATB beat driver on
-`tb_telemetry1_atdata`, `tb_telemetry1_atid` (0x11), `tb_telemetry1_atvalid` and
-`tb_telemetry1_atready` (and the matching pins of receivers 0 and 2 for the ATB IDs 0x00 and 0x22);
-`CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`; `tb_fuse_sense_done`
+`INTR_STATUS`, `INTR_ENABLE`, `INTR_TEST` and `TELEMETRY_DATA`; interrupt outputs
+`tb_telemetry_irq` (3 bits, bit i for receiver i) and `tb_telemetry_irq_any` sampled on
+`clk_smc_i`; the bench ATB source on `tb_telemetry1_atdata`, `tb_telemetry1_atid`,
+`tb_telemetry1_atvalid` and `tb_telemetry1_atready`; `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`;
+`tb_fuse_sense_done`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -4365,39 +4341,37 @@ each source working alone and masked sources staying quiet.
   identifiers and PLIC delivery are not observable here and are not stated by the specification.
 * Two receivers: with the source raised on receivers 0 and 2 the vector is 0b101; clearing receiver
   0 leaves 0b100 with the aggregate at 1; clearing receiver 2 returns both to 0.
-* Each source alone on receiver 1: with only `INTR_ENABLE.MISSING_LAST` set, unflagged packets
-  (last-packet flag clear, at most 16) are sent until `INTR_STATUS.MISSING_LAST` sets; the vector
-  must read 0b010 with the aggregate at 1, and a write of one to `INTR_STATUS.MISSING_LAST` returns
-  both to 0. With only `INTR_ENABLE.BUFFER_THRESHOLD` set, `INTR_TEST.BUFFER_THRESHOLD` drives 0b010
-  and clearing it releases (`architecture.adoc`, Interrupts: the interrupt output is the masked OR
-  of the two sources). The packet count to `MISSING_LAST` is measured and printed.
+* Each way of raising the source alone on receiver 1 (`telemetry_receiver.rdl`, `INTR_STATUS` and
+  `INTR_TEST`): with `CTRL.BUFFER_THRESHOLD` at 0, one beat makes the beat count exceed the
+  threshold; the vector must read 0b010 with the aggregate at 1, and the `TELEMETRY_DATA` read that
+  returns the beat releases both. `INTR_TEST.BUFFER_THRESHOLD` alone drives 0b010 and writing it
+  to 0 releases.
 * Masked sources: with every `INTR_ENABLE` 0, `INTR_TEST.BUFFER_THRESHOLD` forced on all three
-  receivers and `MISSING_LAST` set on receiver 1 must show those sources in each `INTR_STATUS` while
-  the vector and the aggregate stay 0 for 64 `clk_smc_i` cycles (masking does not acknowledge a
-  source).
+  receivers and a beat over the threshold on receiver 1 must show `BUFFER_THRESHOLD` in each
+  `INTR_STATUS` while the vector and the aggregate stay 0 for 64 `clk_smc_i` cycles (masking does
+  not acknowledge a source).
 
 *Test Procedure*:
 
 [arabic]
 . Wait (bounded) for `tb_fuse_sense_done`, save `CLOCK_GATE_CONTROL`, clear `TELEMETRY_CG_EN` and
-  read it back exactly, flush each receiver and poll `BUFFER_EMPTY`, write `INTR_ENABLE` 0 and a one
-  to `INTR_STATUS.MISSING_LAST` on each, and require the vector and aggregate at 0.
+  read it back exactly, flush each receiver and poll `BUFFER_EMPTY`, write `INTR_ENABLE` and
+  `INTR_TEST` 0 on each, and require the vector and aggregate at 0.
 . For receivers 0, 1 and 2 in turn write `INTR_ENABLE.BUFFER_THRESHOLD` and
   `INTR_TEST.BUFFER_THRESHOLD`, wait for the one-hot vector with the aggregate at 1, write
   `INTR_TEST` 0, wait for both at 0, and disable.
 . Enable and test-raise receivers 0 and 2, wait for 0b101 with the aggregate at 1, release receiver
   0 and wait for 0b100 with the aggregate at 1, release receiver 2 and wait for both at 0, and
   disable.
-. Error injection. Point: the ATB beat pins of receiver 1, with only `INTR_ENABLE.MISSING_LAST`
-  enabled. Kind: unflagged packets (last-packet flag clear) sent until `INTR_STATUS.MISSING_LAST`
-  is set. Expected response: the vector reads 0b010 with the aggregate at 1, and a write of one to
-  clear returns both to 0. Then enable `BUFFER_THRESHOLD` only, set `INTR_TEST`, wait for 0b010,
-  clear `INTR_TEST`, wait for both at 0.
+. Enable receiver 1, send one beat and poll `INTR_STATUS.BUFFER_THRESHOLD` to 1, wait for 0b010
+  with the aggregate at 1, read the beat back through `TELEMETRY_DATA` and wait for both at 0. Then
+  set `INTR_TEST`, wait for 0b010, write `INTR_TEST` 0, wait for both at 0, and disable.
 . Error injection. Point: `INTR_TEST.BUFFER_THRESHOLD` of all three receivers and the ATB beat pins
-  of receiver 1, with all enables 0. Kind: the test bit written on all three receivers and unflagged
-  packets sent to receiver 1 until `MISSING_LAST` is set. Expected response: each `INTR_STATUS`
-  shows its sources set while the vector and aggregate stay 0 on each of 64 consecutive `clk_smc_i`
-  rises. Then clear every source and require both at 0.
+  of receiver 1, with all enables 0. Kind: one beat sent to receiver 1 and the test bit written on
+  all three receivers. Expected response: each `INTR_STATUS` shows `BUFFER_THRESHOLD` set while the
+  vector and aggregate stay 0 on each of 64 consecutive `clk_smc_i` rises. Then write every
+  `INTR_TEST` 0, flush receiver 1, and require every `INTR_STATUS`, the vector and the aggregate at
+  0.
 . Restore `CLOCK_GATE_CONTROL`, report the bounded waits, require the step stamps and checker lines
   in order and print the ordered fence.
 
@@ -4411,25 +4385,24 @@ each source working alone and masked sources staying quiet.
   each within the 64-cycle bound
 |`CHK-TELEMETRY-IRQ-LAST-RELEASE` |With receivers 0 and 2 asserting, clearing receiver 0 leaves
   `tb_telemetry_irq` at 0b100 with the aggregate at 1, and clearing receiver 2 releases both to 0
-|`CHK-TELEMETRY-IRQ-EACH-SOURCE` |On receiver 1 the `MISSING_LAST` source alone and the
-  `BUFFER_THRESHOLD` source alone each drive 0b010 with the aggregate at 1 and release on their own
-  clear; the unflagged packet count is measured and printed
+|`CHK-TELEMETRY-IRQ-EACH-SOURCE` |On receiver 1 a beat over the threshold alone and
+  `INTR_TEST.BUFFER_THRESHOLD` alone each drive 0b010 with the aggregate at 1; the `TELEMETRY_DATA`
+  read that returns the beat releases the first and `INTR_TEST` written to 0 the second
 |`CHK-TELEMETRY-IRQ-MASKED-QUIET` |With every `INTR_ENABLE` 0 and sources set on all receivers
   (shown in `INTR_STATUS`), the vector and aggregate stay 0 for 64 cycles
 |`CHK-NONVAC` |Ordered fence SETUP_DONE < ONE_RECEIVER_DONE < TWO_RECEIVERS_DONE < EACH_SOURCE_DONE
   < MASKED_QUIET_DONE: step stamps S1 to S5 strictly increasing and the checker lines printed in
   step order, each after its step
 |`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense, interrupt polls of 64 cycles,
-  buffer polls, ATB beat acceptance and the SEP_IN access bound) with the last state of each; expiry
+  buffer and threshold polls and the SEP_IN access bound) with the last state of each; expiry
   raises
 |===
 
 *Pass Criteria*: all six checkers hold and every sequence assert holds. The cycle counts to each
-vector change and the packet count to `MISSING_LAST` are reported only. Enrolled in: `all`, `hosted`.
+vector change are reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Platform interrupt identifiers and PLIC delivery are not observable here and are not
-stated by the specification. The packet count to `MISSING_LAST` and the cycle counts to each vector
-change are measured and reported only.
+stated by the specification. The cycle counts to each vector change are measured and reported only.
 
 '''''
 
@@ -4443,12 +4416,12 @@ change are measured and reported only.
 *Source Module*: `smc_telemetry_receiver_isolation_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; telemetry receivers 0, 1 and 2 registers `STATUS`,
-`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, `INTR_STATUS`, `INTR_ENABLE` and `CTRL`; the bench
-ATB beat drivers on `tb_telemetry0_*`, `tb_telemetry1_*` and `tb_telemetry2_*` (`atdata`, `atid`
-0x00, 0x11 and 0x22, `atvalid`, `atready`) on `clk_smc_i`, run as three concurrent bench processes
-in the simultaneous step; `tb_telemetry_irq_any` sampled; presence of `tb_telemetry1_afvalid`,
-`tb_telemetry1_afready`, `tb_telemetry2_afvalid` and `tb_telemetry2_afready` queried;
-`CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`; `tb_fuse_sense_done`
+`TELEMETRY_DATA`, `INTR_STATUS`, `INTR_ENABLE` and `CTRL`; the bench ATB sources on
+`tb_telemetry0_*`, `tb_telemetry1_*` and `tb_telemetry2_*` (`atdata`, `atid`, `atvalid`, `atready`)
+on `clk_smc_i`, run as three concurrent bench processes in the simultaneous step;
+`tb_telemetry_irq_any` sampled; presence of `tb_telemetry1_afvalid`, `tb_telemetry1_afready`,
+`tb_telemetry2_afvalid` and `tb_telemetry2_afready` queried; `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`;
+`tb_fuse_sense_done`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -4456,29 +4429,31 @@ in the simultaneous step; `tb_telemetry_irq_any` sampled; presence of `tb_teleme
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Traffic and register operations on one telemetry receiver,
-alone or while the other two receive beats, leave the registers of the other receivers unchanged.
+*Objective*: Beats pushed into telemetry receiver i appear only at receiver i's `TELEMETRY_DATA`,
+and traffic and register operations on one receiver, alone or while the other two receive beats,
+leave the registers of the other receivers unchanged.
 
 *Test Coverage*:
 
-* Single-receiver traffic (`hw/ip/telemetry_receiver/doc/architecture.adoc`, Message Queue and
-  Readout; `interface.adoc`, Subsystem Wrapper): one single-packet message with probe id 0x0A, 0x0B
-  and 0x0C sent to receivers 0, 1 and 2 in turn; the addressed receiver reads non-empty with its own
-  probe id and the other two receivers read their pre-message `STATUS`, `TELEMETRY_PROBE_ID`,
-  `TELEMETRY_COUNTER_VLDS`, `INTR_STATUS` and `CTRL` words exactly, with `BUFFER_EMPTY` set before
-  the message. The receiver is then popped to empty.
-* Simultaneous traffic (`interface.adoc`, Subsystem Wrapper; `architecture.adoc`, Assembly and
-  Decode): three bench processes drive beats on all three receivers in the same `clk_smc_i` cycles,
-  two single-packet messages each (probe ids 0x05 and 0x06, 0x0A and 0x0B, 0x13 and 0x14). At least
-  one cycle must accept beats on all three receivers, and each receiver must return its own two
-  probe ids in order and none from another receiver.
+* Every beat in the test carries an (ATID, data) pair no other beat shares, so a beat that reached
+  another receiver's FIFO fails that receiver's compare. A read of an empty FIFO returns 0 and
+  removes nothing (`telemetry_receiver.rdl`), so an idle receiver's `TELEMETRY_DATA` is read before
+  and after another receiver's traffic.
+* Single-receiver traffic (`interface.adoc`, Subsystem Wrapper): three beats sent to receivers 0, 1
+  and 2 in turn; the addressed receiver returns exactly its own beats in order through
+  `TELEMETRY_DATA` and is then empty, and the other two read their pre-traffic `STATUS`,
+  `TELEMETRY_DATA` (0), `INTR_STATUS` and `CTRL` words exactly.
+* Simultaneous traffic (`interface.adoc`, Subsystem Wrapper): three bench processes drive six beats
+  each on all three receivers at once. At least one cycle must accept beats on all three receivers,
+  and each receiver must return exactly its own six beats in order and then read empty.
 * Operations (`architecture.adoc`, Reset and Flush; `telemetry_receiver.rdl`, `CTRL`): with
-  `BUFFER_THRESHOLD` 1 and receivers holding 1, 2 and 3 messages, a pop on receiver 0, a flush on
-  receiver 1 and a rewrite of threshold (2) and `INTR_ENABLE.BUFFER_THRESHOLD` on receiver 2 each
-  leave the two untouched receivers at the `STATUS`, `TELEMETRY_PROBE_ID`, `INTR_STATUS` and `CTRL`
-  words taken before the operation. The transmitter-flush pin presence on receivers 1 and 2 and
-  `tb_telemetry_irq_any` before and after are printed; whether those receivers expose the
-  transmitter flush pins is not stated by the specification.
+  `BUFFER_THRESHOLD` 1 and receivers holding 1, 2 and 3 beats, a `TELEMETRY_DATA` read on receiver
+  0, a flush on receiver 1 and a rewrite of threshold (2) and `INTR_ENABLE.BUFFER_THRESHOLD` on
+  receiver 2 each leave the two untouched receivers at the `STATUS`, `INTR_STATUS` and `CTRL` words
+  taken before the operation, and receiver 2 still returns its three beats in order afterwards. The
+  transmitter-flush pin presence on receivers 1 and 2 and `tb_telemetry_irq_any` before and after
+  are printed; whether those receivers expose the transmitter flush pins is not stated by the
+  specification.
 
 *Test Procedure*:
 
@@ -4487,17 +4462,19 @@ alone or while the other two receive beats, leave the registers of the other rec
   `TELEMETRY_CG_EN` and read it back exactly, then flush each receiver, poll `BUFFER_EMPTY`, write
   `INTR_ENABLE` 0 and read it back.
 . For each receiver i in turn, take a stable snapshot (two equal consecutive reads) of the other two
-  receivers, send one single-packet message, poll `BUFFER_EMPTY` to 0, read `TELEMETRY_PROBE_ID` and
-  compare it with the sent probe id, compare the other receivers' words with the snapshot, pop and
-  poll `BUFFER_EMPTY` back to 1.
-. Start three ATB sender processes together, wait for all, require at least one common accepted
-  cycle, then for each receiver poll `BUFFER_EMPTY` to 0, read and compare the probe id of each
-  message in order and pop after each; poll `BUFFER_EMPTY` to 1.
-. Write `BUFFER_THRESHOLD` 1 to every receiver and read it back, send 1, 2 and 3 messages to
-  receivers 0, 1 and 2 and require the first probe id of each.
-. Snapshot receivers 1 and 2, pop receiver 0 and compare; snapshot receivers 0 and 2, flush receiver
-  1 and compare; snapshot receivers 0 and 1, write threshold 2 and `INTR_ENABLE` to receiver 2, read
-  both back and compare; flush receiver 2.
+  receivers, send three beats, poll `BUFFER_EMPTY` to 0, read the beats back through
+  `TELEMETRY_DATA` and compare, require `TELEMETRY_DATA` 0 and `BUFFER_EMPTY` 1, then compare the
+  other receivers' words with the snapshot.
+. Start three ATB sources together and count the cycles in which all three handshakes complete,
+  wait for all, require at least one such cycle, then read back each receiver's beats in order and
+  require it empty.
+. Write `BUFFER_THRESHOLD` 1 to every receiver and read it back, send 1, 2 and 3 beats to receivers
+  0, 1 and 2 and wait (through `INTR_STATUS.BUFFER_THRESHOLD` with a temporary threshold) until
+  each holds them all.
+. Snapshot receivers 1 and 2, read receiver 0's beat and compare; snapshot receivers 0 and 2, flush
+  receiver 1, require `TELEMETRY_DATA` 0 and compare; snapshot receivers 0 and 1, write threshold 2
+  and `INTR_ENABLE` to receiver 2, read both back and compare; read receiver 2's three beats back in
+  order and restore the registers.
 . Report the bounded waits, require the step stamps and checker lines in order and print the ordered
   fence.
 
@@ -4506,19 +4483,21 @@ alone or while the other two receive beats, leave the registers of the other rec
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-TELEMETRY-ISOLATION-TRAFFIC` |Traffic on receiver i changes only receiver i: the other two
-  receivers read their pre-message `STATUS`, `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`,
-  `INTR_STATUS` and `CTRL` words, and receiver i reads non-empty with its own probe id
+|`CHK-TELEMETRY-ISOLATION-TRAFFIC` |Beats into receiver i appear only at receiver i: it returns
+  exactly its own beats in order, and the other two receivers read their pre-traffic `STATUS`,
+  `TELEMETRY_DATA` (0), `INTR_STATUS` and `CTRL` words
 |`CHK-TELEMETRY-ISOLATION-SIMULTANEOUS` |With three ATB sources accepted in at least one common
-  cycle, each receiver returns its own two probe ids in order and none from another receiver
-|`CHK-TELEMETRY-ISOLATION-OPS` |A pop on receiver 0, a flush on receiver 1 and a threshold and
-  enable rewrite on receiver 2 leave the untouched receivers at the words taken before each
-  operation; the interrupt aggregate and pin presence are printed
+  cycle, each receiver returns exactly its own six beats in order and none from another receiver
+|`CHK-TELEMETRY-ISOLATION-OPS` |A `TELEMETRY_DATA` read on receiver 0, a flush on receiver 1 and a
+  threshold and enable rewrite on receiver 2 leave the untouched receivers at the words taken
+  before each operation, and receiver 2 keeps its beats; the interrupt aggregate and pin presence
+  are printed
 |`CHK-NONVAC` |Ordered fence SETUP_DONE < SINGLE_RECEIVER_TRAFFIC < SIMULTANEOUS_TRAFFIC <
   ISOLATED_OPERATIONS: step stamps S1 to S5 strictly increasing and the four checker lines printed
   in step order
 |`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense, stable snapshot rounds, buffer
-  polls, ATB beat acceptance and the SEP_IN access bound) with the last state of each; expiry raises
+  polls and the SEP_IN access bound) with the last state of each; the shared count and data polls
+  raise on expiry as well
 |===
 
 *Pass Criteria*: all five checkers hold and every sequence assert holds. The interrupt aggregate
@@ -4540,10 +4519,10 @@ transmitter flush pins is not stated by the specification.
 *Source Module*: `smc_telemetry_rx_flush_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; telemetry receiver 0 registers `CTRL`, `STATUS`,
-`INTR_STATUS`, `INTR_ENABLE`, `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS` and
-`TELEMETRY_COUNTER[0..3]`; the bench ATB beat driver on `tb_telemetry0_atdata`, `tb_telemetry0_atid`
-(0x21), `tb_telemetry0_atvalid` and `tb_telemetry0_atready`; `tb_telemetry_irq[0]` sampled on
-`clk_smc_i`; `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`; `tb_fuse_sense_done`
+`INTR_STATUS`, `INTR_ENABLE`, `INTR_TEST` and `TELEMETRY_DATA`; the bench ATB source on
+`tb_telemetry0_atdata`, `tb_telemetry0_atid`, `tb_telemetry0_atvalid` and `tb_telemetry0_atready`;
+`tb_telemetry_irq[0]` sampled on `clk_smc_i`; `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`;
+`tb_fuse_sense_done`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -4551,65 +4530,58 @@ transmitter flush pins is not stated by the specification.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: `CTRL.TELEMETRY_RX_FLUSH` on receiver 0 empties a populated queue
-and clears its threshold interrupt, acts once, restarts message assembly, and leaves a pending
-MISSING_LAST interrupt untouched.
+*Objective*: `CTRL.TELEMETRY_RX_FLUSH` on receiver 0 empties a populated FIFO
+and clears its threshold interrupt, acts once, lets capture restart, keeps a contiguous tail of a
+stream it lands in, and leaves an `INTR_TEST` force untouched.
 
 *Test Coverage*:
 
-* Populated flush (`hw/ip/telemetry_receiver/doc/architecture.adoc`, Reset and Flush and Message
-  Queue and Readout; `telemetry_receiver.rdl`, `CTRL`): with `BUFFER_THRESHOLD` 1 and
-  `INTR_ENABLE.BUFFER_THRESHOLD` set, three messages (probe ids 0x01, 0x02, 0x03) give
-  `BUFFER_EMPTY` 0, `INTR_STATUS.BUFFER_THRESHOLD` 1 and `tb_telemetry_irq[0]` 1. After one flush
-  `BUFFER_EMPTY` must read 1 within 200 polls, `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS` and
-  `TELEMETRY_COUNTER[0..3]` read 0, `INTR_STATUS.BUFFER_THRESHOLD` reads 0 and `tb_telemetry_irq[0]`
-  falls. The head words are shown live before the flush, so zero is not a reset artefact.
+* Populated flush (`hw/ip/telemetry_receiver/doc/architecture.adoc`, Reset and Flush;
+  `telemetry_receiver.rdl`, `CTRL`): three beats with `BUFFER_THRESHOLD` 1 and
+  `INTR_ENABLE.BUFFER_THRESHOLD` set give `BUFFER_EMPTY` 0, `INTR_STATUS.BUFFER_THRESHOLD` 1 and
+  `tb_telemetry_irq[0]` 1. After one flush `BUFFER_EMPTY` must read 1 within 200 polls,
+  `TELEMETRY_DATA` reads 0, `INTR_STATUS.BUFFER_THRESHOLD` reads 0 and `tb_telemetry_irq[0]` falls.
 * One-shot: `CTRL` bit 4 (`TELEMETRY_RX_FLUSH`) reads 0 after the flush and after two further
-  flushes on the empty receiver, each leaving `BUFFER_EMPTY` 1, the head words 0 and no interrupt
+  flushes on the empty receiver, each leaving `BUFFER_EMPTY` 1, `TELEMETRY_DATA` 0 and no interrupt
   source raised. `TELEMETRY_RX_FLUSH` is `sw=w` in `telemetry_receiver.rdl`, so the bit 4 read of 0
-  holds whatever the hardware does with the pulse. A message sent after the repeated flushes must
-  then be kept (`BUFFER_EMPTY` 0 and `TELEMETRY_PROBE_ID` equal to the sent id 0x1B), which a flush
-  that stayed asserted would discard; it is popped before the next step.
-* Restart: a message sent after the flush clears `BUFFER_EMPTY` and reads `TELEMETRY_PROBE_ID` 0x1A.
-* Mid-message flush: five of the eight beats of a packet (data 0x2A, last-packet flag clear)
-  followed by one flush and no second flush, then one complete message with probe id 0x15;
-  `TELEMETRY_PROBE_ID` must read 0x15 and one pop must empty the queue. The probe latch rule for the
-  partial packet is not stated by the specification.
-* Beats around the pulse (`architecture.adoc`, Assembly and Decode): eight beats of a message with
-  probe id 0x13 are streamed while `CTRL.TELEMETRY_RX_FLUSH` is written once two beats are in; the
-  accepted-beat and stalled-cycle counts and `STATUS` after 64 quiet cycles are printed, not
-  compared (whether in-flight beats are held or dropped is not stated by the specification), and
-  every beat must be accepted within 64 cycles. After one quiet flush a message with probe id 0x14
-  must read `TELEMETRY_PROBE_ID` 0x14 and one pop must empty the queue.
-* Flush against `MISSING_LAST` (`doc/programmer/src/smc-programming.adoc`, Interrupt Handling;
-  `architecture.adoc`, Interrupts): with `INTR_STATUS.MISSING_LAST` set by unflagged packets (at
-  most 16) and enabled, `tb_telemetry_irq[0]` is 1; after a flush `MISSING_LAST` must still read 1
-  and `tb_telemetry_irq[0]` stay 1 for 64 cycles until a write of one clears it.
+  holds whatever the hardware does with the pulse. A beat sent after the repeated flushes must then
+  be kept and read back alone, which a flush that stayed asserted would discard.
+* Restart: a beat sent after the flush clears `BUFFER_EMPTY` and reads back through
+  `TELEMETRY_DATA`, then 0.
+* Beats around the pulse: 40 beats, as many as the receiver and the crossing FIFO hold, are
+  streamed while `CTRL.TELEMETRY_RX_FLUSH` is written once two are accepted, and the stream must
+  still have beats left when the write returns. Beats still in the wrapper's ATB crossing FIFO are
+  not yet in the receiver, so after 64 quiet cycles the beats read back must be a contiguous tail
+  of the stream, in order, holding at least every beat accepted after the write returned, and at
+  least one beat must have been discarded; the counts are printed. After one quiet flush the next
+  beat reads back alone.
+* Flush against an `INTR_TEST` force (`telemetry_receiver.rdl`, `INTR_TEST`): with two beats queued
+  and `INTR_TEST.BUFFER_THRESHOLD` written to 1 and enabled, `tb_telemetry_irq[0]` is 1; the flush
+  empties the FIFO while `INTR_STATUS.BUFFER_THRESHOLD` and `INTR_TEST` still read 1 and
+  `tb_telemetry_irq[0]` stays 1 for 64 cycles, until `INTR_TEST` written to 0 releases it.
 
 *Test Procedure*:
 
 [arabic]
 . Check the bench pins, wait (bounded) for `tb_fuse_sense_done`, save `CLOCK_GATE_CONTROL`, clear
   `TELEMETRY_CG_EN` and read it back exactly, flush receiver 0 and poll `BUFFER_EMPTY`, write
-  `INTR_ENABLE` 0 and clear `INTR_STATUS.MISSING_LAST`.
-. Write `CTRL` threshold 1 and `INTR_ENABLE.BUFFER_THRESHOLD`, send three messages polling
-  `BUFFER_EMPTY` to 0 after each, read the head words and `INTR_STATUS`, wait for
-  `tb_telemetry_irq[0]` 1, write the flush, poll `BUFFER_EMPTY` to 1, read the head words and
-  `INTR_STATUS`, and wait for `tb_telemetry_irq[0]` 0.
+  `INTR_ENABLE` and `INTR_TEST` 0.
+. Send three beats and wait until all three are in (through `INTR_STATUS.BUFFER_THRESHOLD` with a
+  temporary threshold of 2), write `CTRL` threshold 1 and `INTR_ENABLE.BUFFER_THRESHOLD`, read
+  `STATUS` and `INTR_STATUS`, wait for `tb_telemetry_irq[0]` 1, write the flush, poll
+  `BUFFER_EMPTY` to 1, read `TELEMETRY_DATA` and `INTR_STATUS`, and wait for `tb_telemetry_irq[0]` 0.
 . Read `CTRL`, flush twice more (holding `tb_telemetry_irq[0]` at 0 for 64 cycles before the third),
-  and after each poll `BUFFER_EMPTY`, read the head words, `INTR_STATUS` and `CTRL`; then send a
-  message with probe id 0x1B, poll `BUFFER_EMPTY` to 0, require that probe id and pop to empty.
-. Send a message with probe id 0x1A, poll `BUFFER_EMPTY` to 0, read the probe id, pop and poll
-  `BUFFER_EMPTY` to 1.
-. Send five partial beats, write one flush, send a complete message with probe id 0x15, poll, read
-  the probe id, pop to empty.
-. Stream a message with probe id 0x13 as a background process, wait for two accepted beats, write
-  one flush, wait for the stream to finish and 64 quiet cycles, read `STATUS` and the probe id,
-  flush, send a message with probe id 0x14, read its probe id and pop to empty.
-. Clear `MISSING_LAST`, send unflagged packets until it sets, enable it and wait for
-  `tb_telemetry_irq[0]` 1, write the flush, read `INTR_STATUS`, hold `tb_telemetry_irq[0]` at 1 for
-  64 cycles, read `INTR_STATUS`, write a one to clear, read `INTR_STATUS` and wait for
-  `tb_telemetry_irq[0]` 0, then disable the interrupt, flush and write `CTRL` 0.
+  and after each poll `BUFFER_EMPTY`, read `TELEMETRY_DATA`, `INTR_STATUS` and `CTRL`; then send a
+  beat, poll `BUFFER_EMPTY` to 0, require that beat and then an empty FIFO.
+. Send a beat, poll `BUFFER_EMPTY` to 0, read it back, require `TELEMETRY_DATA` 0 and
+  `BUFFER_EMPTY` 1.
+. Stream 40 beats as a background process, wait for two accepted beats, write one flush, wait
+  for the stream to finish and 64 quiet cycles, read `TELEMETRY_DATA` until it returns 0 and compare
+  the beats with the tail of the stream, flush, send a beat and read it back alone.
+. Send two beats and wait until both are in, enable the interrupt and write `INTR_TEST` 1, wait for
+  `tb_telemetry_irq[0]` 1, write the flush, poll `BUFFER_EMPTY` to 1, read `INTR_STATUS` and
+  `INTR_TEST`, hold `tb_telemetry_irq[0]` at 1 for 64 cycles, write `INTR_TEST` 0, read
+  `INTR_STATUS` and wait for `tb_telemetry_irq[0]` 0, then disable the interrupt.
 . Restore `CLOCK_GATE_CONTROL`, require step stamps and checker lines in order, print the ordered
   fence and the bounded waits.
 
@@ -4618,39 +4590,35 @@ MISSING_LAST interrupt untouched.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-TELEMETRY-RX-FLUSH-EMPTIES` |After a flush of a three-message queue `BUFFER_EMPTY` reads 1
-  within the poll bound, `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS` and
-  `TELEMETRY_COUNTER[0..3]` read 0, `INTR_STATUS.BUFFER_THRESHOLD` reads 0 and `tb_telemetry_irq[0]`
-  falls
+|`CHK-TELEMETRY-RX-FLUSH-EMPTIES` |After a flush of three queued beats `BUFFER_EMPTY` reads 1 within
+  the poll bound, `TELEMETRY_DATA` reads 0, `INTR_STATUS.BUFFER_THRESHOLD` reads 0 and
+  `tb_telemetry_irq[0]` falls
 |`CHK-TELEMETRY-RX-FLUSH-ONE-SHOT` |`CTRL` bit 4 reads 0 after the flush and after two repeats on
-  the empty receiver (`sw=w` in the RDL), each leaving `BUFFER_EMPTY` 1, the head words 0 and no
-  interrupt source raised, and a message sent afterwards is kept with its probe id 0x1B
-|`CHK-TELEMETRY-RX-FLUSH-RESTART` |A message sent after a flush clears `BUFFER_EMPTY` within the
-  poll bound and reads `TELEMETRY_PROBE_ID` 0x1A
-|`CHK-TELEMETRY-RX-FLUSH-MID-MESSAGE` |After five beats of an unfinished packet and one flush the
-  next complete message reads `TELEMETRY_PROBE_ID` 0x15 and one pop empties the queue
-|`CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND` |The beats streamed around the flush are all accepted within
-  the bound; the accepted and stalled beat counts and the `STATUS` after quiet cycles are measured
-  and printed; after one quiet flush the next message reads `TELEMETRY_PROBE_ID` 0x14 and one pop
-  empties the queue
-|`CHK-TELEMETRY-RX-FLUSH-KEEPS-MISSING-LAST` |After a flush with `MISSING_LAST` pending and enabled
-  `INTR_STATUS.MISSING_LAST` still reads 1 and `tb_telemetry_irq[0]` stays 1 for 64 cycles, then a
-  write of one clears the source and the line falls
+  the empty receiver (`sw=w` in the RDL), each leaving `BUFFER_EMPTY` 1, `TELEMETRY_DATA` 0 and no
+  interrupt source raised, and a beat sent afterwards is kept and read back alone
+|`CHK-TELEMETRY-RX-FLUSH-RESTART` |A beat sent after a flush clears `BUFFER_EMPTY` within the poll
+  bound and reads back through `TELEMETRY_DATA`, then 0
+|`CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND` |The beats read back after a flush written into a stream are
+  a contiguous tail of it, in order, that holds every beat accepted after the write returned, with
+  at least one beat discarded; the accepted and discarded
+  counts are printed; after one quiet flush the next beat reads back alone
+|`CHK-TELEMETRY-RX-FLUSH-KEEPS-TEST-FORCE` |After a flush with `INTR_TEST.BUFFER_THRESHOLD` set and
+  enabled, `INTR_STATUS.BUFFER_THRESHOLD` and `INTR_TEST` still read 1 and `tb_telemetry_irq[0]`
+  stays 1 for 64 cycles, then `INTR_TEST` written to 0 releases the source and the line falls
 |`CHK-NONVAC` |Ordered fence SETUP_DONE < POPULATED_FLUSH_DONE < ONE_SHOT_DONE < RESTART_DONE <
-  MID_MESSAGE_DONE < BEATS_AROUND_DONE < MISSING_LAST_KEPT: step stamps S1 to S7 strictly increasing
-  and the six checker lines printed in step order
-|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense, buffer polls of 200 reads,
-  interrupt waits of 64 cycles, ATB beat acceptance, the unflagged packet count and the SEP_IN
-  access bound) with the last state of each; expiry raises
+  BEATS_AROUND_DONE < TEST_FORCE_KEPT: step stamps S1 to S6 strictly increasing and the five
+  checker lines printed in step order
+|`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense, buffer and count polls of 200
+  reads, interrupt waits of 64 cycles, the in-flight beat wait and the SEP_IN access bound) with the
+  last state of each; expiry raises
 |===
 
-*Pass Criteria*: all eight checkers hold and every sequence assert holds. The beat counts and
-`STATUS` in the beats-around step are reported only. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all seven checkers hold and every sequence assert holds. The beat counts in the
+beats-around step are reported only. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The accepted-beat and stalled-cycle counts and `STATUS` after the 64 quiet cycles of
-the beats-around step are printed and not compared, because the specification does not state whether
-in-flight beats are held or dropped. The probe latch rule for the partial packet of the mid-message
-flush is not stated by the specification, so only the next complete message is compared.
+*Scope limit*: How many beats of the stream the flush in the beats-around step discards depends on
+how many have crossed into the receiver when the write lands; the contiguous tail, its lower bound
+(every beat accepted after the write returned) and at least one discarded beat are compared.
 
 '''''
 
@@ -4663,10 +4631,10 @@ flush is not stated by the specification, so only the next complete message is c
 
 *Source Module*: `smc_telemetry_tx_flush_test`
 
-*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; telemetry receiver 0 registers `CTRL`, `STATUS` and
-`TELEMETRY_PROBE_ID`; the transmitter flush handshake pins `tb_telemetry0_afvalid` (observed,
-sampled by a monitor on every `clk_smc_i` rise) and `tb_telemetry0_afready` (driven by the bench);
-the bench ATB beat driver on `tb_telemetry0_atdata`, `tb_telemetry0_atid` (0x33),
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; telemetry receiver 0 registers `CTRL`, `STATUS`,
+`INTR_STATUS` and `TELEMETRY_DATA`; the transmitter flush handshake pins `tb_telemetry0_afvalid`
+(observed, sampled by a monitor on every `clk_smc_i` rise) and `tb_telemetry0_afready` (driven by
+the bench); the bench ATB source on `tb_telemetry0_atdata`, `tb_telemetry0_atid`,
 `tb_telemetry0_atvalid` and `tb_telemetry0_atready`; `CLOCK_GATE_CONTROL.TELEMETRY_CG_EN`;
 `tb_fuse_sense_done`
 
@@ -4696,14 +4664,12 @@ receiver flush.
 * Threshold kept (`telemetry_receiver.rdl`, `CTRL`): with `BUFFER_THRESHOLD` 3 written together with
   `TELEMETRY_TX_FLUSH` and `afready_i` low `CTRL` reads exactly 0x3100, and exactly 0x3000 after
   `afready_i` rises and the hardware clears the request.
-* Path separation (`architecture.adoc`, Reset and Flush): the two messages (probe ids 0x0B and
-  0x0C) are sent eight idle cycles apart, as the other telemetry tests send them (sent back to back
-  the second message did not enter the queue; the documents do not state a spacing), and with
+* Path separation (`architecture.adoc`, Reset and Flush): two beats are sent, and with
   `BUFFER_THRESHOLD` 1 the `INTR_STATUS.BUFFER_THRESHOLD` bit shows that both are queued
   (`telemetry_receiver.rdl`); a transmitter flush then leaves `BUFFER_EMPTY` 0 and
-  `TELEMETRY_PROBE_ID` 0x0B, and after one pop `BUFFER_EMPTY` is still 0 with `TELEMETRY_PROBE_ID`
-  0x0C, so neither queued message was dropped; a receiver flush with `afready_i` low then empties
-  the queue while `afvalid_o` stays 0 for 64 cycles.
+  `TELEMETRY_DATA` returns both beats in order, so neither was dropped; a third beat is queued and a
+  receiver flush with `afready_i` low discards it, emptying the FIFO while `afvalid_o` stays 0 for
+  64 cycles.
 
 *Test Procedure*:
 
@@ -4720,12 +4686,12 @@ receiver flush.
   print the rise count.
 . Drive `afready_i` low, write `CTRL` 0x3100, wait for `afvalid_o` 1 and read back 0x3100, drive
   `afready_i` high, wait for `afvalid_o` 0 and read back 0x3000.
-. Write `BUFFER_THRESHOLD` 1 and clear `INTR_STATUS`, drive `afready_i` low, send messages with
-  probe ids 0x0B and 0x0C eight idle cycles apart, poll `BUFFER_EMPTY` to 0 and `INTR_STATUS.BUFFER_THRESHOLD` to 1, clear
-  it, write `TELEMETRY_TX_FLUSH`, release `afready_i` after `afvalid_o` rises, wait
-  for it to fall, read `CTRL` requiring 0, require `BUFFER_EMPTY` 0 and probe id 0x0B, pop once, print `STATUS` and the probe id, send a message with probe id 0x0C again and poll
-  `BUFFER_EMPTY` to 0; with `afready_i` low write `TELEMETRY_RX_FLUSH`, poll `BUFFER_EMPTY` to 1, and require `afvalid_o` to
-  have stayed 0 for 64 samples with no rise.
+. Write `BUFFER_THRESHOLD` 1, drive `afready_i` low, send two beats, poll `BUFFER_EMPTY` to 0 and
+  `INTR_STATUS.BUFFER_THRESHOLD` to 1, write `TELEMETRY_TX_FLUSH`, release `afready_i` after
+  `afvalid_o` rises, wait for it to fall, read `CTRL` requiring 0, require `BUFFER_EMPTY` 0, read
+  both beats back through `TELEMETRY_DATA` and compare each; send a third beat and poll
+  `BUFFER_EMPTY` to 0; with `afready_i` low write `TELEMETRY_RX_FLUSH`, poll `BUFFER_EMPTY` to 1,
+  require `TELEMETRY_DATA` 0, and require `afvalid_o` to have stayed 0 for 64 samples with no rise.
 . Restore `CLOCK_GATE_CONTROL`, require step stamps and checker lines in order, print the ordered
   fence and the bounded waits.
 
@@ -4743,16 +4709,15 @@ receiver flush.
   rises is printed and not compared
 |`CHK-TELEMETRY-TX-FLUSH-THRESHOLD-KEPT` |`CTRL` reads 0x3100 while the request is pending and
   exactly 0x3000 after the hardware clears it
-|`CHK-TELEMETRY-FLUSH-PATH-SEPARATION` |A transmitter flush leaves both queued messages
-  (`BUFFER_EMPTY` 0 with `TELEMETRY_PROBE_ID` 0x0B, and after one pop `BUFFER_EMPTY` 0 with
-  `TELEMETRY_PROBE_ID` 0x0C) and a receiver flush empties the queue without a
-  rise of `afvalid_o` over 64 samples
+|`CHK-TELEMETRY-FLUSH-PATH-SEPARATION` |A transmitter flush leaves both queued beats, which read
+  back in order through `TELEMETRY_DATA`, and a receiver flush empties the FIFO of a third beat
+  without a rise of `afvalid_o` over 64 samples
 |`CHK-NONVAC` |Ordered fence SETUP_DONE < READY_HIGH_DONE < LONG_HOLD_DONE < REWRITE_DONE <
   THRESHOLD_KEPT < PATHS_SEPARATED: step stamps S1 to S6 strictly increasing and the five checker
   lines printed in step order
 |`CHK-TIMEOUT-PATHS` |Lists the bounded waits taken (fuse sense, handshake bounds of 64 cycles, the
-  2048-cycle hold window, buffer polls, ATB beat acceptance and the SEP_IN access bound) with the
-  last state of each; expiry raises
+  2048-cycle hold window, buffer and threshold polls and the SEP_IN access bound) with the last
+  state of each; expiry raises
 |===
 
 *Pass Criteria*: all seven checkers hold and every sequence assert holds. The handshake cycle counts
@@ -4761,8 +4726,7 @@ and the rewrite rise count are reported only. Enrolled in: `all`, `hosted`.
 *Scope limit*: The handshake cycle counts of the ready-high step are ceilings, printed and not
 expected values, because the specification does not state the latency. The number of `afvalid_o`
 rising edges in the rewrite step is printed and not compared, because the specification does not
-state it. The two path-separation messages are sent eight idle cycles apart because the documents do
-not state a spacing.
+state it.
 
 '''''
 
@@ -9578,7 +9542,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * Single-instance blocks are closed by a register whose generated reset is non-zero, so the compare can tell a decoded block from an absent window that reads 0.
-* Multi-instance peripherals are additionally proven with distinct patterns written to all probed instances before any is read back, so a stride that aliases two instances returns a neighbour's pattern and fails: the I3C CSR windows, the GPIO interfaces, the mailbox pairs and the log engines at their first and last instance, and the four watchdogs (`CMP` through the `KEY` unlock, one key write per register write), the three I2C controllers (`TARGET_ID`), the four UARTs (`SCR`) and the three telemetry receivers (`INTR_ENABLE`) at every instance. A reset read alone cannot tell N registers from one aliased register or from an undecoded window answering OKAY with the reset word, so every multi-instance block carries a co-resident leg.
+* Multi-instance peripherals are additionally proven with distinct patterns written to all probed instances before any is read back, so a stride that aliases two instances returns a neighbour's pattern and fails: the I3C CSR windows, the GPIO interfaces, the mailbox pairs and the log engines at their first and last instance, and the four watchdogs (`CMP` through the `KEY` unlock, one key write per register write), the three I2C controllers (`TARGET_ID`), the four UARTs (`SCR`) and the three telemetry receivers (`CTRL.BUFFER_THRESHOLD`) at every instance. A reset read alone cannot tell N registers from one aliased register or from an undecoded window answering OKAY with the reset word, so every multi-instance block carries a co-resident leg.
 * The PVT wrapper is proven at its consumer: `smc_external_req_o` must present a read request carrying the probed address while the access is in flight, not merely complete.
 * The fabric refuses an address inside a unit's aperture but past its decoded extent (`memmap.adoc`, Address Space Organization). A read and a write past the core 0 watchdog's 36-byte extent and past `smc_cpu_ctrl`'s 704-byte extent must each answer an error, and the watchdog's `CMP` must keep its reset value across them; the error code is not asserted, since no document fixes it.
 * Left open and named, not claimed: the DTP control window (`tb_top` leaves its AXI-Lite response idle, so an access there would never complete) and the bus error units (outside the local and global apertures at the reset `REGION_SIZE`, where SEP_IN accesses answer DECERR).
@@ -14886,7 +14850,8 @@ the component map documents for that window, and an OKAY access on the same path
   row, hole OKAY 0x0 / OKAY). This probe touches no DAT or DCT entry. The I3C aperture-end word
   0xC003FFF8 of the earlier probe is DCT storage of instance 5, whose contents have no
   architected reset value, which is why that read's data is observed-only.
-* Telemetry BASE + 0x9040 (receiver 0 hole) reads OKAY 0x0 and its write answers OKAY;
+* Telemetry BASE + 0x9040 (receiver 0 slot hole) reads DECERR with 0xBADCAB1E and its write
+  answers DECERR, the generated hole response;
   BASE + 0x9800 (past the 768-byte extent) reads DECERR with 0xBADCAB1E and its write answers
   DECERR; `CTRL` then reads OKAY. AVSBus BASE + 0x4800 (past the 92-byte extent) reads DECERR
   with 0xBADCAB1E and its write answers DECERR; BASE + 0x4000 then reads OKAY.
@@ -15038,7 +15003,7 @@ OKAY and the re-read answers OKAY with 0x0 (SLVERR with 0xBADCAB1E if the I3C cl
 set); fails on a non-OKAY response with the gate clear, non-zero data, a wedged access
 or X. DAT and DCT are not accessed (open: whether I3C DAT and DCT entries have a reset
 value).
-|`CHK-ERR-TELEMETRY` |The read at BASE + 0x9040 answers OKAY 0x0 and its write OKAY; the read at
+|`CHK-ERR-TELEMETRY` |The read at BASE + 0x9040 answers DECERR 0xBADCAB1E and its write DECERR; the read at
 BASE + 0x9800 answers DECERR with 0xBADCAB1E and its write DECERR; `CTRL` then reads OKAY.
 |`CHK-ERR-AVS` |The read at BASE + 0x4800 answers DECERR with 0xBADCAB1E and its write DECERR; the
 read at BASE + 0x4000 answers OKAY, data printed.
@@ -46720,7 +46685,7 @@ draws nothing from the seed.
 * Alias, M-mode and Xvisor `REGION[7].region_attrs` take all ones, then 0; every documented field must read all ones, then 0 (`alias_remap.adoc`, `output_remap.adoc`). Reserved bits are logged.
 * Each of the 24 remap regions (alias, M-mode and Xvisor `REGION[0..7].region_attrs`) is read and saved. A region whose saved valid reads 0 first takes an 8-byte WSTRB 0x7F write with bit 63 set and lanes 0..6 the complement of the saved bytes, read back. Every region then takes an 8-byte WSTRB 0x80 write with bit 63 set and lanes 0..6 the complement of the saved bytes, a WSTRB 0x7F write of the saved word with bit 63 set, and a WSTRB 0xFF write of the saved word, each read back. Every access must answer OKAY, the alias regions must save valid 0 (`alias_remap.adoc` reset) and the restore must read back the saved word; the valid bit and lane fields after the strobed writes are logged.
 * Stimulus only, never an expected value: the valid-0 WSTRB 0x7F write drives the remap blocks' valid-lane write-condition sub-terms "valid 0 while lane 7 is unstrobed" and "data bit 63 = 1 while lane 7 is unstrobed", and the later WSTRB 0x7F write drives the second on a region whose valid is 1.
-* The system timer answers its 9 registers OKAY with their documented resets (`STATUS.MODE` = NOT(`tb_chiplet_is_primary`)) and the 1015 words BASE + 0xA024 .. 0xAFFC DECERR with 0xBADCAB1E. The 192 telemetry words BASE + 0x9000 .. 0x92FC answer OKAY with exactly three reading 0x1, and the 832 words past them DECERR with 0xBADCAB1E (`memory_map.adoc`).
+* The system timer answers its 9 registers OKAY with their documented resets (`STATUS.MODE` = NOT(`tb_chiplet_is_primary`)) and the 1015 words BASE + 0xA024 .. 0xAFFC DECERR with 0xBADCAB1E. Of the 192 telemetry words BASE + 0x9000 .. 0x92FC, the 18 register words of the three receiver slots (offsets 0x0 to 0x14 of each 0x100 slot) answer OKAY with exactly three reading 0x1, and the 174 other words answer DECERR with 0xBADCAB1E, the generated hole response; the 832 words past them answer DECERR with 0xBADCAB1E (`memory_map.adoc`).
 * On each of the 32 filter entries, 8-byte writes strobe lane 0 (read_allowed, write_allowed, entry_enabled alone and cleared), lane 1 (allow_ns), lane 2 (src_id / group_id 0xFF and 0x00) and lane 3 (allow_burst) with the complement of the saved byte on every other lane. `data_bus_width` must read 0x3 after every write. `START_ADDR` / `END_ADDR` are read after every lane write: before the allow_burst leg they must equal the saved words; after allow_burst = 1 they must equal the saved words rounded to the 4 KB granule (start & ~0xFFF, end \| 0xFFF) when both saved words share a 4 KB granule, else the saved words (`filter_ctrl.adoc` granule write-back); after allow_burst = 0 they are logged. Full-width restores of FILTER_CONFIG, `START_ADDR`, `END_ADDR` and `START_ADDR` again must read back the saved words, and those readbacks are the reference words of the later legs; the per-lane FILTER_CONFIG readbacks are logged. A WSTRB 0x7F write with bit 63 set follows; the lock outcome is logged and an unlocked entry is restored.
 * Outbound entry 15 takes FILTER_CONFIG all ones and must read every documented field set and `data_bus_width` 0x3, and the next write must answer DECERR. The other 31 entries are locked by a WSTRB 0x80 write (full-width fallback if that does not lock) and must keep their S7 post-restore configuration. Every entry then takes five writes (lane 7 clearing and setting `locked`, lane 0 complement, full-width complement of `START_ADDR` and `END_ADDR`) that must answer DECERR and leave the three registers unchanged (`filter_ctrl.adoc`: `locked` is RW1S).
 
@@ -46738,7 +46703,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |`CHK-SWEEP-FULLWIDTH-REMAP` |Alias `region_attrs` reads valid 1, cacheable 0xF, offset [55:12] all ones; M-mode and Xvisor read valid 1 and offset [55:0] all ones; all three read their documented fields 0 after the zero write; reserved bits logged (LINKED-ISSUE: whether reserved register bits read 0 and ignore writes)
 |`CHK-SWEEP-VALID-LANE` |All 24 remap regions are visited (8 alias, 8 M-mode, 8 Xvisor) and every access answers OKAY; the 8 alias regions save valid 0; the WSTRB 0xFF restore reads back the saved word on 24/24; the counts of regions reading valid 1 after the WSTRB 0x80 write and reading valid 1 after the WSTRB 0x7F write (bit 63 set, so that count does not separate an honoured lane-7 strobe from an ignored one; the valid-0 leg carries that evidence), the count of saved-valid-0 regions still reading valid 0 after the valid-0 WSTRB 0x7F write (bit 63 set) as `valid-0 lane-7-unstrobed kept 0 <k>/<z>`, and the lane fields, are logged (LINKED-ISSUE: the response, read lanes and strobe effect of sub-word accesses)
 |`CHK-SWEEP-TIMER-WINDOW` |The 9 timer registers answer OKAY at their documented resets and all 1015 past-extent reads answer DECERR with 0xBADCAB1E
-|`CHK-SWEEP-TELEM-WINDOW` |All 192 in-extent telemetry reads answer OKAY with exactly three reading 0x1 and the rest 0x0 (positions logged, LINKED-ISSUE: the telemetry receiver instance offsets in their window); all 832 past-extent reads answer DECERR with 0xBADCAB1E
+|`CHK-SWEEP-TELEM-WINDOW` |All 18 telemetry register-word reads answer OKAY with exactly three reading 0x1 and the rest 0x0 (positions logged, LINKED-ISSUE: the telemetry receiver instance offsets in their window); all 174 slot-hole reads and all 832 past-extent reads answer DECERR with 0xBADCAB1E
 |`CHK-SWEEP-FCFG-LANES` |All 32 entries visited; `data_bus_width` reads 0x3 after every write; `START_ADDR` / `END_ADDR` equal the saved words before the allow_burst leg and, after allow_burst = 1, the 4 KB-rounded saved words when both share a granule, else the saved words; their values after allow_burst = 0 are logged; every full-width restore reads back the saved words; per-lane readbacks and the unstrobed-lock outcome logged (LINKED-ISSUE: the response, read lanes and strobe effect of sub-word accesses; whether FILTER_CONFIG group_id stores and reads back)
 |`CHK-SWEEP-FULLWIDTH-FILTER` |Outbound entry 15 reads `locked`, `allow_burst`, `group_id` 0xF, `src_id` 0xF, `data_bus_width` 0x3, `allow_ns`, `entry_enabled`, `write_allowed` and `read_allowed` after the all-ones write, and the next FILTER_CONFIG write answers DECERR; reserved bits logged (LINKED-ISSUE: whether reserved register bits read 0 and ignore writes)
 |`CHK-SWEEP-LOCK-SET` |The other 31 entries read `locked` 1 with FILTER_CONFIG [62:0], `START_ADDR` and `END_ADDR` equal to their S7 post-restore readbacks; the locking path per entry is logged (LINKED-ISSUE: the response, read lanes and strobe effect of sub-word accesses)
@@ -47626,10 +47591,10 @@ the register description.
 * `EFUSE_PROGRAM_CTRL` additionally holds `efuse_data` and `program_enable` at their reset, on top of the `singlepulse` `efuse_program_go` the contract already excludes, so no combination the sweep writes can arm a fuse burn. Its address and read-back select are driven normally.
 * `AVS_CFG_1` carries the AVS clock mux and divider, and `avsbus_controller.rdl` says to gate the clocks entering the mux before changing either and to turn them back on afterwards, which is the order this cycle takes. The gate is on the AVS protocol clock, not the register interface.
 * The OCTS system timer's `CTRL` does not take the all-ones and all-zeros patterns. `system_timer_octs.rdl` makes `CREDIT_VAL` "must be greater than PULSE_WIDTH" and `PULSE_WIDTH` "must be less than CREDIT_VAL" a software constraint, and `system_timer_octs_core.sv` holds a run-time assertion to it; all ones makes the two equal and all zeros makes `CREDIT_VAL` zero. The register takes two constrained cycles instead, whose four patterns between them drive every bit of all three fields both ways while every word written keeps `CREDIT_VAL` above the effective `PULSE_WIDTH` -- effective because the RDL rounds a `PULSE_WIDTH` of 0 up to 1. The sequence checks that relation host-side for every word, including the RDL reset it restores, before issuing any access, and both constrained fields sit in the same half of the word so the half-register writes never leave an illegal pair resident.
-* The telemetry `INTR_TEST` forces the two INTR_STATUS events, and the generic cycle leaves the level one released and never pulses the other, so each receiver takes an interrupt leg after its three cycles. `telemetry_receiver.rdl` makes `INTR_TEST.BUFFER_THRESHOLD` plain storage that forces the interrupt on 1 and releases it on 0 over a read-only `INTR_STATUS.BUFFER_THRESHOLD`; `INTR_TEST.MISSING_LAST` is a write-only `singlepulse` over a `oneToClear` `INTR_STATUS.MISSING_LAST`. With INTR_STATUS read clear, the level test field written to 1 has to set exactly its status bit and written back to 0 has to release it; a pulse of the write-only test field has to set exactly its status bit, which then holds until a write of its own mask clears it. Every INTR_STATUS read of the leg is predicted exactly from the INTR_TEST word driving it, and the field masks and access types come from the generated IP-XACT contract.
+* The telemetry `INTR_TEST` forces the INTR_STATUS event, and the generic cycle leaves it released, so each receiver takes an interrupt leg after its three cycles. `telemetry_receiver.rdl` makes `INTR_TEST.BUFFER_THRESHOLD` plain storage that forces the interrupt on 1 and releases it on 0 over a read-only `INTR_STATUS.BUFFER_THRESHOLD`. With INTR_STATUS read clear, the test field written to 1 has to set exactly its status bit and written back to 0 has to release it. Every INTR_STATUS read of the leg is predicted exactly from the INTR_TEST word driving it, and the field masks and access types come from the generated IP-XACT contract.
 * The DMA controller's block answers a sub-word write with an error response, so its configuration takes the same cycle at full width instead of in halves.
 * `log_engine/CTRL` is swept last, so the enable is only ever set while the region and write addresses are back at their reset and no LOG_CTRL element holds a length, and no transfer starts.
-* `AVS_CMD`, `AVS_INTERRUPT_CLEAR`, the telemetry counters, the DMA transfer descriptors and the eFuse read and program data registers are not driven: each is a command, an event clear or a hardware-owned value with a leaf of its own or no written-value expectation.
+* `AVS_CMD`, `AVS_INTERRUPT_CLEAR`, the telemetry `TELEMETRY_DATA`, the DMA transfer descriptors and the eFuse read and program data registers are not driven: each is a command, an event clear or a hardware-owned value with a leaf of its own or no written-value expectation.
 
 * `EFUSE_INTERFACE_CTRL_STATUS` is the one register of the eFuse block no leaf reaches. Four of its fields are `sw = r; hw = w` and its three clears are write-only `singlepulse`, so the half-register cycle has nothing to drive and a sweep of it would assert rather than run. What it can be held to is checked instead: a read reports an idle block with no error bit and no clear bit set, a write of all three clears is accepted, and the register then reads back exactly what it read before -- so no clear stayed set and no `sw = r` state field moved under the write. The masks come from the generated `efuse_interface_ctrl.h`.
 
@@ -47643,7 +47608,7 @@ Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compar
 |===
 |Checker |Description
 |`CHK-PERIPH-REGBLOCK-SINGLE-SWEEP` |Every single-instance peripheral register read its RDL reset, carried the all-ones and all-zeros pattern of its driven fields after each write, drove no bit outside the fields the RDL declares, held the reset of the bits software cannot write, and returned to that reset
-|`CHK-PERIPH-TELEMETRY-SWEEP` |All three telemetry receivers cycled INTR_ENABLE, INTR_TEST and CTRL against their contract and were restored; on each, INTR_STATUS read clear at idle, `INTR_TEST.BUFFER_THRESHOLD` written to 1 set exactly `INTR_STATUS.BUFFER_THRESHOLD` and written back to 0 released it, and a pulse of the write-only `INTR_TEST.MISSING_LAST` set exactly `INTR_STATUS.MISSING_LAST`, which held until a write of its own mask cleared it
+|`CHK-PERIPH-TELEMETRY-SWEEP` |All three telemetry receivers cycled INTR_ENABLE, INTR_TEST and CTRL against their contract and were restored; on each, INTR_STATUS read clear at idle, `INTR_TEST.BUFFER_THRESHOLD` written to 1 set exactly `INTR_STATUS.BUFFER_THRESHOLD` and written back to 0 released it
 |`CHK-PERIPH-LOG-ENGINE-SWEEP` |All four log engines cycled their region size, region address, write address and enable against their contract and were restored, with the enable set only while the addresses were at their reset
 |`CHK-PERIPH-REGBLOCK-COMPARES` |The scoreboard booked at least the expected number of exact-value compares of its own for the reads whose whole word the RDL contract predicts, independently of the sequence's counters
 |`CHK-PERIPH-EFUSE-STATUS` |EFUSE_INTERFACE_CTRL_STATUS read an idle block with no error bit and no clear bit set, took a write of all three of its write-only singlepulse clears, and read back exactly what it read before
@@ -47653,8 +47618,8 @@ Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compar
 
 *Scope limit*: Only fields the contract makes plain read-write are driven; `singlepulse` triggers,
 `oneToClear` events and hardware-driven status are never written by the generic cycle.
-`AVS_CMD`, `AVS_INTERRUPT_CLEAR`, the telemetry counters, the DMA transfer descriptors and the
-eFuse read and program data registers are not driven, each being a command, an event clear or a
+`AVS_CMD`, `AVS_INTERRUPT_CLEAR`, the telemetry `TELEMETRY_DATA`, the DMA transfer descriptors and
+the eFuse read and program data registers are not driven, each being a command, an event clear or a
 hardware-owned value with a leaf of its own or no written-value expectation. The OCTS `CTRL` does
 not take the all-ones and all-zeros patterns, which would break its documented
 `CREDIT_VAL`/`PULSE_WIDTH` constraint; it takes two constrained cycles instead.
@@ -48224,8 +48189,8 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* Three blocks carry an interrupt status register whose bits software raises through the matching `INTR_TEST` and clears by writing a one back: the I2C `INTR_STATE`, the log-engine `INTR_STATUS` and the telemetry-receiver `INTR_STATUS`. Every other leaf that touches them raises the whole declared mask and clears the whole declared mask, so this leaf is the only one whose write carries a zero over a set bit and exercises the half of the `oneToClear` contract that says such a bit *stays* set.
-* On each of the ten instances the leaf reads the register and requires it clear, so every bit it goes on to see set is one it raised itself; writes the event bits of `INTR_TEST` and requires exactly those raised; writes back half of them and requires precisely that half to have gone and the other half to still be set; then writes the rest and requires the register to read clear again, which is its reset.
+* Two blocks carry an interrupt status register whose bits software raises through the matching `INTR_TEST` and clears by writing a one back: the I2C `INTR_STATE` and the log-engine `INTR_STATUS`. Every other leaf that touches them raises the whole declared mask and clears the whole declared mask, so this leaf is the only one whose write carries a zero over a set bit and exercises the half of the `oneToClear` contract that says such a bit *stays* set.
+* On each of the seven instances the leaf reads the register and requires it clear, so every bit it goes on to see set is one it raised itself; writes the event bits of `INTR_TEST` and requires exactly those raised; writes back half of them and requires precisely that half to have gone and the other half to still be set; then writes the rest and requires the register to read clear again, which is its reset.
 * **Only the `read-write` fields take part, and the reason is in the generated map.** A status register mixes two kinds of field. The event bits are `read-write` -- hardware sets them, software clears them with a one, and they hold otherwise. The rest are `read-only` level bits hardware drives from a condition, and on I2C those are the FIFO thresholds and the stretch and halt indications; a write cannot clear one of those while its condition holds, so the leaf excludes them by their access type rather than expecting them to go.
 * The two halves are alternating bits of the mask, so neither is a contiguous run a byte-granular decode could clear by accident. Where a register has only one clearable bit the write that has to leave it set carries no bits at all, which puts the same contract to the same test.
 * Raising a status bit through `INTR_TEST` is the mechanism `smc_i2c_intr_reg_sweep_test` already uses. Nothing is left raised: every register ends its leg reading clear.
@@ -48243,7 +48208,7 @@ Drive `smc_intr_status_partial_clear_test_seq`. Each checker below is a named co
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-INTR-STATUS-PARTIAL-CLEAR` |On all ten write-one-to-clear status registers across the I2C blocks, the log engines and the telemetry receivers, the event mask was raised through INTR_TEST, half of it was written back and went, the bits the write carried a zero over stayed set, and the register read clear again once the rest was written
+|`CHK-INTR-STATUS-PARTIAL-CLEAR` |On all seven write-one-to-clear status registers across the I2C blocks and the log engines, the event mask was raised through INTR_TEST, half of it was written back and went, the bits the write carried a zero over stayed set, and the register read clear again once the rest was written
 |`CHK-I2C12-W1C-SWAP-HOLD` |On I2C1 and I2C2 the swapped pass read `INTR_STATE` exactly `0x000FE3E8` after the INTR_TEST write, exactly `0x000AA148` after the written `0x000542A0` and `0x00000000` after the written `0x000AA148`; with the existing pass first, the held readbacks of the two passes show each of the 13 RW1C bits read held once and then cleared per instance
 |`CHK-I2C1-INTR-TEST-SINGLE` |On I2C1 each of the 13 W1P INTR_TEST sources raised alone read `INTR_STATE` exactly `1<<f` with I2C2 reading 0, from 0 before the raise, and 0 after the written `1<<f`
 |`CHK-I2C2-INTR-TEST-SINGLE` |On I2C2 each of the 13 W1P INTR_TEST sources raised alone read `INTR_STATE` exactly `1<<f` with I2C1 reading 0, from 0 before the raise, and 0 after the written `1<<f`
@@ -48494,7 +48459,9 @@ stand in for them.
 
 *Source Module*: `smc_telemetry_atb_capture_test`
 
-*BFM / Model*: ocah_axi_vip (AXI); the bench ATB beat driver on the receiver 0 pins
+*BFM / Model*: ocah_axi_vip (AXI); a held ATB source on the receiver 0 pins that keeps `atvalid`
+up until `atready` takes the beat; `tb_telemetry0_afvalid` observed and `tb_telemetry0_afready`
+driven by the sequence
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -48502,14 +48469,22 @@ stand in for them.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
+*Objective*: Raw ATB beats captured on telemetry receiver 0 and read back through
+`TELEMETRY_DATA`, backpressure from a full FIFO, and the receiver and transmitter flush paths.
 
 *Test Coverage*:
 
-* Follows the three Telemetry Receiver procedures in the Programmer's Guide (`doc/programmer/src/smc-programming.adoc`): reading a message, receiver flush and transmitter flush.
-* Each ATB beat requires the `atready_o` handshake; expiry is a failure, because a truncated frame can still clear STATUS.BUFFER_EMPTY and still match the probe id.
-* `doc/index.adoc` "Telemetry packet fields" fixes the layout: block i at bits [9i+8:9i] with its valid bit at 9i+8, the probe ID at [60:56] of the first packet inside block 6's data byte, counter 0 from block 1 of the first packet and later packets contributing all seven blocks, four consecutive blocks per counter most-significant byte first, and a counter valid only when all four of its blocks are. Every message carries a distinct byte per block so the decoded counters grade that map.
-* The flush-acknowledge pins exist for receiver 0 only, so the transmitter-flush leg is not repeated on receivers 1 and 2.
+* The receiver stores each accepted beat as `{atid, atdata}` in a 32-beat FIFO; a `TELEMETRY_DATA`
+  read returns `{VALID, ATID, DATA}` of the oldest beat and removes it, and a read of an empty FIFO
+  returns 0 and removes nothing (`telemetry_receiver.rdl`).
+* A full FIFO drops `atready_o`; the wrapper's 8-entry ATB crossing FIFO fills behind it and the
+  source stalls, so 40 beats are accepted at the pins and nothing is dropped or overwritten.
+* `CTRL.BUFFER_THRESHOLD` counts beats; `CTRL.TELEMETRY_TX_FLUSH` can finish only while firmware
+  makes room by reading `TELEMETRY_DATA`.
+* An offset inside receiver 0's 0x100 slot past its last register answers DECERR with read data
+  0xBADCAB1E, as the generated memory map gives for a hole, and removes nothing.
+* No `(atid, data)` beat appears in two checks, so a beat left behind by one check, or one read
+  twice, fails the next compare.
 
 *Test Procedure*:
 
@@ -48520,18 +48495,23 @@ Drive `smc_telemetry_atb_capture_test_seq`. Each checker below is a named compar
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-TELEMETRY-ATB-MESSAGE-CAPTURE` |A three-packet last-flagged message cleared STATUS.BUFFER_EMPTY, TELEMETRY_PROBE_ID read back the framed probe id, TELEMETRY_COUNTER_VLDS read all four counters valid, TELEMETRY_COUNTER[4] read 0 past the configured counters, and CTRL.BUFFER_POP returned the buffer to empty
-|`CHK-TELEMETRY-COUNTER-BYTE-MAP` |With a distinct byte in every block, TELEMETRY_COUNTER[0..3] read the values the `index.adoc` "Telemetry packet fields" map gives: counter 0 from blocks 1-4 of the first packet (block 0 skipped), counter 1 from its blocks 5-6 and blocks 0-1 of the second packet, counters 2 and 3 across the second and third packets, most-significant byte first, with the probe ID inside block 6's data byte
-|`CHK-TELEMETRY-COUNTER-VALIDITY` |With one block of counter 0 invalid, TELEMETRY_COUNTER[0] read 0 with its COUNTER_VLDS bit clear and the other counters intact; a one-packet message after a three-packet one read counter 1's lower half and counters 2 and 3 from the earlier message's trailing packets (`architecture.adoc` "Message Assembly and Decoding")
-|`CHK-TELEMETRY-RX-FLUSH` |With a message buffered, CTRL.TELEMETRY_RX_FLUSH returned STATUS.BUFFER_EMPTY to 1 within the poll bound and clearing the request read CTRL back at 0
-|`CHK-TELEMETRY-TX-FLUSH-HANDSHAKE` |`afvalid_o` idled at 0 with `afready_i` low, rose after CTRL.TELEMETRY_TX_FLUSH was written and stayed asserted while `afready_i` was low, then retired once `afready_i` went high with CTRL.TELEMETRY_TX_FLUSH self-cleared
+|`CHK-TELEMETRY-RAW-CAPTURE-IN-ORDER` |Five beats read back in order through `TELEMETRY_DATA` with `VALID` set and matching ATID and data, then `STATUS.BUFFER_EMPTY` reads 1
+|`CHK-TELEMETRY-EMPTY-READ-NO-POP` |A read of the empty FIFO returns 0, and the next beat sent still reads back exactly, after which the FIFO is empty again
+|`CHK-TELEMETRY-FULL-BACKPRESSURE` |41 beats offered with no reads set `STATUS.BUFFER_FULL`; `atready_o` falls with exactly 40 accepted and one held on the pins, and the drain returns all 41 in order
+|`CHK-TELEMETRY-BACK-TO-BACK-POP` |Four queued beats come back from four consecutive reads, one each, and the fifth read returns 0
+|`CHK-TELEMETRY-RX-FLUSH-WHILE-FULL` |`CTRL.TELEMETRY_RX_FLUSH` on a full FIFO discards at least the 32 queued beats; those read afterwards are the contiguous tail of the stream, in order, ending at the last beat offered
+|`CHK-TELEMETRY-THRESHOLD-BEATS` |With `CTRL.BUFFER_THRESHOLD` 3 and the interrupt enabled, three beats leave `INTR_STATUS.BUFFER_THRESHOLD` and the interrupt at 0, four raise both, and one `TELEMETRY_DATA` read returns both to 0
+|`CHK-TELEMETRY-TX-FLUSH-WHILE-DRAINING` |With the FIFO full and the source holding a beat, `CTRL.TELEMETRY_TX_FLUSH` stays set; after the reads drain the source the transmitter acknowledges and the bit clears within the poll bound
+|`CHK-TELEMETRY-WRITE-NO-POP` |A write of 0xFFFF_FFFF to `TELEMETRY_DATA` completes with OKAY, and the queued beat still reads back afterwards
+|`CHK-TELEMETRY-PAST-END-NO-POP` |With a beat queued, reads at receiver 0 base + 0x18 and + 0x34, past its last register, answer DECERR with read data 0xBADCAB1E, and the queued beat still reads back afterwards
 |===
 
-*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The inherited counters are read after the short message without a reset in between;
-that only reset clears the assembly storage is not graded here. The flush-acknowledge pins exist
-for receiver 0 only, so the transmitter-flush leg is not repeated on receivers 1 and 2.
+*Scope limit*: Receiver 0 only; receivers 1 and 2 are graded by
+`smc_telemetry_buffer_overflow_test`, `smc_telemetry_receiver_csr_test` and
+`smc_telemetry_receiver_isolation_test`. The flush-acknowledge pins exist for receiver 0 only, so
+the transmitter-flush handshake is not repeated on receivers 1 and 2.
 
 '''''
 
@@ -49900,7 +49880,7 @@ the register description.
 
 * Each SMC register block decodes an address together with a direction: a read-only register's decode term is the address and a read, a write-only one's is the address and a write. The half of each term that pairs the address with the other direction -- a write at a read-only register, a read at a write-only one -- is driven by no other leaf, and neither is a read of the few registers no leaf reads at all.
 * The expected answer comes from the generated block the RDL compiles to: a write to a read-only register is answered OKAY and takes no effect, and a read of a write-only register is answered OKAY and returns zero because the register has no readable field. Every write must be answered, and where the register holds still at idle and reading it has no side effect it must read the same value before and after a write of the complement of that value, so a write that reached any field would show in every bit; every write-only read must return zero; and around each block's accesses the block's probe register must read the same value, so no wrong-direction write aliased onto something writable.
-* Registers that need care: `RDATA`, `ACQDATA` and `AVS_READBACK` pop a FIFO when read, so they are written but not read back and their block's FIFO level register is read either side instead. `TIMER_COUNT_LO` and `TIMER_COUNT_HI` run freely, so they rely on the probe guard. `LSR` and `MSR` clear their error bits and deltas on any read, so each is read once to settle those before the baseline. `TARGET_NACK_COUNT` clears when read but holds zero at idle, so the read clears nothing and must return zero. `TARGET_ACK_CTRL` takes a write of zero at idle, where hardware holds its `NBYTES` write enable off and a zero on the write-only `NACK` is no NACK; the write carries nothing the register could take, so it is answered but not counted among the writes shown to take no effect.
+* Registers that need care: `RDATA`, `ACQDATA`, telemetry `TELEMETRY_DATA` and `AVS_READBACK` pop a FIFO when read, so they are written but not read back and their block's FIFO level register is read either side instead. `TIMER_COUNT_LO` and `TIMER_COUNT_HI` run freely, so they rely on the probe guard. `LSR` and `MSR` clear their error bits and deltas on any read, so each is read once to settle those before the baseline. `TARGET_NACK_COUNT` clears when read but holds zero at idle, so the read clears nothing and must return zero. `TARGET_ACK_CTRL` takes a write of zero at idle, where hardware holds its `NBYTES` write enable off and a zero on the write-only `NACK` is no NACK; the write carries nothing the register could take, so it is answered but not counted among the writes shown to take no effect.
 * Three UART rows are not driven because the UART's own demux never presents those accesses to the block they belong to: `uart_16550.sv` routes every write at the `THR` and `FCR` addresses to the write-only block, so the main block never sees a write at `RBR` or `IIR`, and it routes no read to the write-only block, so that block never sees a read at `FCR`.
 
 *Test Procedure*:
@@ -50256,7 +50236,10 @@ only to agree on every bit known in both, and an X matches anything.
 
 *Source Module*: `smc_telemetry_buffer_overflow_test`
 
-*BFM / Model*: the bench ATB beat driver on telemetry receivers 0, 1 and 2 (`tb_telemetry0_*`, `tb_telemetry1_*`, `tb_telemetry2_*`), shared with `smc_telemetry_atb_capture_test`; observation on `STATUS`, `INTR_STATUS`, `CTRL`, the message registers and `peripheral_interrupts_o[10:9]`
+*BFM / Model*: a held ATB source on telemetry receivers 1 and 2 (`tb_telemetry1_*`,
+`tb_telemetry2_*`) that keeps `atvalid` up until `atready` takes the beat, shared with
+`smc_telemetry_atb_capture_test`; observation on `STATUS`, `INTR_STATUS`, `CTRL`,
+`TELEMETRY_DATA` and the `atready` pins
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
@@ -50264,68 +50247,67 @@ only to agree on every bit known in both, and an X matches anything.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Drive telemetry receiver 0 past each of its two bounded stores, the message buffer and the assembly buffer, and check what the register documentation says happens at each bound. Then run the queue overflow, push-against-pop, transmitter flush, `MISSING_LAST` and `INTR_TEST` legs on receivers 1 and 2.
+*Objective*: Drive telemetry receivers 1 and 2 past a full FIFO and check that the source is held
+off rather than any beat dropped or overwritten, then drain them with every beat read back once
+and in order. `smc_telemetry_atb_capture_test` grades one full fill and drain of receiver 0.
 
 *Test Coverage*:
 
-* A message buffer filled past full. Messages with distinct probe IDs are sent without popping until `STATUS.BUFFER_FULL` sets, then two more. The depth read off `STATUS.BUFFER_FULL` must be the IP's default of eight messages (`doc/interface.adoc` `BUFFER_DEPTH`), the depth the receiver 1 and 2 legs are graded against. The drain must return exactly those eight messages as the last eight probe IDs sent, in the order sent: `doc/architecture.adoc` states that on arrival while full the hardware drops the oldest message.
-* `CTRL.BUFFER_THRESHOLD` with its interrupt enabled. `telemetry_receiver.rdl` raises `INTR_STATUS.BUFFER_THRESHOLD` while more messages than the threshold are buffered. It is checked after every message on the way up and after every pop on the way down. `CTRL` carries the threshold beside `BUFFER_POP`, so every pop rewrites it.
-* `INTR_STATUS.MISSING_LAST`, raised when the maximum number of packets a message can have arrives without the last-packet flag. Packets without the flag are sent one at a time until it sets, which measures that maximum. It must then clear on a written one.
-* A message of exactly that many packets, the last one flagged. It fills the assembly buffer exactly, must not raise `MISSING_LAST`, and must reach the message buffer.
-* `CTRL.BUFFER_POP` written to an empty buffer, which the RDL says has no effect. The buffer must stay empty and not full, and the next message must read back its own probe ID.
-* One beat short of the most a message can hold, an unfinished message must complete nothing and raise no `MISSING_LAST`. A flush written while a beat is presented on the ATB port, and a second flush, must leave the next message reading back its own probe ID.
-* Receivers 1 and 2, queue full and overflow. Eight messages fill the `BUFFER_DEPTH` = 8 queue: `STATUS` reads 0x00 after each of the first seven and 0x10 after the eighth, with the first message in `TELEMETRY_PROBE_ID`. A ninth drops the oldest, the eight pops present the survivors in order, the empty queue reads `STATUS` = 0x01 and `PROBE_ID` = 0, and one more pop leaves both unchanged.
-* Receivers 1 and 2, a push meeting a pop. With the queue full, `CTRL.BUFFER_POP` is written at each offset from -4 to +4 `clk_periph_i` cycles around the last beat of one more message. The drain must be every message after the oldest, or one fewer, in order; which one each offset gives is logged, because the documents do not decide it.
-* Receivers 1 and 2, `CTRL.TELEMETRY_TX_FLUSH` with three messages queued. The bench holds `afready_i` of these receivers high and does not publish their `afvalid_o`, so the flush runs with `afready_i` at that level: the request must self-clear within the poll bound, `STATUS` must read 0x00 with the first queued message in `TELEMETRY_PROBE_ID`, and the three messages must drain in order. The handshake with `afready_i` low is not reachable on this bench.
-* Receivers 1 and 2, `MISSING_LAST`. Beats without the last-packet marker are sent one at a time until `INTR_STATUS.MISSING_LAST` sets, first with `INTR_ENABLE` = 0x00 and then 0x01. `peripheral_interrupts_o[8+r]` must stay 0 while disabled and rise while enabled, and a written one clears the status and the line. The next complete message must read back its own probe ID. The beat count is logged, not compared.
-* Receivers 1 and 2, `INTR_TEST.MISSING_LAST`. It must raise `peripheral_interrupts_o[8+r]` with the enable on and leave it 0 with the enable off. `INTR_STATUS` after the test write is logged.
+* Full. A stream of 64 beats, longer than the 32 the receiver FIFO holds plus the 8 of the
+  wrapper's ATB crossing FIFO, is offered with no reads. `STATUS.BUFFER_FULL` sets, `atready`
+  drops with exactly 40 beats accepted at the pins, and over 200 further cycles none is accepted
+  while `STATUS` stays at `BUFFER_FULL` alone (`telemetry_receiver.rdl`: a full FIFO drops
+  `atready_o`; nothing is overwritten and nothing is dropped).
+* Threshold at depth. With 32 beats queued, `CTRL.BUFFER_THRESHOLD` of 31 asserts
+  `INTR_STATUS.BUFFER_THRESHOLD` and 32 and 0xFFF do not; each value reads back as written
+  (`telemetry_receiver.rdl`: only values below the buffer depth can assert the interrupt).
+* Overflow order. The first `TELEMETRY_DATA` read frees one slot: the held source moves exactly one
+  beat in and `STATUS.BUFFER_FULL` sets again. Reading on returns all 64 offered beats once each, in
+  order, then `TELEMETRY_DATA` 0 and `STATUS.BUFFER_EMPTY`.
+* Push against pop. With 31 beats queued, one more beat is pushed at each offset from -4 to +4
+  `clk_smc_i` cycles around a `TELEMETRY_DATA` read; the read returns the oldest beat and the drain
+  returns all 32, in order.
+* Transmitter flush. With three beats queued, `CTRL.TELEMETRY_TX_FLUSH` is written. The bench holds
+  `afready_i` of these receivers high and does not publish their `afvalid_o`, so the request must
+  self-clear within the poll bound, `STATUS` must read 0x00, and the three beats must drain in
+  order. The handshake with `afready_i` low is not reachable on this bench.
 
 *Test Procedure*:
 
 [arabic]
-. Ungate telemetry, flush, write a pop with the buffer empty, then send and read back one message.
-. Error injection. Point: the ATB port of telemetry receiver 0, into the message buffer. Kind: messages with distinct probe IDs sent without popping until `STATUS.BUFFER_FULL` sets, then two more past full. Expected response: `BUFFER_FULL` set and staying set through the two extra messages, with the drain of step 3 returning exactly the depth's worth as an in-order run of the IDs sent. Set `CTRL.BUFFER_THRESHOLD` and enable its interrupt first, checking the threshold interrupt after each message.
-. Pop everything, checking the threshold interrupt after each pop. Compare the probe IDs read back with the IDs sent.
-. Error injection. Point: the ATB port, into the assembly buffer. Kind: packets without the last-packet flag sent one at a time past the maximum a message can have. Expected response: `MISSING_LAST` sets on the first packet past the maximum, not before, and clears on a written one. Flush first; clear the flag afterwards.
-. Flush and send one message of that many packets with the last one flagged. Require no `MISSING_LAST` and a buffered message.
-. Flush, send one beat fewer than the assembly buffer holds without the last-packet flag, then flush with a beat held valid, flush again and send one message.
-. On receivers 1 and 2, flush and require `STATUS` = 0x01, `INTR_STATUS` = 0x00 and the interrupt line at 0.
-. Send eight messages, then a ninth; pop nine times, reading `STATUS` and `TELEMETRY_PROBE_ID` around each pop.
-. For each offset from -4 to +4, refill to full, send one more message with `CTRL.BUFFER_POP` written at that offset from its last beat, and drain.
-. Queue three messages and write `CTRL.TELEMETRY_TX_FLUSH` with `afready_i` high; poll the bit until it clears and drain.
-. With `INTR_ENABLE` off and then on, send beats without the last marker until `MISSING_LAST` sets, check the line and clear the status; send one complete message.
-. Write `INTR_TEST.MISSING_LAST` with `INTR_ENABLE` on and off and check the line.
+. Ungate telemetry. On receivers 1 and 2, flush and require `INTR_STATUS` 0, `TELEMETRY_DATA` 0
+  and `STATUS` = 0x01.
+. Error injection. Point: the ATB port of receivers 1 and 2. Kind: 64 beats offered with no reads.
+  Expected response: `BUFFER_FULL` sets, `atready` drops with exactly 40 accepted, and after 200
+  more cycles still 40 accepted with `STATUS` = 0x10.
+. With the FIFO full, write each `BUFFER_THRESHOLD` value, read it back and compare
+  `INTR_STATUS`; restore `CTRL` to 0.
+. Read one beat, wait (bounded) for the source to hand over exactly one more and poll
+  `BUFFER_FULL` to 1, then read every remaining beat and compare with the stream; require the FIFO
+  empty.
+. For each offset from -4 to +4 on each receiver, queue 31 beats, push one more with the
+  `TELEMETRY_DATA` read issued at that offset, and drain all 32 in order.
+. Queue three beats and write `CTRL.TELEMETRY_TX_FLUSH` with `afready_i` high; poll the bit until
+  it clears, require `STATUS` 0x00 and drain.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-TELEMETRY-POP-EMPTY` |A pop on an empty buffer left it empty and not full, and the next message read back its own probe ID
-|`CHK-TELEMETRY-THRESHOLD-INTR` |`INTR_STATUS.BUFFER_THRESHOLD` was set exactly while more messages than the threshold were buffered, filling and draining
-|`CHK-TELEMETRY-THRESHOLD-ALIAS` |With one message queued `CTRL.BUFFER_THRESHOLD` 0x000 and 0x010 set `INTR_STATUS.BUFFER_THRESHOLD` and 0x001 and 0x011 do not; with the queue full 0x007 and 0x017 set it and 0x008 and 0xFF8 do not; each 12-bit value reads back unchanged (`telemetry_receiver.rdl`: only the low log2(depth)+1 bits are compared, values alias modulo twice the depth, only values below the depth can assert)
-|`CHK-TELEMETRY-BUFFER-OVERFLOW` |`BUFFER_FULL` set at the default depth of eight messages and stayed set through two more, and the drain returned exactly the last eight IDs sent in order, the two oldest dropped (`architecture.adoc`: on arrival while full the hardware drops the oldest message)
-|`CHK-TELEMETRY-MISSING-LAST` |`MISSING_LAST` sets at a measured packet count N (2..16) sent without
-the last-packet flag and stays clear on the N−1 before it; N is measured, not compared with a
-documented capacity; a written one clears it. `CHK-TELEMETRY-FULL-MESSAGE` cross-checks N with an
-N-packet flagged message. No `telemetry_receiver` document states the packet capacity:
-`architecture.adoc` derives it from `MAX_NUM_COUNTERS_PER_MESSAGE` and `interface.adoc` gives that
-parameter's default of 4, but neither gives a packet count
-|`CHK-TELEMETRY-FULL-MESSAGE` |A message of the maximum size with its last packet flagged reached the buffer without `MISSING_LAST`
-|`CHK-TELEMETRY-PARTIAL-FLUSH` |A message one beat short completed nothing and raised nothing, and after a flush with a beat presented the next message read back intact
-|`CHK-TELEM12-FULL` |On receivers 1 and 2, eight messages gave `STATUS` = 0x10 with the first probe ID visible, not before the eighth, and the first pop after the overflow gave `STATUS` = 0x00
-|`CHK-TELEM12-OVERFLOW-ORDER` |On receivers 1 and 2, the ninth message dropped the oldest; the eight pops presented the survivors in order, then `STATUS` = 0x01 and `PROBE_ID` = 0, which an extra pop left unchanged
-|`CHK-TELEM12-PUSH-POP-WINDOW` |On receivers 1 and 2, for every pop offset the drain was the no-drop or the one-drop run in order; which one is logged per offset
-|`CHK-TELEM12-TX-FLUSH` |On receivers 1 and 2, with `afready_i` at its bench level (high), `CTRL.TELEMETRY_TX_FLUSH` self-cleared within the bound, `STATUS` read 0x00 with the first queued probe ID, and the three queued messages drained in order; the `afready_i`-low handshake is not reachable on this bench
-|`CHK-TELEM12-MISSING-LAST` |On receivers 1 and 2, `MISSING_LAST` set with the line following `INTR_ENABLE`, a written one cleared status and line, and the next message read back intact; the beat count is logged
-|`CHK-TELEM12-INTR-TEST` |On receivers 1 and 2, `INTR_TEST.MISSING_LAST` raised the line with the enable on and left it 0 with the enable off; `INTR_STATUS` after the write is logged
-|`CHK-TIMEOUT-PATHS` |Every bounded wait of the receiver 1 and 2 legs is listed with its bound, its unit and the last state it saw
-|`CHK-NONVAC` |The receiver 1 and 2 steps ran in order with strictly increasing time stamps, each checker line inside its own step
+|`CHK-TELEM12-FULL` |On receivers 1 and 2, a stream longer than the FIFO and the crossing FIFO hold set `STATUS.BUFFER_FULL` and stalled the source with exactly 40 beats accepted, and over 200 more cycles none was accepted and `STATUS` stayed 0x10
+|`CHK-TELEMETRY-THRESHOLD-AT-DEPTH` |On receivers 1 and 2 holding 32 beats, `CTRL.BUFFER_THRESHOLD` 31 set `INTR_STATUS.BUFFER_THRESHOLD` and 32 and 0xFFF did not; each value read back unchanged
+|`CHK-TELEM12-OVERFLOW-ORDER` |On receivers 1 and 2, one read let exactly one held beat in and `STATUS.BUFFER_FULL` set again; the drain returned all 64 offered beats once each, in order, then an empty FIFO
+|`CHK-TELEM12-PUSH-POP-WINDOW` |On receivers 1 and 2, for every offset a beat pushed against a read with 31 queued left all 32 readable once each and in order
+|`CHK-TELEM12-TX-FLUSH` |On receivers 1 and 2, with `afready_i` at its bench level (high), `CTRL.TELEMETRY_TX_FLUSH` self-cleared within the bound, `STATUS` read 0x00, and the three queued beats drained in order; the `afready_i`-low handshake is not reachable on this bench
+|`CHK-TIMEOUT-PATHS` |Every bounded wait is listed with its bound, its unit and the last state it saw
+|`CHK-NONVAC` |The steps ran in order with strictly increasing time stamps, each checker line inside its own step
 |===
 
-*Pass Criteria*: all fifteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all seven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The push-against-pop offsets on receivers 1 and 2 log which of the two document-consistent drains each offset produced, not compared.
+*Scope limit*: The `afready_i`-low transmitter flush handshake is not reachable on receivers 1 and
+2; `smc_telemetry_atb_capture_test` grades it on receiver 0.
 
 '''''
 
@@ -52344,7 +52326,7 @@ entry's `*Randomization*` field.
 |`smc_telemetry_address_map_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-REP
-|the seed draws the message count per receiver (1 to 8), the receiver order, the three `BUFFER_THRESHOLD` patterns and a distinct probe ID per queued message, which `CHK-TELEMETRY-COUNTER-WINDOW` compares before each pop; 3 seeds per regression.
+|the seed draws the beat count per receiver (1 to 32), the receiver order, the three `BUFFER_THRESHOLD` patterns and an (ATID, data) pair per beat drawn without repeats, which `CHK-TELEMETRY-DATA-WINDOW` compares as each beat is read back; 3 seeds per regression.
 |`smc_telemetry_ctrl_access_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE
@@ -53952,17 +53934,9 @@ ordered by area.
 |What such a job leaves in `CTRL_STATUS`, in the interrupt pulses, the AW handshakes, the B cycles and the SYS_OUT write count. Source: `hw/sys/smc/doc/zeroer.adoc` (Operation Details); `doc/programmer/src/smc-programming.adoc` (SRAM Initialization using Memory Zeroer).
 |`smc_zeroer_sram_init_test` requires `STATUS` 0 twice and the denied region unchanged, and logs the other fields without comparing them.
 |<<smc-vplan-area-power,POWER>>
-|Two ATB telemetry messages sent back to back are both queued.
-|The spacing a receiver needs between the last packet of one message and the first packet of the next. `hw/ip/telemetry_receiver/doc/architecture.adoc` (Assembly and Decode) states that a last-packet marker queues the message and that beats are accepted except during a receiver flush, and states no spacing. Source: the same chapter; `hw/ip/telemetry_receiver/doc/interface.adoc` (ATB Protocol Specifications, acceptance while `atready_o` is high).
-|`smc_telemetry_tx_flush_test` sends its messages eight idle cycles apart, as the other telemetry entries do, and states that the documents do not state a spacing; the back-to-back case is not graded.
-|<<smc-vplan-area-power,POWER>>
-|A receiver flush written while a message is in flight.
-|Whether in-flight ATB beats are held or dropped when `CTRL.TELEMETRY_RX_FLUSH` is written mid-message. Source: `hw/ip/telemetry_receiver/doc/architecture.adoc` (Reset and Flush); `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl` (`CTRL.TELEMETRY_RX_FLUSH`).
-|`smc_telemetry_rx_flush_test` requires every beat to be accepted within 64 cycles and logs the accepted-beat and stalled-cycle counts and `STATUS` after 64 quiet cycles without comparing them.
-|<<smc-vplan-area-power,POWER>>
-|A full-word `CTRL` write that sets only `BUFFER_POP`.
-|Whether such a write cancels a pending transmitter flush request (`CTRL.TELEMETRY_TX_FLUSH`). Source: `doc/programmer/src/smc-programming.adoc` (Telemetry Receiver, Buffer Management); `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl` (`CTRL`).
-|`smc_telemetry_ctrl_access_test` makes the write and logs the flush state without grading it.
+|A receiver flush written while a source is streaming beats.
+|How many of the streamed beats the flush discards, which depends on how many have crossed the wrapper's ATB crossing FIFO into the receiver when the write lands. Source: `hw/ip/telemetry_receiver/doc/architecture.adoc` (Reset and Flush); `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl` (`CTRL.TELEMETRY_RX_FLUSH`).
+|`smc_telemetry_rx_flush_test` requires the beats read back afterwards to be a contiguous tail of the stream with at least one discarded, and logs the counts without comparing them.
 |<<smc-vplan-area-power,POWER>>
 |A second AVSBus resync request while one is pending.
 |Whether the second request gives one resync or two. Source: `hw/ip/avsbus_controller/doc/architecture.adoc` (AVS Protocol Engine).
@@ -54158,10 +54132,6 @@ burst with the watchdog warm reset and asserts the drain reading under `expect_f
 |A second `THR` write with the divisor at 0.
 |Whether the second write replaces the waiting character or is dropped. Source: `hw/ip/uart/uart_16550/regs/uart_16550_main.rdl` (`THR`, the divisor latches).
 |`smc_uart_thr_paths_test` requires exactly one character to arrive once the divisor is set and logs which.
-|<<smc-vplan-area-firmware,FIRMWARE>>
-|The end of the probe-ID run that survives a telemetry buffer overflow.
-|Which end of the run survives when the message buffer is filled past full. Source: `hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl` (`STATUS.BUFFER_FULL`); `hw/ip/telemetry_receiver/doc/architecture.adoc` (Message Queue and Readout).
-|`smc_telemetry_buffer_overflow_test` requires the drain to return exactly the depth's worth as one in-order run and logs which end survived.
 |===
 
 [[smc-vplan-phase3-unstated]]

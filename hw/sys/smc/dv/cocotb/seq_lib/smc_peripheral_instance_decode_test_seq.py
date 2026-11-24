@@ -62,7 +62,7 @@ from smc_reg import (  # noqa: E402
     LOG_ENGINE_LOG_REGION_SIZE_REG_DEFAULT,
     RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT,
     SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT,
-    TELEMETRY_RECEIVER_INTR_ENABLE_REG_DEFAULT,
+    TELEMETRY_RECEIVER_CTRL_REG_DEFAULT,
     TELEMETRY_RECEIVER_STATUS_REG_DEFAULT,
     UART_16550_MAIN_LSR_REG_DEFAULT,
     UART_16550_MAIN_SCR_REG_DEFAULT,
@@ -131,8 +131,8 @@ _I2C_TARGET_ID_RESET = I2C_TARGET_ID_REG_DEFAULT
 # --- UART: four wraps, SCR is the 8-bit scratch register --------------------------------------
 _UART_SCR_PATTERNS = (0xA1, 0xB2, 0xC3, 0xD4)
 _UART_SCR_RESET = UART_16550_MAIN_SCR_REG_DEFAULT
-# --- telemetry: three receivers, INTR_ENABLE holds two plain rw bits --------------------------
-_TELEMETRY_INTR_ENABLE_RESET = TELEMETRY_RECEIVER_INTR_ENABLE_REG_DEFAULT
+# --- telemetry: three receivers, CTRL.BUFFER_THRESHOLD is a 12-bit plain rw field -------------
+_TELEMETRY_CTRL_RESET = TELEMETRY_RECEIVER_CTRL_REG_DEFAULT
 # --- single-instance blocks with a non-zero generated reset -----------------------------------
 AVS_CFG_0 = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR")
 I2C_NUM = smc_addr("SMC_TOP_SMC_I2C_WRAP_I2C_NUM")
@@ -398,27 +398,24 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
                 ),
                 TELEMETRY_RECEIVER_STATUS_REG_DEFAULT,
             )
-        # INTR_ENABLE has two rw bits (MISSING_LAST, BUFFER_THRESHOLD); the three
-        # non-zero combinations give one distinct pattern per receiver.
+        # CTRL.BUFFER_THRESHOLD takes one distinct pattern per receiver.
         telemetry_patterns = [
-            reg_field_encode(_TELEMETRY_RECEIVER_H, "TELEMETRY_RECEIVER", "INTR_ENABLE", **fields)
-            for fields in (
-                {"missing_last": 1},
-                {"buffer_threshold": 1},
-                {"missing_last": 1, "buffer_threshold": 1},
+            reg_field_encode(
+                _TELEMETRY_RECEIVER_H, "TELEMETRY_RECEIVER", "CTRL", buffer_threshold=threshold
             )
+            for threshold in (0x111, 0x222, 0x333)
         ]
         assert TELEMETRY_NUM == len(telemetry_patterns)
         await self.rw_coresident(
             [
                 (
-                    f"TELEMETRY{idx}_INTR_ENABLE",
+                    f"TELEMETRY{idx}_CTRL",
                     smc_indexed_addr(
-                        "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_ENABLE_BASE_ADDR",
+                        "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR",
                         idx,
                     ),
                     telemetry_patterns[idx],
-                    _TELEMETRY_INTR_ENABLE_RESET,
+                    _TELEMETRY_CTRL_RESET,
                 )
                 for idx in range(TELEMETRY_NUM)
             ]
@@ -426,8 +423,8 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         self.close_cell(
             "telemetry-decode",
             f"receivers 0..{TELEMETRY_NUM - 1} STATUS == "
-            f"0x{TELEMETRY_RECEIVER_STATUS_REG_DEFAULT:x}, and each INTR_ENABLE held its own "
-            f"pattern co-resident with the other two",
+            f"0x{TELEMETRY_RECEIVER_STATUS_REG_DEFAULT:x}, and each CTRL.BUFFER_THRESHOLD held "
+            f"its own pattern co-resident with the other two",
         )
         await self.read_reset("OCTS_CTRL", OCTS_CTRL, SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT)
         self.close_cell("octs-decode", f"OCTS CTRL == 0x{SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT:x}")

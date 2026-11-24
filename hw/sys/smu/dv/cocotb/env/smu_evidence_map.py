@@ -4873,27 +4873,28 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-TEL-EVERY-RECEIVER",
             "CHK-SMU-TEL-EVERY-RECEIVER",
-            "each receiver takes a message on its own ATB lane and reports its probe id",
+            "each receiver returns exactly the beats driven on its own lane, all-ones and "
+            "all-zeros ATID and data included, and every receiver reads empty afterwards",
         ),
         (
             "CHK-SMU-TEL-BACKPRESSURE",
             "CHK-SMU-TEL-BACKPRESSURE",
-            "back-to-back beats on a faster telemetry clock make telemetry_atready_o fall and "
-            "rise, the RX flush empties a queued buffer, and the next message reads back whole",
+            "41 beats offered with no reads set BUFFER_FULL, exactly 40 are accepted and "
+            "telemetry_atready_o stays low; the drain returns all 41 in order, the RX flush "
+            "empties queued beats, and beats sent after it read back alone",
         ),
         (
             "CHK-SMU-TEL-RESET",
             "CHK-SMU-TEL-RESET",
-            "receiver 0 reads STATUS.BUFFER_EMPTY set with PROBE_ID and "
-            "COUNTER_VLDS clear before any beat is driven",
+            "receiver 0 reads STATUS.BUFFER_EMPTY set and TELEMETRY_DATA 0 before any beat "
+            "is driven",
         ),
         (
             "CHK-SMU-TEL-CAPTURE",
             "CHK-SMU-TEL-CAPTURE",
-            "with the telemetry clock gate proved open, a complete last-flagged "
-            "ATB message whose every beat handshook on telemetry_atready_o "
-            "leaves the buffer non-empty, reports the framed probe id and one "
-            "valid bit per counter sent, and CTRL.BUFFER_POP returns it to empty",
+            "with the telemetry clock gate proved open, beats that handshook on "
+            "telemetry_atready_o read back through TELEMETRY_DATA as the exact "
+            "{VALID, ATID, DATA} words, in order, and the FIFO then reads empty",
         ),
         (
             "CHK-SMU-TEL-FLUSH",
@@ -4909,32 +4910,34 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TELQ-POP-EMPTY",
             "TELQ_POP_EMPTY",
-            "a pop on the empty queue leaves BUFFER_EMPTY set and PROBE_ID 0",
+            "a TELEMETRY_DATA read of the empty FIFO returns 0 and leaves BUFFER_EMPTY set",
         ),
         (
             "CHK-TELQ-EMPTY-FULL",
             "TELQ_EMPTY_FULL",
-            "BUFFER_EMPTY drops after the first message and BUFFER_FULL sets only on the eighth",
+            "BUFFER_EMPTY reads 0 after the first, 31st and 32nd beats, and BUFFER_FULL is "
+            "clear after the first and 31st and set after the 32nd",
         ),
         (
             "CHK-TELQ-THRESHOLD-LIVE",
             "TELQ_THRESHOLD_LIVE",
-            "after every fill and every pop INTR_STATUS.BUFFER_THRESHOLD is 1 when the number "
-            "queued is above the seed-drawn threshold in force and 0 otherwise, and reads 1 with "
-            "the threshold at 3 and five queued before and after the pinned raise to 5",
+            "after every fill and every read INTR_STATUS.BUFFER_THRESHOLD is 1 when the number "
+            "of beats held is above the seed-drawn threshold in force and 0 otherwise, and reads "
+            "1 with the threshold at 28 and 29 held before and after the pinned raise to 29",
         ),
         (
             "CHK-TELQ-ORDER",
             "TELQ_ORDER",
-            "successive pops expose probe ids 2 to 8 in arrival order, then 0 when empty",
+            "successive TELEMETRY_DATA reads return the 32 beats in arrival order, then 0 "
+            "when empty",
         ),
         (
             "CHK-TELQ-THRESHOLD-CLEAR",
             "TELQ_THRESHOLD_CLEAR",
-            "a write of 1 to the status with eight queued and each seed-drawn threshold write "
-            "leave INTR_STATUS.BUFFER_THRESHOLD at the live value, 1 only when the number queued "
-            "is above the threshold; raising the threshold to 5 with five queued reads 0, and "
-            "restoring the drawn threshold reads the live value",
+            "a write of 1 to the status with the FIFO full and each seed-drawn threshold write "
+            "leave INTR_STATUS.BUFFER_THRESHOLD at the live value, 1 only when the number of "
+            "beats held is above the threshold; raising the threshold to 29 with 29 held reads "
+            "0, and restoring the drawn threshold reads the live value",
         ),
         (
             "CHK-TELQ-THRESHOLD-TEST",
@@ -4955,9 +4958,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "INTR_ENABLE and INTR_TEST read 0, on all three receivers",
         ),
         (
-            "CHK-TELR-MESSAGE-ZERO",
-            "TELR_MESSAGE_ZERO",
-            "PROBE_ID, COUNTER_VLDS and the counters read 0 on the empty queue",
+            "CHK-TELR-DATA-ZERO",
+            "TELR_DATA_ZERO",
+            "TELEMETRY_DATA reads 0 on the empty FIFO of all three receivers",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
     ],

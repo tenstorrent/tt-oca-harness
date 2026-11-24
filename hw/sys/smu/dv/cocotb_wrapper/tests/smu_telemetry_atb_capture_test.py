@@ -2,15 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_telemetry_atb_capture_test - the ATB telemetry source at the SMU boundary.
 
-Drives one complete last-flagged ATB message into telemetry receiver 0 through
-the wrapper's telemetry pins and reads it back out of the receiver's registers
-over JTAG2AXI: the buffer goes non-empty, the probe id matches the one framed
-on the beats, one valid bit appears for the one counter's worth of valid blocks
-sent, and counter 0 reads back the byte that filled them. The frame is a
-DV-owned table transcribed from the telemetry receiver specification
-(hw/ip/telemetry_receiver/doc, regs); the sequence names the positions that
-specification leaves open. A second leg drives the ATB flush handshake, where
-the request holds until telemetry_afready_i acknowledges it.
+Drives ATB beats into each telemetry receiver through the wrapper's telemetry
+pins and reads them back over JTAG2AXI through TELEMETRY_DATA, which returns
+the oldest beat as {VALID, ATID, DATA} and removes it: the words match the
+beats driven, in order. A full receiver holds the pins off without dropping a
+beat, and CTRL.TELEMETRY_RX_FLUSH discards what is queued. A second leg drives
+the ATB flush handshake, where the request holds until telemetry_afready_i
+acknowledges it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_telemetry_atb_capture_test --target compile_smu_chiplet
@@ -25,12 +23,12 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_telemetry_atb_capture_test(smu_base_test):
-    """An ATB message and a flush handshake at the wrapper telemetry pins."""
+    """ATB beats, backpressure and a flush handshake at the wrapper telemetry pins."""
 
     use_shared_env = True
 
-    #: clk_telemetry_i (clk_ref_i) runs faster than the receiver's clk_smu_i so
-    #: back-to-back ATB beats fill the crossing FIFO (S7).
+    #: clk_telemetry_i (clk_ref_i) runs faster than the receiver's clk_smu_i, so
+    #: the ATB crossing FIFO is exercised with beats arriving faster than they drain.
     TELEMETRY_CLK_PERIOD_NS = 10
     RECEIVER_CLK_PERIOD_NS = 12
 
