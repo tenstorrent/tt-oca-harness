@@ -120,6 +120,14 @@ side-effecting reads with `sbreadondata` unless enough Run-Test/Idle cycles are 
   clears the bridge with op 3 and the DM with `dmcontrol.dmactive` = 0.
 * If `i_arst_n` is a system reset, it must also reset the fabric `tdr2axi` accesses,
   so that an outstanding AXI transaction never survives on one side only.
+* While `dmcontrol.dmactive` = 0 no bus access starts. An access already in flight
+  when `dmactive` falls completes on the bus with the address, size, data and strobes
+  it started with; `sbcs`, `sbaddress` and `sbdata` keep their values until it
+  completes and then take their reset values. Set `dmactive` again only after that
+  (wait for the access, or allow the fabric's worst-case response time): if it is set
+  while the access is still in flight, those registers are not reset and the access's
+  result lands in them. AXI cannot abort a transaction, so an access the fabric never
+  answers is cleared only by `i_arst_n`.
 
 ## AXI transactions
 
@@ -128,7 +136,10 @@ side-effecting reads with `sbreadondata` unless enough Run-Test/Idle cycles are 
 * AXI4: `AxSIZE` follows `sbcs.sbaccess`, so a narrow read does not fetch the whole bus
   word. `dm_sba` only issues naturally aligned accesses (`sberror` = 3 otherwise) and
   accesses up to the data width (`sberror` = 4 otherwise).
-* `SLVERR` and `DECERR` responses set `sbcs.sberror` = 2.
+* `SLVERR` and `DECERR` responses set `sbcs.sberror` = 2. With `sbautoincrement` = 1,
+  `sbaddress` advances only after a successful access, so after an error it holds the
+  failing address. That includes a read started by a read of `sbdata0`: RISC-V Debug
+  0.13.2 words that increment without a success condition, and Debug 1.0 adds it.
 
 ## Programming examples
 
