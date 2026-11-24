@@ -19549,7 +19549,8 @@ when a CPU access to that block's registers returned a TL-UL error response
 (an unmapped offset, or a partial write: a byte strobe that misses a byte the
 register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
 written. The faulting access also received SLVERR synchronously. A narrow
-read inside a register returns OKAY.
+read inside a register returns OKAY. The spi bit also latches the SPI host
+fatal alert.
 
 All bits OR together into a single PIC source, so read this register to
 identify which block faulted.
@@ -19641,6 +19642,22 @@ describe a fault from before that reset rather than a new one.</ipxact:descripti
             <ipxact:name>wdt</ipxact:name>
             <ipxact:description>Watchdog timer register bridge error.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>spi</ipxact:name>
+            <ipxact:description>SPI host register bridge error, or the SPI host fatal_fault alert (a
+register-bus integrity fault, or a write of ALERT_TEST.fatal_fault). A
+real integrity fault repeats the alert until the SEP reset, so clearing
+this bit does not keep it clear.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
@@ -19743,6 +19760,19 @@ latches.</ipxact:description>
             <ipxact:name>wdt</ipxact:name>
             <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>spi</ipxact:name>
+            <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.spi. Always reads 0.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>

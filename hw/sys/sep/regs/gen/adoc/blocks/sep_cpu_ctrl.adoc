@@ -65,7 +65,8 @@ when a CPU access to that block's registers returned a TL-UL error response
 (an unmapped offset, or a partial write: a byte strobe that misses a byte the
 register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
 written. The faulting access also received SLVERR synchronously. A narrow
-read inside a register returns OKAY.
+read inside a register returns OKAY. The spi bit also latches the SPI host
+fatal alert.
 
 All bits OR together into a single PIC source, so read this register to
 identify which block faulted.
@@ -423,7 +424,11 @@ OKAY.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:7 | `Reserved` | - | - a| Reserved
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7 | `spi` | R | 0x0 a| SPI host register bridge error, or the SPI host fatal_fault alert (a
+register-bus integrity fault, or a write of ALERT_TEST.fatal_fault). A
+real integrity fault repeats the alert until the SEP reset, so clearing
+this bit does not keep it clear.
 | 6 | `wdt` | R | 0x0 a| Watchdog timer register bridge error.
 | 5 | `edn` | R | 0x0 a| EDN register bridge error (DRBG EDN path).
 | 4 | `csrng` | R | 0x0 a| CSRNG register bridge error (DRBG CSRNG path).
@@ -439,7 +444,8 @@ OKAY.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:7 | `Reserved` | - | - a| Reserved
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7 | `spi` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.spi. Always reads 0.
 | 6 | `wdt` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.
 | 5 | `edn` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.
 | 4 | `csrng` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.
