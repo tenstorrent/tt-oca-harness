@@ -117,7 +117,7 @@ waive_violation -add {ocah_dtp_rdc_SETUP_CLOCK_UNUSED_output_tck_clocks} \
 #           ├── stap_3dcr_rst             (= prim_and2(trst_n_combined, local rst_n))
 #           ├── stap_extra0_rst           (= prim_and2(trst_n_combined, local rst_n))
 #           ├── stap_smc_dbg_rst          (= prim_and2(trst_n_combined, local rst_n))
-#           └── ic_reset_ctrl_rst_n       (= prim_and2(trst_n_combined, scan enable))
+#           └── ic_reset_ctrl_rst_n       (= prim_or2(TAP rst_n, ~reset_hold))
 #
 # tlr_reset also reaches each STAP/IC gated reset because the TLR flop output is
 # wired into the same TAP-side reset tree those gates drive (IEEE 1149.1: TLR
@@ -138,7 +138,7 @@ waive_violation -add {ocah_dtp_rdc_SETUP_RESET_OVERLAP_pwr_on_rst_to_trst_n_comb
 
 # Edges: trst_n_combined -> {5 STAP gated resets, ic_reset_ctrl_rst_n}
 waive_violation -add {ocah_dtp_rdc_SETUP_RESET_OVERLAP_trst_n_combined_to_children} \
-    -comment {Declared edges trst_n_combined -> {stap_sep_dbg_rst, stap_io_rst, stap_3dcr_rst, stap_extra0_rst, stap_smc_dbg_rst, ic_reset_ctrl_rst_n}. Each child is computed as prim_and2(trst_n_combined, local enable); the master physically feeding its child's AND gate is by construction. Hierarchy declared in dtp.resets.tcl.} \
+    -comment {Declared edges trst_n_combined -> {stap_sep_dbg_rst, stap_io_rst, stap_3dcr_rst, stap_extra0_rst, stap_smc_dbg_rst, ic_reset_ctrl_rst_n}. Each STAP child is prim_and2(trst_n_combined, local rst_n) and ic_reset_ctrl_rst_n is prim_or2(TAP rst_n, ~reset_hold); the master physically feeding its child's gate is by construction. Hierarchy declared in dtp.resets.tcl.} \
     -filter {(Tag == "SETUP_RESET_OVERLAP") AND (SrcRstInfo:ResetName == "trst_n_combined") AND ((DesRstInfo:ResetName == "stap_sep_dbg_rst") OR (DesRstInfo:ResetName == "stap_io_rst") OR (DesRstInfo:ResetName == "stap_3dcr_rst") OR (DesRstInfo:ResetName == "stap_extra0_rst") OR (DesRstInfo:ResetName == "stap_smc_dbg_rst") OR (DesRstInfo:ResetName == "ic_reset_ctrl_rst_n"))} \
     -app { rdc } -tag { SETUP_RESET_OVERLAP } -user { bmelton } -timestamp { 17-05-2026 17:30:00 }
 
