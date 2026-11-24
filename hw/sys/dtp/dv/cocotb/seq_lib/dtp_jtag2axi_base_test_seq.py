@@ -331,9 +331,11 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             target, DtpDmReg.SBADDRESS0, addr & _WORD, context=f"{context}.sbaddress0"
         )
 
-    async def wait_sba_idle(self, target: str, *, context: str, sbbusyerror: int = 0) -> None:
-        """Poll sbcs until sbbusy clears, then require sberror 0 and sbbusyerror
-        ``sbbusyerror``.
+    async def wait_sba_idle(
+        self, target: str, *, context: str, sbbusyerror: int = 0, sberror: int = 0
+    ) -> None:
+        """Poll sbcs until sbbusy clears, then require sberror ``sberror`` and
+        sbbusyerror ``sbbusyerror``.
 
         ``CHK-AXI-COMPLETION`` judges the ``SBA_POLLS`` bound and
         ``CHK-J2A-FAULT-STATUS`` the two error fields.
@@ -353,7 +355,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             self.target_evidence(target),
             FAULT_STATUS_CHECK_ID,
             (sbcs["sberror"], sbcs["sbbusyerror"]),
-            (0, sbbusyerror),
+            (sberror, sbbusyerror),
             context=f"{context} target={target} (sberror, sbbusyerror)",
         )
 
@@ -365,10 +367,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         await self.sba_write_data(target, addr, data, size=size, context=context)
 
     async def sba_write_data(
-        self, target: str, addr: int, data: int, *, size: int, context: str
+        self, target: str, addr: int, data: int, *, size: int, context: str, sberror: int = 0
     ) -> None:
         """Write ``data`` to sbdata, which starts the ``size`` write at ``addr``, the address
-        sbaddress holds, and judge the bus request."""
+        sbaddress holds, and judge the bus request; the write ends with ``sberror``."""
         offset = addr % self.target_cfg(target).beat_bytes
         wstrb = self.full_wstrb(size) << offset
         self.scoreboard_arm_strobes(target, wstrb, addr, context=context)
@@ -376,7 +378,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         if size == 3:
             await self.dmi_write(target, DtpDmReg.SBDATA1, data >> 32, context=f"{context}.sbdata1")
         await self.dmi_write(target, DtpDmReg.SBDATA0, data & _WORD, context=f"{context}.sbdata0")
-        await self.wait_sba_idle(target, context=context)
+        await self.wait_sba_idle(target, context=context, sberror=sberror)
         await self.expect_bus_request(
             target,
             read=False,
@@ -391,17 +393,50 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self, target: str, addr: int, *, size: int, context: str, autoincrement: bool = False
     ) -> int:
         """Read the ``size`` word at ``addr`` through System Bus Access and judge the bus request."""
-        await self.sba_setup(
-            target, addr, size, read=True, context=context, autoincrement=autoincrement
+        await self.sba_read_request(
+            target, addr, size=size, context=context, autoincrement=autoincrement
         )
-        await self.wait_sba_idle(target, context=context)
-        await self.expect_bus_request(target, read=True, addr=addr, size=size, context=context)
         data = await self.dmi_read(target, DtpDmReg.SBDATA0, context=f"{context}.sbdata0")
         if size == 3:
             data |= (
                 await self.dmi_read(target, DtpDmReg.SBDATA1, context=f"{context}.sbdata1")
             ) << 32
         return data
+
+    async def sba_read_request(
+        self,
+        target: str,
+        addr: int,
+        *,
+        size: int,
+        context: str,
+        autoincrement: bool = False,
+        sberror: int = 0,
+    ) -> None:
+        """Start the ``size`` read at ``addr`` with an sbaddress0 write and judge the bus
+        request; the read ends with ``sberror``."""
+        await self.sba_setup(
+            target, addr, size, read=True, context=context, autoincrement=autoincrement
+        )
+        await self.wait_sba_idle(target, context=context, sberror=sberror)
+        await self.expect_bus_request(target, read=True, addr=addr, size=size, context=context)
+
+    def inject_bus_error(
+        self, target: str, addr: int, resp: int, *, read: bool, context: str
+    ) -> None:
+        """The responder answers the next read, or with ``read`` False the next write, of the
+        beat at ``addr`` with ``resp``, and the AXI scoreboard expects that response."""
+        beat = self.target_cfg(target).beat_bytes
+        aligned = self.masked_addr(target, addr) & ~(beat - 1)
+        self.target_memory(target).inject_error(aligned, resp, read=read, write=not read)
+        self.cfg.axi_models[target].expect_error(aligned, resp, read=read, write=not read)
+        self.axi_scoreboard.arm_expected_resp(
+            resp,
+            address=aligned,
+            direction="read" if read else "write",
+            stream=target,
+            context=f"{context} target={target}",
+        )
 
     async def write_neighbour_then_read(
         self, target: str, addr: int, rng: random.Random, *, context: str

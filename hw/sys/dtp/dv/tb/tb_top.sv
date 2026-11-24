@@ -1161,9 +1161,10 @@ module tb_top
   );
 
   // JTAG2AXI coverage: each bridge's DMI strobes, captured status, update
-  // value, dmireset, Debug Module dmactive and System Bus Access request
-  // through hierarchical references into its jtag_dmi2axi, in the bit order
-  // of dtp_tb_if.j2a_b_hold.
+  // value, dmireset, Debug Module dmactive, System Bus Access request and
+  // errors, and the DMI requests its Debug Module accepts, through
+  // hierarchical references into its jtag_dmi2axi, in the bit order of
+  // dtp_tb_if.j2a_b_hold.
   dtp_j2a_fcov u_dtp_j2a_fcov (
     .tck_i           (jtag_tck),
     .tap_rst_ni      (jtag_tap_rst_n),
@@ -1228,6 +1229,46 @@ module tb_top
       1'b0,
       1'b0,
       (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.sbaddress_sba >> 32) != (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.sbaddress_csr >> 32)
+    }),
+    .sba_error_valid_i ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.sberror_valid,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.sberror_valid,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.sberror_valid
+    }),
+    .sba_error_i     ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.sberror,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.sberror,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.sberror
+    }),
+    .sba_bresp_i     ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.i_axi_rsp.b.resp,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.i_axi_rsp.b.resp,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.i_axi_rsp.b.resp
+    }),
+    .sba_rresp_i     ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.i_axi_rsp.r.resp,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.i_axi_rsp.r.resp,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.i_axi_rsp.r.resp
+    }),
+    .dm_req_i        ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.dmi_req_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.dmi_req_ready,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.dmi_req_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.dmi_req_ready,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.dmi_req_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.dmi_req_ready
+    }),
+    .dm_req_dmi_i    ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.dmi_req,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.dmi_req,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.dmi_req
+    }),
+    .dm_sbcs_i       ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.u_dm_csrs.sbcs_q,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.u_dm_csrs.sbcs_q,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.u_dm_csrs.sbcs_q
+    }),
+    .dm_sbbusy_i     ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.sbbusy,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.sbbusy,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.sbbusy
     })
   );
 
