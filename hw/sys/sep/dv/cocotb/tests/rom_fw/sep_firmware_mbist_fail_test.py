@@ -32,7 +32,7 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from env.sep_rom_console import log_scratch_cold, rom_console_task
-from env.sep_smc_mem import SMC_SCRATCH10_ADDR
+from env.sep_smc_mem import SMC_DFT_STATUS_ADDR, SMC_SCRATCH10_ADDR
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
@@ -108,6 +108,10 @@ class sep_firmware_mbist_fail_test(sep_base_test):
     # A class attribute lets a subclass target another arm of the gate without
     # duplicating the halt checks.
     dft_status_injected = _DFT_STATUS_FAIL
+    # Cycle budget to the terminal status; a member that reaches the handler later raises it.
+    max_run_cycles = _MAX_RUN_CYCLES
+    # DFX_CTRL_STATUS_SMU reads the SMC port must see before the halt; None leaves it ungraded.
+    expected_dft_reads: int | None = None
 
     def check_stimulus_shape(self) -> None:
         """Prove the injection really exercises the arm this test claims.
@@ -127,6 +131,17 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             "injected DFT status must have every bit except mem_repair_success set, "
             "otherwise it cannot distinguish a bit-1 check from a zero-word check"
         )
+
+    async def _count_dft_reads(self) -> None:
+        bus = cocotb.top.u_smc_axi_if
+        self._dft_reads = 0
+        while True:
+            await RisingEdge(cocotb.top.clk_i)
+            if self.rd(bus.arvalid, allow_unknown=True) & self.rd(bus.arready, allow_unknown=True):
+                addr = self.rd(bus.araddr)
+                nbytes = (self.rd(bus.arlen) + 1) << self.rd(bus.arsize)
+                if addr <= SMC_DFT_STATUS_ADDR < addr + nbytes:
+                    self._dft_reads += 1
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
@@ -152,7 +167,8 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         self.write_efuse_image(efuse_img)
 
         console: list[str] = []
-        cocotb.start_soon(rom_console_task(self.logger, sink=console))
+        console_task = cocotb.start_soon(rom_console_task(self.logger, sink=console))
+        dft_reads = cocotb.start_soon(self._count_dft_reads())
 
         for src, dst in (
             (os.path.join(self.rom_build_dir, "boot_rom.itcm.hex"), "sep_itcm.hex"),
@@ -160,6 +176,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         ):
             if not os.path.isfile(src):
                 raise FileNotFoundError(f"ROM image not found: {src}")
+            self.log_image_identity(dst, src)
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
 
         async def _load_tcm() -> None:
@@ -183,7 +200,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         halted = False
         retired = 0
         last_log = 0
-        for cycle in range(_MAX_RUN_CYCLES):
+        for cycle in range(self.max_run_cycles):
             await RisingEdge(dut.clk_i)
             status = (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
             if status != last_status:
@@ -246,6 +263,10 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         # -- on this path it is legitimately empty -- so instruction retirement is
         # the only liveness evidence available.
         assert retired, "core retired no instructions; the ROM never ran"
+        assert halted, (
+            f"cold_scratch[1] never reached ROM_ERR_DFT_GATE_BLOCKED within "
+            f"{self.max_run_cycles} cycles; observed {status_hex}"
+        )
 
         # CHK-DFT-READ: the ROM read the injected word. scratch[10] carries it, so
         # this ties the rest of the run to our stimulus rather than to the tb's
@@ -257,6 +278,21 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             f"Observed {s10_hex}"
         )
         self.logger.info("CHK-DFT-READ PASS: ROM read DFT_STATUS=0x%08x", self.dft_status_injected)
+
+        # CHK-DFT-ARM: the number of status reads locates the arm that failed, because the
+        # repair arm, the abort exit and the exhausted wait each read DFX_CTRL_STATUS_SMU a
+        # different number of times before the shared handler.
+        assert not dft_reads.done(), "the DFX read counter stopped before the check"
+        reads = self._dft_reads
+        if self.expected_dft_reads is not None:
+            assert reads == self.expected_dft_reads, (
+                f"the SMC port saw {reads} DFX_CTRL_STATUS_SMU read(s) before the halt, "
+                f"expected {self.expected_dft_reads}: the ROM left the gate through a "
+                f"different arm than this test claims"
+            )
+            self.logger.info(
+                "CHK-DFT-ARM PASS: %d DFX_CTRL_STATUS_SMU read(s) before the halt", reads
+            )
 
         # CHK-DFT-DETECT: the gate classified it as a failure and said so before
         # the terminal status. Without this, a ROM that skipped straight to the
@@ -273,6 +309,9 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         # the whole point of it living in vector.S. A silent console proves it: the
         # virtual console is simputs(), and simputs() needs C. If any of these
         # appear, the gate ran too late even if it eventually blocked the boot.
+        assert not console_task.done(), (
+            "the console decoder stopped before the check, so an empty console proves nothing"
+        )
         for marker in _PRE_C_MARKERS:
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which only the C runtime emits: the gate "
@@ -308,10 +347,6 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         assert _STATUS_DFT_GATE_BLOCKED in status_seq, (
             f"cold_scratch[1] never held ROM_ERR_DFT_GATE_BLOCKED "
             f"(0x{_STATUS_DFT_GATE_BLOCKED:08x}); observed {status_hex}"
-        )
-        assert halted, (
-            f"cold_scratch[1] never reached ROM_ERR_DFT_GATE_BLOCKED within "
-            f"{_MAX_RUN_CYCLES} cycles; observed {status_hex}"
         )
         assert not post_status_moved, (
             "cold_scratch[1] moved on after ROM_ERR_DFT_GATE_BLOCKED, so the gate "

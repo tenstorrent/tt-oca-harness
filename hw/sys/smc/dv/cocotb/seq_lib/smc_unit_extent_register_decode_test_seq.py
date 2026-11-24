@@ -44,7 +44,7 @@ from smc_reg import (  # noqa: E402
     AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT,
     CHIP_CONFIG_LC_STATE_REG_DEFAULT,
     DMA_CTRL_NUM_REPETITIONS_HI_REG_DEFAULT,
-    EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT,
+    EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT,
     EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT,
     FILTER_CTRL_END_ADDR_REG_DEFAULT,
     FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT,
@@ -74,9 +74,7 @@ MAILBOX_OUT0_FIRST = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA
 EFUSE_MAP_FIRST = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 EFUSE_CTRL_FIRST = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
 EFUSE_READ_REQ_TIMEOUT = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
-EFUSE_PROGRAM_REQ_TIMEOUT = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR"
-)
+EFUSE_READ_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR")
 TIMER_FIRST = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR")
 TIMER_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
 TIMER_LAST = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR")
@@ -117,9 +115,7 @@ _CHECKERS = (
 _CHECKER_STEPS = ("S2", "S2", "S2", "S2", "S3", "S4", "S5", "S6", "S7")
 
 # Last registers sit at the end of the declared extent of their unit.
-assert EFUSE_PROGRAM_REQ_TIMEOUT + 4 == EFUSE_CTRL_FIRST + smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE"
-)
+assert EFUSE_READ_ADDR + 4 == EFUSE_CTRL_FIRST + smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE")
 assert TIMER_LAST + 4 == TIMER_FIRST + smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE")
 assert MAILBOX_IN31_LAST + 8 == smc_addr(
     "SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_31_BASE_ADDR"
@@ -362,9 +358,9 @@ class smc_unit_extent_register_decode_test_seq(SmcCsrSeq):
         # S6: last registers of mailbox, eFuse interface control and system timer.
         mbox_last = await self.csr_read("MBOX_IN31_CTRL", MAILBOX_IN31_LAST)
         efuse_last = await self.csr_read(
-            "EFUSE_PROGRAM_REQ_TIMEOUT",
-            EFUSE_PROGRAM_REQ_TIMEOUT,
-            expected=EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT,
+            "EFUSE_READ_ADDR",
+            EFUSE_READ_ADDR,
+            expected=EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_REG_DEFAULT,
         )
         timer_last = await self.csr_read(
             "OCTS_TIMER_GPIO_ENABLE",
@@ -376,7 +372,7 @@ class smc_unit_extent_register_decode_test_seq(SmcCsrSeq):
             "CHK-LAST-REG-MAILBOX-EFUSE-TIMER",
             f"INBOUND_MAILBOX_31 CTRL@0x{MAILBOX_IN31_LAST:08X}=0x{mbox_last:08X} (write-only, "
             f"RDL default 0x{AXIL_MAILBOX_CTRL_REG_DEFAULT & _MASK32:X}, observe-only); "
-            f"eFuse PROGRAM_REQ_TIMEOUT@0x{EFUSE_PROGRAM_REQ_TIMEOUT:08X}="
+            f"eFuse READ_ADDR@0x{EFUSE_READ_ADDR:08X}="
             f"0x{efuse_last:08X}; OCTS "
             f"TIMER_GPIO_ENABLE@0x{TIMER_LAST:08X}=0x{timer_last:08X}; eFuse and timer OKAY "
             f"at their RDL reset, mailbox OKAY",

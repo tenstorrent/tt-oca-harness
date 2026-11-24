@@ -39,7 +39,7 @@ D_r in the period walk and the strobe (1 or 2 after a FIFO word) at which the
 compressor bypass is set and cleared in ``INFO-COND-BYPASS-MIDGROUP``; after
 those, the feedback-on mask class (few = 1 to 3 bits, half = 4, all = 0xFF) and
 its mask, the lane L of ``CHK-COND-ONE-LANE``, the few (2 or 3) or half lane
-set of ``INFO-COND-LANE-POP-FIFO`` and the start bit of each lane's alternating
+set of ``OBS-COND-LANE-POP-FIFO`` and the start bit of each lane's alternating
 fill before ``CHK-COND-LANES-OFF``. The per-lane bit tables of
 ``CHK-COND-BYPASS-ORDER`` come from their own stream (``SepSeededRng`` of the
 seed XOR ``ORDER_SALT``), so they move no draw above.
@@ -246,9 +246,13 @@ compressor: not graded; no open specification question.
 ``esrc_compress_data_o`` with the 12 lane bytes of the last two strobes before
 each word, the clocks from the last strobe, and whether the word is in the BIW
 observe words read after the window: not graded; no open specification question.
-``INFO-COND-LANE-POP-FIFO`` logs the strobes, the offered words and FIFO LEVEL over
-one window with a drawn few or half lane set: not graded; no open specification
-question.
+``OBS-COND-LANE-POP-FIFO`` logs, with a drawn few (2 or 3) or half (6) set of
+lanes enabled, the strobes, the words offered on ``esrc_compress_vld_o`` and
+``FIFO_STATUS.LEVEL`` over 16 sample periods: not graded. No text states the
+entropy stream or the FIFO fill rate with only some generators enabled:
+architecture.adoc:113 states that a disabled lane holds and
+architecture.adoc:115 that the BIW stage reduces twelve bytes to one word. The
+value is an open specification question.
 """
 
 from __future__ import annotations
@@ -388,7 +392,7 @@ CTRL_CELLS = ((1, 1), (1, 0), (0, 1), (0, 0))
 CELL_BOUND_FACTOR = 4
 # SAMPLE_CLK_DIV of the chain fill before CHK-COND-LANES-OFF: a strobe on every clk_i.
 FILL_DIV = 0
-# Lane-population window of INFO-COND-LANE-POP-FIFO, in reset sample periods.
+# Lane-population window of OBS-COND-LANE-POP-FIFO, in reset sample periods.
 LANE_POP_PERIODS = 16
 LANE_POP_CLASSES = ("few", "half")
 FEW_LANES = (2, 3)
@@ -1010,7 +1014,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             await self._cnt_pass(ESRC_CNT_PASS_DECOR_MASK)
 
     async def _lane_population(self, bits: list[int]) -> None:
-        """CHK-COND-LANES-OFF, CHK-COND-ONE-LANE and INFO-COND-LANE-POP-FIFO.
+        """CHK-COND-LANES-OFF, CHK-COND-ONE-LANE and OBS-COND-LANE-POP-FIFO.
 
         architecture.adoc:113: the chain shifts on every clk_i while ``enable_i`` is
         high and holds while it is low; RING_OSC_ENABLE.ENABLE is the enable of each
@@ -1167,10 +1171,12 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         return self.noise.words_since(mark)
 
     async def _lane_pop_fifo(self) -> None:
-        """INFO-COND-LANE-POP-FIFO: strobes, offered words and LEVEL with a part of the lanes.
+        """OBS-COND-LANE-POP-FIFO: strobes, offered words and LEVEL with a part of the lanes.
 
         Compressor in use, whitening off, FIFO drained and then enabled for
-        LANE_POP_PERIODS reset byte periods. Logged only.
+        LANE_POP_PERIODS reset byte periods. Logged only, no pass or fail: no
+        text states the entropy stream or the FIFO fill rate with only some
+        generators enabled, so the value has no golden.
         """
         plan = self.plan
         dut = cocotb.top
@@ -1190,7 +1196,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await NextTimeStep()
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         after = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
-        self.chk.info(
+        self.chk.obs(
             "COND-LANE-POP-FIFO",
             lane_class=plan.pop_class,
             lanes=f"0x{plan.pop_lanes:03x}",
@@ -1199,6 +1205,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             offered_words=words,
             level_before=before,
             level_after=after,
+            golden="none_partial_lane_rate_unstated",
         )
 
     # --- bypass-words leg -----------------------------------------------------------

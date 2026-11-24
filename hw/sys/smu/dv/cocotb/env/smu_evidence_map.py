@@ -5016,6 +5016,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "the SMC-side ID-width converter presents the specified 6-bit subsystem ID",
         ),
         (
+            "CHK-SMU-SEP-IN-ID-WIDTH",
+            "CHK-SMU-SEP-IN-ID-WIDTH",
+            "the SEP-side ID-width converter presents the 6-bit transaction ID the crossbar "
+            "is stated to present to the SEP inbound subordinate",
+        ),
+        (
+            "CHK-SMU-XBAR-OUT-ID-WIDTH",
+            "CHK-SMU-XBAR-OUT-ID-WIDTH",
+            "both ID-width converters take the 10-bit crossbar output ID the SMU datasheet states",
+        ),
+        (
             "CHK-SMU-INT-AGG-S1",
             "CHK-SMU-INT-AGG-S1",
             "smc_ext_interrupts_i is 256 wide, the SMC external interrupt count",
@@ -5124,10 +5135,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-SHADOW-SAMPLES",
             "BOOT_SHADOW_SAMPLES",
-            "the sixteen sampled SMC eFuse map words (the six named element words and word 255, "
-            "the last word of the bank, pinned, nine drawn from the seed), read over JTAG2AXI in "
+            "the sixteen sampled SMC eFuse map words (the seven named element words and word 63, "
+            "the last harness map word, pinned, eight drawn from the seed), read over JTAG2AXI in "
             "the drawn order, and the stream words of the same indices equal the words of the "
-            "eFuse image the run loads, and the map words equal the stream words",
+            "eFuse image the run loads, the map words equal the stream words, and the 128 "
+            "supplementary stream words equal the image words of the same index",
         ),
         (
             "CHK-BOOT-SHADOW-ELEMENTS",
@@ -5144,6 +5156,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
             "bounded sense, capture and J2A waits with last state",
+        ),
+    ],
+    "smu_smc_efuse_supplementary_shadow_test": [
+        (
+            "CHK-SUPP-SHADOW-WINDOW",
+            "SUPP_SHADOW_WINDOW",
+            "35 sampled words of the SMC supplementary fuse window (every fourth word and the "
+            "first and last word of each lock region), read over JTAG2AXI after the boot sense, "
+            "and their stream words equal the eFuse image words of the same index, and all 128 "
+            "supplementary stream words equal the image words",
+        ),
+        (
+            "CHK-SUPP-LOCKS-WORD",
+            "SUPP_LOCKS_WORD",
+            "SUPPLEMENTARY_LOCKS is reachable after the boot sense and reads its two image words "
+            "(0 in the asset)",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK_TIMEOUT_PATHS",
+            "bounded capture, done-rise and J2A waits with last state",
         ),
     ],
     "smu_smc_efuse_shadow_sense_reset_test": [

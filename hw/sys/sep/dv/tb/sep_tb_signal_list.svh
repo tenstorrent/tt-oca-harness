@@ -124,10 +124,19 @@
 // The LC_STATE shadow and the lifecycle controller decoder are not forced.
 `SEP_TB_IN(logic, jtag_filter_lc_sigint_inject_i)
 // eFuse sense status inject. Default 0. While 1, during fuse sense only, the
-// bank model APB response to the READ of word efuse_sense_status_word_i
-// carries pslverr = 1. Data and ready are not forced.
+// shim's read-path copy of the bank model APB response to the READ of word
+// efuse_sense_status_word_i carries pslverr = 1. Data and ready are not forced.
 `SEP_TB_IN(logic, efuse_sense_status_inject_i)
 `SEP_TB_IN(logic [7:0], efuse_sense_status_word_i)
+// eFuse status inject, post-sense modes. Default 0. Each acts only after
+// fuse sense done, on the bank access to word efuse_sense_status_word_i, and
+// forces pslverr = 1 on one shim copy of the bank response:
+// _read_i on a frontdoor READ (apb_fuse_bank_resp_r), _write_i on the bank
+// write of a PROGRAM (apb_fuse_bank_resp_w), _readback_i on the bank
+// read-back of a PROGRAM (apb_fuse_bank_resp_w_readback).
+`SEP_TB_IN(logic, efuse_status_inject_read_i)
+`SEP_TB_IN(logic, efuse_status_inject_write_i)
+`SEP_TB_IN(logic, efuse_status_inject_readback_i)
 // eFuse shim response hold. Default 0. While 1 and a PROGRAM command is at
 // the post-guard port, the valid of the shim response at the sep input efuse_shim_command_resp_i is forced to 0.
 `SEP_TB_IN(logic, efuse_shim_resp_hold_i)
@@ -144,6 +153,20 @@
 `SEP_TB_IN(logic, mbox_lane_inject_arm_i)
 `SEP_TB_IN(logic [sep_pkg::NumMailboxes-1:0], mbox_lane_inject_mbx_i)
 `SEP_TB_IN(logic [63:0], mbox_lane_inject_data_i)
+// DMA host-path response error inject. Default 0. While 1 and CONTROL.OPCODE is not the zero
+// fill, the host adapter's AXI-lite read and write resp is forced to SLVERR. A release can keep
+// SLVERR until the response driver changes, so a DMA transfer after the drop can still fail.
+// See tb_top.sv.
+`SEP_TB_IN(logic, dma_host_rsp_err_inject_i)
+// Response beats of each secure-DMA host transfer that complete normally before the inject above
+// forces SLVERR. Default 0: SLVERR from the first beat. See tb_top.sv.
+`SEP_TB_IN(logic [7:0], dma_host_rsp_err_pass_beats_i)
+// AES software-reset readback inject. Default 0. While 1, reads of sep_reset_ctrl return bit 2
+// (SW_RESET_N.aes_sw_rst_n) as 0; the register and the AES reset are not forced. See tb_top.sv.
+`SEP_TB_IN(logic, aes_sw_rst_readback_inject_i)
+// AES CTRL update error inject. Default 0. While 1, the AES core's shadowed-register update error
+// input is 1, so STATUS.ALERT_RECOV_CTRL_UPDATE_ERR sets and a recoverable alert is sent.
+`SEP_TB_IN(logic, aes_ctrl_update_err_inject_i)
 // HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
 // side idle and the core's message valid toward the SHA-2 engine low, so the
 // hash engine takes no word and the FIFO fills. A port rather
@@ -387,6 +410,13 @@
 `SEP_TB_IN(logic, rom_flip_i)
 `SEP_TB_IN(logic [12:0], rom_flip_index_i)
 `SEP_TB_IN(logic [63:0], rom_flip_mask_i)
+// Runtime warm-handler deposit (docs/SEP_TB_ARCH.adoc). A rising edge of
+// runtime_cold_scratch7_we_i writes runtime_cold_scratch7_wdata_i into COLD
+// Scratch 7; runtime_cold_scratch7_ack_o rises after the write and falls when
+// the request drops. Default 0: the slot is not written.
+`SEP_TB_IN(logic, runtime_cold_scratch7_we_i)
+`SEP_TB_IN(logic [31:0], runtime_cold_scratch7_wdata_i)
+`SEP_TB_OUT(logic, runtime_cold_scratch7_ack_o)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -856,6 +886,9 @@
 `SEP_TB_OUT(logic [11:0], esrc_detune_o)
 // Lane i: u_decorrelator.noise_i, the decorrelator input bit of the lane.
 `SEP_TB_OUT(logic [11:0], esrc_decor_noise_o)
+// entropy_source window_wrap_pulse: 1 for the clk_i cycle that ends a
+// health-test window.
+`SEP_TB_OUT(logic, esrc_window_wrap_o)
 // Next value of the SHA256_STATUS fields: [0] BUSY, [4:1] INPUT_COUNT,
 // [8:5] OUTPUT_COUNT.
 `SEP_TB_OUT(logic [8:0], esrc_sha256_status_o)
@@ -1003,6 +1036,11 @@
 // Observation-only depth of the fabric pool's 32->64 packer. Used to
 // trigger a TRNG reset with exactly one pre-reset 32-bit half-word cached.
 `SEP_TB_OUT(logic [1:0], entropy_pool_packer_depth_o)
+// Entropy-pool AXI slave handshake: the valid and ready nets of
+// u_entropy_fifo.entropy_fifo_axi_req_i/_resp_o, sampled on clk_i. Read-only.
+// [0] aw_valid [1] aw_ready [2] w_valid [3] w_ready [4] b_valid [5] b_ready
+// [6] ar_valid [7] ar_ready [8] r_valid [9] r_ready.
+`SEP_TB_OUT(logic [9:0], entropy_pool_axi_hs_o)
 // Coordinated-reset observation: shared reset plus ESRC/CSRNG/EDN isolate
 // completion bits, used to prove reset cannot precede the slowest drain.
 `SEP_TB_OUT(logic, trng_gated_rst_n_probe_o)
@@ -1052,11 +1090,13 @@
 // stage in the same order as crypto_isolated_probe_o: the AW, AR, B and R handshakes
 // (valid and ready on the same clock) and the B and R response codes (two bits per
 // stage, stage i at [2i+1:2i]). Read-only taps of the isolate units' slv_req_i and
-// slv_resp_o ports. iso_slv_ar_valid_probe_o is the AR valid alone, so a read can be
-// seen pending at a stage before its handshake.
+// slv_resp_o ports. iso_slv_ar_valid_probe_o and iso_slv_aw_valid_probe_o are the AR
+// and AW valid alone, so a read or write can be seen pending at a stage before its
+// handshake.
 `SEP_TB_OUT(logic [13:0], iso_slv_aw_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_ar_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_ar_valid_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_aw_valid_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_b_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)
@@ -1725,6 +1765,14 @@
 // sensing FSM (efuse_shadow_regs). Read-only taps.
 `SEP_TB_OUT(logic, efuse_shadow_resp_valid_o)
 `SEP_TB_OUT(logic, efuse_shadow_sense_done_o)
+// Registered APB response of the shadow map (efuse_shadow_regs apb_resp_q):
+// pready and pslverr. Read-only taps.
+`SEP_TB_OUT(logic, efuse_shadow_apb_pready_o)
+`SEP_TB_OUT(logic, efuse_shadow_apb_pslverr_o)
+// Program-fail drop of the OTP bank model (prog_fail_act, one clock per
+// dropped bank write) and the APB paddr of that write. Read-only taps.
+`SEP_TB_OUT(logic, efuse_bank_prog_drop_o)
+`SEP_TB_OUT(sep_efuse_pkg::addr_t, efuse_bank_prog_drop_paddr_o)
 // APB select of the shim request to the OTP bank model. Read-only tap.
 `SEP_TB_OUT(logic, efuse_bank_psel_o)
 // The 256 OTP bank words that SEP reaches (words 0..255 of the bank model).

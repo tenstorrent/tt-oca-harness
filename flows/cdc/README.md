@@ -15,6 +15,7 @@ sign-off constraints. The per-block pieces live beside each subsystem:
 | `hw/sys/<block>/synth/<block>_{clocks,clock_groups,io_delays}.sdc` | Clocks, generated clocks, async groups and IO delays; the synthesis SDC `constraints.sdc` composes the same files |
 | `hw/sys/<block>/cdc/<block>.cdc_rdc.tcl` | Entry point: sources the block's files in dependency order |
 | `hw/sys/<block>/cdc/<block>.{resets,case_analysis,static_signals,cdc_rdc_setup}.tcl` | Reset tree and assertion sequences, functional case analysis, quasi-static signals, instance-level synchronizer annotation |
+| `hw/sys/{smc,smu}/cdc/<block>.pad_boundary.tcl` | Pad-boundary constraints, applied at that block's own top only (see below) |
 | `hw/sys/<block>/cdc/<block>.vccdc*.waiver.tcl`, `hw/sys/<block>/rdc/<block>.vcrdc*.waiver.tcl` | Reviewed CDC and RDC waivers |
 
 ## Knobs
@@ -44,6 +45,16 @@ child's boundary constraints (port clocks, IO delays, port resets, its own
 `cdc_apply_async_groups`) are skipped under a prefix; its internal constraints
 re-anchor through `cdc_inst`, and generated clocks it registers with
 `cdc_group_extra` land in the parent's async groups.
+
+The pad boundary is skipped the same way. `smc.pad_boundary.tcl` holds the
+`core2pad_o` output ignore paths and the AVS sdata synchroniser on
+`pad2core_i[51]`; `smc_clocks.sdc` gates the AVS and SPI GPIO clocks and
+`sep_clocks.sdc` gates `ENTROPY_ROSC_CLK` on the block top. They treat those
+ports as the chip boundary, which a parent with its own pads (a padring, or a
+bidirectional pad through which `core2pad_o` returns to `pad2core_i`) does not
+share, so that parent states its own boundary. SMU's GPIO and entropy ports are
+top ports, so `smu.pad_boundary.tcl` restates the same constraints on them,
+sourced after the SMC and SEP replays whose clocks it derives from.
 
 ## Primitive leaf names
 

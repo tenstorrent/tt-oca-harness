@@ -9,6 +9,13 @@ RAND-REP. Every seed walks both cells on SPARE0..SPARE8 (never LC_STATE):
     bit, prove OTP and the post-resense shadow match the independent golden
     (lock bit set, rejected bit still 0)
 
+CTRL-LOCK-REJECT-REACH: ``efuse_req_error`` reads 0 before the refused program
+and 1 at its ``program_done``, before the sequence clears it
+(``efuse_interface_ctrl.rdl``, ``efuse_req_error``: "Indicates that the eFuse was
+blocked because of either read or a program lock"). The flag rises only when the
+go reaches the lock check, so a lost go fails here and is not graded as a
+refusal.
+
 Spares are walked in order, so a lock of spare k that also locks spare k+1
 fails the next unlocked-program cell. The seed selects only the bit offsets
 inside each spare.
@@ -21,15 +28,19 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_efuse_test_lib import SepEfuseFd
 from env.sep_lcc_golden import LC_TEST_DEV
 from env.sep_locked_field_irq import spare_zero_pins
 from sep_base_test import sep_base_test
+from sep_reg_meta import EFUSE_INTERFACE_CTRL
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_program_lock_seq import SepEfuseProgramLockCfg
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
+_IFACE_STATUS = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
+_REQ_ERROR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error")
 
 
 @pyuvm.test()
@@ -115,9 +126,15 @@ class sep_efuse_program_lock_matrix_test(sep_base_test):
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         await self.start_seq(sep_efuse_shadow_check_seq(golden, fields=["LOCKS_SPARE"]))
 
+        req_before = await SepEfuseFd(self).rd(_IFACE_STATUS) & _REQ_ERROR
         locked = sep_efuse_otp_program_seq(cell.reject_addr, expect_err=True)
         await self.start_seq(locked)
         assert locked.saw_err, "write-lock reject did not observe PROGRAM_ERR"
+        req_at_done = (locked.req_status_at_done or 0) & _REQ_ERROR
+        reach = f"{cell.field} bit {cell.reject_bit} req_error_before={int(bool(req_before))} "
+        reach += f"req_error_at_done={int(bool(req_at_done))}"
+        assert not req_before and req_at_done, f"CTRL-LOCK-REJECT-REACH FAIL: {reach}"
+        self.logger.info("CTRL-LOCK-REJECT-REACH PASS: %s", reach)
         got = await self._direct_word(cell.reject_addr // 32)
         assert ((got >> (cell.reject_addr % 32)) & 1) == 0, (
             f"write-locked {cell.field} bit {cell.reject_bit} burned (OTP word=0x{got:08x})"

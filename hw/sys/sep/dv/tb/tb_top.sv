@@ -524,7 +524,7 @@ module sep_uvm_top
     localparam bit [255:0] SecDisTbDigest =
         256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
     // Read-only copy of the bound digest: a localparam has no simulator handle on
-    // every tool, a net does. CHK-BIND reads it.
+    // every tool, a net does. CTRL-BIND reads it.
     wire [255:0] sec_dis_digest_probe_o;
     assign sec_dis_digest_probe_o = SecDisTbDigest;
     // SMC fuse-sense completion. No SMC RTL is instantiated in this top, so the TB
@@ -1650,6 +1650,18 @@ module sep_uvm_top
     end
 
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
+    assign entropy_pool_axi_hs_o = {
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.r_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.r_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.ar_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.ar_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.b_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.b_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.w_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.w_valid,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_resp_o.aw_ready,
+        `SEP_CORE.u_entropy_fifo.entropy_fifo_axi_req_i.aw_valid
+    };
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
     assign trng_reset_active_probe_o =
@@ -1741,6 +1753,7 @@ module sep_uvm_top
     assign iso_slv_ar_hs_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid & \
                                       `SEP_ISO_IC.inst.slv_resp_o.ar_ready; \
     assign iso_slv_ar_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.ar_valid; \
+    assign iso_slv_aw_valid_probe_o[i] = `SEP_ISO_IC.inst.slv_req_i.aw_valid; \
     assign iso_slv_b_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.b_valid & \
                                       `SEP_ISO_IC.inst.slv_req_i.b_ready; \
     assign iso_slv_r_hs_probe_o[i]  = `SEP_ISO_IC.inst.slv_resp_o.r_valid & \
@@ -2726,6 +2739,41 @@ module sep_uvm_top
         end
     end
 
+    // Runtime warm-handler deposit: the same leaf and per-tool mechanics as
+    // cold_scratch7_seed_deposit, so a leaf can arm the slot after the ROM has
+    // started and then raise a second CPU reset. Handshake order:
+    //   1. cocotb drives runtime_cold_scratch7_wdata_i, then raises _we_i.
+    //   2. tb writes the value into COLD Scratch 7.
+    //   3. tb raises _ack_o; the slot already holds the value.
+    //   4. cocotb drops _we_i; tb drops _ack_o.
+    logic [31:0] runtime_cold_scratch7_q;
+    initial begin : runtime_cold_scratch7_deposit
+        runtime_cold_scratch7_ack_o = 1'b0;
+        forever begin
+            @(posedge runtime_cold_scratch7_we_i);
+            if (runtime_cold_scratch7_we_i === 1'b1) begin
+                runtime_cold_scratch7_q = runtime_cold_scratch7_wdata_i;
+`ifdef VERILATOR
+                `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value =
+                    runtime_cold_scratch7_q;
+`else
+                force `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value =
+                    runtime_cold_scratch7_q;
+                @(posedge clk_i);
+                release `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
+                    .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value;
+`endif
+                $display("%0t: [tb] cold_scratch[7] = 0x%08x (runtime_cold_scratch7_we_i)",
+                         $time, runtime_cold_scratch7_q);
+                runtime_cold_scratch7_ack_o = 1'b1;
+                wait (runtime_cold_scratch7_we_i !== 1'b1);
+                runtime_cold_scratch7_ack_o = 1'b0;
+            end
+        end
+    end
+
     // ------------------------------------------------------------------
     // KM VUART_STATUS.PRINT_ENABLE drive.
     // ------------------------------------------------------------------
@@ -3060,6 +3108,16 @@ module sep_uvm_top
     // doc/otp_fuse_controller.adoc names.
     assign efuse_shadow_resp_valid_o = `EFUSE_CTRL.u_efuse_shadow_regs.fuse_command_resp_i.valid;
     assign efuse_shadow_sense_done_o = `EFUSE_CTRL.u_efuse_shadow_regs.fuse_sense_done_o;
+    // The registered APB response of the shadow map (efuse_shadow_regs apb_resp_q):
+    // pready and pslverr. rst_ni clears the register asynchronously.
+    assign efuse_shadow_apb_pready_o = `EFUSE_CTRL.u_efuse_shadow_regs.apb_resp_q.pready;
+    assign efuse_shadow_apb_pslverr_o = `EFUSE_CTRL.u_efuse_shadow_regs.apb_resp_q.pslverr;
+    // The program-fail drop of the bank model: prog_fail_act is high for the
+    // one APB setup clock of a bank write whose data the model zeroes, with
+    // the paddr of that write. prog_fail_act has no reset of its own; the
+    // drop count re-arms on every rst_ni.
+    assign efuse_bank_prog_drop_o = `SEP_IPI.u_efuse_bank_model.prog_fail_act;
+    assign efuse_bank_prog_drop_paddr_o = `SEP_IPI.u_efuse_bank_model.apb_req_i.paddr;
     // The APB select of the shim request to the bank model (efuse_model_otp_req in
     // sep_ip_integration): a request that the guard blocks starts no bank access.
     assign efuse_bank_psel_o = `SEP_IPI.efuse_model_otp_req.psel;
@@ -3111,7 +3169,8 @@ module sep_uvm_top
     // input routed by the READ command). It is a variable of an always_comb
     // block that also drives the APB request, so the block runs again on the
     // next request change and the released pslverr takes the bank value again
-    // within one clock. The bank pslverr itself has a constant driver, so a
+    // at that change; the shim reads that copy only in ST_READ_WAIT, after a new
+    // request. The bank pslverr itself has a constant driver, so a
     // released force there would keep the value 1 (Verilator release of a
     // variable) and fail every later sense word, also after rst_ni.
     // The sense streams words 0..255 from bit address 0 and the shim reads
@@ -3121,24 +3180,74 @@ module sep_uvm_top
     // evaluated at the clock edge that starts the APB access phase (psel high,
     // penable not yet high), so the force covers the whole access phase.
     // Re-issued every clock and released when the gate drops. Default 0.
+    //
+    // Three post-sense modes use the same word select and the same gate
+    // timing, each only after sense done (fuse_sense_done high):
+    // - efuse_status_inject_read_i=1: a frontdoor READ of the word; force
+    //   target apb_fuse_bank_resp_r.pslverr, as above.
+    // - efuse_status_inject_write_i=1: the bank write (pwrite=1) of a PROGRAM
+    //   command to the word; force target apb_fuse_bank_resp_w.pslverr, the
+    //   write-phase copy that the shim keeps for the program response.
+    // - efuse_status_inject_readback_i=1: the bank read-back (pwrite=0) of a
+    //   PROGRAM command to the word; force target
+    //   apb_fuse_bank_resp_w_readback.pslverr.
+    // apb_fuse_bank_resp_w and apb_fuse_bank_resp_w_readback are variables of
+    // the same always_comb block as apb_fuse_bank_resp_r, so the release
+    // argument above holds for them. The sense-time term is independent of
+    // these inputs. Each mode input defaults to 0.
 `define EFUSE_OTP_REQ  `SEP_IPI.efuse_model_otp_req
-`define EFUSE_SHIM_RESP_R `SEP_IPI.u_efuse_interface_shim.apb_fuse_bank_resp_r
+`define EFUSE_SHIM     `SEP_IPI.u_efuse_interface_shim
+`define EFUSE_SHIM_CMD `SEP_CORE.efuse_shim_command_req_o
+    wire efuse_status_word_sel =
+        (`EFUSE_SHIM_CMD.valid === 1'b1) &&
+        (`EFUSE_OTP_REQ.psel === 1'b1) &&
+        (`EFUSE_OTP_REQ.paddr[9:2] === efuse_sense_status_word_i);
     wire efuse_sense_status_hit =
         (efuse_sense_status_inject_i === 1'b1) &&
         (`EFUSE_CTRL.fuse_sense_done === 1'b0) &&
-        (`SEP_CORE.efuse_shim_command_req_o.valid === 1'b1) &&
-        (`SEP_CORE.efuse_shim_command_req_o.command === efuse_pkg::FUSE_COMMAND_READ) &&
-        (`EFUSE_OTP_REQ.psel === 1'b1) &&
-        (`EFUSE_OTP_REQ.paddr[9:2] === efuse_sense_status_word_i);
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_READ) &&
+        efuse_status_word_sel;
+    wire efuse_status_read_hit =
+        (efuse_status_inject_read_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_READ) &&
+        efuse_status_word_sel;
+    wire efuse_status_write_hit =
+        (efuse_status_inject_write_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_PROGRAM) &&
+        (`EFUSE_OTP_REQ.pwrite === 1'b1) &&
+        efuse_status_word_sel;
+    wire efuse_status_readback_hit =
+        (efuse_status_inject_readback_i === 1'b1) &&
+        (`EFUSE_CTRL.fuse_sense_done === 1'b1) &&
+        (`EFUSE_SHIM_CMD.command === efuse_pkg::FUSE_COMMAND_PROGRAM) &&
+        (`EFUSE_OTP_REQ.pwrite === 1'b0) &&
+        efuse_status_word_sel;
     always @(posedge clk_i) begin
-        if (efuse_sense_status_hit) begin
-            force `EFUSE_SHIM_RESP_R.pslverr = 1'b1;
+        if (efuse_sense_status_hit || efuse_status_read_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_r.pslverr = 1'b1;
         end else begin
-            release `EFUSE_SHIM_RESP_R.pslverr;
+            release `EFUSE_SHIM.apb_fuse_bank_resp_r.pslverr;
+        end
+    end
+    always @(posedge clk_i) begin
+        if (efuse_status_write_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_w.pslverr = 1'b1;
+        end else begin
+            release `EFUSE_SHIM.apb_fuse_bank_resp_w.pslverr;
+        end
+    end
+    always @(posedge clk_i) begin
+        if (efuse_status_readback_hit) begin
+            force `EFUSE_SHIM.apb_fuse_bank_resp_w_readback.pslverr = 1'b1;
+        end else begin
+            release `EFUSE_SHIM.apb_fuse_bank_resp_w_readback.pslverr;
         end
     end
 `undef EFUSE_OTP_REQ
-`undef EFUSE_SHIM_RESP_R
+`undef EFUSE_SHIM
+`undef EFUSE_SHIM_CMD
 
     // ------------------------------------------------------------------
     // eFuse shim response hold.
@@ -3198,6 +3307,73 @@ module sep_uvm_top
         end
     end
 `undef DMA_HOST_CMD_INTG_DI
+
+    // While the input is high, every secure-DMA host response after the first pass_beats of a
+    // transfer returns SLVERR, except during a zero fill, so a ROM memory clear still completes.
+`define DMA_HOST_AXIL_RSP `SEP_CORE.u_sep_dma_wrap.axi_lite_mst_resp
+`define DMA_HOST_AXIL_REQ `SEP_CORE.u_sep_dma_wrap.axi_lite_mst_req
+    logic dma_host_rsp_err_forced;
+    logic [$bits(dma_host_rsp_err_pass_beats_i)-1:0] dma_host_rsp_beats_q, dma_host_rsp_beats_d;
+    // Saturating count of host response beats since the engine left idle for a new transfer.
+    always_comb begin
+        dma_host_rsp_beats_d = `SEP_CORE.u_sep_dma_wrap.u_secure_dma.clear_status ?
+                               '0 : dma_host_rsp_beats_q;
+        if (`DMA_HOST_AXIL_RSP.r_valid && `DMA_HOST_AXIL_REQ.r_ready &&
+            (dma_host_rsp_beats_d != '1)) begin
+            dma_host_rsp_beats_d = dma_host_rsp_beats_d + 1'b1;
+        end
+        if (`DMA_HOST_AXIL_RSP.b_valid && `DMA_HOST_AXIL_REQ.b_ready &&
+            (dma_host_rsp_beats_d != '1)) begin
+            dma_host_rsp_beats_d = dma_host_rsp_beats_d + 1'b1;
+        end
+    end
+    always @(posedge clk_i) begin
+        dma_host_rsp_beats_q <= dma_host_rsp_beats_d;
+        if ((dma_host_rsp_err_inject_i === 1'b1) &&
+            (`SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.control.opcode.q != 4'h4) &&
+            (dma_host_rsp_beats_d >= dma_host_rsp_err_pass_beats_i)) begin
+            force `DMA_HOST_AXIL_RSP.r.resp = axi_pkg::RESP_SLVERR;
+            force `DMA_HOST_AXIL_RSP.b.resp = axi_pkg::RESP_SLVERR;
+            dma_host_rsp_err_forced <= 1'b1;
+        end else if (dma_host_rsp_err_forced === 1'b1) begin
+            release `DMA_HOST_AXIL_RSP.r.resp;
+            release `DMA_HOST_AXIL_RSP.b.resp;
+            dma_host_rsp_err_forced <= 1'b0;
+        end
+    end
+`undef DMA_HOST_AXIL_REQ
+`undef DMA_HOST_AXIL_RSP
+
+    // While the input is high, SW_RESET_N reads back its AES bit as 0; the AES stays out of reset.
+`define RST_CTRL_REG `SEP_CORE.u_sep_reset_ctrl.u_reg
+    logic aes_sw_rst_readback_forced;
+    always @(posedge clk_i) begin
+        if (aes_sw_rst_readback_inject_i === 1'b1) begin
+            force `RST_CTRL_REG.cpuif_rd_data = (`RST_CTRL_REG.rd_mux_addr == 4'h0) ?
+                                                (`RST_CTRL_REG.readback_data & ~64'h4) :
+                                                `RST_CTRL_REG.readback_data;
+            aes_sw_rst_readback_forced <= 1'b1;
+        end else if (aes_sw_rst_readback_forced === 1'b1) begin
+            release `RST_CTRL_REG.cpuif_rd_data;
+            aes_sw_rst_readback_forced <= 1'b0;
+        end
+    end
+`undef RST_CTRL_REG
+
+    // While the input is high, the AES core flags a CTRL update error as a recoverable alert.
+`define AES_SHADOWED_UPD_ERR \
+    `SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes.u_aes_core.shadowed_update_err_i
+    logic aes_ctrl_update_err_forced;
+    always @(posedge clk_i) begin
+        if (aes_ctrl_update_err_inject_i === 1'b1) begin
+            force `AES_SHADOWED_UPD_ERR = 1'b1;
+            aes_ctrl_update_err_forced <= 1'b1;
+        end else if (aes_ctrl_update_err_forced === 1'b1) begin
+            release `AES_SHADOWED_UPD_ERR;
+            aes_ctrl_update_err_forced <= 1'b0;
+        end
+    end
+`undef AES_SHADOWED_UPD_ERR
 
     // ------------------------------------------------------------------
     // Mailbox WRITE_DATA unstrobed-lane inject.
@@ -4196,6 +4372,9 @@ module sep_uvm_top
     `ESRC_DECOR_NOISE_TAP(6);  `ESRC_DECOR_NOISE_TAP(7);  `ESRC_DECOR_NOISE_TAP(8);
     `ESRC_DECOR_NOISE_TAP(9);  `ESRC_DECOR_NOISE_TAP(10); `ESRC_DECOR_NOISE_TAP(11);
 `undef ESRC_DECOR_NOISE_TAP
+    //   * esrc_window_wrap_o: the entropy_source health-test window-wrap strobe
+    //     (window_wrap_pulse), 1 for the clk_i cycle that ends a window.
+    assign esrc_window_wrap_o = `SEP_ESRC.window_wrap_pulse;
     assign esrc_sha256_status_o = {`SEP_ESRC.reg_in.SHA256_STATUS.OUTPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.INPUT_COUNT.next,
                                    `SEP_ESRC.reg_in.SHA256_STATUS.BUSY.next};
@@ -6102,11 +6281,18 @@ module sep_uvm_top
     assign jtag_filter_lc_sigint_inject_i = 1'b0;
     assign efuse_sense_status_inject_i = 1'b0;
     assign efuse_sense_status_word_i = '0;
+    assign efuse_status_inject_read_i = 1'b0;
+    assign efuse_status_inject_write_i = 1'b0;
+    assign efuse_status_inject_readback_i = 1'b0;
     assign efuse_shim_resp_hold_i   = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign mbox_lane_inject_arm_i   = 1'b0;
     assign mbox_lane_inject_mbx_i   = '0;
     assign mbox_lane_inject_data_i  = '0;
+    assign dma_host_rsp_err_inject_i = 1'b0;
+    assign dma_host_rsp_err_pass_beats_i = '0;
+    assign aes_sw_rst_readback_inject_i = 1'b0;
+    assign aes_ctrl_update_err_inject_i = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
     assign crypto_alert_inject_i    = 1'b0;
@@ -6189,6 +6375,8 @@ module sep_uvm_top
     assign rom_flip_i               = 1'b0;
     assign rom_flip_index_i         = '0;
     assign rom_flip_mask_i          = '0;
+    assign runtime_cold_scratch7_we_i    = 1'b0;
+    assign runtime_cold_scratch7_wdata_i = '0;
 
     // Test classes compile as part of this top (module scope).
     `include "sep_tests.sv"
