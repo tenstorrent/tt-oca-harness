@@ -162,8 +162,9 @@ Checkers:
   CHK-LOCK-SLOT0-STORE order cell, after CHK-LOCK-ORDER: a write of ``LOCKS`` bits [1:0]
                     (slot 0, ``LC_STATE``) reads both bits 1, and a later write of 0
                     leaves both 1 (``sep_efuse_map.rdl`` ``LOCKS``, woset);
-                    ``OBS-LOCK-SLOT0-RESP`` logs both response codes. The effect
-                    on ``LC_STATE`` is not graded. Control: both bits read 0 before.
+                    ``OBS-LOCK-SLOT0-RESP`` logs both response codes. The exempt
+                    cell grades the effect on ``LC_STATE`` (CHK-LOCK-EXEMPT).
+                    Control: both bits read 0 before.
   CHK-PROG-ROUND    chain leg, per round: the frontdoor word is unchanged after the
                     program, the program reads ``program_busy`` 0, ``program_done``
                     1 and ``efuse_req_error`` 0, and the bank gains exactly the bit; after the resense all
