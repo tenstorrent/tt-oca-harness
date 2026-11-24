@@ -50,7 +50,9 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-SPI-ALERT-TEST: with INTR_ENABLE = both bits, a write of 1 to
                   ALERT_TEST.fatal_fault leaves INTR_STATE 0 and
                   sep_internal_interrupts[13] 0 on every clk_i cycle of the
-                  sample window. The SPI line is the OR of the error and
+                  sample window, which opens when the write is issued
+                  because the alert receiver acknowledges the pair before
+                  the write response returns. The SPI line is the OR of the error and
                   SPI-event interrupts (hw/sys/sep/doc/spi.adoc, Interrupts),
                   and ALERT_TEST triggers an alert event, not an interrupt
                   (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/
@@ -899,6 +901,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             length=4,
             allow_unverified_write_resp=True,
         )
+        window = cocotb.start_soon(self._line_window())
         await self.start_seq(alert_wr)
         if alert_wr.timed_out:
             msg = (
@@ -910,11 +913,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             "CTRL-SPI-ALERT-RESP seed=%d reg=ALERT_TEST data=0x1 write response received", seed
         )
         self.logger.info("INFO-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
-        high, _first, diff, alert_clk = await self._line_window()
+        high, _first, diff, alert_clk = await window
         if alert_clk < 0:
             msg = (
                 f"CTRL-MISSING SPI-ALERT-REACH seed={seed} no fatal_fault alert on the SPI host "
-                f"alert tap in {_ALERT_WIN} clk_i cycles after the ALERT_TEST write"
+                f"alert tap in {_ALERT_WIN} clk_i cycles from the ALERT_TEST write"
             )
             self.logger.error(msg)
             raise AssertionError(msg)
