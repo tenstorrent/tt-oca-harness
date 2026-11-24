@@ -374,7 +374,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# Used bits of nine narrow fuse registers at drawn edge values, and no shadow word
+# Used bits of eight narrow fuse registers at drawn edge values, and no shadow word
 # carries the drawn JTAG ID. RAND-REP.
 name = "sep_efuse_field_layout_rand_test"
 module = "efuse.sep_efuse_field_layout_rand_test"
