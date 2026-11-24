@@ -1463,7 +1463,8 @@ Exceptions (a closed set):
   in place. Software cannot store a word with a wrong ECC, so a stored-bit
   error has no frontdoor. The response, the counters and the trap state the
   checkers read are not forced. Driver: `env/sep_tcm_flip.py`. Owners:
-  `sep_tcm_dma_aperture_ecc_test`, `sep_tcm_ecc_cpu_trap_test`.
+  `sep_tcm_dma_aperture_ecc_test`, `sep_tcm_ecc_cpu_trap_test`,
+  `sep_rom_selfcheck_locus_addr_test`, `sep_rom_selfcheck_locus_len_test`.
 * *Single-beat WRAP inject* — `+sep_axi_wrap_len1_inject` lets a master drive
   a WRAP burst with AxLEN = 0, which AXI4 does not allow. The `ocah_axi_sva`
   checker of `m_axi` and of `s_axi` sees AxBURST = INCR on such an AW or AR, so
@@ -1494,7 +1495,10 @@ Exceptions (a closed set):
   outside `sep`, behind `sep_boot_rom_rsp_i`. A rising edge of `rom_flip_i`
   XORs `rom_flip_mask_i` into the stored 64-bit word `rom_flip_index_i`. The
   ROM has no write path, so a changed stored bit has no frontdoor. Driver:
-  `env/sep_rom_image.py`. Owner: `sep_boot_rom_aperture_sweep_test`.
+  `env/sep_rom_image.py`. Owners: `sep_boot_rom_aperture_sweep_test` and the gate-ledger
+  fault leaves of `rom_fw/sep_rom_gate_skip_test.py`, `sep_rom_gate_failover_test.py`,
+  `sep_rom_gate_hash_bypass_test.py`, `sep_rom_selfcheck_counter_test.py` and
+  `sep_rom_selfcheck_locks_unset_test`.
 * *Runtime warm-handler deposit* — a rising edge of
   `runtime_cold_scratch7_we_i` writes `runtime_cold_scratch7_wdata_i` into
   the COLD Scratch 7 field storage, with the per-simulator mechanics of the
