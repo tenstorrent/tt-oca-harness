@@ -144,6 +144,15 @@ waive_violation -add {SMC_SETUP_RDC_CONSTRAINT_UNUSED_DOC_SEQUENCES} -comment {R
 # --- cold-reset deglitch shift register ---
 waive_violation -add {SMC_SETUP_RESET_INFERRED_SOFT_TELEMETRY_RST_SYNC_TAIL} -comment {Last stage of the telemetry FIFO reset synchronisers (prim_sync_reset): a synchronised asynchronous reset feeding the async FIFO, not a missing soft reset. The library-cell build reported the same tails as SETUP_RESET_SOFT_NOASSERT.} -filter [apply_prefix {(PotentialRoot =~ "${PREFIX}u_smc_peripherals/u_telemetry_receiver_wrap/u_at_fifo_*_rst_sync/gen_rst_sync_stage[*].u_sync_dffr/q_d/Q")}] -app { rdc } -tag { SETUP_RESET_INFERRED_SOFT } -user { nbetik } -timestamp { 02-10-2026 14:00:00 }
 
+# --- eFuse reset release qualifier ---
+waive_violation -add {SMC_SETUP_RESET_INFERRED_SOFT_EXT_BOOT_SEQ_DONE} -comment {ext_boot_seq_done sticky flop: it only releases the eFuse controller reset once the synchronised done input rises, and it returns low only on cold reset, which asserts PRIMARY and so the eFuse reset through its rst_ni.} -filter [apply_prefix {(PotentialRoot =~ "${PREFIX}u_smc_peripherals/u_ext_boot_seq_done_qual/u_ext_boot_seq_done_sticky/q_o/Q*")}] -app { rdc } -tag { SETUP_RESET_INFERRED_SOFT } -user { nboettcher } -timestamp { 23-11-2026 20:00:00 }
+
+# --- watchdog reset into the interconnect ---
+# The warm reset asserts alone on a watchdog bite and does not reset the interconnect.
+# The TRM (reset.adoc, Watchdog timeout) accepts that a transaction can be lost or left
+# hung across it and requires a cold reset after every watchdog timeout.
+waive_violation -add {SMC_RDC_CORRUPT_WARM_INTO_INTERCONNECT} -comment {Watchdog (warm) reset assertion corrupting primary-reset interconnect state: the accepted triage-only risk of the TRM watchdog reset, recovered by the mandatory cold reset.} -filter [apply_prefix {((RdcSourceResets:ResetName == "WARM_RESET_N") OR (RdcSourceResets:ResetName == "WARM_RESET_N_SMC_CLK")) AND ((SrcObject =~ "${PREFIX}u_smc_peripherals/u_smc_misc_wrap/u_smc_scratch_reg_cold_warm/*") OR (SrcObject =~ "${PREFIX}u_smc_cpu_wrapper/u_smc_cpu_ctrl_wrap/cluster_uncore_reset_n_n0_scan_o/*")) AND ((DestObject =~ "${PREFIX}u_smc_peripherals/u_smc_misc_wrap/u_axi_lite_demux/*") OR (DestObject =~ "${PREFIX}u_smc_peripherals/u_smc_periph_axi_lite_xbar/*") OR (DestObject =~ "${PREFIX}u_smc_cpu_wrapper/u_smc_cpu/u_l2_frontend_axi_isolate/*") OR (DestObject =~ "${PREFIX}u_smc_cpu_wrapper/u_smc_cpu/u_mmio_axi_isolate/*"))}] -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nboettcher } -timestamp { 23-11-2026 20:00:00 }
+
 # --- DFD debug-bus observation taps of reset values ---
 # The DBM lanes deliberately observe cluster reset nets on the debug bus
 # (reset value visibility for debug); the "reset used as data" at debug_bus_ff

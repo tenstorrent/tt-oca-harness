@@ -47,10 +47,9 @@ proc _dtp_gen_reset { name sense master net } {
 #
 # Block top: a generated child of pwr_on_rst_ni.
 # Parent (SMU flat) runs: declared as its OWN reset. There pwr_on_rst_ni aliases to
-# POWERGOOD_STABLE_N, which carries "-to_clock ... JTAG_TCK" assertion sequences (SMC
-# smc.resets.tcl, SEP sep.resets.tcl: TCK has no edges while power-good is low). A generated
-# child would inherit those sequences and prune every TRST-sourced RDC crossing into a
-# TCK-clocked flop. TRST asserts from the pad with TCK running, so that pruning is not valid.
+# POWERGOOD_STABLE_N, which carries the SMC and SEP power-good assertion sequences. A
+# generated child would inherit them, but TRST also asserts from the pad on its own, so
+# they do not hold for trst_n_combined.
 # The only true ordering is kept explicitly: power-good asserting forces trst_n_combined low
 # through the AND gate, so POWERGOOD -> trst_n_combined crossings stay pruned.
 if { [cdc_is_block_top] } {
