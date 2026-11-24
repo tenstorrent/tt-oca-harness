@@ -14,99 +14,15 @@
 #   3. smc.cdc_constraints.tcl     (this file)
 #
 # Sections:
-#   1. AVS sdata serial sample chain as a User Defined Synchronizer (UDS)
-#   2. Independent fan-in convergence ignore
+#   2. Independent fan-in convergence ignore. Section 1, the AVS sdata synchronizer on
+#      the pad2core_i[51] input, is in smc.pad_boundary.tcl.
 ################################################################################
 
 puts "INFO: Loading SMC-specific CDC constraints"
 
-# Hierarchy-reusable: anchored instance paths go through cdc_inst; pad2core_i[51] keeps
-# the same port name at the SMU top, so its get_ports reference needs no mapping.
+# Hierarchy-reusable: anchored instance paths go through cdc_inst.
 if { [info procs cdc_conv_apply] eq "" } {
     source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
-}
-
-################################################################################
-# 1. AVS SDATA SERIAL SAMPLE CHAIN AS A USER-DEFINED SYNCHRONIZER
-################################################################################
-# `avs_sdata_capture` (32-bit) and `avs_sdata_interrupt_detect` (2-bit) are
-# both shift registers clocked on `negedge avs_clk` that shift in the
-# asynchronous `avs_sdata_i` input (= `pad2core_i[51]`). The first stage of
-# each chain IS the metastability-resolving flop, and downstream stages
-# provide additional settling time. Functionally these are user-defined
-# multi-flop synchronizers, but VC SpyGlass cannot infer this on its own
-# because the shift registers also do useful work (frame capture / 2-of-2
-# interrupt qualification).
-#
-# Declare both chains as data synchronizers so the tool stops reporting
-# `NO_SYNC_METHOD` on the input flop. The AVS protocol guarantees the slave
-# drives `sdata` synchronously to its received `avs_clk` edges, so the actual
-# CDC risk is bounded to occasional metastability events that the multi-stage
-# shift register absorbs.
-
-# NOTE on syntax:
-#   `configure_cdc_data_sync` requires `-from_obj` / `-to_obj` (and
-#   `-from_clock` / `-to_clock`) — bare `-from` / `-to` are ambiguous
-#   in VC SpyGlass CDC and trigger CMD-011 / CMD-012 at read-in, which
-#   silently drops the UDS declaration and resurfaces the underlying
-#   CDC_UNSYNC_NOSCHEME.
-#
-# NOTE on target pin:
-#   VC SpyGlass anchors data-sync declarations at the Q output of the
-#   first-stage flop (the synchronizer output), not the D input. Passing
-#   D* pins triggers `TCL_COMMAND_INVALID ... Design Objects are not valid
-#   destination(s) of any crossing` and the declaration is ignored.
-#   We therefore target `.../Q[0]` — the LSB of each shift register is
-#   the one that directly captures `avs_sdata_i` (= `pad2core_i[51]`);
-#   higher bits are tap-delay stages that move previously captured data.
-#
-# NOTE on -sync_check_type value:
-#   The valid keyword is `enable_with_des_domain` (NOT `enable_with_dest_domain`
-#   — note the missing 't' in "des"). VC SpyGlass rejects the longer spelling
-#   with `CMD-031: value 'enable_with_dest_domain' for option '-sync_check_type'
-#   is not valid. Specify one of: enable_with_des_domain, enable_with_qual,
-#   qual_only`. The error is non-fatal — the surrounding `if` block continues
-#   executing — but the `configure_cdc_data_sync` call itself is dropped, so
-#   no UDS gets declared and `NO_SYNC_METHOD` reappears on the first-stage
-#   flop. (We carry this typo-warning here because the spelling is
-#   counter-intuitive and the failure mode is silent at the report level.)
-#
-# NOTE on sync_check_type semantics:
-#   Both shift-register first stages are enabled flops — synthesis infers
-#   the enable from the `cur_state != ...` / `cur_state == ...` guard in
-#   the `always_ff` block. `cur_state` lives on `negedge avs_clk`, so the
-#   enable is a valid destination-domain qualifier. VC SpyGlass cannot
-#   prove this on its own because `cur_state` transitions depend on CSRs
-#   that cross from SMCCLK; it emits `NO_SYNC_METHOD: Enable Criteria not
-#   satisfied, no valid qualifier`. `-sync_check_type enable_with_des_domain`
-#   tells the tool "accept the native flop enable as the qualifier as long
-#   as it's in the destination domain", which is the correct semantic for
-#   this design.
-
-# avs_sdata_capture[31:0] - protocol frame shift register
-set avs_sdata_capture_q0_pin \
-    [get_pins -quiet [cdc_inst {u_smc_peripherals/u_avsbus_controller/avs_sdata_capture/Q[0]}]]
-if { [sizeof_collection $avs_sdata_capture_q0_pin] > 0 } {
-    configure_cdc_data_sync \
-        -from_obj [get_ports {pad2core_i[51]}] \
-        -to_obj $avs_sdata_capture_q0_pin \
-        -sync_check_type enable_with_des_domain
-    puts "INFO: Declared avs_sdata_capture/Q\[0\] as UDS for pad2core_i\[51\] (enable_with_des_domain)"
-} else {
-    puts "WARNING: Found no avs_sdata_capture/Q\[0\] pin -- UDS for AVS sdata capture not applied"
-}
-
-# avs_sdata_interrupt_detect[1:0] - 2-stage qualifier for slave-issued interrupts
-set avs_sdata_intdet_q0_pin \
-    [get_pins -quiet [cdc_inst {u_smc_peripherals/u_avsbus_controller/avs_sdata_interrupt_detect/Q[0]}]]
-if { [sizeof_collection $avs_sdata_intdet_q0_pin] > 0 } {
-    configure_cdc_data_sync \
-        -from_obj [get_ports {pad2core_i[51]}] \
-        -to_obj $avs_sdata_intdet_q0_pin \
-        -sync_check_type enable_with_des_domain
-    puts "INFO: Declared avs_sdata_interrupt_detect/Q\[0\] as UDS for pad2core_i\[51\] (enable_with_des_domain)"
-} else {
-    puts "WARNING: Found no avs_sdata_interrupt_detect/Q\[0\] pin -- UDS for AVS sdata interrupt detect not applied"
 }
 
 ################################################################################

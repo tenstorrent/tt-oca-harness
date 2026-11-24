@@ -1326,7 +1326,7 @@ module tb_top
   logic [dtp_dv_cfg_pkg::NumCtp-1:0][15:0] xtrig_ctp_stretch;
   for (genvar ctp = 0; ctp < dtp_dv_cfg_pkg::NumCtp; ctp++) begin : gen_xtrig_ctp_cfg
     assign xtrig_ctp_mode_p2p[ctp] =
-        ~u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.mode_wire_or;
+        ~u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.u_core.mode_wire_or;
     assign xtrig_ctp_cfg_reset[ctp] =
         u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.handshake_reset;
     assign xtrig_ctp_stretch[ctp] =

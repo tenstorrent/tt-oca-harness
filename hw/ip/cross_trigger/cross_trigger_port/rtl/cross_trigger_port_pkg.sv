@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Define AXI-Lite typedefs and constants for the cross-trigger port.
+// Define the operating modes and AXI-Lite typedefs for the cross-trigger port.
 //
 // ctp_axil_req_t and ctp_axil_resp_t type the CSR interface shared with the generated
-// register block.
+// register block. The CSR selects only MODE_WIRE_OR and MODE_POINT_TO_POINT; MODE_TOGGLE is
+// available only to a port core with a static configuration.
 
 `ifndef CROSS_TRIGGER_PORT_PKG_SV
 `define CROSS_TRIGGER_PORT_PKG_SV
@@ -12,10 +13,11 @@ package cross_trigger_port_pkg;
 
   `include "axi/typedef.svh"
 
-  // Operating modes
-  typedef enum logic {
-    MODE_WIRE_OR        = 1'b0,
-    MODE_POINT_TO_POINT = 1'b1
+  // Operating modes. The low bit matches the CONFIG.MODE CSR encoding. 2'b11 is not a mode.
+  typedef enum logic [1:0] {
+    MODE_WIRE_OR        = 2'b00,
+    MODE_POINT_TO_POINT = 2'b01,
+    MODE_TOGGLE         = 2'b10
   } ctp_mode_e;
 
   // AXI-Lite Parameters

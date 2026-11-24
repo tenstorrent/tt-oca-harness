@@ -645,6 +645,9 @@ module smc_uvm_top
     bit tb_hold_ext_boot /*verilator public_flat_rw*/;
     // ext_interrupts_i[16:2], PLIC sources 3-17; bits 1 and 0 keep their own pins.
     bit [16:2] tb_ext_interrupts_hi_i /*verilator public_flat_rw*/;
+    // ext_interrupts_i[255:17], PLIC sources 18-256.
+    bit [smc_4core_cpu_pkg::NumExtInterrupts-1:17]
+        tb_ext_interrupts_ext_i /*verilator public_flat_rw*/;
     // +smc_uart_cross_3to0: cross-wire UART pairs 0↔3 and 1↔2
     // (TX of each into RX of the peer).
     bit tb_uart_cross_3to0;
@@ -1426,9 +1429,8 @@ module smc_uvm_top
         .smc_ras_o                  (smc_ras),
         .smc_global_base_o          (),
         .smc_region_size_o          (smc_region_size),
-        .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NumExtInterrupts-17){1'b0}},
-                                       tb_ext_interrupts_hi_i, tb_temp_interrupt_i,
-                                       tb_ext_interrupt_0_i}),
+        .smc_ext_interrupts_i       ({tb_ext_interrupts_ext_i, tb_ext_interrupts_hi_i,
+                                       tb_temp_interrupt_i, tb_ext_interrupt_0_i}),
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (tb_sep_wdt_reset_n),
         .smc_fuse_sense_done_o,
@@ -2105,7 +2107,7 @@ module smc_uvm_top
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.valid;
     assign tb_efuse_shim_resp_status =
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.status;
-    assign tb_efuse_locks = shadow_regs.locks.locks;
+    assign tb_efuse_locks = shadow_regs.locks.harness_locks;
     `define SMC_MBX0 u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_axil_mailbox.gen_mailbox[0].u_axi_lite_mailbox
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;

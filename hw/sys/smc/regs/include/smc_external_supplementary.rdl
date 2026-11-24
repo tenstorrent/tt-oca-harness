@@ -10,6 +10,10 @@
 // Adopters MAY omit these blocks, these are purely suggestions.
 // Hardware treats this region identically to the mandatory region; 
 // the split exists purely for readability/documentation.
+// EXCEPTION: fuse is the largest window the SMC supplementary fuse region may occupy, and its
+// size also sizes the fuse command address and word count. Resize or move it anywhere in
+// smc_external that overlaps no other block. The region is CFG-sized and absent by default;
+// the bytes it occupies are diverted to the eFuse target, and the rest of the slot is reserved.
 // 
 addrmap smc_external_supplementary {
     name = "SMC External Supplementary Region Address Map";
@@ -25,6 +29,8 @@ addrmap smc_external_supplementary {
     external ext_memory #(.NUM_ENTRIES(1), .WIDTH(32))   gpio_extra_ctrl        @0x100c; // Dummy RDL
 
     external ext_memory #(.NUM_ENTRIES(594), .WIDTH(32)) smc_pvt_wrap           @0x1c00; // Dummy RDL
+
+    external ext_memory #(.NUM_ENTRIES(4096), .WIDTH(32)) fuse                  @0x3000; // Dummy RDL
 
 };
 

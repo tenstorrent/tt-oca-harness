@@ -461,7 +461,7 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         """
         rate = SepSeededRng(self.random_seed()).randrange(BYPASS_RATE_MIN, BYPASS_RATE_MAX + 1)
         cfg = SepEntropyCfg(sha_whitening=False, compressor_bypass=True, downsample_rate=rate)
-        self.drbg_sb.stop()
+        await self.drbg_sb.stop()
         resets = SepSwReset(self)
         resets.value = await resets.read_back()
         km_bit = SW_RESET_N_BIT["km"]

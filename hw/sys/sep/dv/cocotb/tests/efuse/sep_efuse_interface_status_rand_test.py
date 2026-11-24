@@ -4,12 +4,12 @@
 
 A read go with ``read_enable`` clear sets ``read_status``. A read or program address
 of 8192 or more sets its own address-error flag (and ``read_status`` for a read), and
-the flag clears by write-one. A request that a lock blocks sets ``efuse_req_error`` and
-neither address-error flag. ``program_enable`` keeps a read from reaching the bank. No
-bank bit changes from reset release until sense completes. A program with data 0
-programs nothing and sets no flag. A program go with ``program_enable`` 0 sends no
-program command and programs nothing. A cold reset clears the three error flags with
-no clear write.
+the flag clears by write-one; such a request is not issued. A request that a lock
+blocks sets ``efuse_req_error`` and neither address-error flag. ``program_enable``
+keeps a read from reaching the bank. No bank bit changes from reset release until
+sense completes. A program with data 0 programs nothing and sets no flag. A program go
+with ``program_enable`` 0 sends no program command and programs nothing. A cold reset
+clears the three error flags with no clear write.
 
 Sources: ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
 (``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_PROGRAM_CTRL``, ``EFUSE_READ_CTRL``; field
@@ -21,12 +21,13 @@ section Fuse Fields: 256 words of 32 bits, so 8192 bits); ``hw/ip/efuse/doc/inte
 
 Image: prestaged from ``plan(test, seed)`` of ``env/sep_efuse_plan.py``: TEST_DEV, a
 burned write-lock slot and a burned read-lock slot, filter-legal pair. The plan also
-draws the case order, the out-of-range address and every program and read bit.
+draws the case order, the out-of-range addresses and every program and read bit.
 
-"Run a program" / "run a read" is one control write with enable, address and go, a
-wait of the full window W (``_W_MULT`` x the sense time measured at the first sense,
-no early exit), then reads of ``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_READ_CTRL`` and
-``EFUSE_PROGRAM_CTRL``; both busy bits must read 0.
+"Run a program" / "run a read" is a write of the address register, then one control
+write with enable and go, a wait of the full window W (``_W_MULT`` x the sense time
+measured at the first sense, no early exit), then reads of
+``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_READ_CTRL`` and ``EFUSE_PROGRAM_CTRL``; both
+busy bits must read 0.
 
 Checkers:
   CHK-IF-STATUS    the error flags and ``read_status`` of each refusal case, of the
@@ -58,6 +59,14 @@ Checkers:
                    no program command at ``efuse_shim_cmd_*_o``, leaves the bank
                    unchanged and ends with ``program_busy`` 0
                    (``program_enable``: enables the program request).
+  CHK-IF-OOB-CMD   each out-of-range read and program passes 0 commands to
+                   ``efuse_shim_command_req_o`` and changes no bit at
+                   ``otp_bank_probe_o`` from the case frame to the flag clear
+                   (``hw/ip/efuse/regs/efuse_interface_ctrl.rdl``,
+                   ``EFUSE_PROGRAM_ADDR`` and ``EFUSE_READ_ADDR``: a start at or
+                   beyond the implemented size is not issued). One address has an
+                   in-range bit address in the lower half of ``efuse_addr`` and a
+                   non-zero upper half.
   CHK-IF-CTRL      every case starts with clean flags (case frame), and each refusal
                    case has an accepted twin that completes (program twins change the
                    bank by exactly their bit at ``otp_bank_probe_o``). The
@@ -122,10 +131,7 @@ event outside a graded step is dropped.
 
 Log-only: the flags of the pre-sense and both-enables cases
 (``OBS-IF-STATUS-FLAGS``), ``read_status`` (``OBS-IF-LOCK-READ-STATUS``) and the data of
-the lock-blocked read, the bank
-diff after the out-of-range program cases (``OBS-IF-CMD``), the
-count of post-guard commands (``efuse_shim_cmd_*_o``) of each out-of-range read and
-program (``OBS-IF-OOB-CMD``), the status flags, ``program_done``, ``program_status``
+the lock-blocked read, the status flags, ``program_done``, ``program_status``
 and bank diff of the in-range program after the out-of-range programs
 (``INFO-IF-OOR-PROG-TWIN``), and, after the lock-program case, a read held by
 ``program_enable`` with ``program_enable`` cleared first: the READ commands at
@@ -167,7 +173,9 @@ from env.sep_efuse_bank_watch import (
 from env.sep_efuse_plan import (
     FIELD_NAMES,
     LOCK_SLOT_FIELD,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
+    READ_ADDR_ADDR,
     READ_CTRL_ADDR,
     SPARE_FIELDS,
     STATUS_ADDR,
@@ -176,8 +184,11 @@ from env.sep_efuse_plan import (
     field_n_words,
     field_word,
     plan,
+    program_addr_word,
     program_ctrl_word,
+    read_addr_word,
     read_ctrl_word,
+    require_addr_readback,
     shadow_addr,
     zero_bits,
 )
@@ -217,14 +228,13 @@ _M_PG_BUSY = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_busy")
 _M_PG_DONE = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _M_PG_STATUS = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 # Software-owned (sw=rw, hw=r) fields of each control register: they read back as written.
-_M_PG_RW = (
-    _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
-    | _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
-    | _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
-)
-_M_RD_RW = _IC.field_mask("EFUSE_READ_CTRL", "efuse_addr") | _IC.field_mask(
-    "EFUSE_READ_CTRL", "read_enable"
-)
+_M_LANDED = {
+    "EFUSE_PROGRAM_CTRL": _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
+    | _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_enable"),
+    "EFUSE_READ_CTRL": _IC.field_mask("EFUSE_READ_CTRL", "read_enable"),
+    "EFUSE_PROGRAM_ADDR": _IC.mask32("EFUSE_PROGRAM_ADDR"),
+    "EFUSE_READ_ADDR": _IC.mask32("EFUSE_READ_ADDR"),
+}
 _BIT_8191 = 8191  # last bit of the 8192-bit OTP (256 words of 32 bits)
 
 # Test parameters (the contract leaves them to the test).
@@ -256,6 +266,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
     required_evidence = (
         "CHK-IF-STATUS",
         "CHK-IF-CMD",
+        "CHK-IF-OOB-CMD",
         "CHK-IF-CTRL",
         "CHK-IF-PRESENSE",
         "CHK-IF-PRESENSE-JTAG",
@@ -337,15 +348,29 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
     def _idle(f: dict[str, int]) -> bool:
         return f["rd_busy"] == 0 and f["pg_busy"] == 0
 
+    async def _set_program_addr(self, bit_addr: int) -> None:
+        """Write EFUSE_PROGRAM_ADDR and require the readback to equal it before a go."""
+        addr = program_addr_word(bit_addr)
+        await self._wr(PROGRAM_ADDR_ADDR, addr)
+        await require_addr_readback(self._rd, PROGRAM_ADDR_ADDR, addr)
+
+    async def _set_read_addr(self, bit_addr: int) -> None:
+        """Write EFUSE_READ_ADDR and require the readback to equal it before a go."""
+        addr = read_addr_word(bit_addr)
+        await self._wr(READ_ADDR_ADDR, addr)
+        await require_addr_readback(self._rd, READ_ADDR_ADDR, addr)
+
     async def _run_program(
         self, bit_addr: int, *, data: int = 1, enable: int = 1
     ) -> dict[str, int]:
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, data=data, enable=enable))
+        await self._set_program_addr(bit_addr)
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=data, enable=enable))
         await ClockCycles(cocotb.top.clk_i, self.w)
         return await self._flags()
 
     async def _run_read(self, bit_addr: int, *, enable: int = 1) -> dict[str, int]:
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit_addr, enable=enable))
+        await self._set_read_addr(bit_addr)
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word(enable=enable))
         await ClockCycles(cocotb.top.clk_i, self.w)
         return await self._flags()
 
@@ -356,7 +381,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
 
     def _landed(self, case: str, reg: str, wrote: int, got: int) -> bool:
         """CTRL-IF-GO-LANDED: the software-owned fields of a refused go read back as written."""
-        m = _M_PG_RW if reg == "EFUSE_PROGRAM_CTRL" else _M_RD_RW
+        m = _M_LANDED[reg]
         return self._ctrl(
             "IF-GO-LANDED",
             (got & m) == (wrote & m),
@@ -593,10 +618,12 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, _RST_HOLD)
         task, win = self._start_presense_monitor(self.bank.read())
         dut.rst_ni.value = 1
-        # First access after the release: one write with enable, data 1, address, go.
-        # The core is held in reset until sensing completes, so the go runs on
-        # the OTP JTAG port, the master that exists then.
-        go = program_ctrl_word(bit, data=1)
+        # First accesses after the release: the address, then one write with enable,
+        # data 1 and go. The core is held in reset until sensing completes, so they run
+        # on the OTP JTAG port, the master that exists then.
+        addr_word = program_addr_word(bit)
+        await self.jtag_axil_op(write=True, addr=PROGRAM_ADDR_ADDR, wdata=addr_word)
+        go = program_ctrl_word(data=1)
         go_resp, _ = await self.jtag_axil_op(write=True, addr=PROGRAM_CTRL_ADDR, wdata=go)
         sense_at_go = self.rd(dut.sep_fuse_sense_done_o)
         t_go = win["n"]
@@ -604,7 +631,11 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         t_sense = win["t_sense"]
         await ClockCycles(dut.clk_i, self.w)
         landed = self._landed(
-            "pre_sense", "EFUSE_PROGRAM_CTRL", go, await self._rd(PROGRAM_CTRL_ADDR)
+            "pre_sense", "EFUSE_PROGRAM_ADDR", addr_word, await self._rd(PROGRAM_ADDR_ADDR)
+        )
+        landed = (
+            self._landed("pre_sense", "EFUSE_PROGRAM_CTRL", go, await self._rd(PROGRAM_CTRL_ADDR))
+            and landed
         )
         f = await self._flags()
         self.chk.obs(
@@ -623,8 +654,9 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         snap = self.bank.read()
         watch = SepEfuseBankWatch(dut).start(reference=snap)
         m_cmd = self.cmds.mark()
+        await self._set_program_addr(twin)
         m0 = watch.mark()
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(twin, data=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=1))
         m1 = watch.mark()
         await ClockCycles(dut.clk_i, self.w)
         f2 = await self._flags()
@@ -759,7 +791,8 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
     async def _jtag_program_twin(self) -> bool:
         """Post-sense JTAG program of the twin bit: the JTAG program path works.
 
-        One JTAG write of ``EFUSE_PROGRAM_CTRL`` (enable, data 1, address, go),
+        One JTAG write of ``EFUSE_PROGRAM_ADDR`` and one of ``EFUSE_PROGRAM_CTRL``
+        (enable, data 1, go),
         a wait of W, then the frontdoor flags. The control passes on an OKAY
         write response, exactly one program command (at the twin address), a
         bank diff of exactly the twin bit, program done, both busy bits 0, no
@@ -770,8 +803,11 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self._clean_ctrl()
         snap = self.bank.read()
         mark = self.cmds.mark()
+        a_resp, _ = await self.jtag_axil_op(
+            write=True, addr=PROGRAM_ADDR_ADDR, wdata=program_addr_word(bit)
+        )
         resp, _ = await self.jtag_axil_op(
-            write=True, addr=PROGRAM_CTRL_ADDR, wdata=program_ctrl_word(bit, data=1)
+            write=True, addr=PROGRAM_CTRL_ADDR, wdata=program_ctrl_word(data=1)
         )
         await ClockCycles(dut.clk_i, self.w)
         f = await self._flags()
@@ -781,6 +817,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         landed = diff_is_exactly(diff, bit)
         ok = (
             resp == RESP_OKAY
+            and a_resp == RESP_OKAY
             and n_at == 1
             and n_all == 1
             and landed
@@ -793,6 +830,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             "IF-PRESENSE-JTAG-TWIN",
             ok,
             bit_addr=bit,
+            addr_resp=RESP_NAME.get(a_resp, a_resp),
             wr_resp=RESP_NAME.get(resp, resp),
             prog_cmds_at_bit=n_at,
             prog_cmds=n_all,
@@ -831,7 +869,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         r_data &= M32
         t_rd = None if task.done() else win["n"]
         s_rd = self.rd(dut.sep_fuse_sense_done_o)
-        go = program_ctrl_word(prog_bit, data=1)
+        a_resp, _ = await self.jtag_axil_op(
+            write=True, addr=PROGRAM_ADDR_ADDR, wdata=program_addr_word(prog_bit)
+        )
+        go = program_ctrl_word(data=1)
         w_resp, _ = await self.jtag_axil_op(write=True, addr=PROGRAM_CTRL_ADDR, wdata=go)
         t_wr = None if task.done() else win["n"]
         s_wr = self.rd(dut.sep_fuse_sense_done_o)
@@ -850,6 +891,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             "IF-PRESENSE-JTAG-RESP",
             leg=leg,
             map_resp=RESP_NAME.get(r_resp, r_resp),
+            addr_resp=RESP_NAME.get(a_resp, a_resp),
             prog_resp=RESP_NAME.get(w_resp, w_resp),
             graded=0,
         )
@@ -937,8 +979,21 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         _n, ok = await self._accepted_read("read_go_no_enable", bit)
         await self._pass(tag, ok)
 
+    def _oob_cmd(self, case: str, addr: int, snap: Any, m_cmd: Any) -> bool:
+        """An out-of-range command is not issued: no command past the guard, no bank change."""
+        n = len(self.cmds.commands_since(m_cmd))
+        diff = self.bank.diff_since(snap)
+        return self._grade(
+            "IF-OOB-CMD",
+            n == 0 and not diff,
+            case=case,
+            addr=addr,
+            post_guard_cmds=n,
+            otp_diff="none" if not diff else diff_log(diff),
+        )
+
     async def _case_oor_read(self) -> None:
-        """Step 9: accepted read of bit 8191, then reads at the three out-of-range addresses."""
+        """Step 9: accepted read of bit 8191, then reads at the four out-of-range addresses."""
         await self._frame("oor_read")
         tag = self._step()
         _n, ok = await self._accepted_read("oor_read", _BIT_8191)
@@ -949,19 +1004,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             tag = self._step()
             m_cmd = self.cmds.mark()
             f = await self._run_read(a)
-            diff = self.bank.diff_since(snap)
-            self.logger.info(
-                "OBS-IF-CMD LOG seed=%d case=read_oob addr=%d otp_diff=%s",
-                self.seed,
-                a,
-                "none" if not diff else diff_log(diff),
-            )
-            self.logger.info(
-                "OBS-IF-OOB-CMD LOG seed=%d case=read_oob addr=%d post_guard_cmds=%d",
-                self.seed,
-                a,
-                len(self.cmds.commands_since(m_cmd)),
-            )
+            ok_cmd = self._oob_cmd("read_oob", a, snap, m_cmd)
             fc = await self._clear(_M_CLR_RAE)
             ok_clear = fc["rae"] == 0 and fc["pae"] == f["pae"] and fc["re"] == f["re"]
             ok = self._status(
@@ -975,29 +1018,18 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
                 rd_done_before=pre["rd_done"],
                 rd_done=f["rd_done"],
             )
+            ok = ok and ok_cmd
             await self._pass(tag, ok)
 
     async def _case_oor_program(self) -> None:
-        """Step 10: programs at the three out-of-range addresses."""
+        """Step 10: programs at the four out-of-range addresses."""
         for a in self.oor:
             snap = await self._frame("oor_program")
             pre = await self._pre_go_done("oor_program", a)
             tag = self._step()
             m_cmd = self.cmds.mark()
             f = await self._run_program(a)
-            diff = self.bank.diff_since(snap)
-            self.logger.info(
-                "OBS-IF-CMD LOG seed=%d case=prog_oob addr=%d otp_diff=%s",
-                self.seed,
-                a,
-                "none" if not diff else diff_log(diff),
-            )
-            self.logger.info(
-                "OBS-IF-OOB-CMD LOG seed=%d case=prog_oob addr=%d post_guard_cmds=%d",
-                self.seed,
-                a,
-                len(self.cmds.commands_since(m_cmd)),
-            )
+            ok_cmd = self._oob_cmd("prog_oob", a, snap, m_cmd)
             fc = await self._clear(_M_CLR_PAE)
             ok_clear = fc["pae"] == 0 and fc["rae"] == f["rae"] and fc["re"] == f["re"]
             ok = self._status(
@@ -1012,6 +1044,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
                 pg_done=f["pg_done"],
                 pg_status=f["pg_status"],
             )
+            ok = ok and ok_cmd
             await self._pass(tag, ok)
         twin = self.oor_twin["addr"]
         snap = await self._frame("oor_program")
@@ -1070,8 +1103,9 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self._clean_ctrl()
         bit = self.reads["frame"]["addr"]
         mark = self.cmds.mark()
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(0, data=0, enable=1, go=0))
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit, enable=1))
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(data=0, enable=1, go=0))
+        await self._set_read_addr(bit)
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word(enable=1))
         await ClockCycles(cocotb.top.clk_i, self.w)
         held = len(self.cmds.reads_since(mark, address=bit))
         await self._wr(PROGRAM_CTRL_ADDR, 0)
@@ -1137,9 +1171,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self._frame("both_enables")
         tag = self._step()
         mark = self.cmds.mark()
-        pg_go = program_ctrl_word(0, data=0, enable=1, go=0)
-        rd_go = read_ctrl_word(bit, enable=1)
+        pg_go = program_ctrl_word(data=0, enable=1, go=0)
+        rd_go = read_ctrl_word(enable=1)
         await self._wr(PROGRAM_CTRL_ADDR, pg_go)
+        await self._set_read_addr(bit)
         await self._wr(READ_CTRL_ADDR, rd_go)
         await ClockCycles(dut.clk_i, _BOTH_WAIT)
         st = await self._rd(STATUS_ADDR)
@@ -1186,9 +1221,12 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         snap = await self._frame("data0")
         pg_before = await self._rd(PROGRAM_CTRL_ADDR)
         tag = self._step()
-        go = program_ctrl_word(bit, data=0)
+        go = program_ctrl_word(data=0)
         f = await self._run_program(bit, data=0)
         landed = self._landed("data0", "EFUSE_PROGRAM_CTRL", go, await self._rd(PROGRAM_CTRL_ADDR))
+        landed = landed and self._landed(
+            "data0", "EFUSE_PROGRAM_ADDR", program_addr_word(bit), await self._rd(PROGRAM_ADDR_ADDR)
+        )
         diff = self.bank.diff_since(snap)
         self.chk.obs(
             "IF-DATA0-DONE",
@@ -1225,7 +1263,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         snap = await self._frame("prog_go_no_enable")
         pg_before = await self._rd(PROGRAM_CTRL_ADDR)
         tag = self._step()
-        go = program_ctrl_word(bit, data=1, enable=0)
+        go = program_ctrl_word(data=1, enable=0)
         mark = self.cmds.mark()
         f = await self._run_program(bit, enable=0)
         landed = self._landed(

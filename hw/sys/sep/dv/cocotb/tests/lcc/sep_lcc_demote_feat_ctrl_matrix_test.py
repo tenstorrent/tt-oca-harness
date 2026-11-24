@@ -35,9 +35,11 @@ Real fuse sense. DEMOTE is write-once-set; resense returns the CSRs to 0.
 After the product walk, one seed-selected group is locked: a later demote
 write is ignored until rst_ni. That blocked write also sets one ``rsvd`` marker
 bit (write-one-to-set with no write enable, ``sep_lifecycle_ctrl.rdl``
-DEMOTE_1/2), drawn with ``SepSeededRng``; ``CHK-DEMOTE-LOCK`` requires ``demote``
-0, ``lock`` 1 and the marker bit in the readback, so the write is proven to reach
-the register. ``OBS-LCC-WR-RESP`` logs its response, which no document states.
+DEMOTE_1/2), drawn with ``SepSeededRng``. ``CTRL-DEMOTE-LOCK-SET`` requires the
+lock write to read back ``demote`` 0 and ``lock`` 1; ``CTRL-DEMOTE-LOCK-WR-REACH``
+requires the marker bit in the readback of the blocked write, so the write is
+proven to reach the register; ``CHK-DEMOTE-LOCK`` requires ``demote`` 0 and
+``lock`` 1 in that readback. ``OBS-LCC-WR-RESP`` logs its response, which no document states.
 
 FCOV: each cell runs once, inside the graded window. The sampler holds the
 legal ``sep_dtp_gating_ladder_cg`` ``x_path_case`` and ``x_prod_demote_case3``
@@ -366,9 +368,11 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
 
         locked = SepLccDemoteSeq(group=group, value=DEMOTE_LOCK_BIT)
         await self.start_seq(locked)
+        lock_set = f"{tag} demote={locked.demote} lock={locked.lock}"
         assert locked.demote == 0 and locked.lock == 1, (
-            f"{tag}: lock write demote={locked.demote} lock={locked.lock}, expected 0/1"
+            f"CTRL-DEMOTE-LOCK-SET FAIL: {lock_set} (expected demote=0 lock=1)"
         )
+        self.logger.info("CTRL-DEMOTE-LOCK-SET: %s", lock_set)
 
         mark = SepSeededRng(self.random_seed() ^ _MARK_SALT).choice(_MARK_BITS)
         fd = SepEfuseFd(self)
@@ -386,8 +390,13 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
             f"{tag} demote={int(bool(demote))} lock={lock} mark_bit={mark} mark={marked} "
             f"readback=0x{got:08x}"
         )
-        assert demote == 0 and lock == 1 and marked == 1, (
-            f"CHK-DEMOTE-LOCK FAIL: {lock_fields} (expected demote=0 lock=1 mark=1)"
+        assert marked == 1, (
+            f"CTRL-DEMOTE-LOCK-WR-REACH FAIL: {lock_fields} (expected mark=1: the blocked "
+            "write did not reach DEMOTE)"
+        )
+        self.logger.info("CTRL-DEMOTE-LOCK-WR-REACH: %s", lock_fields)
+        assert demote == 0 and lock == 1, (
+            f"CHK-DEMOTE-LOCK FAIL: {lock_fields} (expected demote=0 lock=1)"
         )
         await self._check_cell(image, demote_1=0, demote_2=0, tag=f"{tag}/held")
         self.logger.info(

@@ -98,7 +98,7 @@ module cross_trigger_port_tb_top
     .mismatch_o (wire_or_drive_mismatch)
   );
 
-  assign cfg_mode_wire_or = u_dut.mode_wire_or;
+  assign cfg_mode_wire_or = u_dut.u_core.mode_wire_or;
   assign cfg_invert       = u_dut.invert;
 
   assign axil_req.aw_valid = axil_awvalid;

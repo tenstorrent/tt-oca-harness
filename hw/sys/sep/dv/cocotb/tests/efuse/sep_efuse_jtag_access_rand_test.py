@@ -11,9 +11,9 @@ control bit c and the probe bit p (two 0 spare bits), the access count N (15 to
 channel with the word order and the vector of each word write, the positions of the
 other token-block accesses, and per denied access its address and pattern. The
 required interface-control write of every leaf is a denied ``EFUSE_PROGRAM_CTRL``
-program of p, so the p read at the end grades a refused burn in every leaf. After the
-plan, the same stream draws one JTAG read address and one JTAG write address in the
-shim span and the write data.
+program go while ``EFUSE_PROGRAM_ADDR`` holds p, so the p read at the end grades a
+refused burn in every leaf. After the plan, the same stream draws one JTAG read
+address and one JTAG write address in the shim span and the write data.
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
 builds the same plan. After sense, ``CTRL-JTAG-LC-STATE`` reads the ``LC_STATE``
 shadow word at the frontdoor and requires the code of the drawn state. JTAG and
@@ -37,7 +37,7 @@ Mechanism and Token Submission):
                     written; a match read of a channel with a go returns the SHA-256
                     golden of its last go (Match 0x15, Mismatch 0x2a). A shadow word or
                     interface-control access answers SLVERR
-                    (``hw/ip/efuse/doc/architecture.adoc:351-353``), a denied read
+                    (``hw/ip/efuse/doc/architecture.adoc:355-357``), a denied read
                     returns the read data 0xBADCAB1E
                     (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``), and
                     the target reads the same at the frontdoor before and after; the
@@ -48,8 +48,9 @@ Mechanism and Token Submission):
                     one program command at the tap (else ``CHK-HOOK FAIL``); the read
                     address error flag reads 1 before the denied status write (else
                     ``CHK-HOOK FAIL``); at the end of the leaf the pattern of each
-                    denied shadow write, ``EFUSE_READ_CTRL`` write and status write,
-                    written through the frontdoor, changes the readback
+                    denied shadow write, ``EFUSE_READ_CTRL``, ``EFUSE_PROGRAM_ADDR`` or
+                    ``EFUSE_READ_ADDR`` write and status write, written through the
+                    frontdoor, changes the readback
                     (``CTRL-JTAG-DENY-WRITE``): for the status write the flag is set
                     again by an out-of-range read, reads 1, and the frontdoor clear
                     makes it read 0.
@@ -62,7 +63,7 @@ Mechanism and Token Submission):
   CHK-JTAG-SHIM-DENY  a JTAG read and a JTAG write of the shim span (every address
                     outside the MAP window to the end of the last register window, which
                     the controller sends to the shim's bank control registers) answer
-                    SLVERR (``hw/ip/efuse/doc/architecture.adoc:351-353``: accesses
+                    SLVERR (``hw/ip/efuse/doc/architecture.adoc:355-357``: accesses
                     outside the MMR space are blocked with an SLVERR response), and
                     the read returns the read data 0xBADCAB1E
                     (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``).
@@ -105,7 +106,9 @@ from env.sep_efuse_plan import (
     GO_MASK,
     MATCH_ADDR,
     MATCH_STATUS_MASK,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
+    READ_ADDR_ADDR,
     READ_CTRL_ADDR,
     STATUS_ADDR,
     TOKEN_ARRAY_ADDR,
@@ -117,8 +120,11 @@ from env.sep_efuse_plan import (
     lc_state_class,
     match_code,
     plan,
+    program_addr_word,
     program_ctrl_word,
+    read_addr_word,
     read_ctrl_word,
+    require_addr_readback,
     token_words,
     words_token,
 )
@@ -135,7 +141,7 @@ FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 DBG_MASK = DBG1_MASK | DBG2_MASK
 M32 = 0xFFFF_FFFF
 OKAY = 0
-# hw/ip/efuse/doc/architecture.adoc:351-353: in PROD and RMA_SIP a SEP JTAG access
+# hw/ip/efuse/doc/architecture.adoc:355-357: in PROD and RMA_SIP a SEP JTAG access
 # outside the MMR space is blocked with an SLVERR response.
 DENY_RESP = RESP_SLVERR
 # hw/sys/sep/doc/otp_fuse_controller.adoc:128-131: in PROD and RMA_SIP every JTAG access
@@ -146,10 +152,13 @@ READ_ADDR_ERROR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_read_addr_error"
 )
 PROGRAM_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
-# RW fields of EFUSE_READ_CTRL that hold a written value (efuse_read_go is RW 1P).
-READ_CTRL_RW = EFUSE_INTERFACE_CTRL.field_mask(
-    "EFUSE_READ_CTRL", "read_enable"
-) | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_addr")
+# RW fields that hold a written value, per register of the frontdoor deny control
+# (efuse_read_go is RW 1P).
+CTRL_RW = {
+    "EFUSE_READ_CTRL": EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_enable"),
+    "EFUSE_PROGRAM_ADDR": EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_ADDR", "efuse_addr"),
+    "EFUSE_READ_ADDR": EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_ADDR", "efuse_addr"),
+}
 # The first bit address past the 256 words of 32 bits.
 OUT_OF_RANGE_BIT = 8192
 # W = W_MULT x the measured sense time (test parameter).
@@ -293,7 +302,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
 
     async def _shim_deny(self) -> None:
         """CHK-JTAG-SHIM-DENY: the JTAG read and the JTAG write of the drawn shim-span
-        addresses answer SLVERR (``hw/ip/efuse/doc/architecture.adoc:351-353``: in PROD
+        addresses answer SLVERR (``hw/ip/efuse/doc/architecture.adoc:355-357``: in PROD
         and RMA_SIP a SEP JTAG access outside the MMR space is blocked with an SLVERR
         response), and the JTAG read returns ``DENY_RDATA``
         (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``). ``OBS-JTAG-SHIM-DENY-DATA``
@@ -422,7 +431,8 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         ]
         if not accs:
             return
-        await self.fd.wr(READ_CTRL_ADDR, read_ctrl_word(OUT_OF_RANGE_BIT))
+        await self.fd.wr(READ_ADDR_ADDR, read_addr_word(OUT_OF_RANGE_BIT))
+        await self.fd.wr(READ_CTRL_ADDR, read_ctrl_word())
         await ClockCycles(cocotb.top.clk_i, w)
         await self.fd.wr(READ_CTRL_ADDR, 0)
         before = await self.fd.rd(STATUS_ADDR)
@@ -441,21 +451,22 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         )
 
     async def _deny_write_controls(self, w: int) -> None:
-        """Control of "target unchanged" for the denied status, ``EFUSE_READ_CTRL`` and
-        shadow writes: the same pattern written through the frontdoor changes the readback.
+        """Control of "target unchanged" for the denied status, ``EFUSE_READ_CTRL``,
+        ``EFUSE_PROGRAM_ADDR``, ``EFUSE_READ_ADDR`` and shadow writes: the same pattern
+        written through the frontdoor changes the readback.
 
         Runs after every graded access of the leaf, because a shadow write is set-only and
-        cannot be undone. The status clear goes first, then ``EFUSE_READ_CTRL`` (its RW
-        fields read back the written ``read_enable`` and ``efuse_addr`` after a write of 0
-        and then of the pattern; it is then written 0), so a lock bit that a shadow
-        control sets cannot refuse their reads. The ``LOCKS`` and ``LOCKS_SPARE`` controls
-        run after the other shadow controls, so a lock bit they set cannot refuse the
-        frontdoor read or write of a field whose control comes later.
+        cannot be undone. The status clear goes first, then the registers of ``CTRL_RW``
+        (their RW fields read back the written value after a write of 0 and then of the
+        pattern; each is then written 0), so a lock bit that a shadow control sets cannot
+        refuse their reads. The ``LOCKS`` and ``LOCKS_SPARE`` controls run after the other
+        shadow controls, so a lock bit they set cannot refuse the frontdoor read or write
+        of a field whose control comes later.
         """
         await self._status_clear_control(w)
         seen: set[tuple[int, int]] = set()
         accs = [a for a in self.p.leg["denied"] if a["op"] == "wr"]
-        rd_ctl = [a for a in accs if a.get("reg") == "EFUSE_READ_CTRL"]
+        rd_ctl = [a for a in accs if a.get("reg") in CTRL_RW]
         shadow = sorted(
             (a for a in accs if a["cls"] == "shadow"),
             key=lambda a: a["field"] in ("LOCKS", "LOCKS_SPARE"),
@@ -478,7 +489,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 await ClockCycles(cocotb.top.clk_i, w)
                 after = await self.fd.rd(addr)
                 await self.fd.wr(addr, 0)
-                mask = READ_CTRL_RW
+                mask = CTRL_RW[acc["reg"]]
                 seen_ok = before & mask != data & mask and after & mask == data & mask
             self.chk.ctrl(
                 "JTAG-DENY-WRITE",
@@ -496,7 +507,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         """A frontdoor read and a JTAG read of one shadow word, started on the same clock.
 
         CHK-JTAG-CONCURRENT: the JTAG read answers SLVERR
-        (``hw/ip/efuse/doc/architecture.adoc:351-353``) with the read data ``DENY_RDATA``
+        (``hw/ip/efuse/doc/architecture.adoc:355-357``) with the read data ``DENY_RDATA``
         (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``), and the
         frontdoor read returns the staged word, outside ``ignore_mask`` (the bit c when
         it shares the word). The frontdoor response code is logged in the same line.
@@ -658,7 +669,8 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             self.chk.finish()
 
         # Status flag that a denied write could clear.
-        await self.fd.wr(READ_CTRL_ADDR, read_ctrl_word(OUT_OF_RANGE_BIT))
+        await self.fd.wr(READ_ADDR_ADDR, read_addr_word(OUT_OF_RANGE_BIT))
+        await self.fd.wr(READ_CTRL_ADDR, read_ctrl_word())
         await ClockCycles(dut.clk_i, w)
         status = await self.fd.rd(STATUS_ADDR)
         await self.fd.wr(READ_CTRL_ADDR, 0)
@@ -672,7 +684,8 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         self.shim = SepShimCmdMonitor().start()
         await ClockCycles(dut.clk_i, 2)
         mark = self.shim.mark()
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(c_bit["addr"]))
+        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(c_bit["addr"]))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word())
         await ClockCycles(dut.clk_i, w)
         pg = await self.fd.rd(PROGRAM_CTRL_ADDR)
         await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
@@ -695,7 +708,11 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             p_bit_read=(p_word0 >> p_bit["bit"]) & 1,
         )
 
-        # Denied accesses, then the token block, in the drawn order.
+        # Denied accesses, then the token block, in the drawn order. A denied program go
+        # targets p, the address the frontdoor leaves in EFUSE_PROGRAM_ADDR.
+        p_addr = program_addr_word(p_bit["addr"])
+        await self.fd.wr(PROGRAM_ADDR_ADDR, p_addr)
+        await require_addr_readback(self.fd.rd, PROGRAM_ADDR_ADDR, p_addr)
         open_graded_window(TEST, self.logger)
         deny_mark = self.shim.mark()
         for acc in p.leg["denied"]:

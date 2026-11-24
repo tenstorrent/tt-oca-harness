@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 621
+expected_count = 622
 tests = [
     "smc_dfd_csr_field_access_test",
     "smc_dfx_aperture_extent_test",
@@ -259,6 +259,7 @@ tests = [
     "smc_efuse_map_layout_decode_test",
     "smc_efuse_map_concurrency_test",
     "smc_efuse_map_lock_field_enforce_test",
+    "smc_efuse_supplementary_region_test",
     "smc_efuse_map_reset_persistence_test",
     "smc_efuse_map_locks_register_test",
     "smc_efuse_map_sep_write_test",
@@ -272,6 +273,7 @@ tests = [
     "smc_efuse_read_timeout_status_test",
     "smc_efuse_shim_ctrl_test",
     "smc_ext_interrupts_pin_test",
+    "smc_ext_irq_upper_walk_test",
     "smc_external_window_pad_ctrl_decode_test",
     "smc_filter_config_field_sweep_test",
     "smc_filter_field_sweep_test",
@@ -444,6 +446,7 @@ tests = [
     "smc_pwm_sanity_test",
     "smc_rdl_field_sweep_test",
     "smc_reference_counter_test",
+    "smc_regblock_byte_lane_write_sweep_test",
     "smc_regblock_partial_write_test",
     "smc_regblock_subword_strobe_sweep_test",
     "smc_region_size_plic_clint_beu_decode_test",
@@ -689,7 +692,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 602
+expected_count = 603
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -835,6 +838,7 @@ tests = [
     "smc_efuse_read_timeout_status_test",
     "smc_efuse_shim_ctrl_test",
     "smc_ext_interrupts_pin_test",
+    "smc_ext_irq_upper_walk_test",
     "smc_external_window_pad_ctrl_decode_test",
     "smc_filter_config_field_sweep_test",
     "smc_filter_field_sweep_test",
@@ -978,6 +982,7 @@ tests = [
     "smc_pwm_sanity_test",
     "smc_rdl_field_sweep_test",
     "smc_reference_counter_test",
+    "smc_regblock_byte_lane_write_sweep_test",
     "smc_regblock_partial_write_test",
     "smc_regblock_subword_strobe_sweep_test",
     "smc_region_size_plic_clint_beu_decode_test",
@@ -1102,6 +1107,7 @@ tests = [
     "smc_efuse_map_layout_decode_test",
     "smc_efuse_map_concurrency_test",
     "smc_efuse_map_lock_field_enforce_test",
+    "smc_efuse_supplementary_region_test",
     "smc_efuse_map_reset_persistence_test",
     "smc_efuse_map_locks_register_test",
     "smc_efuse_map_sep_write_test",
