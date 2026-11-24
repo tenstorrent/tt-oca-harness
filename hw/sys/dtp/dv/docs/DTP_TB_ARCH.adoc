@@ -346,7 +346,9 @@ The sticky error blocks every later update until an op-3 update or a DTMCS
 their reset values and start no access.
 The SBA registers start one bus beat per access: a size above the beat width
 sets `sberror` 4 and an unaligned address 3, both without a transaction, and a
-SLVERR or DECERR response sets 2. With the bridge's lifecycle disable asserted
+SLVERR or DECERR response sets 2. With `sbautoincrement` set, each completed
+access advances `sbaddress` by its size across the full bridge address width,
+and a completed write leaves `sbdata` unknown. With the bridge's lifecycle disable asserted
 an access completes as DECERR without reaching the port. A completion observed
 on the port applies at the first update at least one TCK cycle after its
 handshake. A system reset returns every bridge to its reset state, and the
@@ -482,6 +484,7 @@ seed.
 |Debug TDR |Verify TMP_STATUS, IC_RESET, DEBUG_CONTROL, and JTAG_CAPS with decoded logs, deterministic loops, seeded random patterns, and read-only sweeps
 |JTAG2AXI write |On each bridge, activate the Debug Module, write a seeded word and its neighbour through `sbaddress0` and `sbdata0`, poll sbcs, check the responder memory after each write
 |JTAG2AXI read |Read the first word back through `sbaddress0` with `sbreadonaddr`, poll sbcs, compare `sbdata0` with the written word
+|JTAG2AXI sizes |On each bridge, read and write every size at every offset in a beat of distinct bytes, check the whole beat after each write, and run an `sbautoincrement` stream at every size, across address bit 32 on the SMC fabric bridge
 |===
 
 Additional stimulus categories cover STAP/3DCR, iJTAG, XTRIG CSR, CTP, CTM,
@@ -567,9 +570,10 @@ geometry gate and of each later `CHK-J2A-GEOMETRY` record,
 expects, `DTP_J2A_FAULT_STATUS_NEGATIVE` swaps the DMI status each
 `CHK-J2A-FAULT-STATUS` capture record expects between 0 and 3,
 `DTP_J2A_DTM_CAPTURE_NEGATIVE` flips bit 0 of each value `CHK-J2A-DTM-CAPTURE`
-expects, and `DTP_J2A_DM_ACTIVE_NEGATIVE` flips bit 0 of each Debug Module
-register value `CHK-J2A-DM-ACTIVE` expects; a run with any of them set must
-fail. The
+expects, `DTP_J2A_DM_ACTIVE_NEGATIVE` flips bit 0 of each Debug Module
+register value `CHK-J2A-DM-ACTIVE` expects, and `DTP_J2A_AUTOINC_NEGATIVE`
+flips bit 0 of each address `CHK-J2A-AUTOINC` expects; a run with any of them
+set must fail. The
 same knob names are environment variables in cocotb and plusargs in SV-UVM.
 
 === Coverage Strategy

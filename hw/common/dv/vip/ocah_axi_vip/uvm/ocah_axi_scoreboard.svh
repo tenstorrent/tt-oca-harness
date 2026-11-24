@@ -17,7 +17,8 @@
 //   CHK-AXI-RDATA       read data equals the model's predicted readback
 //                       (expected-OKAY reads only)
 //   CHK-AXI-BEATS       observed beat count equals AxLEN+1
-//   CHK-AXI-ADDR-ALIGN  address aligned to the transfer size
+//   CHK-AXI-ADDR-ALIGN  AXI4 address aligned to AxSIZE; AXI4-Lite carries no
+//                       transfer size, so its address has no size to align to
 //
 // check_phase drains (unpaired items are errors) and finalizes the evidence
 // core exactly once (zero-check rejection gated by cfg.require_checks).
@@ -164,12 +165,13 @@ class ocah_axi_scoreboard extends uvm_scoreboard;
         "CHK-AXI-BEATS", 64'(observed.beat_count()), 64'(observed.expected_beats), context_s
     ));
 
-    void'(m_checker.expect_true(
-        "CHK-AXI-ADDR-ALIGN",
-        (observed.address % (64'd1 << observed.size)) == 0,
-        $sformatf(
-            "%s size=%0d", context_s, observed.size)
-    ));
+    if (observed.protocol == OCAH_AXI_PROTO_AXI4)
+      void'(m_checker.expect_true(
+          "CHK-AXI-ADDR-ALIGN",
+          (observed.address % (64'd1 << observed.size)) == 0,
+          $sformatf(
+              "%s size=%0d", context_s, observed.size)
+      ));
   endfunction
 
   function void check_phase(uvm_phase phase);

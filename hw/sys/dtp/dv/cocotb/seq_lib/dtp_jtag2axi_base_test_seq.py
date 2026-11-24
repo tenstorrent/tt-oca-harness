@@ -305,14 +305,21 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
     # --- System Bus Access -------------------------------------------------------
     async def sba_setup(
-        self, target: str, addr: int, size: int, *, read: bool, context: str
+        self,
+        target: str,
+        addr: int,
+        size: int,
+        *,
+        read: bool,
+        context: str,
+        autoincrement: bool = False,
     ) -> None:
-        """Program sbcs for one ``size`` access, then sbaddress; with ``read`` the
+        """Program sbcs for ``size`` accesses, then sbaddress; with ``read`` the
         sbaddress0 write starts the read."""
         await self.dmi_write(
             target,
             DtpDmReg.SBCS,
-            pack_sbcs(sbreadonaddr=int(read), sbaccess=size),
+            pack_sbcs(sbreadonaddr=int(read), sbaccess=size, sbautoincrement=int(autoincrement)),
             context=f"{context}.sbcs",
         )
         addr = self.masked_addr(target, addr)
@@ -354,10 +361,17 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self, target: str, addr: int, data: int, *, size: int, context: str
     ) -> None:
         """Write ``data`` at ``addr`` through System Bus Access and judge the bus request."""
+        await self.sba_setup(target, addr, size, read=False, context=context)
+        await self.sba_write_data(target, addr, data, size=size, context=context)
+
+    async def sba_write_data(
+        self, target: str, addr: int, data: int, *, size: int, context: str
+    ) -> None:
+        """Write ``data`` to sbdata, which starts the ``size`` write at ``addr``, the address
+        sbaddress holds, and judge the bus request."""
         offset = addr % self.target_cfg(target).beat_bytes
         wstrb = self.full_wstrb(size) << offset
         self.scoreboard_arm_strobes(target, wstrb, addr, context=context)
-        await self.sba_setup(target, addr, size, read=False, context=context)
         data &= self.data_mask(size)
         if size == 3:
             await self.dmi_write(target, DtpDmReg.SBDATA1, data >> 32, context=f"{context}.sbdata1")
@@ -373,9 +387,13 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             context=context,
         )
 
-    async def sba_read(self, target: str, addr: int, *, size: int, context: str) -> int:
+    async def sba_read(
+        self, target: str, addr: int, *, size: int, context: str, autoincrement: bool = False
+    ) -> int:
         """Read the ``size`` word at ``addr`` through System Bus Access and judge the bus request."""
-        await self.sba_setup(target, addr, size, read=True, context=context)
+        await self.sba_setup(
+            target, addr, size, read=True, context=context, autoincrement=autoincrement
+        )
         await self.wait_sba_idle(target, context=context)
         await self.expect_bus_request(target, read=True, addr=addr, size=size, context=context)
         data = await self.dmi_read(target, DtpDmReg.SBDATA0, context=f"{context}.sbdata0")

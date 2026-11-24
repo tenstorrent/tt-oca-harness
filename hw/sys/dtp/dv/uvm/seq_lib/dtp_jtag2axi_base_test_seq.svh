@@ -302,14 +302,15 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
 
   // --- System Bus Access -------------------------------------------------------
 
-  // Program sbcs for one `size` access, then sbaddress; with `is_read` the
+  // Program sbcs for `size` accesses, then sbaddress; with `is_read` the
   // sbaddress0 write starts the read.
   task sba_setup(dtp_j2a_target_t t, bit [63:0] addr, int unsigned size, bit is_read,
-                 string context_s);
+                 string context_s, bit autoincrement = 1'b0);
     dtp_sbcs_t       sbcs = '0;
     bit       [63:0] masked = addr & bit_mask(t.addr_width);
-    sbcs.sbreadonaddr = is_read;
-    sbcs.sbaccess     = 3'(size);
+    sbcs.sbreadonaddr    = is_read;
+    sbcs.sbaccess        = 3'(size);
+    sbcs.sbautoincrement = autoincrement;
     dmi_write(t, DTP_DM_SBCS, 32'(sbcs), {context_s, ".sbcs"});
     if (t.addr_width > 32)
       dmi_write(t, DTP_DM_SBADDRESS1, masked[63:32], {context_s, ".sbaddress1"});
@@ -351,6 +352,14 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // judge the bus request.
   task sba_write(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data, int unsigned size,
                  string context_s);
+    sba_setup(t, addr, size, 1'b0, context_s);
+    sba_write_data(t, addr, data, size, context_s);
+  endtask
+
+  // Write `data` to sbdata, which starts the `size` write at `addr`, the
+  // address sbaddress holds, and judge the bus request.
+  task sba_write_data(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data, int unsigned size,
+                      string context_s);
     int unsigned offset = int'(addr % t.beat_bytes);
     bit [7:0] wstrb = 8'(dtp_j2a_full_wstrb(size) << offset);
 
@@ -358,7 +367,6 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     bit [63:0] lanes = (masked << (8 * offset)) & bit_mask(t.data_width);
     if (target_enabled(t))
       target_cfgs[t.name].arm_expected_write(addr & bit_mask(t.addr_width), lanes, wstrb);
-    sba_setup(t, addr, size, 1'b0, context_s);
     if (size == 3) dmi_write(t, DTP_DM_SBDATA1, masked[63:32], {context_s, ".sbdata1"});
     dmi_write(t, DTP_DM_SBDATA0, masked[31:0], {context_s, ".sbdata0"});
     wait_sba_idle(t, context_s);
@@ -368,10 +376,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // Read the `size` word at `addr` through System Bus Access and judge the
   // bus request.
   task sba_read(input dtp_j2a_target_t t, input bit [63:0] addr, input int unsigned size,
-                input string context_s, output bit [63:0] data);
+                input string context_s, output bit [63:0] data, input bit autoincrement = 1'b0);
     bit [31:0] word;
     if (target_enabled(t)) target_cfgs[t.name].arm_expected_read(addr & bit_mask(t.addr_width));
-    sba_setup(t, addr, size, 1'b1, context_s);
+    sba_setup(t, addr, size, 1'b1, context_s, autoincrement);
     wait_sba_idle(t, context_s);
     expect_bus_request(t, 1'b1, addr, size, '0, '0, context_s);
     dmi_read(t, DTP_DM_SBDATA0, {context_s, ".sbdata0"}, word);

@@ -5,7 +5,9 @@
 // with the status their own scan captured, and the dmireset strobes with the
 // sticky status they clear (cg_j2a_dmi_status); the Debug Module registers
 // each bridge reads and writes with dmactive 0 and 1, and the sbcs writes
-// that set a read-only bit (cg_j2a_dm_access).
+// that set a read-only bit (cg_j2a_dm_access); the size, byte offset and
+// sbautoincrement of each bus access a bridge's Debug Module starts, and the
+// autoincrements that carry into address bit 32 (cg_j2a_sba_access).
 //
 // One instance in the shared tb_top serves both flows. Each bridge's DMI
 // capture and update strobes, its captured status, the DMI value its bridge
@@ -16,6 +18,11 @@
 // Update-DR, which is the edge each sample is taken on. The captured status
 // includes the busy a capture during a read sets. A dmcontrol write sets
 // dmactive before the next scan, so it is stable at that edge.
+//
+// The System Bus Access samples are taken on the bridges' system clock, from
+// each Debug Module's request to its bus adapter: one when the adapter grants
+// a request, and one in the cycle a completion's autoincrement moves the
+// address bits above bit 31.
 //
 // Covergroups follow the cross rules dtp_fcov.sv states.
 //
@@ -31,7 +38,16 @@ module dtp_j2a_fcov (
   input wire [2:0][1:0] capture_status_i,
   // {address 40:34, data 33:2, op 1:0}
   input wire [2:0][40:0] update_dmi_i,
-  input wire [2:0]      dmactive_i
+  input wire [2:0]      dmactive_i,
+  input wire            clk_i,
+  input wire            rst_ni,
+  input wire [2:0]      sba_grant_i,
+  input wire [2:0]      sba_write_i,
+  input wire [2:0][2:0] sba_size_i,
+  // The request address modulo the bridge's beat.
+  input wire [2:0][2:0] sba_offset_i,
+  input wire [2:0]      sba_autoinc_i,
+  input wire [2:0]      sba_carry_i
 );
 
   localparam int unsigned Bridges = 3;
@@ -109,8 +125,67 @@ module dtp_j2a_fcov (
     x_sbcs_ro: cross cp_bridge, cp_sbcs_ro;
   endgroup
 
+  // One sample per granted bus request, with its op, size, byte offset in the
+  // beat and sbautoincrement, and one per completion whose autoincrement
+  // carries into address bit 32, with the op it completes. A request is
+  // aligned to its size and no wider than the bridge's beat, which is 8 bytes
+  // on smc_axi and 4 on the OTP bridges; only smc_axi has address bits above
+  // bit 31.
+  covergroup cg_j2a_sba_access with function sample (
+      logic [1:0] bridge,
+      logic carry,
+      logic write,
+      logic [2:0] size,
+      logic [2:0] offset,
+      logic autoinc
+  );
+    option.per_instance = 1;
+    cp_op: coverpoint write iff (!carry) {bins read = {1'b0}; bins write = {1'b1};}
+    // 8 * bridge + size
+    cp_size: coverpoint {
+      bridge, size
+    } iff (!carry) {
+      bins smc_axi[] = {[0 : 3]};
+      bins smc_otp[] = {[8 : 10]};
+      bins sep_otp[] = {[16 : 18]};
+      illegal_bins wider = {[4 : 7], [11 : 15], [19 : 31]};
+    }
+    // 64 * bridge + 8 * size + offset
+    cp_lane: coverpoint {
+      bridge, size, offset
+    } iff (!carry) {
+      bins smc_axi_byte1[] = {[0 : 7]};
+      bins smc_axi_byte2[] = {8, 10, 12, 14};
+      bins smc_axi_byte4[] = {16, 20};
+      bins smc_axi_byte8 = {24};
+      bins smc_otp_byte1[] = {[64 : 67]};
+      bins smc_otp_byte2[] = {72, 74};
+      bins smc_otp_byte4 = {80};
+      bins sep_otp_byte1[] = {[128 : 131]};
+      bins sep_otp_byte2[] = {136, 138};
+      bins sep_otp_byte4 = {144};
+      illegal_bins other = {
+        9, 11, 13, 15, [17 : 19], [21 : 23], [25 : 63],
+        [68 : 71], 73, [75 : 79], [81 : 127],
+        [132 : 135], 137, [139 : 143], [145 : 255]
+      };
+    }
+    cp_autoinc: coverpoint autoinc iff (!carry) {bins off = {1'b0}; bins on = {1'b1};}
+    // {bridge, op} of a completion that carries into address bit 32.
+    cp_carry: coverpoint {
+      bridge, write
+    } iff (carry) {
+      bins smc_axi_read = {3'b00_0};
+      bins smc_axi_write = {3'b00_1};
+      illegal_bins narrow_address = {[3'b01_0 : 3'b11_1]};
+    }
+    x_lane: cross cp_lane, cp_op;
+    x_autoinc: cross cp_size, cp_op, cp_autoinc;
+  endgroup
+
   cg_j2a_dmi_status u_cg_j2a_dmi_status = new();
   cg_j2a_dm_access u_cg_j2a_dm_access = new();
+  cg_j2a_sba_access u_cg_j2a_sba_access = new();
 
   always_ff @(posedge tck_i) begin
     if (tap_rst_ni) begin
@@ -122,6 +197,32 @@ module dtp_j2a_fcov (
                                       dmactive_i[b], |(update_dmi_i[b][33:2] & SbcsReadOnly));
         end
         if (dmireset_i[b]) u_cg_j2a_dmi_status.sample(2'(b), 1'b1, 2'd3, capture_status_i[b]);
+      end
+    end
+  end
+
+  // The op of each bridge's last granted request, which its completion
+  // closes.
+  logic [Bridges-1:0] sba_write_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      sba_write_q <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (sba_grant_i[b]) sba_write_q[b] <= sba_write_i[b];
+      end
+    end
+  end
+
+  always_ff @(posedge clk_i) begin
+    if (rst_ni) begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (sba_grant_i[b])
+          u_cg_j2a_sba_access.sample(2'(b), 1'b0, sba_write_i[b], sba_size_i[b], sba_offset_i[b],
+                                     sba_autoinc_i[b]);
+        if (sba_carry_i[b])
+          u_cg_j2a_sba_access.sample(2'(b), 1'b1, sba_write_q[b], sba_size_i[b], '0, 1'b1);
       end
     end
   end
