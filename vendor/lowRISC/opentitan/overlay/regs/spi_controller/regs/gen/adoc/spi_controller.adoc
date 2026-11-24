@@ -121,10 +121,12 @@ Any reads from RX FIFO will cause an error interrupt.
 | 23 | `RXSTALL` | R | 0x0 a| If high, signifies that an ongoing transaction has stalled
 due to lack of available space in the RX FIFO
 | 22 | `BYTEORDER` | R | 0x0 a| The value of the ByteOrder parameter, provided so that firmware
-can confirm proper IP configuration.
+can confirm proper IP configuration. Reads 1 in SEP (ByteOrder = 1);
+the listed reset value of 0 holds only for the first clock after
+reset.
 | 21 | `Reserved` | - | - a| Reserved
-| 20 | `RXWM` | R | 0x0 a| If high, the number of 32-bits in the RX FIFO now exceeds the
-!!CONTROL.RX_WATERMARK entries (32b each).
+| 20 | `RXWM` | R | 0x0 a| If high, the number of 32-bit words in the RX FIFO is greater
+than or equal to !!CONTROL.RX_WATERMARK.
 | 19:16 | `CMDQD` | R | 0x0 a| Command queue depth. Indicates how many unread 32-bit words are
 currently in the command segment queue.
 | 15:8 | `RXQD` | R | 0x0 a| Receive queue depth. Indicates how many unread 32-bit words are
@@ -278,7 +280,7 @@ the TX FIFO is less than !!CONTROL.TX_WATERMARK.  To prevent the
 reassertion of this interrupt add more data to the TX FIFO, or
 reduce !!CONTROL.TX_WATERMARK.
 | 2 | `RXWM` | RW | 0x0 a| Assert to send a spi_event interrupt whenever the number of 32-bit words in
-the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+the RX FIFO is greater than or equal to !!CONTROL.RX_WATERMARK. To prevent the
 reassertion of this interrupt, read more data from the RX FIFO, or
 increase !!CONTROL.RX_WATERMARK.
 | 1 | `TXEMPTY` | RW | 0x0 a| Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY

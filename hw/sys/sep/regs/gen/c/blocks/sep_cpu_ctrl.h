@@ -30,20 +30,20 @@ typedef union {
 } sep_cpu_ctrl__CLOCK_GATE_CTRL_t;
 
 // reg - sep_cpu_ctrl::REFERENCE_COUNTER
-// SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
-// then poll this register until the readback reflects the written value before
-// writing again. The counter keeps advancing, so the readback is at or just
-// above the written value rather than equal to it.
+// SEP REFERENCE COUNTER, counting after deassert of the boot-qualified SEP
+// reset. Write once, then poll this register until the readback reflects the
+// written value before writing again. The counter keeps advancing, so the
+// readback is at or just above the written value rather than equal to it.
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bm 0xffffffffffffffff
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bp 0
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_bw 64
 #define SEP_CPU_CTRL__REFERENCE_COUNTER__RC_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
-        // then poll this register until the readback reflects the written value before
-        // writing again. The counter keeps advancing, so the readback is at or just
-        // above the written value rather than equal to it.
+        // SEP REFERENCE COUNTER, counting after deassert of the boot-qualified SEP
+        // reset. Write once, then poll this register until the readback reflects the
+        // written value before writing again. The counter keeps advancing, so the
+        // readback is at or just above the written value rather than equal to it.
         uint64_t rc :64;
     } f;
     uint64_t w;
@@ -223,12 +223,24 @@ typedef union {
 } sep_cpu_ctrl__SEP_GLOBAL_BASE_ADDR_t;
 
 // reg - sep_cpu_ctrl::SEP_LOCAL_BASE_ADDR
+// Base of the local alias window, which CPU and secure DMA accesses reach as
+// 0x1000_0000 onwards. Only bits [31:0] are used;
+// bits [55:32] are ignored. Legal values are 0xD000_0000 to 0xFFFF_FFFF; other
+// values overlap fixed SEP regions and are not supported. Keeping the reset value
+// is recommended. The window ends at 0xFFFF_FFFF and does not wrap, so a higher
+// base shortens it. An address outside the window is not translated.
 #define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_bm 0xffffffffffffff
 #define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_bp 0
 #define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_bw 56
 #define SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR__ADDR_reset 0xd0000000
 typedef union {
     struct __attribute__ ((__packed__)) {
+        // Base of the local alias window, which CPU and secure DMA accesses reach as
+        // 0x1000_0000 onwards. Only bits [31:0] are used;
+        // bits [55:32] are ignored. Legal values are 0xD000_0000 to 0xFFFF_FFFF; other
+        // values overlap fixed SEP regions and are not supported. Keeping the reset value
+        // is recommended. The window ends at 0xFFFF_FFFF and does not wrap, so a higher
+        // base shortens it. An address outside the window is not translated.
         uint64_t addr :56;
         uint64_t :8;
     } f;
@@ -329,8 +341,9 @@ typedef union {
 // SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).
 // If a bark arrives while the reset value is still in place, the CPU jumps to
 // 0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if
-// the loaded image covers that location, or an uncorrectable ICCM ECC error
-// (which itself re-raises NMI) if it does not.
+// the loaded image covers that location, or, if the fetch takes an
+// uncorrectable ICCM ECC error, an instruction access fault (mcause 0x1)
+// through mtvec.
 // Reserved, bit 0 is always 0 (aligned)
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__RSVD_bm 0x1
 #define SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__RSVD_bp 0

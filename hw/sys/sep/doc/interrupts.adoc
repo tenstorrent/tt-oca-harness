@@ -112,7 +112,15 @@ not here; see <<sep-non-pic-paths>>.
 
 |`17`
 |External TRNG IRQ
-|External TRNG interrupt; driven to zero in the current OSS integration
+|External TRNG interrupt, from the asynchronous input `ext_trng_irq_i`. The PIC
+gateway resynchronizes the input with two flops on the SEP clock; SEP adds no
+edge detection or pulse stretching, so the source follows the input about two
+SEP clock cycles later. With a level gateway, the TRNG must hold the input until
+firmware has cleared the cause at the TRNG; a shorter pulse can be lost. With an
+edge gateway, the input must be held for at least two SEP clock cycles, and the
+gateway holds the request until firmware writes `meigwclr[17]` after the input
+has dropped. The reference integration `sep_ip_integration` has no external
+TRNG and ties the input to zero.
 
 |`18`
 |HMAC done
@@ -189,7 +197,11 @@ endif::backend-pdf[]
 
 |`34`
 |Locked field access
-|eFuse locked-field access violation interrupt
+|eFuse locked-field access violation interrupt. A one-cycle pulse for each
+shadow-register read or write, from any initiator, that a field lock blocks;
+nothing outside the PIC latches it. Program an edge gateway; a level gateway can
+lose the pulse. The edge gateway holds the request until firmware writes
+`meigwclr[34]`.
 
 |`35`
 |Adams Bridge error
