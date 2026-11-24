@@ -120,7 +120,9 @@ required:
   The SEP's entropy source samples ring oscillators built from `prim_clock_nand2`,
   `prim_buf` and `prim_stdmux2` stages in `entropy_rosc_array`. A build can keep
   them, replace that module with a hard macro of the same ports, or select the
-  loop-free stub with the Bender target `entropy_rosc_stub`.
+  loop-free stub with the Bender target `entropy_rosc_stub`. The rings and a
+  hard macro alike must meet the
+  xref:smu-sep.adoc#sep-rosc-requirements[ring-oscillator requirements].
 
 * *SRAM implementations*
   The SRAM implementations expected by the SEP can be split by the components
