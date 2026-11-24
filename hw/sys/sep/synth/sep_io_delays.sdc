@@ -149,6 +149,9 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {efuse_shim_command_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {efuse_shim_command_resp_i*}] -add_delay
 
+# LC feature control
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {feat_ctrl_o*}] -add_delay
+
 # LC demote state
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {lcc_demote_state_1_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {lcc_demote_state_2_o*}] -add_delay

@@ -668,6 +668,7 @@ module sep_uvm_top
         // Wrapper status/debug outputs. Unconnected ports have no consumer
         // in this TB; the rest are real DUT outputs brought to tb ports.
         .lc_state_o                   (lc_state_probe_o),
+        .feat_ctrl_o                  (),
         .dbg_disable_o                (dbg_disable_w),
         .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
         .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
