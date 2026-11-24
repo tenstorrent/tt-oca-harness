@@ -491,15 +491,23 @@ partition "One-shot state ([S25]-[S27])" {
   (soft PCR slot 1) -> bl0_state;
 }
 partition "Hand-off ([S28]-[S29])" {
-  :[S28] gate-ledger self-check
-  (+ canary, stack top);
+  :[S28] stack canary check;
+  if (canary intact ?) then (no)
+    :halt 0xF001;<<#ffe0e0>>
+    detach
+  else (yes)
+  endif
+  :[S29] ICCM ECC pad (default build);
+  :copy BL1 image to TOC load_addr;
+  :pre-hand-off self-check
+  (gate ledger, manifest locus, fuse locks);
   if (self-check passes ?) then (no)
     :halt 0xF004;<<#ffe0e0>>
     detach
   else (yes)
+    :report EXEC_IMAGE, STARTING_BL1;
     :release: rewrite BL1-region
     rule to executable (under RLB);
-    :copy BL1 image to TOC load_addr;
     :mepc; fence.i; fence; mret;
     :BL1 executing;<<#e6f0f8>>
     stop
@@ -562,8 +570,8 @@ anti-rollback, decrypt |<<sec:secure_boot>>
 in `bl0_state` |<<sec:boot_measurement>>
 |[S28] |Stack canary check |Canary re-verified, before the hand-off that does not return
 |<<sec:handoff>>
-|[S29] |BL1 hand-off |Pre-hand-off self-check, ICCM ECC pad past an ICCM-resident BL1
-(default build), PMP release, jump to BL1 |<<sec:handoff>>
+|[S29] |BL1 hand-off |ICCM ECC pad past an ICCM-resident BL1 (default build), BL1 copy,
+pre-hand-off self-check, `EXEC_IMAGE`/`STARTING_BL1`, PMP release, jump to BL1 |<<sec:handoff>>
 |[S30] |Error convergence |All failures funnel into `rom_err_fail()` |<<sec:status>>,
 <<sec:retry>>
 |===
@@ -1049,9 +1057,7 @@ The locked cold values are `pmpcfg0 = 0x9B009B9D` and
 *IMPLEMENTATION GAP* — the default OpenTitan-SPI build has a complete cold allowlist and
 releases only the selected BL1 destination. The XIP build still requires entries for the
 `0x3000_0000` flash window and its integrator-defined controller registers before it can run
-under `MMWP`. The full pre-hand-off gate ledger is also not yet wired into `main`; the release
-currently follows the checks implemented by the boot flow, including the final stack-canary
-check.
+under `MMWP`.
 ====
 
 [[sec:fuses]]
@@ -1925,7 +1931,9 @@ root key — is decided from five inputs: the lifecycle state, the chiplet debug
 (`CHIPLET_DBG` in `SIP_DIS` / `SYS_DIS`), the `SBOOT_DIS` fuse, the signed
 `secure_boot_control` field, and the unauthenticated escalation flag. The decision is made
 once per manifest attempt, recorded in `bl0_state.secure_boot`, and feeds the validation
-gating, the boot measurement, and the hand-off self-check.
+gating and the boot measurement. It reaches the hand-off self-check only through the
+`BOOT_GATE_CRYPTO` stamp (<<sec:handoff>>); the self-check does not read
+`bl0_state.secure_boot`.
 
 1. [[req-SEP-ROM-SB-010]]*[SEP-ROM-SB-010]* In `PROD` and `PROD_END`, secure boot shall be
    enforced. No manifest content shall be able to disable it.
@@ -2767,13 +2775,16 @@ unprofitable for a fault-injection attacker.
 [[req-SEP-ROM-HOFF-010]]*[SEP-ROM-HOFF-010]* Early in the boot ([S19], immediately after
 `bl0_state` initialization) the ROM shall write the stack canary `0xDEAD5741` at
 `__stack_bottom` — the lowest usable stack address, directly above `.bss` — and shall
-re-verify it as part of the pre-hand-off self-check. A corrupted canary means the stack
-overflowed into `.bss` during boot and is fatal (`ROM_ERR_STACK_OVERFLOW`, `0xF001`).
+re-verify it at [S28], immediately before the [S29] hand-off. A corrupted canary means the
+stack overflowed into `.bss` during boot and is fatal (`ROM_ERR_STACK_OVERFLOW`, `0xF001`).
+The [S28] canary check is separate from the pre-hand-off self-check below.
 
 [[req-SEP-ROM-HOFF-020]]*[SEP-ROM-HOFF-020]* At the hand-off point the call stack shall have
 unwound to where execution effectively started: the current frame shall be at the initial
 top-of-stack established at cold boot (legacy-ROM precedent: frame address equals the linker
-stack top). A mismatch is fatal.
+stack top). A mismatch is fatal. This stack-top check is separate from both the [S28] canary
+check and the pre-hand-off self-check, and is not implemented (see the gap note at the end of
+this chapter).
 
 === Fuse-Secret Locking ([S25]/[S26])
 
@@ -2799,17 +2810,35 @@ within the boot that set it — it is not a permanent device state.
 === Pre-Hand-off Self-Check (Gate Ledger)
 
 The accept-then-hand-off decision is hardened against single-glitch fault injection with a
-lockstep gate ledger (specified here; not yet implemented):
+lockstep gate ledger. The ledger words, and the validated manifest length the self-check
+bounds, are ROM-private DCCM state: they are not part of `bl0_state` and BL1 does not read
+them.
 
 * Four acceptance gates each record a bit in a `gate_ok` word *and* clear the same bit in a
-  complement word `gate_inv` (initialized to all-ones) as they pass:
-  `BOOT_GATE_MANIFEST` (manifest loaded + structurally validated), `BOOT_GATE_CRYPTO`
-  (secure-boot crypto verified, or affirmatively not required), `BOOT_GATE_HASH` (payload
-  hashes verified), `BOOT_GATE_FUSELOCK` (fuse-secret locks confirmed).
-* [[req-SEP-ROM-HOFF-040]]*[SEP-ROM-HOFF-040]* Immediately before the jump, the ROM shall
-  require `gate_ok == BOOT_GATE_EXPECT` *and* `gate_inv == ~BOOT_GATE_EXPECT`. A skipped gate
-  leaves both words wrong; a glitch would have to corrupt two complementary values
-  consistently.
+  complement word `gate_inv` as they pass: `BOOT_GATE_MANIFEST` (bit 0, `0x1`: manifest
+  loaded + structurally validated), `BOOT_GATE_CRYPTO` (bit 1, `0x2`: secure-boot crypto
+  verified, or affirmatively not required), `BOOT_GATE_HASH` (bit 2, `0x4`: payload hashes
+  verified), `BOOT_GATE_FUSELOCK` (bit 3, `0x8`: fuse-secret locks confirmed).
+  `BOOT_GATE_EXPECT` is `0xF`, all four bits, in every boot mode.
+* Every manifest slot attempt ([S23]) starts the ledger again: `gate_ok = 0`,
+  `gate_inv = 0xFFFF_FFFF` and the recorded manifest length 0, so a stamp from a failed
+  attempt never carries into a later one. MANIFEST, CRYPTO and HASH are stamped inside the
+  attempt; FUSELOCK is stamped after the slot loop, when [S26] has confirmed the locks.
+* The ROM, not the validation library, decides each stamp. It evaluates the decision twice,
+  the second time over optimizer-opaque (laundered) operands, and stamps only when both
+  evaluations pass:
+  ** MANIFEST: the `oca_validate_manifest()` result is `OCA_OK`.
+  ** CRYPTO: where the secure-boot decision is recorded in `bl0_state.secure_boot`, the
+     library reports the determination settled and either secure boot enforced with a
+     signature authenticated, or secure boot not enforced. A boot that does not enforce
+     secure boot therefore stamps CRYPTO at that point too.
+  ** HASH: the `oca_check_payload_at()` result is `OCA_OK`.
+  ** FUSELOCK: the [S26] re-read found every lock bit set.
+* [[req-SEP-ROM-HOFF-040]]*[SEP-ROM-HOFF-040]* At [S29], after the BL1 copy and before the
+  `EXEC_IMAGE` and `STARTING_BL1` reports and the PMP release, the ROM shall require
+  `gate_ok == BOOT_GATE_EXPECT` *and* `gate_inv == ~BOOT_GATE_EXPECT` (`0xFFFF_FFF0`). A
+  skipped gate leaves both words wrong; a glitch would have to corrupt two complementary
+  values consistently.
 * [[req-SEP-ROM-HOFF-050]]*[SEP-ROM-HOFF-050]* The self-check shall additionally re-verify,
   twice each over independently evaluated (optimizer-opaque) operands: the manifest locus
   (the validated manifest sits at the SEP SRAM base, within range) and the fuse-secret lock
@@ -2817,8 +2846,19 @@ lockstep gate ledger (specified here; not yet implemented):
   iteration counter is confirmed to equal `i+1` on every iteration, and a final tally
   re-confirms both counters equal the number of checks. Any shortfall or disagreement is
   fatal (`ROM_ERR_HANDOFF_SELFCHECK_FAILED`, `0xF004`).
+  ** The manifest locus holds when `bl0_state.sep_sram_manifest_addr` equals the SEP SRAM
+     base and that base plus the validated manifest length does not pass the end of SEP
+     SRAM.
+  ** The fuse-secret lock state holds when a fresh read of `SEP_EFUSE_MAP_LOCKS` has all
+     six read-lock bits of SEP-ROM-HOFF-030 set.
+  ** The checks run in this order: the ledger pair of SEP-ROM-HOFF-040, the manifest locus
+     twice, the lock state twice — five checks.
+* The secure-boot decision reaches the self-check only through the CRYPTO stamp; the
+  self-check neither reads nor branches on `bl0_state.secure_boot`.
 * The construction is strictly additive: a fault can only cause a false *halt*, never a
   false accept.
+* The [S28] canary check (SEP-ROM-HOFF-010) and the stack-top check (SEP-ROM-HOFF-020) are
+  not part of this self-check.
 
 === `bl0_state` Hand-off Block
 
@@ -2852,13 +2892,18 @@ integrity-checks the block via these.
 
 === Release and Jump ([S29])
 
-1. [[req-SEP-ROM-HOFF-060]]*[SEP-ROM-HOFF-060]* Only after the self-check passes shall the
+1. The BL1 image is copied from its staged payload location to its TOC entry's `load_addr`
+   (SEP-ROM-MAN-050/-060), after the ICCM ECC pad of the default build.
+2. The pre-hand-off self-check runs; a failure halts with `0xF004`. Only when it passes
+   does the ROM report `EXEC_IMAGE` and then `STARTING_BL1` with the entry address, so
+   `STARTING_BL1` on the status stream means the self-check passed.
+3. [[req-SEP-ROM-HOFF-060]]*[SEP-ROM-HOFF-060]* Only after the self-check passes shall the
    ROM release the PMP execution fence for the region BL1 was loaded into — a single rewrite of the
    locked BL1-region rule under `mseccfg.RLB=1` (SEP-ROM-PMP-080, <<sec:pmp_mechanism>>).
-   The release shall be the last write before the jump sequence.
-2. The BL1 image is copied from its staged payload location to its TOC entry's `load_addr`,
-   and control transfers to `load_addr + entry_point` (SEP-ROM-MAN-050/-060).
-3. [[req-SEP-ROM-HOFF-070]]*[SEP-ROM-HOFF-070]* The jump shall order memory correctly for
+   The release shall be the last write before the jump sequence. A release that does not
+   read back is fatal with `ROM_ERR_HANDOFF_SELFCHECK_FAILED`.
+4. Control transfers to `load_addr + entry_point` (SEP-ROM-MAN-050/-060).
+   [[req-SEP-ROM-HOFF-070]]*[SEP-ROM-HOFF-070]* The jump shall order memory correctly for
    freshly written code: `mepc ← entry`, `fence.i` (IFU sees the new SRAM contents),
    `fence` (stores complete), then `mret`. The ROM never expects control back; the only
    re-entry paths are cold reset and the warm-reset protocol (<<sec:warm_reset>>).
@@ -2874,13 +2919,13 @@ start
 :gates marked during boot:
 MANIFEST, CRYPTO, HASH, FUSELOCK
 (gate_ok bit set, gate_inv bit cleared);
-:build volatile checks list:
+:copy BL1 image to TOC load_addr;
+:checks list:
 1. gate_ok/gate_inv match expected pair
 2. manifest locus (a)
 3. manifest locus (b) - independent
 4. fuse locks (a)
-5. fuse locks (b) - independent
-plus stack canary / stack-top;
+5. fuse locks (b) - independent;
 while (for each check, fail-fast)
   if (check true ?) then (yes)
     :seen++;
@@ -2898,8 +2943,8 @@ if (i == seen == n_checks ?) then (no)
   :halt 0xF004;<<#ffe0e0>>
   detach
 else (yes)
+  :report EXEC_IMAGE, STARTING_BL1;
   :release PMP fence for BL1 region;
-  :copy BL1 image to TOC load_addr;
   :mepc <- load_addr + entry_point,
   fence.i, fence, mret;
   :BL1 executing;<<#e6f0f8>>
@@ -2910,14 +2955,9 @@ endif
 
 [WARNING]
 ====
-*IMPLEMENTATION GAP* — three items:
-
-* The gate-ledger self-check is implemented (commit `3de14630f`) but not yet on `main`.
-* The stack-top verification (SEP-ROM-HOFF-020) is not implemented: nothing compares the
-  frame address at hand-off against the linker stack top. The canary half of this item is
-  now closed — the re-check runs inside `rom_manifest_validate_handoff()` immediately
-  before `rom_handoff_bl1()`, which satisfies SEP-ROM-HOFF-010.
-* The PMP release step (SEP-ROM-HOFF-060) is not implemented (see <<sec:pmp>>).
+*IMPLEMENTATION GAP* — the stack-top verification (SEP-ROM-HOFF-020) is not implemented:
+nothing compares the frame address at hand-off against the linker stack top. It is a separate
+check, outside both the [S28] canary check and the pre-hand-off self-check.
 ====
 
 [[sec:retry]]
@@ -3141,8 +3181,9 @@ itself, SEP-ROM-STRAP-020).
 (<<sec:cpu_init>>).
 |`ROM_ERR_FUSE_SECRETS_NOT_LOCKED` |`0xF003` |Fuse-secret lock verification failed
 (<<sec:handoff>>).
-|`ROM_ERR_HANDOFF_SELFCHECK_FAILED` |`0xF004` |Reserved for a pre-hand-off self-check this ROM
-does not implement.
+|`ROM_ERR_HANDOFF_SELFCHECK_FAILED` |`0xF004` |Pre-hand-off self-check failed: gate ledger,
+manifest locus, fuse-lock re-verification, iteration counter or final tally; or the PMP
+release did not read back (<<sec:handoff>>).
 |`ROM_ERR_ROM_HASH_MISMATCH` |`0xF005` |ROM self-hash recompute mismatch (or unparsable
 embedded hash) (<<sec:boot_measurement>>).
 |`ROM_ERR_MEASUREMENT_FAILED` |`0xF006` |Measurement enrollment failed (hash engine)
@@ -3258,7 +3299,8 @@ never completed), then the caller's error
 |[S27] slot 1 (post-demotion) |`RECORD_MEASUREMENT` → `INFO_EXT` (slot 1) |`0xF006`
 (enrollment failure)
 |[S29] hand-off |`HANDOFF_CHECK` (DEBUG); `COPY_AND_EXEC_IMAGE`; `BL1_FOUND`; `BL1_COPY`;
-`EXEC_IMAGE`; `STARTING_BL1` → `INFO_EXT` ×2 (entry address)
+then, only after the pre-hand-off self-check passes, `EXEC_IMAGE`; `STARTING_BL1` →
+`INFO_EXT` ×2 (entry address)
 |`ROM_ERR_HANDOFF_SELFCHECK_FAILED`; `OCA_BOOT_ERR_NO_BL1` / `_BL1_TOO_LARGE` /
 `_BL1_BAD_ADDR`
 |[S28] canary |— |`ROM_ERR_STACK_OVERFLOW`
@@ -3339,10 +3381,11 @@ DEM-010..050
 |Fuse-secret locks |`LOCKS` register |set, then independently re-read as set |`0xF003`
 |[S25] set → [S26] verify → re-checked in self-check. HOFF-030
 |Stack integrity |canary @ `__stack_bottom`; frame addr |canary intact; stack at initial
-top |`0xF001` |In pre-hand-off self-check. HOFF-010/-020
+top |`0xF001` |Canary at [S28], before [S29] and outside the pre-hand-off self-check.
+Stack-top check separate and not implemented. HOFF-010/-020
 |Gate ledger |`gate_ok`/`gate_inv`, doubled invariants, counters |full expected set,
-complements agree, tally exact |`0xF004` |Last decision before PMP release + jump.
-HOFF-040/-050
+complements agree, tally exact |`0xF004` |[S29], after the BL1 copy, before
+`STARTING_BL1` and the PMP release + jump. HOFF-040/-050
 |===
 
 [appendix]
@@ -3406,7 +3449,7 @@ The integrator-defined XIP-controller aperture remains open.
 |PMP binding/release mechanism |*partial* |The ROM programs RLB → locked rules → MMWP at
 cold boot and adds execute permission to one BL1 rule at hand-off
 (SEP-ROM-PMP-060/-070/-080). RLB disposition at the jump is a deferred sub-decision
-(BL1 spec); `MML` and the full hand-off gate ledger remain deferred. |<<sec:pmp_mechanism>>
+(BL1 spec); `MML` remains deferred. |<<sec:pmp_mechanism>>
 |Exponent constraint |*by design* |Ratified: SEP secure boot accepts F4 (e = 65537) RSA keys
 only. A permanent constraint, not a consequence of the OTBN program build; any other
 exponent is rejected (SEP-ROM-SB-100). |<<sec:secure_boot>>
@@ -3419,12 +3462,13 @@ ESRC → CSRNG → EDN chain lazily from the crypto callbacks that need it, lock
 source-selection configuration, and fails the boot with an attributable status if any stage
 does not come up. The whole-chain testbench grant it replaces is unused; simulation now
 forces only the ESRC noise source. |<<sec:entropy>>
-|Handoff self-check ledger |*unmerged* |Implemented (commit `3de14630f`); not on `main`.
-|<<sec:handoff>>
-|Stack canary / stack-top at hand-off |*partial* |Canary re-check **closed**: it now runs
-immediately before `rom_handoff_bl1()`, after the crypto stages where the stack actually
-peaks, and the comparison is present in the binary (it was previously dead-stripped, sitting
-after the non-returning hand-off call). Stack-top check still absent (SEP-ROM-HOFF-020).
+|Handoff self-check ledger |*closed* |The gate ledger and the doubled manifest-locus and
+fuse-lock re-verification run at [S29] after the BL1 copy and before `STARTING_BL1` and the
+PMP release (SEP-ROM-HOFF-040/-050). |<<sec:handoff>>
+|Stack canary / stack-top at hand-off |*partial* |Canary re-check **closed**: it is the
+separate [S28] check (`0xF001`), run immediately before `rom_handoff_bl1()`, after the crypto
+stages where the stack actually peaks. The stack-top check (SEP-ROM-HOFF-020) is a separate
+check outside the pre-hand-off self-check and is not implemented.
 |<<sec:handoff>>
 |Secure-boot escalation flag |*gap* |`unauthenticated_flags` bit 0 not implemented; the
 field is unread by the ROM and the validation library. |<<sec:secure_boot>>
