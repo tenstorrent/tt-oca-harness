@@ -7,8 +7,8 @@
 // through the matching output_remap, which rewrites the address and replaces AxUSER with the M-mode
 // or the other source ID; all other requests have AxUSER replaced with the SMC source ID; a mux
 // merges the three paths and widens the ID. With NO_ADDR_REMAP set, only the ID widening remains.
-// The Xvisor remap sets AxPROT[1] (NS) to 1 and the M-mode remap to the inverse of bit 55 of the
-// remapped address; the direct path passes AxPROT unchanged. A
+// The Xvisor remap sets AxPROT[1] (NS) to 1; the M-mode remap, the direct path and the
+// NO_ADDR_REMAP pass-through set it to the inverse of bit 55 of the outgoing address. A
 // clock-gated outbound access filter, which allows traffic that hits no rule, then guards the port,
 // which it reaches through an axi_cut.
 
@@ -127,6 +127,14 @@ module smc_output_fabric #(
 
   if (NO_ADDR_REMAP == 1'b1) begin : gen_stub_remap
 
+    smc_pkg::smc_56_64_6_12_axi_req_t axi_ns_req;
+
+    always_comb begin
+      axi_ns_req            = axi_req_i;
+      axi_ns_req.aw.prot[1] = ~axi_req_i.aw.addr[55];
+      axi_ns_req.ar.prot[1] = ~axi_req_i.ar.addr[55];
+    end
+
     // Pass through main AXI data path (no remapping), still need ID width conversion
     prim_axi_id_converter #(
       .AXI_ADDR_WIDTH   (smc_pkg::AxiAddrWidth),
@@ -143,7 +151,7 @@ module smc_output_fabric #(
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
 
-      .axi_in_req_i       (axi_req_i),
+      .axi_in_req_i       (axi_ns_req),
       .axi_in_resp_o      (axi_resp_o),
       .axi_out_req_o      (axi_remapped_to_filter_req),
       .axi_out_resp_i     (axi_remapped_to_filter_resp)
@@ -264,6 +272,14 @@ module smc_output_fabric #(
       .mst_resps_i        (axi_from_demux_resp)
     );
 
+    smc_pkg::smc_56_64_6_12_axi_req_t axi_direct_ns_req;
+
+    always_comb begin
+      axi_direct_ns_req            = axi_from_demux_req.filter;
+      axi_direct_ns_req.aw.prot[1] = ~axi_from_demux_req.filter.aw.addr[55];
+      axi_direct_ns_req.ar.prot[1] = ~axi_from_demux_req.filter.ar.addr[55];
+    end
+
     prim_axi_user_override_struct #(
       .AXI_ADDR_WIDTH   (smc_pkg::AxiAddrWidth),
       .AXI_DATA_WIDTH   (smc_pkg::AxiDataWidth),
@@ -274,7 +290,7 @@ module smc_output_fabric #(
       .axi_req_t        (smc_pkg::smc_56_64_6_12_axi_req_t),
       .axi_resp_t       (smc_pkg::smc_56_64_6_12_axi_resp_t)
     ) u_prim_axi_user_override_struct (
-      .axi_in_req_i   (axi_from_demux_req.filter),
+      .axi_in_req_i   (axi_direct_ns_req),
       .axi_in_resp_o  (axi_from_demux_resp.filter),
       .axi_out_req_o  (axi_remap_out_req.filter),
       .axi_out_resp_i (axi_remap_out_resp.filter)
