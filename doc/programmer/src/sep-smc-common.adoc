@@ -138,11 +138,12 @@ void smc_post_status(uint32_t status) {
 }
 ----
 
-The write keeps the AxPROT the SMC hart issued, NS included; only the address
-and the source ID change. The SMC outbound filter passes it unless an entry
-denies `OTHERS` traffic to the target. The M-mode window works the same way,
-with its regions at `0xC0013000`, its window at `0xC100_0000` and source ID
-`MMODE`.
+The write leaves non-secure, with NS 1 as every request through the Xvisor
+window does; only the address, the source ID and NS change. The SMC outbound
+filter passes it unless an entry denies `OTHERS` traffic to the target. The
+M-mode window works the same way, with its regions at `0xC0013000`, its window
+at `0xC100_0000` and source ID `MMODE`, except that NS is the inverse of bit 55
+of the remapped address.
 
 [WARNING]
 ====
@@ -348,7 +349,8 @@ AxPROT instead: with `awprot_requirement` and `arprot_requirement` at `0x1`
 (data, secure, privileged) and both `write_filter_enable` and
 `read_filter_enable` set, only transactions whose three PROT bits equal `0x1`
 are allowed. The SEP load/store, debug and DMA masters all drive `0x1`, which
-reaches the SMC unchanged on SEP's SMC path. SEP traffic on the direct SMN path
+reaches the SMC unchanged on SEP's SMC path, and every SMC initiator issues
+`0x1` as well. SEP traffic on the direct SMN path
 carries NS 1 unless its address has bit 55 set.
 
 [NOTE]

@@ -419,7 +419,18 @@ without such a processor has no use for them.
 M-mode and Xvisor name the other processor's software, not SMC privilege
 modes: SMC firmware runs in machine mode whichever window it uses. The address
 window alone selects the remap and the source ID; the privilege mode of the
-issuing SMC hart does not, and AxPROT, including NS, passes unchanged.
+issuing SMC hart does not.
+
+Each path also sets the NS bit, AxPROT[1], of the request it carries; the
+other AxPROT bits pass unchanged, and no path changes address bit 55:
+
+* Xvisor remap: NS is 1.
+* M-mode remap: NS is the inverse of bit 55 of the remapped address, so a
+  region whose offset sets bit 55 issues secure requests.
+* Direct path: NS is the inverse of address bit 55, so only an address with
+  bit 55 set leaves secure.
+
+With `NO_ADDR_REMAP` set, the direct path's NS rule applies to every request.
 
 == Filtering and Protection
 
@@ -635,17 +646,38 @@ identity, so this check alone does not restrict a block to one initiator.
 
 ifdef::backend-html5[]
 ++++
-<span id="protection-bit-pass-through"></span>
+<span id="initiator-protection-bits"></span>
 ++++
 endif::backend-html5[]
-[[smc-fabric-protection-bit-pass-through]]
-==== Protection Bit Pass-Through
+[[smc-fabric-initiator-protection-bits]]
+==== Initiator Protection Bits
 
-All protection bits are passed through the fabric without modification.
-The filters only block or allow transactions based on their protection
-attributes; they do not alter the protection bits themselves. This ensures
-that downstream slaves receive the original protection attributes from
-the originating master.
+Every SMC initiator issues AxPROT `0x1`: data, secure, privileged
+(<<smc-initiator-axprot-table>>). The value does not depend on the privilege
+mode of the issuing SMC hart. The SEP and system inputs pass the AxPROT of
+their initiators unchanged.
+
+[[smc-initiator-axprot-table]]
+.AxPROT of the SMC initiators
+[width="100%",cols="35%,15%,50%",options="header",]
+|=======================================================================
+|Initiator |AxPROT |Where it is set
+|CPU cores, every core and privilege mode |`0x1` |Input fabric, MMIO port
+|Debug module system bus access |`0x1` |Input fabric, MMIO port
+|JTAG-to-AXI bridge |`0x1` |Input fabric, JTAG port
+|DMA and zeroer |`0x1` |Input fabric, data accelerator port
+|UART log engine |`0x1` |Input fabric, log port
+|=======================================================================
+
+The cluster's MMIO port carries only these two initiators: no window the
+local fabric routes to the cluster front port lies in the cluster's MMIO
+address range, so a request entering the front port never leaves on the MMIO
+port.
+
+On the way to the SMC's outbound port, the output paths set the NS bit of
+AxPROT and leave its other bits unchanged
+(<<smc-fabric-privilege-controlled-remapping>>). The filters
+block or allow transactions on their protection bits without altering them.
 
 ifdef::backend-html5[]
 ++++
