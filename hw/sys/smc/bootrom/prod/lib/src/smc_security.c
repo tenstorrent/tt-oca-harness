@@ -30,7 +30,6 @@ uint8_t smc_security_get_lc_state(void) {
 
 /**
  * Check if the device is in secure mode (PROD or PROD_END)
- * Note: PROD_DBG uses same encoding as PROD but is treated as unsecure
  */
 uint8_t smc_security_is_secure_mode(void) {
     uint8_t lc_state = smc_security_get_lc_state();
