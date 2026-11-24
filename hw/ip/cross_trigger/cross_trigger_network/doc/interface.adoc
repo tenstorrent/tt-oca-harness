@@ -17,8 +17,9 @@ For the module diagram and signalling modes, see
 
 Each CTP is built on `cross_trigger_port_core`. Its operating mode resets to
 wire-OR: the CSR MODE field of an external CTP resets to 0, which selects
-wire-OR, and 1 selects peer-to-peer. `INT_CT_MODE` sets the mode of each
-internal CTP.
+wire-OR, and 1 selects point-to-point. `INT_CT_MODE` sets the mode and
+`stretch_mult` of each internal CTP; only an internal CTP can select toggle
+mode.
 
 ifdef::backend-html5[]
 The parameters and ports of `cross_trigger_port_core` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_port/cross_trigger_port_core.adoc[cross_trigger_port_core].

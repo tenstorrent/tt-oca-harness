@@ -909,9 +909,9 @@ localparam int unsigned DtpXtrigNumCtp = dtp_dv_cfg_pkg::NumCtp;
 localparam int unsigned DtpXtrigNumIntCt = dtp_dv_cfg_pkg::NumIntCt;
 localparam int unsigned DtpXtrigNumCtmPorts = DtpXtrigNumCtp + DtpXtrigNumIntCt;
 localparam int unsigned DtpNumClkStopReq = dtp_dv_cfg_pkg::NumClkStopReq;
-// Bit per internal cross-trigger lane: 0 = pulse mode, where the lane
-// acknowledge is unused.
-localparam logic [DtpXtrigNumIntCt-1:0] DtpXtrigIntCtMode = dtp_dv_cfg_pkg::IntCtMode;
+// Bit per internal cross-trigger lane, set on a point-to-point lane; a
+// wire-OR or toggle lane leaves its acknowledge unused.
+localparam logic [DtpXtrigNumIntCt-1:0] DtpXtrigIntCtMode = dtp_dv_cfg_pkg::IntCtP2pMask;
 // Shared-wire polarity per CONFIG.INVERT (bit index = INVERT) and the receive
 // latency of a port, from the bench configuration.
 localparam logic [1:0] DtpWireOrPull = dtp_dv_cfg_pkg::WireOrPull;
