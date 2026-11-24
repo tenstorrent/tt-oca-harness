@@ -285,7 +285,7 @@ class SepDrbgScoreboard:
         self._tasks = []
         self._noise_run = False
         self._noise_task = None
-        self._noise_at_nts = False
+        self._noise_before_write = False
         # Live runtime flag (not a one-shot fork decision). CHK5 sink / AXIS1
         # monitors are forked from start() but skip every cycle until
         # enable_chk5() — typically after the ESRC seed, before EDN enable —
@@ -298,11 +298,13 @@ class SepDrbgScoreboard:
 
         Cancelling a task that waits on ``NextTimeStep`` leaves the simulator
         callback registered on Verilator, and the simulator later calls the
-        freed callback data. So when the noise driver waits on ``NextTimeStep``,
-        ``stop`` clears the run flag and awaits the loop, which returns after its
-        write of ``esrc_noise_ext_i`` in that time step. Otherwise the noise
-        driver waits on ``RisingEdge`` or ``ReadOnly`` and is cancelled at once,
-        like the monitors. A second call does nothing.
+        freed callback data. From a clock edge to its write of
+        ``esrc_noise_ext_i`` in the next time step, the noise driver can wait on
+        ``NextTimeStep``, so ``stop`` clears the run flag and awaits the loop,
+        which returns after that write; ``stop`` then returns in a writable
+        phase. Between that write and the next clock edge the noise driver waits
+        on ``RisingEdge`` and is cancelled at once, like the monitors, so
+        ``stop`` returns while ``clk_i`` is halted. A second call does nothing.
 
         A leaf calls this before a TRNG reset that ends the bring-up the tasks
         observe; a later ``start`` forks a fresh set. Results stay readable.
@@ -310,7 +312,7 @@ class SepDrbgScoreboard:
         self._noise_run = False
         noise, self._noise_task = self._noise_task, None
         if noise is not None:
-            if self._noise_at_nts:
+            if self._noise_before_write:
                 await noise
             else:
                 (getattr(noise, "cancel", None) or noise.kill)()
@@ -323,7 +325,7 @@ class SepDrbgScoreboard:
         """Fork the noise driver + per-stream monitors (after reset released)."""
         d = self.dut
         self._noise_run = True
-        self._noise_at_nts = False
+        self._noise_before_write = True
         self._noise_task = cocotb.start_soon(self._drive_noise())  # CHK1 runs inline here
         # CHK2 default = AXI frontdoor FIFO_RDATA drain (check_fifo_frontdoor),
         # the overflow-robust observation point. Only fork the live backdoor
@@ -549,13 +551,13 @@ class SepDrbgScoreboard:
                     gsr,
                     None if dut_decor is None else dut_decor & ((1 << 96) - 1),
                 )
-            self._noise_at_nts = True
             await NextTimeStep()
-            self._noise_at_nts = False
             d.esrc_noise_ext_i.value = self.noise_gen.step_all()
+            self._noise_before_write = False
             if not self._noise_run:
                 return
             await RisingEdge(d.clk_i)
+            self._noise_before_write = True
             await ReadOnly()
 
     def _seed_golden(self, sr_packed):
