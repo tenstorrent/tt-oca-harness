@@ -1081,7 +1081,12 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         """Steps 20 to 24."""
         feat0 = await self._rd64(LCC_FEAT_CTRL)
         self.logger.info("INFO-FEAT-CTRL before DEMOTE_1 feat_ctrl=0x%016x", feat0)
-        await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_before_demote")
+        before = await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_before_demote")
+        if before == RESP_OKAY:
+            # The bypass below must come from the demote, or the outbound check runs
+            # with no debug bypass to leak.
+            self.logger.error("CHK-OUT-NOBYPASS FAIL: bypass_before_demote")
+            raise AssertionError("CHK-OUT-NOBYPASS FAIL: bypass_before_demote")
         demote = SepLccDemoteSeq(1)
         await self.start_seq(demote)
         self.logger.info("INFO-DEMOTE demote=%s lock=%s", demote.demote, demote.lock)

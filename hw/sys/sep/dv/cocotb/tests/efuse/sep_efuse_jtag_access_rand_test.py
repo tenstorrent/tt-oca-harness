@@ -722,7 +722,10 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         # targets p, the address the frontdoor leaves in EFUSE_PROGRAM_ADDR.
         p_addr = program_addr_word(p_bit["addr"])
         await self.fd.wr(PROGRAM_ADDR_ADDR, p_addr)
-        await require_addr_readback(self.fd.rd, PROGRAM_ADDR_ADDR, p_addr)
+        p_addr_rb = await require_addr_readback(self.fd.rd, PROGRAM_ADDR_ADDR, p_addr)
+        self.chk.ctrl(
+            "JTAG-DENY-ADDR", p_addr_rb == p_addr, wr=f"0x{p_addr:08x}", rb=f"0x{p_addr_rb:08x}"
+        )
         open_graded_window(TEST, self.logger)
         deny_mark = self.shim.mark()
         for acc in p.leg["denied"]:

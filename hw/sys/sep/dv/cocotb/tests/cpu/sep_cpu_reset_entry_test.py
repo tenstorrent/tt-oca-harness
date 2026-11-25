@@ -260,7 +260,7 @@ TEST = "sep_cpu_reset_entry_test"
 
 ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 # hw/sys/sep/doc/rom.adoc:7-10 (RESET_VEC is the Boot ROM base) and
-# hw/sys/sep/doc/cpu.adoc:205-206 (the TDR resets to the Boot ROM base): the first
+# hw/sys/sep/doc/cpu.adoc:217-219 (the TDR resets to the Boot ROM base): the first
 # CPU fetch after reset with the default TDR is at the boot ROM base.
 DEFAULT_RESET_PC = ROM_BASE
 ROM_WORDS = sym("SEP_BOOT_ROM_MEM_SIZE") // 8

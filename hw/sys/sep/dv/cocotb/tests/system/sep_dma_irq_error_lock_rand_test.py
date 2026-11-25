@@ -143,7 +143,7 @@ CTRL-MISSING: the same copy with both ADDR_HI at 0 completes and the
 destination equals the source.
 
 Leg L5, tied-off address spaces: "Selecting the tied-off CTN or SYS address
-space does not complete." (``hw/sys/sep/doc/dma.adoc:70``); "the other address
+space does not complete." (``hw/sys/sep/doc/dma.adoc:72``); "the other address
 spaces are tied off and never complete" (``doc/programmer/src/sep-programming.adoc:741-742``).
 The ASID encodings are SOC_ADDR 0xa and SYS_ADDR 0x9 (ADDR_SPACE_ID enums,
 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:253-259,272-278``).
@@ -162,7 +162,7 @@ is complete."
 ``abort`` bit [...] The STATUS indicates via the ``aborted`` bit that the DMA
 operation was aborted and the DMA stopped its operation."
 (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:43-45``).
-The tied-off start does not complete (``hw/sys/sep/doc/dma.adoc:70``), so the
+The tied-off start does not complete (``hw/sys/sep/doc/dma.adoc:72``), so the
 ABORT hits an ongoing operation. Control: one STATUS read just before the
 ABORT shows BUSY=1, DONE=0 and ABORTED=0 ("DMA operation is active if this bit
 is set.", ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:615``),
@@ -2187,7 +2187,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         st, tie_done_at, err_reads, window = await self._l5_copy(word)
         ecode = await ops.rd(ERROR_CODE)
-        # The tied-off start does not complete (dma.adoc:70), so the ABORT hits an
+        # The tied-off start does not complete (dma.adoc:72), so the ABORT hits an
         # ongoing operation and sets STATUS.ABORTED once complete
         # (dma.hjson:527-528; programmers_guide.md:43-45): graded in _leg_l5.
         # BUSY=1 just before the ABORT shows the start is active (dma.hjson:615).

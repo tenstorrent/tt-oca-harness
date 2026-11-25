@@ -234,10 +234,10 @@ Checkers:
                   register" (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/
                   data/dma.hjson:755-757``, CLEAR_INTR_SRC; NumIntClearSources
                   11, ``:28-33``), CLEAR_INTR_BUS "1: OT-internal crossbar"
-                  (``:771-773``) and ``hw/sys/sep/doc/dma.adoc:61-62`` (the
+                  (``:771-773``) and ``hw/sys/sep/doc/dma.adoc:63-64`` (the
                   internal host port is the only route). No source runs on
                   bus 0 here: a write there goes to the tied-off CTN port,
-                  which "does not complete" (``hw/sys/sep/doc/dma.adoc:70``),
+                  which "does not complete" (``hw/sys/sep/doc/dma.adoc:72``),
                   and neither the tap nor the SRAM word would see it; bus 0 is
                   graded for source 0 by CHK-DMA-CLR-BUS0. Every
                   clear address lies inside the enabled range. Controls:
@@ -267,7 +267,7 @@ Checkers:
                   data/dma.hjson:771-773``) and "Address-space ID ``0x7``
                   selects the core's internal host port, the only route in
                   this wrapper. The upstream SoC control and system ports are
-                  tied off" (``hw/sys/sep/doc/dma.adoc:61-62``), so a clear
+                  tied off" (``hw/sys/sep/doc/dma.adoc:63-64``), so a clear
                   write on bus 0 never reaches the host port. Control:
                   CHK-HS-CLR (bus 1, same tap and word),
                   ``CTRL-DMA-CLR-RANGE`` and ``CTRL-DMA-CLR-BUS0``: in the same
@@ -1268,7 +1268,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
                 self._ctrl_missing("CHK-DMA-CLR-BUS0", reach)
             self.logger.info("CTRL-DMA-CLR-BUS0 PASS seed=%d %s", cfg.seed, reach)
             line = (
-                f"contract=dma.hjson:771-773,hw/sys/sep/doc/dma.adoc:61-62 variant={variant} "
+                f"contract=dma.hjson:771-773,hw/sys/sep/doc/dma.adoc:63-64 variant={variant} "
                 f"clear_aw={len(clr_idx)} expect_aw=0 clear_word=0x{clr_rb:08x} "
                 f"expect=0x{self.sentinel:08x}"
             )

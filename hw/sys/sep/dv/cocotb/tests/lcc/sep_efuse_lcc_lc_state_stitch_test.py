@@ -160,6 +160,7 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         # PROGRAM_CTRL word at the completion of each attempt, in attempt order.
         # An attempt that does not complete adds no entry.
         self.attempt_status: list[int] = []
+        self.attempt_pre: list[int] = []
         # EFUSE_PROGRAM_ADDR read back after the last address write.
         self.addr_readback: int | None = None
         self.addr_written: int | None = None
@@ -245,6 +246,7 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
                     f"0x{self.addr_readback:08x} after write 0x{addr:08x} "
                     f"(OTP bit {self.bit_addr})"
                 )
+            self.attempt_pre.append(await self._read(_EFUSE_PROGRAM_CTRL, "program_status_pre"))
             await self._write(_EFUSE_PROGRAM_CTRL, wdata, "program_ctrl")
 
             for _ in range(200):
@@ -553,21 +555,32 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     if blocked.addr_readback != blocked.addr_written:
                         raise
                     done_err = _PG_DONE | _PG_STATUS
+                    pre = [st & done_err for st in blocked.attempt_pre]
                     ends = [st & done_err for st in blocked.attempt_status]
                     statuses = ",".join(f"0x{st:08x}" for st in blocked.attempt_status)
-                    self.logger.info("OBS-STM-PROG-BLOCK-STATUS: attempts=[%s] (%s)", statuses, exc)
-                    if ends != [done_err] * blocked.max_attempts:
+                    pres = ",".join(f"0x{st:08x}" for st in blocked.attempt_pre)
+                    self.logger.info(
+                        "OBS-STM-PROG-BLOCK-STATUS: pre=[%s] attempts=[%s] (%s)",
+                        pres,
+                        statuses,
+                        exc,
+                    )
+                    # A refused start leaves program_done and program_status as the
+                    # previous completion set them (efuse_interface_ctrl.rdl:90-91,
+                    # :96-97), so only the first attempt, which starts from the
+                    # cleared state after the re-sense, can show its own completion.
+                    if not pre or pre[0] != 0 or not ends or ends[0] != done_err:
                         raise AssertionError(
-                            "CHK-STM-PROG-BLOCK-STATUS FAIL: each of the "
-                            f"{blocked.max_attempts} blocked attempts must complete with "
-                            f"program_done=1 program_status=1; completed attempts "
+                            "CHK-STM-PROG-BLOCK-STATUS FAIL: the first blocked attempt must "
+                            "start with program_done=0 program_status=0 and complete with "
+                            f"program_done=1 program_status=1; pre=[{pres}] "
                             f"status=[{statuses}] ({exc})"
                         )
                     self.logger.info(
-                        "CHK-STM-PROG-BLOCK-STATUS PASS: %d blocked attempts completed "
-                        "with program_done=1 program_status=1 status=[%s]",
-                        blocked.max_attempts,
-                        statuses,
+                        "CHK-STM-PROG-BLOCK-STATUS PASS: the first blocked attempt moved "
+                        "program_done and program_status from 0 to 1 pre=0x%08x status=0x%08x",
+                        blocked.attempt_pre[0],
+                        blocked.attempt_status[0],
                     )
                     self._secure_tm_prog_blocked = True
                     blocked_attempts = blocked.retry_count + 1

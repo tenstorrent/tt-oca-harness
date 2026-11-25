@@ -232,8 +232,10 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
     async def _read_error_lifecycle(self) -> None:
         """read_error_o is set by a timed-out read; the next legal read completes cleanly."""
-        # 1. A successful read leaves the error flag clear.
-        await self.start_seq(sep_efuse_direct_read_seq(self._control_word))
+        # 1. A successful read leaves the error flag clear. It reads the recovery
+        #    word, so the read data it leaves differs from the control word that
+        #    the armed read in step 2 must return.
+        await self.start_seq(sep_efuse_direct_read_seq(self._recovery_word))
         done, busy, err, _ = await self._read_probe()
         assert (done, busy, err) == (1, 0, 0), (
             f"CHK-READ-ERR-CLEAR-SUCCESS FAIL: a successful read reported done={done} "

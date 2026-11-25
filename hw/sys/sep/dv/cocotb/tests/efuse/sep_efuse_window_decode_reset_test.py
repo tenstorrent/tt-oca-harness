@@ -621,14 +621,21 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             rsvd=f"0x{cmp.rsvd:x}",
         )
 
-        # Step 10: 24 token words in the drawn order; no go; read back.
+        # Step 10: 24 token words in the drawn order; no go; then read back. All
+        # three arrays are written before the first readback, so an array that
+        # aliases another returns the other array's vector.
+        resp_ok_of = {}
+        for ch in CHANNELS:
+            words = token_words(_ARRAY_TOKEN[ch])
+            resp_ok = True
+            for k in p.draws[f"word_order.{ch}"]:
+                ok_w, _code = await self._wr(TOKEN_ARRAY_ADDR[ch][k], words[k], ungraded=True)
+                resp_ok = resp_ok and ok_w
+            resp_ok_of[ch] = resp_ok
         for ch in CHANNELS:
             words = token_words(_ARRAY_TOKEN[ch])
             order = list(p.draws[f"word_order.{ch}"])
-            resp_ok = True
-            for k in order:
-                ok_w, _code = await self._wr(TOKEN_ARRAY_ADDR[ch][k], words[k], ungraded=True)
-                resp_ok = resp_ok and ok_w
+            resp_ok = resp_ok_of[ch]
             got_words = []
             for k in range(8):
                 v, _ok, _c = await self._rd(TOKEN_ARRAY_ADDR[ch][k])
