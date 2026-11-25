@@ -138,9 +138,10 @@ LONG_GAP = 200
 IRQ_BOUND = 64
 # Clocks that ext_trng_irq_i keeps each level after vector bit 16 follows it.
 IRQ_HOLD = 8
-# Clock edges from a drive written after a rising edge until vector bit 16 follows:
-# one edge for the bench force (applied at the falling edge) plus the two resync flops
-# of interrupts.adoc source 17.
+# Clock edges from a drive written after a rising edge until vector bit 16 follows.
+# Vector bit 16 is the PIC input, ahead of the two-flop resynchronizer that
+# interrupts.adoc places in the PIC gateway, so the bound covers the bench force
+# (applied at the falling edge) with margin; it does not measure the resynchronizer.
 IRQ_FOLLOW = 3
 # Outer caps of a first measurement (design rule: 20 x the clean value of the logs).
 TRNG_RESET_CAP = 4_000
@@ -1383,8 +1384,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         """CHK-EXT-IRQ: ext_trng_irq_i = 1 gives vector bit 16 = 1, and 0 gives 0.
         CHK-EXT-IRQ-HOLD: bit 16 follows each drive within IRQ_FOLLOW clock edges, and
         then equals the input on each of the IRQ_HOLD clocks the input keeps the level.
-        The only delay the text states between the input and the source is the two-flop
-        resync, with no edge detection or pulse stretching
+        The text states that SEP adds no edge detection or pulse stretching, and puts
+        the two-flop resynchronizer in the PIC gateway, after vector bit 16
         (``hw/sys/sep/doc/interrupts.adoc``, source 17)."""
         dut = cocotb.top
         vec = dut.sep_internal_interrupts_probe_o

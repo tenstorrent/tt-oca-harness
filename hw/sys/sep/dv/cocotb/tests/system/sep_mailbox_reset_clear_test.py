@@ -580,7 +580,8 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         ext = SepMboxPortOps(self, c.filt_m, in_prot1=0, in_user=FILTER_SRC)
         ext_resp = await ext.push("in", c.filt_word)
         line = (
-            f"pre_cfg=0x{self.pre_cfg:016x} pre_src_id={self.pre_src} src_id=0x{src:x} "
+            f"pre_cfg=0x{self.pre_cfg:016x} pre_src_id={self.pre_src} "
+            f"pre_ext_write={resp_name(self.pre_ext_resp)} src_id=0x{src:x} "
             f"src_field[{fc.fields()}]"
         )
         if not fc.ok:

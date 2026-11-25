@@ -70,9 +70,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ``DMA_BUS_ERR_STATUS`` reads ``reg_path_err`` alone
                           and ``PERIPH_BUS_ERR_STATUS`` reads the aes, kmac,
                           otbn and wdt bits that the leaf latched before the
-                          pulses, and no other bit (``sep_cpu_ctrl.rdl:346-347``
+                          pulses, and no other bit (``sep_cpu_ctrl.rdl:353-354``
                           "Neither bit is cleared by a CPU-only reset",
-                          ``:398-399`` "No bit is cleared by a CPU-only
+                          ``:405-406`` "No bit is cleared by a CPU-only
                           reset"); the bits read 0 after the clear writes.
                           Reach control CTRL-LATCH: each of those bits reads 1
                           before the first pulse.
@@ -366,7 +366,7 @@ def _partial_byte_addr(block, reg: str) -> int:
 
 # Bridge faults latched before each CPU-only pulse sequence: the two in-extent
 # holes and a 1-byte write that misses an owned byte (a partial write) of an AES
-# and a watchdog register (sep_cpu_ctrl.rdl:387-391). Each access answers SLVERR.
+# and a watchdog register (sep_cpu_ctrl.rdl:394-398). Each access answers SLVERR.
 PERIPH_PARTIAL = {
     "aes": _partial_byte_addr(AES, "CTRL_AUX_REGWEN"),
     "wdt": _partial_byte_addr(WDT_TIMER, "WDOG_BARK_THOLD"),
@@ -1337,7 +1337,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"DMA_BUS_ERR_STATUS=0x{dst:x} expect=0x{DMA_REG_PATH_BIT:x} "
             f"PERIPH_BUS_ERR_STATUS=0x{pst:x} expect=0x{SEQ_SET:x}({','.join(SEQ_LATCHED)}) "
             f"after_clear={a40 | a42} status_after_clear=0x{dst2:x},0x{pst2:x} "
-            f"golden=sep_cpu_ctrl.rdl:346-347,398-399"
+            f"golden=sep_cpu_ctrl.rdl:353-354,405-406"
         )
         if not ok:
             self.logger.error("CHK-AGG-SURVIVE FAIL: %s", self.agg[cls])

@@ -831,14 +831,14 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
                 rec["clk"] += 1
-                if dut.m_axi_arvalid.value == 1 and dut.m_axi_arready.value == 1:
+                if self.rd(dut.m_axi_arvalid) == 1 and self.rd(dut.m_axi_arready) == 1:
                     arid = int(dut.m_axi_arid.value)
                     if arid in (_PRESENSE_ARID, _POSTRELEASE_ARID) and arid not in rec["ar"]:
                         rec["ar"][arid] = (
                             rec["clk"],
-                            self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True),
+                            self.rd(dut.dbg_sep_reset_n_o),
                         )
-                if dut.m_axi_rvalid.value == 1 and dut.m_axi_rready.value == 1:
+                if self.rd(dut.m_axi_rvalid) == 1 and self.rd(dut.m_axi_rready) == 1:
                     rid = int(dut.m_axi_rid.value)
                     if rid in (_PRESENSE_ARID, _POSTRELEASE_ARID):
                         rec["r"].append(
