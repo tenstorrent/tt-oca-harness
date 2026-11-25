@@ -2839,7 +2839,7 @@ it as the LOCKS register describes.</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>efuse_data</ipxact:name>
-            <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
+            <ipxact:description>Data to program to eFuse.  If this bit is 0, a program request is refused: it issues no command and completes at once with program_done 1 and program_status 1</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2851,7 +2851,7 @@ it as the LOCKS register describes.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_program_go</ipxact:name>
-            <ipxact:description>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</ipxact:description>
+            <ipxact:description>When set, triggers a program to the eFuse.  A request made while program_enable is clear, efuse_data is 0, the address is out of bounds, or the bit is locked or blocked is refused: it issues no command and completes at once with program_done 1 and program_status 1</ipxact:description>
             <ipxact:bitOffset>17</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2877,7 +2877,7 @@ it as the LOCKS register describes.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>program_done</ipxact:name>
-            <ipxact:description>When set, the program has completed, the status of which is in program_status</ipxact:description>
+            <ipxact:description>When set, the program has completed, the status of which is in program_status.  Cleared when the next efuse_program_go is accepted; a refused request leaves it set and updates program_status</ipxact:description>
             <ipxact:bitOffset>25</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2890,7 +2890,7 @@ it as the LOCKS register describes.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>program_status</ipxact:name>
-            <ipxact:description>0: No Error.  1: Error</ipxact:description>
+            <ipxact:description>0: No Error.  1: Error. Set when efuse_program_go is refused, or the program request fails or times out.</ipxact:description>
             <ipxact:bitOffset>26</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2921,7 +2921,7 @@ it as the LOCKS register describes.</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>efuse_read_go</ipxact:name>
-            <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
+            <ipxact:description>When set, triggers a read to efuse.  A request made while read_enable is clear, the address is out of bounds, or the word is locked or blocked is refused: it issues no command and completes at once with read_done 1 and read_status 1</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2947,7 +2947,7 @@ it as the LOCKS register describes.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_done</ipxact:name>
-            <ipxact:description>When set, the read has completed, the status of which is in read_status</ipxact:description>
+            <ipxact:description>When set, the read has completed, the status of which is in read_status.  Cleared when the next efuse_read_go is accepted; a refused request leaves it set and updates read_status</ipxact:description>
             <ipxact:bitOffset>25</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
