@@ -449,7 +449,7 @@ class _Cfg:
                     break
             self.masks.append(sum(BIT[n] for n in names))
         self.retrig_clear = rng.choice(TAPPED_BLOCKS)
-        self.retrig_set = rng.choice([b for b in BLOCKS if b != self.retrig_clear])
+        self.retrig_set = rng.choice([b for b in TAPPED_BLOCKS if b != self.retrig_clear])
         self.dma_size = 4 * rng.randrange(1, MAX_COPY // 4 + 1)
         span = (WIN_HI + 1 - WIN_LO - self.dma_size) // 4
         self.dma_src = WIN_LO + 4 * rng.randrange(span + 1)
