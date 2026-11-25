@@ -707,9 +707,13 @@ module dm_csrs #(
         abstractauto_q               <= '0;
         progbuf_q                    <= '0;
         data_q                       <= '0;
-        sbcs_q                       <= '{default: '0,  sbaccess: 3'd2};
-        sbaddr_q                     <= '0;
-        sbdata_q                     <= '0;
+        // dm_sba builds an access in flight from these registers, and a bus request
+        // must keep its payload until it is granted, so they clear once it completes
+        if (!sbbusy_i) begin
+          sbcs_q                     <= '{default: '0,  sbaccess: 3'd2};
+          sbaddr_q                   <= '0;
+          sbdata_q                   <= '0;
+        end
       end else begin
         dmcontrol_q                  <= dmcontrol_d;
         resume_pending_q             <= SelectableHarts & resume_pending_d;

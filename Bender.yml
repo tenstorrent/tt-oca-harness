@@ -233,7 +233,7 @@ vendor_package:
   # Access sources it instantiates. The rev is on the fork branch tt/master.
   - name: riscv-dbg
     target_dir: "vendor/pulp-platform/riscv-dbg/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-riscv-dbg.git", rev: "71278cb80aef7ccc35f08dd31959b5fe025acdb4" }
+    upstream: { git: "https://github.com/tenstorrent/tt-riscv-dbg.git", rev: "cc29f4e8a6e00e63711e528b4ec0ef5ee47eb414" }
     include_from_upstream:
       - "LICENSE"
       - "src/dm_pkg.sv"

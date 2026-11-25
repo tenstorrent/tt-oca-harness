@@ -23,7 +23,7 @@ module dm_sba #(
 ) (
   input  logic                   clk_i,       // Clock
   input  logic                   rst_ni,
-  input  logic                   dmactive_i,  // synchronous reset active low
+  input  logic                   dmactive_i,  // no access starts while low
 
   output logic                   master_req_o,
   output logic [SbaAddrWidth-1:0] master_add_o,
@@ -105,6 +105,9 @@ module dm_sba #(
   assign sbaddress_o = sbaddress_i + addr_incr;
 
 
+  logic bus_err;
+  assign bus_err = master_r_err_i | master_r_other_err_i;
+
   always_comb begin : p_fsm
     req     = 1'b0;
     address = sbaddress_i;
@@ -121,12 +124,21 @@ module dm_sba #(
 
     unique case (state_q)
       dm::Idle: begin
-        // debugger requested a read
-        if (sbaddress_write_valid_i && sbreadonaddr_i)  state_d = dm::Read;
-        // debugger requested a write
-        if (sbdata_write_valid_i) state_d = dm::Write;
-        // perform another read
-        if (sbdata_read_valid_i && sbreadondata_i) state_d = dm::Read;
+        // no access starts while the DM is held in reset (dmactive = 0)
+        if (dmactive_i) begin
+          // debugger requested a read
+          if (sbaddress_write_valid_i && sbreadonaddr_i) begin
+            state_d = dm::Read;
+          end
+          // debugger requested a write
+          if (sbdata_write_valid_i) begin
+            state_d = dm::Write;
+          end
+          // perform another read
+          if (sbdata_read_valid_i && sbreadondata_i) begin
+            state_d = dm::Read;
+          end
+        end
       end
 
       dm::Read: begin
@@ -145,8 +157,8 @@ module dm_sba #(
       dm::WaitRead: begin
         if (sbdata_valid_o) begin
           state_d = dm::Idle;
-          // auto-increment address
-          addr_incr_en = sbautoincrement_i;
+          // auto-increment address after a successful read
+          addr_incr_en = sbautoincrement_i & ~bus_err;
           // check whether an "other" error has been encountered.
           if (master_r_other_err_i) begin
             sberror_valid_o = 1'b1;
@@ -162,8 +174,8 @@ module dm_sba #(
       dm::WaitWrite: begin
         if (sbdata_valid_o) begin
           state_d = dm::Idle;
-          // auto-increment address
-          addr_incr_en = sbautoincrement_i;
+          // auto-increment address after a successful write
+          addr_incr_en = sbautoincrement_i & ~bus_err;
           // check whether an "other" error has been encountered.
           if (master_r_other_err_i) begin
             sberror_valid_o = 1'b1;
