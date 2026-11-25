@@ -149,6 +149,11 @@ Checks:
                        or RRESP code of these accesses, so the codes are logged
                        (INFO-WDT-STORE-RESP) and not graded.
                        Graded last, after every other check.
+  CHK-IFU-AXCACHE    : every AR handshake on the PR-IFU tap (the IFU port of
+                       the core, ``arvalid`` and ``arready`` high) in the whole
+                       leaf carries ARCACHE ``0b1111``: instruction fetches
+                       carry ``0b1111`` (cpu.adoc:122). Control: at least one
+                       handshake per reset epoch.
   CHK-DBG-AXBURST, CHK-DBG-AXLOCK, CHK-DBG-AXQOS, CHK-DBG-AXCACHE:
                        every AW and AR that the debug-module system bus issues
                        in the (a) accesses carries the side-band value that the
@@ -352,6 +357,8 @@ DBG_ATTR = (
     ("CHK-DBG-AXQOS", "qos", 4, 0b0000, 0b0000),
     ("CHK-DBG-AXCACHE", "cache", 4, 0b1111, 0b0000),
 )
+# hw/sys/sep/doc/cpu.adoc:122: "Instruction fetches carry `0b1111`".
+IFU_ARCACHE = 0b1111
 DBG_ATTR_CITE = "EL2 PRM core complex signals, sb_axi_aw*/sb_axi_ar* hardwired (cpu.adoc:23)"
 NDM_SCOPE_CITE = "cpu.adoc:281-289, ndmreset resets the core complex only"
 
@@ -630,6 +637,8 @@ class _Epoch:
     retired_in_window: int = 0
     early_retire: list = field(default_factory=list)
     early_fetch: list = field(default_factory=list)
+    # PR-IFU AR handshakes in this epoch (CHK-IFU-AXCACHE control).
+    ifu_ar_hs: int = 0
     first_rom_fetch_clk: int | None = None
     first_ifu_fetch_clk: int | None = None
     # The first PR-IFU AR request after the tap rise: (clk, addr, len, size);
@@ -907,6 +916,13 @@ class sep_cpu_reset_entry_test(sep_base_test):
             pc = self.rd(dut.cpu_trace_addr_o) if tv else None
             rom_req = self.rd(dut.pr_rom_req_o)
             ifu_req = self.rd(dut.pr_ifu_arvalid_o)
+            if ifu_req and self._rd_or_none(dut.pr_ifu_arready_o) == 1:
+                cache = self._rd_or_none(dut.pr_ifu_arcache_o)
+                self.ifu_ar_cache[cache] = self.ifu_ar_cache.get(cache, 0) + 1
+                if self.epochs:
+                    self.epochs[-1].ifu_ar_hs += 1
+                if cache != IFU_ARCACHE and len(self.ifu_ar_bad) < 8:
+                    self.ifu_ar_bad.append((self.clk, self._rd_or_none(dut.pr_ifu_araddr_o), cache))
             if self.leg is not None:
                 lw = self.leg
                 lw.samples += 1
@@ -1848,6 +1864,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.clk = 0
         self._stop = False
         self.epochs: list[_Epoch] = []
+        # PR-IFU AR handshakes: ARCACHE value -> count, and the first mismatches.
+        self.ifu_ar_cache: dict[int | None, int] = {}
+        self.ifu_ar_bad: list[tuple] = []
         self.scope: _Scope | None = None
         self.tapw: _TapWatch | None = None
         self.leg: _LegWatch | None = None
@@ -1867,6 +1886,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-RSTVEC-DEFAULT",
             "CHK-NO-EARLY-RETIRE",
             "CHK-NO-EARLY-FETCH",
+            "CHK-IFU-AXCACHE",
             "CHK-RSTVEC",
             "CHK-RSTVEC-PERSIST",
             "CHK-RSTVEC-PERSIST-DBG",
@@ -1911,6 +1931,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             ),
         )
         self._grade_no_early()
+        self._grade_ifu_axcache()
         self._grade_memif_wdt_rst()
         self._grade_tdoen()
         self._grade_dbg_attr()
@@ -2325,6 +2346,21 @@ class sep_cpu_reset_entry_test(sep_base_test):
             bool(cpu) and not bad and bool(ctl),
             f"cpu_resets={len(cpu)} wdt_low_clk={','.join(str(e.rst_clk) for e in cpu)} "
             f"memif_not_1(epoch,sram,rom)={bad} control_cold_memif_low={ctl}",
+        )
+
+    def _grade_ifu_axcache(self) -> None:
+        total = sum(self.ifu_ar_cache.values())
+        no_hs = [e.idx for e in self.epochs if e.ifu_ar_hs == 0]
+        seen = ",".join(
+            f"{'X' if k is None else f'0b{k:04b}'}:{n}"
+            for k, n in sorted(self.ifu_ar_cache.items(), key=lambda kv: (kv[0] is None, kv[0] or 0))
+        )
+        self._grade(
+            "CHK-IFU-AXCACHE",
+            bool(self.epochs) and not no_hs and not self.ifu_ar_bad,
+            f"expect=0b{IFU_ARCACHE:04b} handshakes={total} arcache_counts={seen or '-'} "
+            f"epochs={len(self.epochs)} epochs_without_handshake={no_hs} "
+            f"first_mismatch(clk,addr,cache)={self.ifu_ar_bad[:4]}",
         )
 
     def _grade_no_early(self) -> None:
