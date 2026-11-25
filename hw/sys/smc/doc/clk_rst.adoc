@@ -71,8 +71,10 @@ enable is set, a read of the gated peripheral's window completes with
 `SLVERR` and data `0xBADCAB1E` and a write completes with `SLVERR`, instead
 of waiting on a register block whose clock has stopped. The leg is
 redirected as soon as the `CLOCK_GATE_CONTROL` write completes; an access
-the peripheral has already accepted finishes there, since its clock stops
-only after the enable has crossed into its domain.
+already handed to the peripheral finishes there. The access gate counts
+those accesses, and the peripheral's clocks stop only once none is
+outstanding, so a clock never stops partway through an access. Clearing the
+enable restarts the clocks at once.
 
 The AVSBus clock starts at `u_avs_clk_ref_gater` and
 `u_avs_clk_periph_gater`, which drive the `clk_ref_i` and `clk_reg_i` ports of

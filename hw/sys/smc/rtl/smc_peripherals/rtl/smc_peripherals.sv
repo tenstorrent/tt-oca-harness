@@ -10,9 +10,10 @@
 // interrupts, the gated I3C clock, and debug buses.
 //
 // EFUSE_SHIM_SIZE is the vendor eFuse shim CSR carve-out at the base of the opaque
-// smc_external window. Each peripheral clock-gate enable stops its clock when high and
-// steers that peripheral's crossbar leg into an error slave, so an access to a gated
-// peripheral completes with SLVERR and read data 0xBADCAB1E instead of stalling. The DTP
+// smc_external window. Each peripheral clock-gate enable steers that peripheral's crossbar
+// leg into an error slave when high, so an access to a gated peripheral completes with
+// SLVERR and read data 0xBADCAB1E instead of stalling, and stops the peripheral's clock once
+// every access already handed to the peripheral has completed. The DTP
 // CSR, smc_external, eFuse shim and JTAG eFuse AXI-Lite ports each pass through an axi_cut.
 
 `include "ocah_assert.svh"
@@ -607,7 +608,18 @@ module smc_peripherals #(
   // Clock-gated peripheral access //
   ///////////////////////////////////
 
-  // Gated peripherals return SLVERR to prevent hangs upon attempted access
+  // Gated peripherals return SLVERR to prevent hangs upon attempted access. Each clock
+  // stops only once its gate has no access in flight to the peripheral: a register block
+  // stopped mid-handshake leaves its CDC taking the same R or B beat on every edge.
+
+  logic avs_pass_idle, i2c_pass_idle, uart_pass_idle, tel_pass_idle, i3c_pass_idle;
+  logic avs_clk_stop, i2c_clk_stop, uart_clk_stop, tel_clk_stop, i3c_clk_stop;
+
+  assign avs_clk_stop  = avs_cg_en_i & avs_pass_idle;
+  assign i2c_clk_stop  = i2c_cg_en_i & i2c_pass_idle;
+  assign uart_clk_stop = uart_cg_en_i & uart_pass_idle;
+  assign tel_clk_stop  = tel_cg_en_i & tel_pass_idle;
+  assign i3c_clk_stop  = i3c_cg_en_i & i3c_pass_idle;
 
   prim_axil_access_gate #(
     .ADDR_WIDTH     (smc_pkg::SmcLocalAddrWidth),
@@ -631,7 +643,8 @@ module smc_peripherals #(
     .axil_req_i  (axil_avsbus_controller_req_xbar),
     .axil_resp_o (axil_avsbus_controller_resp_xbar),
     .axil_req_o  (axil_avsbus_controller_req_smc_clk),
-    .axil_resp_i (axil_avsbus_controller_resp_smc_clk)
+    .axil_resp_i (axil_avsbus_controller_resp_smc_clk),
+    .pass_idle_o (avs_pass_idle)
   );
 
   prim_axil_access_gate #(
@@ -656,7 +669,8 @@ module smc_peripherals #(
     .axil_req_i  (axil_i2c_req_xbar),
     .axil_resp_o (axil_i2c_resp_xbar),
     .axil_req_o  (axil_i2c_req_smc_clk),
-    .axil_resp_i (axil_i2c_resp_smc_clk)
+    .axil_resp_i (axil_i2c_resp_smc_clk),
+    .pass_idle_o (i2c_pass_idle)
   );
 
   prim_axil_access_gate #(
@@ -681,7 +695,8 @@ module smc_peripherals #(
     .axil_req_i  (axil_uart_req_xbar),
     .axil_resp_o (axil_uart_resp_xbar),
     .axil_req_o  (axil_uart_req_smc_clk),
-    .axil_resp_i (axil_uart_resp_smc_clk)
+    .axil_resp_i (axil_uart_resp_smc_clk),
+    .pass_idle_o (uart_pass_idle)
   );
 
   prim_axil_access_gate #(
@@ -706,7 +721,8 @@ module smc_peripherals #(
     .axil_req_i  (axil_telemetry_req_xbar),
     .axil_resp_o (axil_telemetry_resp_xbar),
     .axil_req_o  (axil_telemetry_req),
-    .axil_resp_i (axil_telemetry_resp)
+    .axil_resp_i (axil_telemetry_resp),
+    .pass_idle_o (tel_pass_idle)
   );
 
   prim_axil_access_gate #(
@@ -731,7 +747,8 @@ module smc_peripherals #(
     .axil_req_i  (axil_i3c_req_xbar),
     .axil_resp_o (axil_i3c_resp_xbar),
     .axil_req_o  (axil_i3c_req_smc_clk),
-    .axil_resp_i (axil_i3c_resp_smc_clk)
+    .axil_resp_i (axil_i3c_resp_smc_clk),
+    .pass_idle_o (i3c_pass_idle)
   );
 
   // Rebase DTP CSR addresses to zero: the xbar routes on the full system
@@ -881,18 +898,18 @@ module smc_peripherals #(
     .avsbus_irq_periph_clk_i           (avsbus_irq),
     .avsbus_irq_smc_clk_o              (avsbus_irq_smc_clk),
 
-    .i2c_cg_en_smc_clk_i              (i2c_cg_en_i),
+    .i2c_cg_en_smc_clk_i              (i2c_clk_stop),
     .i2c_cg_en_periph_clk_o           (i2c_cg_en_periph_clk),
-    .uart_cg_en_smc_clk_i             (uart_cg_en_i),
+    .uart_cg_en_smc_clk_i             (uart_clk_stop),
     .uart_cg_en_periph_clk_o          (uart_cg_en_periph_clk),
-    .avs_cg_en_smc_clk_i              (avs_cg_en_i),
+    .avs_cg_en_smc_clk_i              (avs_clk_stop),
     .avs_cg_en_periph_clk_o           (avs_cg_en_periph_clk),
-    .i3c_cg_en_smc_clk_i              (i3c_cg_en_i),
+    .i3c_cg_en_smc_clk_i              (i3c_clk_stop),
     .i3c_cg_en_periph_clk_o           (i3c_cg_en_periph_clk),
 
     .avs_cg_en_ref_clk_o             (avs_cg_en_ref_clk),
 
-    .tel_cg_en_smc_clk_i             (tel_cg_en_i),
+    .tel_cg_en_smc_clk_i             (tel_clk_stop),
     .tel_cg_en_telemetry_clk_o       (tel_cg_en_telemetry_clk),
 
     .ndmreset_request_i              (ndmreset_request_i),
@@ -1278,7 +1295,7 @@ module smc_peripherals #(
 
   prim_clock_gating u_tel_clk_smc_gater (
     .clk_i(clk_smc_i),
-    .en_i(~tel_cg_en_i),
+    .en_i(~tel_clk_stop),
     .test_en_i(test_en_i),
     .clk_o(gated_clk_smc_tel)
   );
