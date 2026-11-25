@@ -57,7 +57,7 @@ run_modes = ["jtag2axi"]
 name = "dtp_jtag2axi_sba_errors_test"
 module = { cocotb = "dtp_jtag2axi_sba_errors_test", uvm = "dtp_jtag2axi_sba_errors_test" }
 seed = 1
-timeout_sec = 5400
+timeout_sec = 7200
 tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
@@ -67,4 +67,12 @@ module = { cocotb = "dtp_jtag2axi_backpressure_test", uvm = "dtp_jtag2axi_backpr
 seed = 1
 timeout_sec = 9000
 tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_debug_disable_test"
+module = { cocotb = "dtp_jtag2axi_debug_disable_test", uvm = "dtp_jtag2axi_debug_disable_test" }
+seed = 1
+timeout_sec = 7200
+tags = ["jtag2axi", "dbg_disable"]
 run_modes = ["jtag2axi"]

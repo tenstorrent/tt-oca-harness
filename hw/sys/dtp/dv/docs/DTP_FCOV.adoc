@@ -118,6 +118,7 @@ checkers. Toggle and FSM coverage are not collected.
 |JTAG2AXI System Bus Access |`cg_j2a_sba_access` |`dtp_j2a_fcov`
 |JTAG2AXI System Bus Access errors |`cg_j2a_sba_error` |`dtp_j2a_fcov`
 |JTAG2AXI port timing |`cg_j2a_axi_timing` |`dtp_j2a_fcov`
+|JTAG2AXI debug disables |`cg_j2a_dbg_disable` |`dtp_j2a_fcov`
 |Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
 |Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
 |XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
@@ -537,6 +538,7 @@ from its bus accesses, and the DMI writes it acts on while it holds one.
 |`cp_bus` |One bin per bridge, op, and response of an access that ends in a bus error: SLVERR and DECERR, each on a read and a write; an OKAY or EXOKAY response is an illegal bin
 |`cp_size` |One bin per bridge and op of an access whose size is above the bridge's data width
 |`cp_held` |One bin per bridge and DMI write the Debug Module acts on while `sberror` is not 0: an `sbdata0` write, an `sbaddress0` write with `sbreadonaddr`, an `sbcs` write whose `sberror` field is 0, and one whose `sberror` field is not
+|`cp_autoinc` |One bin per bridge, kind, and `sbautoincrement` of an access that ends in a bus error or a size error
 |===
 
 `dtp_j2a_fcov` takes each bridge's error report, the responses on its port, the
@@ -548,7 +550,7 @@ last, and for a size error with the op of the access it refuses. A held write
 is sampled in the cycle the Debug Module accepts it with `dmactive` 1 and
 `sbbusy` and `sbbusyerror` 0.
 `dtp_jtag2axi_sba_errors_test` reaches every `cp_code`, `cp_bus`, `cp_size`,
-and `cp_held` bin in every pass.
+`cp_held`, and `cp_autoinc` bin in every pass.
 
 ==== `cg_j2a_axi_timing`
 
@@ -576,6 +578,44 @@ capture on TCK.
 `cp_ar_stall`, `cp_b_delay`, `cp_r_delay`, and `cp_w_order` bin in every pass.
 A completion inside an `sbcs` read's window is a matter of timing, so
 `cp_sbcs_race` is closed across the passes and seeds of a run.
+
+==== `cg_j2a_dbg_disable`
+
+*Description*: Covers each JTAG2AXI bridge's security demultiplexer: the side
+each bus request takes under each combination of the three bridge disables,
+the Debug Module accesses and refused accesses while the error slave is
+selected, the changes of a disable with a transfer open, the cycles the select
+holds against a changed disable, and the select through and out of system
+reset.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_access` |One bin per bridge, side, and op of a request: the port or the error slave, each with a read and a write
+|`cp_matrix` |One bin per bridge and value of the three bridge disables at a request, eight per bridge
+|`cp_live` |One bin per bridge and DMI read or write its Debug Module accepts while the error slave is selected
+|`cp_refused` |One bin per bridge and error its Debug Module records while the error slave is selected: an alignment error and a size error; any other `sberror` is an illegal bin
+|`cp_switch` |One bin per bridge, direction of a disable change, and transfer then open: a disable that sets with none open and with one open at the port, and one that clears with none open and with one open at the error slave; a disable that clears while a port transfer is open, or sets while an error-slave transfer is open, has changed twice within that transfer and is ignored
+|`cp_held` |One bin per bridge and disable value for a cycle in which the bridge requests while its select differs from its disable
+|`cp_reset` |One bin per bridge and disable value at the release of a system reset
+|`cp_reset_select` |`error_slave`: the select in each cycle of a system reset; the port is an illegal bin
+|===
+
+`dtp_j2a_fcov` takes each bridge's select register, synchronized disable,
+request signal, and the request and response handshakes between the bridge and
+its demultiplexer from its `jtag_dmi2axi` instance, and samples on the bridges'
+system clock. A request is sampled at its AW or AR handshake with the select,
+which is the side it takes, and the three disables. A transfer is open from that
+handshake to its B or last R handshake, on the side the select held at the
+request. A DMI access or a refused access is sampled while the select is the
+error slave, in the cycle the Debug Module accepts the access or records the
+error.
+`dtp_jtag2axi_debug_disable_test` reaches every `cp_access`, `cp_matrix`,
+`cp_live`, `cp_refused`, `cp_reset`, and `cp_reset_select` bin, and every
+`cp_switch` bin with no transfer open or one open at the port, in every pass. A
+disable that changes in the cycles a request or an error-slave transfer is open
+is a matter of timing, so `cp_held` and the `cp_switch` bins with an
+error-slave transfer open are closed across the passes and seeds of a run.
 
 ==== `cg_ctp`
 
@@ -1062,12 +1102,13 @@ review.
 |`dtp_jtag2axi_dmi_status_test` |`cg_j2a_dmi_status` `x_update` and `x_dmireset`
 |`dtp_jtag2axi_dm_regs_test` |`cg_j2a_dm_access` `x_access` and `x_sbcs_ro`
 |`dtp_jtag2axi_sba_sizes_test` |`cg_j2a_sba_access` `x_lane`, `x_autoinc`, and `cp_carry`
-|`dtp_jtag2axi_sba_errors_test` |`cg_j2a_sba_error` `cp_code`, `cp_bus`, `cp_size`, and `cp_held`
+|`dtp_jtag2axi_sba_errors_test` |`cg_j2a_sba_error` `cp_code`, `cp_bus`, `cp_size`, `cp_held`, and `cp_autoinc`
 |`dtp_jtag2axi_backpressure_test` |`cg_j2a_axi_timing` `cp_aw_stall`, `cp_w_stall`, `cp_ar_stall`, `cp_b_delay`, `cp_r_delay`, `cp_w_order`, and `cp_sbcs_race`
+|`dtp_jtag2axi_debug_disable_test` |`cg_j2a_dbg_disable`, `cg_instruction_gate` bridge bins with `set`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
-|`dbg_disable` group |Complete 16-cell `DtpDbgDisableFcov` closure
+|`dbg_disable` group |Complete 16-cell `DtpDbgDisableFcov` closure, `cg_j2a_dbg_disable`, and `cg_instruction_gate` bridge bins with `set`
 |CTP / CTM scenarios |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx`, `cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout`
 |XTRIG CSR and AXI-Lite scenarios |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow`
 |===

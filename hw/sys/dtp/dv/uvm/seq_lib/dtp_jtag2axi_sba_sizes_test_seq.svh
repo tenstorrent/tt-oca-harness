@@ -169,14 +169,8 @@ class dtp_jtag2axi_sba_sizes_test_seq extends dtp_jtag2axi_base_test_seq;
   // +DTP_J2A_AUTOINC_NEGATIVE flips the expected bit 0, so the run must fail.
   task check_sba_address(dtp_j2a_target_t t, bit [63:0] expected, string context_s);
     ocah_axi_checker        ev = evidence(t);
-    bit              [31:0] word;
     bit              [63:0] observed;
-    dmi_read(t, DTP_DM_SBADDRESS0, {context_s, ".sbaddress0"}, word);
-    observed = 64'(word);
-    if (t.addr_width > 32) begin
-      dmi_read(t, DTP_DM_SBADDRESS1, {context_s, ".sbaddress1"}, word);
-      observed[63:32] = word;
-    end
+    read_sbaddress(t, context_s, observed);
     expected &= bit_mask(t.addr_width);
     if (test_cfg != null && test_cfg.j2a_autoinc_negative) expected ^= 64'h1;
     void'(ev.expect_equal(

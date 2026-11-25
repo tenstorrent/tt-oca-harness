@@ -255,8 +255,8 @@ class dtp_base_test_seq(OcahSequence):
         await self._send(op=DtpJtagOp.WRITE, reg=reg, value=value)
 
     # --- lifecycle debug disables ---------------------------------------------
-    # The DUT synchronizes dbg_disable_i through 2-stage TCK-domain flops, so
-    # a disable change is only guaranteed visible after TCK has toggled.
+    # The DUT synchronizes dbg_disable_i through 2-stage flops: the JTAG2AXI
+    # bridge fields on clk_i, the other fields on TCK.
     async def wait_dbg_disable_sync(self) -> None:
         """Settle a dbg_disable change: four idle TCK cycles (TB margin over
         the 2-stage synchronizers), then a short system-domain settle for the

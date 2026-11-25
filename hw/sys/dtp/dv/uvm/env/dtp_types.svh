@@ -362,6 +362,14 @@ localparam string DtpJ2aSbaErrorCheckId = "CHK-J2A-SBA-ERROR";
 localparam string DtpJ2aAxiAttrCheckId = "CHK-J2A-AXI-ATTR";
 // The bus requests a bridge presents while one of its transfers is open.
 localparam string DtpJ2aOneXferCheckId = "CHK-J2A-ONE-XFER";
+// An access of a disabled bridge, ended by the error slave, and the registers
+// that stay live while the bridge is disabled.
+localparam string DtpJ2aDbgDisableCheckId = "CHK-J2A-DBG-DISABLE";
+// The path an access takes when its bridge's disable changes while the
+// access is held at the port or is starting.
+localparam string DtpJ2aDbgSwitchCheckId = "CHK-J2A-DBG-SWITCH";
+// Every 32 bits of the error slave's read data.
+localparam bit [31:0] DtpJ2aErrSlaveWord = 32'hBADC_AB1E;
 // The AxCACHE of every request the AXI4 bridge drives.
 localparam bit [3:0] DtpJ2aAxiCache = 4'b0010;
 

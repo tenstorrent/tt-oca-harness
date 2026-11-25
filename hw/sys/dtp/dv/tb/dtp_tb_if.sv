@@ -48,6 +48,12 @@ interface dtp_tb_if;
   // (DTP_J2A_HOLD_VALID_HELD).
   logic [2:0] j2a_b_hold = '0;
   logic [2:0] j2a_r_hold = '0;
+
+  // JTAG2AXI disable races (driven by the sequences): while bit t is set
+  // (bridge order as sys_rst_on_ar_arm), bridge t's dbg_disable member may
+  // change after a DMI update, so the bridge models take an access that
+  // update starts on either path.
+  logic [2:0] j2a_dis_race = '0;
   // Responses each bridge's B and R queue holds (driven by tb_top).
   logic [2:0] smc_axi_b_held;
   logic [2:0] smc_axi_r_held;

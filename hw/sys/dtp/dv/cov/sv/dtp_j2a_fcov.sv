@@ -11,7 +11,13 @@
 // errors each Debug Module records from its bus accesses, and the DMI writes
 // it acts on while it holds one (cg_j2a_sba_error); the READY waits,
 // response latencies and AW/W order each bridge port sees, and the sbcs reads
-// whose access completes while the read is in flight (cg_j2a_axi_timing).
+// whose access completes while the read is in flight (cg_j2a_axi_timing);
+// and each bridge's security demultiplexer: the side each request takes
+// under each combination of the three disables, the Debug Module accesses
+// and refused accesses while the error slave is selected, the changes of a
+// disable with the transfer then open, the cycles the select holds against
+// a changed disable while the bridge requests, and the select through and
+// out of system reset (cg_j2a_dbg_disable).
 //
 // One instance in the shared tb_top serves both flows. Each bridge's DMI
 // capture and update strobes, its captured status, the DMI value its bridge
@@ -38,6 +44,12 @@
 // sbcs read while sbbusy is 1 records the port's completed transfers, and the
 // next DMI capture, which returns that read, is sampled with the sbbusy it
 // returns when the port completed a transfer in between.
+//
+// The demultiplexer samples are taken on the system clock from each
+// jtag_dmi2axi's select register, its synchronized disable input and the
+// handshakes between its bridge and the demultiplexer. A transfer is open
+// from its request handshake to its B or last R handshake, on the side the
+// select held at the request.
 //
 // Covergroups follow the cross rules dtp_fcov.sv states.
 //
@@ -85,7 +97,13 @@ module dtp_j2a_fcov (
   input wire [2:0]      port_rvalid_i,
   input wire [2:0]      port_rready_i,
   // RLAST on smc_axi, 1 on the AXI4-Lite ports.
-  input wire [2:0]      port_rlast_i
+  input wire [2:0]      port_rlast_i,
+  input wire [2:0]      sec_select_i,
+  input wire [2:0]      sec_disable_i,
+  input wire [2:0]      bridge_requesting_i,
+  input wire [2:0]      bridge_aw_hs_i,
+  input wire [2:0]      bridge_ar_hs_i,
+  input wire [2:0]      bridge_done_i
 );
 
   localparam int unsigned Bridges = 3;
@@ -95,6 +113,7 @@ module dtp_j2a_fcov (
   localparam logic [6:0] AddrSbaddress0 = 7'h39;
   localparam logic [6:0] AddrSbdata0 = 7'h3C;
   localparam logic [2:0] SberrorBus = 3'd2;
+  localparam logic [2:0] SberrorAlign = 3'd3;
   localparam logic [2:0] SberrorSize = 3'd4;
   localparam logic [1:0] DmiOpRead = 2'd1;
   // cg_j2a_axi_timing sample kinds.
@@ -105,6 +124,15 @@ module dtp_j2a_fcov (
   localparam logic [2:0] KindRDelay = 3'd4;
   localparam logic [2:0] KindWOrder = 3'd5;
   localparam logic [2:0] KindSbcsRace = 3'd6;
+  // cg_j2a_dbg_disable sample kinds.
+  localparam logic [2:0] KindDisAccess = 3'd0;
+  localparam logic [2:0] KindDisMatrix = 3'd1;
+  localparam logic [2:0] KindDisLive = 3'd2;
+  localparam logic [2:0] KindDisRefused = 3'd3;
+  localparam logic [2:0] KindDisSwitch = 3'd4;
+  localparam logic [2:0] KindDisHeld = 3'd5;
+  localparam logic [2:0] KindDisReset = 3'd6;
+  localparam logic [2:0] KindDisResetSelect = 3'd7;
   // Cycles from which a READY wait or a response latency counts as long, and
   // the latency up to which a response counts as prompt.
   localparam int unsigned LongCycles = 64;
@@ -239,8 +267,9 @@ module dtp_j2a_fcov (
   endgroup
 
   // One sample per error a bridge's Debug Module records, with the op and
-  // response of the access a bus error ends and the op a size error refuses,
-  // and one per DMI write it acts on while it holds an error, by kind: 0 an
+  // response of the access a bus error ends, the op a size error refuses and
+  // the sbautoincrement of either, and one per DMI write it acts on while it
+  // holds an error, by kind: 0 an
   // sbdata0 write, 1 an sbaddress0 write with sbreadonaddr, 2 an sbcs write
   // whose sberror field is 0, 3 one whose sberror field is not. A bus error
   // follows only a SLVERR or DECERR, and the bus adapters report no other
@@ -251,7 +280,8 @@ module dtp_j2a_fcov (
       logic [2:0] code,
       logic write,
       logic [1:0] resp,
-      logic [1:0] kind
+      logic [1:0] kind,
+      logic autoinc
   );
     option.per_instance = 1;
     cp_code: coverpoint code iff (!held) {
@@ -286,6 +316,15 @@ module dtp_j2a_fcov (
     cp_held: coverpoint {
       bridge, kind
     } iff (held) {
+      bins smc_axi[] = {[0 : 3]};
+      bins smc_otp[] = {[4 : 7]};
+      bins sep_otp[] = {[8 : 11]};
+      illegal_bins none = {[12 : 15]};
+    }
+    // 4 * bridge + 2 * size error + sbautoincrement
+    cp_autoinc: coverpoint {
+      bridge, code == SberrorSize, autoinc
+    } iff (!held && (code == SberrorBus || code == SberrorSize)) {
       bins smc_axi[] = {[0 : 3]};
       bins smc_otp[] = {[4 : 7]};
       bins sep_otp[] = {[8 : 11]};
@@ -366,11 +405,100 @@ module dtp_j2a_fcov (
     }
   endgroup
 
+  // One sample per request handshake between a bridge and its demultiplexer,
+  // with the side the select sends it to and its op, and with the three
+  // synchronized disables; one per DMI read or write the Debug Module
+  // accepts and per alignment or size error it records while the error
+  // slave is selected; one per change of a disable, by direction, with the
+  // bridge's transfer then open (0 none, 1 at the port, 2 at the error
+  // slave); one per cycle a bridge requests while its select differs from
+  // its disable, with the disable; one per bridge at each system reset
+  // release with its disable; and one per cycle in system reset with the
+  // select.
+  covergroup cg_j2a_dbg_disable with function sample (
+      logic [1:0] bridge, logic [2:0] kind, logic [2:0] value
+  );
+    option.per_instance = 1;
+    // 4 * bridge + 2 * error slave + write
+    cp_access: coverpoint {
+      bridge, value[1:0]
+    } iff (kind == KindDisAccess) {
+      bins smc_axi[] = {[0 : 3]};
+      bins smc_otp[] = {[4 : 7]};
+      bins sep_otp[] = {[8 : 11]};
+      illegal_bins none = {[12 : 15]};
+    }
+    // 8 * bridge + disables (bit 0 smc_axi, 1 smc_otp, 2 sep_otp)
+    cp_matrix: coverpoint {
+      bridge, value
+    } iff (kind == KindDisMatrix) {
+      bins smc_axi[] = {[0 : 7]};
+      bins smc_otp[] = {[8 : 15]};
+      bins sep_otp[] = {[16 : 23]};
+      illegal_bins none = {[24 : 31]};
+    }
+    // 2 * bridge + write
+    cp_live: coverpoint {
+      bridge, value[0]
+    } iff (kind == KindDisLive) {
+      bins smc_axi[] = {0, 1};
+      bins smc_otp[] = {2, 3};
+      bins sep_otp[] = {4, 5};
+      illegal_bins none = {6, 7};
+    }
+    // 8 * bridge + sberror
+    cp_refused: coverpoint {
+      bridge, value
+    } iff (kind == KindDisRefused) {
+      bins smc_axi[] = {3, 4};
+      bins smc_otp[] = {11, 12};
+      bins sep_otp[] = {19, 20};
+      illegal_bins other = {[0 : 2], [5 : 10], [13 : 18], [21 : 31]};
+    }
+    // 8 * bridge + 4 * set + open transfer
+    cp_switch: coverpoint {
+      bridge, value
+    } iff (kind == KindDisSwitch) {
+      bins smc_axi_clear[] = {0, 2};
+      bins smc_axi_set[] = {4, 5};
+      bins smc_otp_clear[] = {8, 10};
+      bins smc_otp_set[] = {12, 13};
+      bins sep_otp_clear[] = {16, 18};
+      bins sep_otp_set[] = {20, 21};
+      // A disable that clears while a port transfer is open, or sets while
+      // an error slave transfer is open, changes twice within one transfer.
+      ignore_bins changed_twice = {1, 6, 9, 14, 17, 22};
+      illegal_bins none = {3, 7, 11, 15, 19, 23, [24 : 31]};
+    }
+    // 2 * bridge + disable
+    cp_held: coverpoint {
+      bridge, value[0]
+    } iff (kind == KindDisHeld) {
+      bins smc_axi[] = {0, 1};
+      bins smc_otp[] = {2, 3};
+      bins sep_otp[] = {4, 5};
+      illegal_bins none = {6, 7};
+    }
+    // 2 * bridge + disable
+    cp_reset: coverpoint {
+      bridge, value[0]
+    } iff (kind == KindDisReset) {
+      bins smc_axi[] = {0, 1};
+      bins smc_otp[] = {2, 3};
+      bins sep_otp[] = {4, 5};
+      illegal_bins none = {6, 7};
+    }
+    cp_reset_select: coverpoint value[0] iff (kind == KindDisResetSelect) {
+      bins error_slave = {1'b1}; illegal_bins port = {1'b0};
+    }
+  endgroup
+
   cg_j2a_dmi_status u_cg_j2a_dmi_status = new();
   cg_j2a_dm_access u_cg_j2a_dm_access = new();
   cg_j2a_sba_access u_cg_j2a_sba_access = new();
   cg_j2a_sba_error u_cg_j2a_sba_error = new();
   cg_j2a_axi_timing u_cg_j2a_axi_timing = new();
+  cg_j2a_dbg_disable u_cg_j2a_dbg_disable = new();
 
   always_ff @(posedge tck_i) begin
     if (tap_rst_ni) begin
@@ -434,8 +562,9 @@ module dtp_j2a_fcov (
         if (sba_error_valid_i[b])
           u_cg_j2a_sba_error.sample(2'(b), 1'b0, sba_error_i[b],
                                     sba_error_i[b] == SberrorBus ? sba_write_q[b] : sba_write_i[b],
-                                    sba_write_q[b] ? sba_bresp_i[b] : sba_rresp_i[b], '0);
-        if (held_valid[b]) u_cg_j2a_sba_error.sample(2'(b), 1'b1, '0, 1'b0, '0, held_kind[b]);
+                                    sba_write_q[b] ? sba_bresp_i[b] : sba_rresp_i[b], '0,
+                                    sba_autoinc_i[b]);
+        if (held_valid[b]) u_cg_j2a_sba_error.sample(2'(b), 1'b1, '0, 1'b0, '0, held_kind[b], 1'b0);
       end
     end
   end
@@ -567,6 +696,67 @@ module dtp_j2a_fcov (
       for (int unsigned b = 0; b < Bridges; b++) begin
         if (capture_en_i[b] && race_armed_q[b] && done_count_q[b] != race_done_q[b])
           u_cg_j2a_axi_timing.sample(2'(b), KindSbcsRace, {1'b0, capture_sbbusy_i[b]});
+      end
+    end
+  end
+
+  // Per bridge: its disable a cycle ago, and whether a transfer is open and
+  // on which side; and whether the last cycle was in system reset.
+  logic [Bridges-1:0] sec_disable_q;
+  logic [Bridges-1:0] open_q;
+  logic [Bridges-1:0] open_err_q;
+  logic               in_reset_q;
+
+  always_ff @(posedge clk_i) begin
+    sec_disable_q <= sec_disable_i;
+    in_reset_q    <= !rst_ni;
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      open_q     <= '0;
+      open_err_q <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (bridge_aw_hs_i[b] || bridge_ar_hs_i[b]) begin
+          open_q[b]     <= 1'b1;
+          open_err_q[b] <= sec_select_i[b];
+        end else if (bridge_done_i[b]) begin
+          open_q[b] <= 1'b0;
+        end
+      end
+    end
+  end
+
+  logic [Bridges-1:0][1:0] open_phase;
+
+  always_comb begin
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      open_phase[b] = open_q[b] ? {open_err_q[b], !open_err_q[b]} : 2'd0;
+    end
+  end
+
+  always_ff @(posedge clk_i) begin
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      if (!rst_ni && in_reset_q)
+        u_cg_j2a_dbg_disable.sample(2'(b), KindDisResetSelect, {2'b0, sec_select_i[b]});
+      if (rst_ni && in_reset_q)
+        u_cg_j2a_dbg_disable.sample(2'(b), KindDisReset, {2'b0, sec_disable_i[b]});
+      if (rst_ni && !in_reset_q) begin
+        if (bridge_aw_hs_i[b] || bridge_ar_hs_i[b]) begin
+          u_cg_j2a_dbg_disable.sample(2'(b), KindDisAccess, {
+                                      1'b0, sec_select_i[b], bridge_aw_hs_i[b]});
+          u_cg_j2a_dbg_disable.sample(2'(b), KindDisMatrix, sec_disable_i);
+        end
+        if (sec_select_i[b] && dm_req_i[b] && dm_req_dmi_i[b][33:32] inside {2'd1, 2'd2})
+          u_cg_j2a_dbg_disable.sample(2'(b), KindDisLive, {2'b0, dm_req_dmi_i[b][33]});
+        if (sec_select_i[b] && sba_error_valid_i[b] && sba_error_i[b] inside {SberrorAlign,
+                                                                              SberrorSize})
+          u_cg_j2a_dbg_disable.sample(2'(b), KindDisRefused, sba_error_i[b]);
+        if (sec_disable_i[b] != sec_disable_q[b])
+          u_cg_j2a_dbg_disable.sample(2'(b), KindDisSwitch, {sec_disable_i[b], open_phase[b]});
+        if (bridge_requesting_i[b] && sec_select_i[b] != sec_disable_i[b])
+          u_cg_j2a_dbg_disable.sample(2'(b), KindDisHeld, {2'b0, sec_disable_i[b]});
       end
     end
   end

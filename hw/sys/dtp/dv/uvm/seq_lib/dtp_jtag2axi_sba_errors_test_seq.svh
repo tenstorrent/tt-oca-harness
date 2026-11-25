@@ -3,12 +3,13 @@
 //
 // JTAG2AXI System Bus Access errors on every bridge, each bridge in a seeded
 // order. A SLVERR or DECERR response to a write or a read sets sberror 2, and
-// an access size above the data width sets 4 without a bus transfer. While
-// sberror is not 0 neither an sbdata0 write nor an sbaddress0 write under
-// sbreadonaddr starts an access; an sbcs write with a nonzero sberror field
-// clears it, and the next access completes. Each bridge keeps one error while
-// the bridges after it run, which shows that an error on one bridge leaves the
-// others working. The cocotb twin is
+// an access size above the data width sets 4 without a bus transfer; either
+// leaves sbaddress at the failing access under a seeded sbautoincrement.
+// While sberror is not 0 neither an sbdata0 write nor an sbaddress0 write
+// under sbreadonaddr starts an access; an sbcs write with a nonzero sberror
+// field clears it, and the next access completes. Each bridge keeps one error
+// while the bridges after it run, which shows that an error on one bridge
+// leaves the others working. The cocotb twin is
 // seq_lib/dtp_jtag2axi_sba_errors_test_seq.py.
 
 class dtp_jtag2axi_sba_errors_test_seq extends dtp_jtag2axi_base_test_seq;
@@ -55,7 +56,8 @@ class dtp_jtag2axi_sba_errors_test_seq extends dtp_jtag2axi_base_test_seq;
       bus_error_case(t);
       bus_errors(errors);
       errors.shuffle();
-      bus_error(t, errors[0].resp, errors[0].is_read, {t.name, ".held"}, base, beat);
+      bus_error(t, errors[0].resp, errors[0].is_read, 1'($urandom()), {t.name, ".held"}, base,
+                beat);
       check_responder_activity(t, 1, {t.name, ".sba_errors"});
       close_bus_ledger();
       m_ledger = "";
@@ -90,14 +92,17 @@ class dtp_jtag2axi_sba_errors_test_seq extends dtp_jtag2axi_base_test_seq;
   endfunction
 
   // Every sbaccess above the data width, started by an sbdata0 write and by
-  // an sbaddress0 write, sets sberror 4 and reaches no bus.
+  // an sbaddress0 write, half of them under sbautoincrement, sets sberror 4,
+  // reaches no bus and leaves sbaddress unchanged.
   task size_error_case(dtp_j2a_target_t t);
     int unsigned cases[$];
+    bit          autoincs[$];
     for (int unsigned size = t.default_size + 1; size <= SbaccessMax; size++) begin
       cases.push_back(2 * size);
       cases.push_back(2 * size + 1);
     end
     cases.shuffle();
+    balanced_bits(cases.size(), autoincs);
     foreach (cases[i]) begin
       int unsigned        size = cases[i] / 2;
       bit                 is_read = cases[i] % 2;
@@ -105,29 +110,32 @@ class dtp_jtag2axi_sba_errors_test_seq extends dtp_jtag2axi_base_test_seq;
                                           op_name(is_read));
       // Aligned to the access size: the alignment error takes precedence.
       bit          [63:0] addr = random_target_addr(t) & ~((64'h1 << size) - 1);
-      sba_setup(t, addr, size, is_read, ctx);
+      sba_setup(t, addr, size, is_read, ctx, autoincs[i]);
       if (!is_read) dmi_write(t, DTP_DM_SBDATA0, $urandom(), {ctx, ".sbdata0"});
       wait_sba_idle(t, ctx, 1'b0, SberrorSize);
       check_sberror(t, SberrorSize, ctx);
+      check_sba_address(t, addr, ctx);
       expect_no_bus_request(t, ctx);
       clear_sberror(t, ctx);
     end
   endtask
 
-  // SLVERR and DECERR on a write and on a read, in a seeded order. Each error
-  // refuses the next accesses until an sbcs write clears it, and an access at
-  // the same beat then completes.
+  // SLVERR and DECERR on a write and on a read, in a seeded order, half of
+  // them under sbautoincrement. Each error refuses the next accesses until an
+  // sbcs write clears it, and an access at the same beat then completes.
   task bus_error_case(dtp_j2a_target_t t);
     bus_error_t        errors[$];
+    bit                autoincs[$];
     bit         [63:0] base;
     bit         [63:0] beat;
     bit         [63:0] rdata;
     bit         [63:0] data;
     bus_errors(errors);
     errors.shuffle();
+    balanced_bits(errors.size(), autoincs);
     foreach (errors[i]) begin
       string ctx = $sformatf("%s.%s.%s", t.name, errors[i].resp.name(), op_name(errors[i].is_read));
-      bus_error(t, errors[i].resp, errors[i].is_read, ctx, base, beat);
+      bus_error(t, errors[i].resp, errors[i].is_read, autoincs[i], ctx, base, beat);
       refused_accesses(t, base, ctx);
       check_target_word(t, base, beat, t.default_size, {ctx, ".refused.mem"});
       clear_sberror(t, ctx);
@@ -135,10 +143,12 @@ class dtp_jtag2axi_sba_errors_test_seq extends dtp_jtag2axi_base_test_seq;
     end
   endtask
 
-  // A `resp` answer to a seeded access of a seeded size sets sberror 2, and
-  // the beat at `base` keeps the content `beat` it was filled with.
+  // A `resp` answer to a seeded access of a seeded size sets sberror 2 and
+  // leaves sbaddress at the access, with `autoincrement` as well, and the beat
+  // at `base` keeps the content `beat` it was filled with.
   task bus_error(input dtp_j2a_target_t t, input ocah_axi_resp_e resp, input bit is_read,
-                 input string context_s, output bit [63:0] base, output bit [63:0] beat);
+                 input bit autoincrement, input string context_s, output bit [63:0] base,
+                 output bit [63:0] beat);
     int unsigned        size = $urandom_range(t.default_size);
     int unsigned        offset = $urandom_range(t.beat_bytes / dtp_j2a_size_bytes(size) - 1) *
         dtp_j2a_size_bytes(size);
@@ -149,13 +159,14 @@ class dtp_jtag2axi_sba_errors_test_seq extends dtp_jtag2axi_base_test_seq;
     sba_write(t, base, beat, t.default_size, {context_s, ".fill"});
     inject_bus_error(t, base, resp, is_read);
     if (is_read) begin
-      sba_read_request(t, base + offset, size, context_s, 1'b0, SberrorBus);
+      sba_read_request(t, base + offset, size, context_s, autoincrement, SberrorBus);
     end else begin
       do lanes = ({$urandom(), $urandom()} << (8 * offset)) & mask; while (lanes == (beat & mask));
-      sba_setup(t, base + offset, size, 1'b0, context_s);
+      sba_setup(t, base + offset, size, 1'b0, context_s, autoincrement);
       sba_write_data(t, base + offset, lanes >> (8 * offset), size, context_s, SberrorBus);
     end
     check_sberror(t, SberrorBus, context_s);
+    check_sba_address(t, base + offset, context_s);
     check_target_word(t, base, beat, t.default_size, {context_s, ".mem"});
   endtask
 
@@ -196,6 +207,33 @@ class dtp_jtag2axi_sba_errors_test_seq extends dtp_jtag2axi_base_test_seq;
         64'(expected),
         $sformatf(
             "%s target=%s sberror", context_s, t.name)
+    ));
+  endtask
+
+  // `count` seeded bits in a seeded order, half of them set, the odd one
+  // seeded.
+  function void balanced_bits(int unsigned count, output bit bits[$]);
+    bits = {};
+    for (int unsigned i = 0; i < count / 2; i++) begin
+      bits.push_back(1'b0);
+      bits.push_back(1'b1);
+    end
+    if (count % 2) bits.push_back(1'($urandom()));
+    bits.shuffle();
+  endfunction
+
+  // CHK-J2A-SBA-ERROR: sbaddress reads `expected`.
+  task check_sba_address(dtp_j2a_target_t t, bit [63:0] expected, string context_s);
+    ocah_axi_checker        ev = evidence(t);
+    bit              [63:0] observed;
+    read_sbaddress(t, context_s, observed);
+    expected &= bit_mask(t.addr_width);
+    void'(ev.expect_equal(
+        DtpJ2aSbaErrorCheckId,
+        observed,
+        expected,
+        $sformatf(
+            "%s target=%s sbaddress", context_s, t.name)
     ));
   endtask
 

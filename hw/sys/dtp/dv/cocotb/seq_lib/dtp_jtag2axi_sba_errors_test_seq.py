@@ -3,8 +3,9 @@
 """JTAG2AXI System Bus Access errors on every bridge.
 
 A SLVERR or DECERR response to a write or a read sets sberror 2, and an access
-size above the data width sets 4 without a bus transfer. While sberror is not
-0 neither an sbdata0 write nor an sbaddress0 write under sbreadonaddr starts an
+size above the data width sets 4 without a bus transfer; either leaves sbaddress
+at the failing access under a seeded sbautoincrement. While sberror is not 0
+neither an sbdata0 write nor an sbaddress0 write under sbreadonaddr starts an
 access; an sbcs write with a nonzero sberror field clears it, and the next
 access completes. Each bridge keeps one error while the bridges after it run,
 which shows that an error on one bridge leaves the others working.
@@ -61,7 +62,9 @@ class dtp_jtag2axi_sba_errors_test_seq(dtp_jtag2axi_base_test_seq):
             await self.size_error_case(target, rng)
             await self.bus_error_case(target, rng)
             resp, read = rng.choice(BUS_ERRORS)
-            await self.bus_error(target, resp, read, rng, context=f"{target}.held")
+            await self.bus_error(
+                target, resp, read, bool(rng.getrandbits(1)), rng, context=f"{target}.held"
+            )
             self.close_bus_ledger()
             self._ledger_target = None
         for target in targets:
@@ -81,36 +84,40 @@ class dtp_jtag2axi_sba_errors_test_seq(dtp_jtag2axi_base_test_seq):
 
     async def size_error_case(self, target: str, rng: random.Random) -> None:
         """Every sbaccess above the data width, started by an sbdata0 write and by an
-        sbaddress0 write, sets sberror 4 and reaches no bus."""
+        sbaddress0 write, half of them under sbautoincrement, sets sberror 4, reaches no bus
+        and leaves sbaddress unchanged."""
         cases = [
             (size, read)
             for size in range(self.target_cfg(target).data_size + 1, SBACCESS_MAX + 1)
             for read in (False, True)
         ]
         rng.shuffle(cases)
-        for size, read in cases:
+        for (size, read), autoincrement in zip(cases, balanced_bits(rng, len(cases)), strict=True):
             ctx = f"{target}.size_error.size{size}.{'read' if read else 'write'}"
             # Aligned to the access size: the alignment error takes precedence.
             addr = self.random_target_addr(target, rng) & ~((1 << size) - 1)
-            await self.sba_setup(target, addr, size, read=read, context=ctx)
+            await self.sba_setup(
+                target, addr, size, read=read, context=ctx, autoincrement=autoincrement
+            )
             if not read:
                 await self.dmi_write(
                     target, DtpDmReg.SBDATA0, rng.getrandbits(32), context=f"{ctx}.sbdata0"
                 )
             await self.wait_sba_idle(target, context=ctx, sberror=SBERROR_SIZE)
             await self.check_sberror(target, SBERROR_SIZE, context=ctx)
+            await self.check_sba_address(target, addr, context=ctx)
             self.expect_no_bus_request(target, context=ctx)
             await self.clear_sberror(target, rng, context=ctx)
 
     async def bus_error_case(self, target: str, rng: random.Random) -> None:
-        """SLVERR and DECERR on a write and on a read, in a seeded order. Each error refuses
-        the next accesses until an sbcs write clears it, and an access at the same beat then
-        completes."""
+        """SLVERR and DECERR on a write and on a read, in a seeded order, half of them under
+        sbautoincrement. Each error refuses the next accesses until an sbcs write clears it,
+        and an access at the same beat then completes."""
         cases = list(BUS_ERRORS)
         rng.shuffle(cases)
-        for resp, read in cases:
+        for (resp, read), autoincrement in zip(cases, balanced_bits(rng, len(cases)), strict=True):
             ctx = f"{target}.{RESP_NAMES[resp]}.{'read' if read else 'write'}"
-            base, beat = await self.bus_error(target, resp, read, rng, context=ctx)
+            base, beat = await self.bus_error(target, resp, read, autoincrement, rng, context=ctx)
             await self.refused_accesses(target, base, rng, context=ctx)
             self.check_target_word(
                 target,
@@ -123,10 +130,18 @@ class dtp_jtag2axi_sba_errors_test_seq(dtp_jtag2axi_base_test_seq):
             await self.write_neighbour_then_read(target, base, rng, context=f"{ctx}.recovery")
 
     async def bus_error(
-        self, target: str, resp: int, read: bool, rng: random.Random, *, context: str
+        self,
+        target: str,
+        resp: int,
+        read: bool,
+        autoincrement: bool,
+        rng: random.Random,
+        *,
+        context: str,
     ) -> tuple[int, int]:
-        """A ``resp`` answer to a seeded access of a seeded size sets sberror 2, and the beat
-        keeps the content it was filled with. Returns the beat address and that content."""
+        """A ``resp`` answer to a seeded access of a seeded size sets sberror 2 and leaves
+        sbaddress at the access, with ``autoincrement`` as well, and the beat keeps the content
+        it was filled with. Returns the beat address and that content."""
         cfg = self.target_cfg(target)
         base = self.random_target_addr(target, rng)
         beat = self.random_distinct_word(rng, target)
@@ -136,7 +151,12 @@ class dtp_jtag2axi_sba_errors_test_seq(dtp_jtag2axi_base_test_seq):
         self.inject_bus_error(target, base, resp, read=read, context=context)
         if read:
             await self.sba_read_request(
-                target, base + offset, size=size, context=context, sberror=SBERROR_BUS
+                target,
+                base + offset,
+                size=size,
+                context=context,
+                autoincrement=autoincrement,
+                sberror=SBERROR_BUS,
             )
         else:
             mask = self.data_mask(size) << (8 * offset)
@@ -144,7 +164,14 @@ class dtp_jtag2axi_sba_errors_test_seq(dtp_jtag2axi_base_test_seq):
                 lanes = (rng.getrandbits(8 << size) << (8 * offset)) & mask
                 if lanes != beat & mask:
                     break
-            await self.sba_setup(target, base + offset, size, read=False, context=context)
+            await self.sba_setup(
+                target,
+                base + offset,
+                size,
+                read=False,
+                context=context,
+                autoincrement=autoincrement,
+            )
             await self.sba_write_data(
                 target,
                 base + offset,
@@ -154,6 +181,7 @@ class dtp_jtag2axi_sba_errors_test_seq(dtp_jtag2axi_base_test_seq):
                 sberror=SBERROR_BUS,
             )
         await self.check_sberror(target, SBERROR_BUS, context=context)
+        await self.check_sba_address(target, base + offset, context=context)
         self.check_target_word(target, base, beat, size=cfg.data_size, context=f"{context}.mem")
         return base, beat
 
@@ -201,3 +229,20 @@ class dtp_jtag2axi_sba_errors_test_seq(dtp_jtag2axi_base_test_seq):
             expected,
             context=f"{context} target={target} sberror",
         )
+
+    async def check_sba_address(self, target: str, expected: int, *, context: str) -> None:
+        """``CHK-J2A-SBA-ERROR``: sbaddress reads ``expected``."""
+        self.check_equal(
+            self.target_evidence(target),
+            SBA_ERROR_CHECK_ID,
+            await self.read_sbaddress(target, context=context),
+            self.masked_addr(target, expected),
+            context=f"{context} target={target} sbaddress",
+        )
+
+
+def balanced_bits(rng: random.Random, count: int) -> list[bool]:
+    """``count`` seeded bits in a seeded order, half of them set, the odd one seeded."""
+    bits = [False, True] * (count // 2) + [bool(rng.getrandbits(1))] * (count % 2)
+    rng.shuffle(bits)
+    return bits

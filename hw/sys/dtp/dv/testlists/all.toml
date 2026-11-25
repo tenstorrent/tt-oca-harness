@@ -71,7 +71,7 @@ tests = [
 
 [[groups]]
 name = "jtag2axi"
-expected_count = 8
+expected_count = 9
 tests = [
     "dtp_jtag2axi_smc_axi_single_write_read_test",
     "dtp_jtag2axi_smc_otp_axi_single_write_read_test",
@@ -81,6 +81,7 @@ tests = [
     "dtp_jtag2axi_sba_sizes_test",
     "dtp_jtag2axi_sba_errors_test",
     "dtp_jtag2axi_backpressure_test",
+    "dtp_jtag2axi_debug_disable_test",
 ]
 
 [[groups]]
@@ -105,10 +106,11 @@ tests = [
 
 # Debug-disable group: the scan gate matrix plus the directed tests that carry
 # the per-field gating contract of the scan-path
-# sep_lifecycle_ctrl_pkg::dbg_disable_t fields.
+# sep_lifecycle_ctrl_pkg::dbg_disable_t fields, and the JTAG2AXI bridge
+# disables.
 [[groups]]
 name = "dbg_disable"
-expected_count = 8
+expected_count = 9
 tests = [
     "dtp_scan_dbg_disable_matrix_test",
     "dtp_3dcr_stap_sel_ds_test",
@@ -118,6 +120,7 @@ tests = [
     "dtp_ext_stap_scan_test",
     "dtp_ijtag_dft_test",
     "dtp_ijtag_dfd_test",
+    "dtp_jtag2axi_debug_disable_test",
 ]
 
 [[groups]]
@@ -160,7 +163,7 @@ tests = [
 name = "all"
 # Exact nightly inventory; must match the VPLAN's scenario-expanded test-case
 # count. The loader errors when the list and this count diverge.
-expected_count = 81
+expected_count = 82
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -190,6 +193,7 @@ tests = [
     "dtp_jtag2axi_sba_sizes_test",
     "dtp_jtag2axi_sba_errors_test",
     "dtp_jtag2axi_backpressure_test",
+    "dtp_jtag2axi_debug_disable_test",
     "dtp_jtag_tmp_status_register_smoke_test",
     "dtp_jtag_tmp_status_chrst_n_in_persistence_test",
     "dtp_jtag_tmp_status_bypass_escape_test",

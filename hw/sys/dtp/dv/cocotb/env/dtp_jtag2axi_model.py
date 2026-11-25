@@ -46,9 +46,15 @@ the transactions the passive monitors observe on its port:
                completed read loads sbdata with the beat shifted down to the
                address; a completed write loads it with the read-data lanes,
                which carry no contract. sbautoincrement advances the address
-               by the size on every completion. With the bridge's lifecycle
-               disable asserted the access completes as DECERR without
-               reaching the port, and a read returns 0xBADCAB1E per word.
+               by the size after every completion without an error response.
+               With the bridge's lifecycle disable asserted the access
+               completes as DECERR without reaching the port, and a read
+               returns 0xBADCAB1E per word. An access launched while the
+               bridge's bit of dtp_tb_if.j2a_dis_race is set, whose disable
+               changes after its update, takes either path: the port's, when
+               the port reports a transaction within DTP_DMI_SETTLE_TCK TCK
+               cycles of the update, and the disabled path's otherwise; no
+               scan of that bridge falls within those cycles.
 
 A system reset returns every bridge to its reset state; a TAP reset leaves
 them unchanged. Captures and updates come from the TCK steps, so a DR scan of
@@ -167,6 +173,15 @@ class DtpJ2aHolds:
 
 
 @dataclass(frozen=True)
+class _Path:
+    """Where an access may go: ``gated`` takes the disabled path, and ``race`` lets the
+    access take either path."""
+
+    gated: bool = False
+    race: bool = False
+
+
+@dataclass(frozen=True)
 class _DmResponse:
     data: int = 0
     data_mask: int = 0
@@ -201,6 +216,11 @@ class _Bridge:
     sbdata: int = 0
     sbdata_mask: int = _DWORD
     inflight: _Access | None = None
+    # For an in-flight access that may take either path: the last TCK cycle a port
+    # completion of it may be reported on, and its port transaction, held back until
+    # the port reports one.
+    either_deadline: int | None = None
+    either_item: OcahAxiItem | None = None
     # Port completions not yet applied, each with the TCK cycle it was reported on.
     completed: deque[tuple[OcahAxiItem, int]] = field(default_factory=deque)
     # Completions due for accesses a system reset discarded.
@@ -238,7 +258,7 @@ class DtpJtag2AxiModel:
         prior = self._bridges
         self._bridges = {name: _Bridge() for name in JTAG2AXI_TARGETS}
         for name, old in prior.items():
-            outstanding = old.inflight is not None and not old.completed
+            outstanding = old.inflight is not None and not old.completed and old.either_item is None
             self._bridges[name].orphans = old.orphans + int(outstanding)
 
     @staticmethod
@@ -277,6 +297,7 @@ class DtpJtag2AxiModel:
         *,
         gated: bool,
         held: DtpJ2aHolds,
+        race: bool = False,
     ) -> OcahAxiItem | None:
         """Update-DR of a DTMCS or DMI register on TCK cycle ``tck``; the bus transaction it
         launches, if any.
@@ -284,7 +305,7 @@ class DtpJtag2AxiModel:
         ``value`` is the update stage's content and ``known`` the mask of its bits the model
         knows. ``visible_ns``: completions at or before it have reached the Debug Module.
         ``gated``: the bridge's lifecycle disable is asserted. ``held``: the bridge's
-        response holds.
+        response holds. ``race``: an access this update launches may take either path.
         """
         bridge = self._bridges[target.name]
         if kind is DtpJ2aScanKind.DTMCS:
@@ -303,7 +324,12 @@ class DtpJtag2AxiModel:
             elif not self.negative:
                 self._set_busy(bridge)
             return None
-        self._apply_completions(target, bridge, visible_ns)
+        self._apply_completions(target, bridge, visible_ns, tck)
+        if bridge.either_deadline is not None:
+            raise DtpJtag2AxiScopeError(
+                f"{target.name}: update {tck - bridge.last_op_tck} TCK after an access that may "
+                f"take either path, within {DTP_DMI_SETTLE_TCK} TCK"
+            )
         if bridge.error != DtpDmiStatus.SUCCESS:
             if op == DtpDmiOp.CLEAR:
                 bridge.error = int(DtpDmiStatus.SUCCESS)
@@ -316,20 +342,26 @@ class DtpJtag2AxiModel:
             self._require_known(target, data_mask, _WORD, "write data")
         bridge.last_op_tck = tck
         bridge.op_read = op == DtpDmiOp.READ
+        path = _Path(gated, race)
         if bridge.op_read:
-            bridge.pending, launched = self._dm_read(target, bridge, address, gated, held)
+            bridge.pending, launched = self._dm_read(target, bridge, address, path, held)
         else:
-            bridge.pending, launched = self._dm_write(target, bridge, address, data, gated, held)
+            bridge.pending, launched = self._dm_write(target, bridge, address, data, path, held)
         return launched
 
-    def complete(self, target: str, observed: OcahAxiItem, tck: int) -> None:
+    def complete(self, target: str, observed: OcahAxiItem, tck: int) -> OcahAxiItem | None:
         """A transaction observed on a bridge port on TCK cycle ``tck``, applied at a later
-        update."""
+        update; the held-back transaction of an access that may take either path, when this
+        completes it in time."""
         bridge = self._bridges[target]
         if bridge.orphans:
             bridge.orphans -= 1
-            return
+            return None
         bridge.completed.append((observed, tck))
+        if bridge.either_item is None or tck > (bridge.either_deadline or 0):
+            return None
+        predicted, bridge.either_item = bridge.either_item, None
+        return predicted
 
     # --- DMI operation -----------------------------------------------------------
     def _in_progress(
@@ -429,7 +461,7 @@ class DtpJtag2AxiModel:
         target: DtpJtag2AxiTargetCfg,
         bridge: _Bridge,
         address: int,
-        gated: bool,
+        path: _Path,
         held: DtpJ2aHolds,
     ) -> tuple[_DmResponse, OcahAxiItem | None]:
         if address == DtpDmReg.DMCONTROL:
@@ -453,7 +485,7 @@ class DtpJtag2AxiModel:
             )
             launched = None
             if address == DtpDmReg.SBDATA0 and bridge.sbreadondata and not bridge.sberror:
-                launched = self._launch(target, bridge, is_read=True, gated=gated)
+                launched = self._launch(target, bridge, is_read=True, path=path)
             return response, launched
         return _DmResponse(), None
 
@@ -463,7 +495,7 @@ class DtpJtag2AxiModel:
         bridge: _Bridge,
         address: int,
         data: int,
-        gated: bool,
+        path: _Path,
         held: DtpJ2aHolds,
     ) -> tuple[_DmResponse, OcahAxiItem | None]:
         if address == DtpDmReg.DMCONTROL:
@@ -508,19 +540,19 @@ class DtpJtag2AxiModel:
                 sbaddr = (bridge.sbaddr & ~(_WORD << shift)) | (data << shift)
                 bridge.sbaddr = sbaddr & _mask(target.addr_width)
                 if address == DtpDmReg.SBADDRESS0 and bridge.sbreadonaddr and not bridge.sberror:
-                    launched = self._launch(target, bridge, is_read=True, gated=gated)
+                    launched = self._launch(target, bridge, is_read=True, path=path)
             return _DmResponse(), launched
         shift = 0 if address == DtpDmReg.SBDATA0 else 32
         if bridge.dmactive:
             bridge.sbdata = (bridge.sbdata & ~(_WORD << shift)) | (data << shift)
             bridge.sbdata_mask |= _WORD << shift
             if address == DtpDmReg.SBDATA0 and not bridge.sberror:
-                launched = self._launch(target, bridge, is_read=False, gated=gated)
+                launched = self._launch(target, bridge, is_read=False, path=path)
         return _DmResponse(), launched
 
     # --- system bus access -------------------------------------------------------
     def _launch(
-        self, target: DtpJtag2AxiTargetCfg, bridge: _Bridge, *, is_read: bool, gated: bool
+        self, target: DtpJtag2AxiTargetCfg, bridge: _Bridge, *, is_read: bool, path: _Path
     ) -> OcahAxiItem | None:
         size = bridge.sbaccess
         # The alignment error takes precedence over the size error.
@@ -532,10 +564,8 @@ class DtpJtag2AxiModel:
             return None
         offset = bridge.sbaddr & (target.beat_bytes - 1)
         access = _Access(is_read, size, offset)
-        if gated:
-            self._finish(
-                target, bridge, access, resp_error=True, rdata=self._err_slave_beat(target)
-            )
+        if path.gated and not path.race:
+            self._finish_gated(target, bridge, access)
             return None
         lanes = _mask(1 << size) << offset
         written = strobe_lanes(lanes)
@@ -546,7 +576,7 @@ class DtpJtag2AxiModel:
         bus_data = (bridge.sbdata << (8 * offset)) & _mask(target.data_width)
         protocol = OcahAxiProtocol.AXI4 if target.bus_type == 0 else OcahAxiProtocol.AXI4_LITE
         bridge.inflight = access
-        return OcahAxiItem(
+        item = OcahAxiItem(
             protocol=protocol,
             direction="read" if is_read else "write",
             address=bridge.sbaddr,
@@ -554,10 +584,19 @@ class DtpJtag2AxiModel:
             data_words=() if is_read else (bus_data,),
             strobes=() if is_read else (lanes,),
         )
+        if not path.race:
+            return item
+        bridge.either_deadline = bridge.last_op_tck + DTP_DMI_SETTLE_TCK
+        bridge.either_item = item
+        return None
 
     @staticmethod
     def _err_slave_beat(target: DtpJtag2AxiTargetCfg) -> int:
         return sum(_ERR_SLAVE_WORD << (32 * w) for w in range(target.data_width // 32))
+
+    def _finish_gated(self, target: DtpJtag2AxiTargetCfg, bridge: _Bridge, access: _Access) -> None:
+        """Complete ``access`` on the disabled path: DECERR with the error slave's beat."""
+        self._finish(target, bridge, access, resp_error=True, rdata=self._err_slave_beat(target))
 
     def _finish(
         self,
@@ -575,12 +614,17 @@ class DtpJtag2AxiModel:
             bridge.sberror = _SBERROR_BUS
         bridge.sbdata = (rdata >> (8 * access.offset)) & _mask(target.data_width)
         bridge.sbdata_mask = _mask(target.data_width) if access.is_read else 0
-        if bridge.sbautoincrement:
+        if bridge.sbautoincrement and not resp_error:
             bridge.sbaddr = (bridge.sbaddr + (1 << access.size)) & _mask(target.addr_width)
 
     def _apply_completions(
-        self, target: DtpJtag2AxiTargetCfg, bridge: _Bridge, visible_ns: float
+        self, target: DtpJtag2AxiTargetCfg, bridge: _Bridge, visible_ns: float, tck: int
     ) -> None:
+        if bridge.either_deadline is not None and tck >= bridge.either_deadline:
+            # The port reported no transaction in time, so the access took the disabled path.
+            if bridge.either_item is not None and bridge.inflight is not None:
+                self._finish_gated(target, bridge, bridge.inflight)
+            bridge.either_deadline, bridge.either_item = None, None
         while bridge.completed and (bridge.completed[0][0].end_time_ns or 0) <= visible_ns:
             observed, _ = bridge.completed.popleft()
             # A transaction nothing launched: the scoreboard reports it as unpredicted.
@@ -610,7 +654,9 @@ class DtpJtag2AxiTracker:
     reconstructed scan of a bridge register yields its expected capture on the
     bits it shifted out when the PTAP 3DCR select is clear. The debug disable
     and the response holds of the bridge are read from the TB interface on the
-    update cycle.
+    update cycle, and so is the bridge's bit of ``j2a_dis_race``. A port transaction that
+    completes an access which may take either path is returned from ``on_axi`` with the
+    bridge's name.
     """
 
     def __init__(self, tb_if, *, negative: bool = False) -> None:
@@ -709,14 +755,18 @@ class DtpJtag2AxiTracker:
             self._prev_step_ns,
             gated=bool(self.tb_if.dbg_field(target.dbg_disable_bit)),
             held=holds,
+            race=bool((self.tb_if.sample("j2a_dis_race") >> target.reset_arm_bit) & 0x1),
         )
         return None if access is None else (target.name, access)
 
-    def on_axi(self, item: OcahAxiItem) -> None:
+    def on_axi(self, item: OcahAxiItem) -> tuple[str, OcahAxiItem] | None:
+        """One transaction a bridge port completed; the bridge and the transaction it was
+        predicted as, when it completes an access that may take either path."""
         target = self._target_by_source.get(item.source)
         if target is None:
             raise RuntimeError(f"AXI item from unbound port `{item.source}`")
-        self.bridges.complete(target, item, self._tck)
+        predicted = self.bridges.complete(target, item, self._tck)
+        return None if predicted is None else (target, predicted)
 
     def _sync_reset(self) -> None:
         """Power-on reset resets the TAP; a system reset resets every bridge."""
