@@ -1332,7 +1332,7 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 *Test Coverage*:
 
 * xtrig_ctm_dst_req[7:0] -> dtp_xtrig_ctm_dst_req[9:2]; SMC[1:0] stay 0
-* xtrig_ctm_dst_ack[7] follows dst_req[7] within a settle window and holds: lane 7 is the one lane the TB configures for req/ack handshaking (`XTRIG_INT_CT_MODE = 8'h80`). The integrator guide states that a mode-0 (pulse-synchronised) lane's ack is unused and pins no level for it, so lanes 0-6 are recorded in the log, not compared
+* xtrig_ctm_dst_ack[7] follows dst_req[7] within a settle window and holds: lane 7 is the one lane the TB configures for req/ack handshaking (`XTRIG_INT_CT_MODE[7].mode = MODE_POINT_TO_POINT`). The integrator guide states that a wire-OR lane's ack is unused and pins no level for it, so lanes 0-6 are recorded in the log, not compared
 * xtrig_ctm_src_ack[7:0] -> dtp_xtrig_ctm_src_ack[9:2]; ack[1:0] hardwired 0
 * TB xtrig_ctm_src_req stays idle (0) while only ack is driven (no DTP peer)
 
@@ -1353,7 +1353,7 @@ above the window are graded by `CHK-FILTER-EDGE-BELOW` and `CHK-FILTER-EDGE-ABOV
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
 
-*Scope limit*: The integrator guide states that a mode-0 (pulse-synchronised) lane's ack is unused and pins no level for it, so lanes 0-6 are recorded in the log, not compared
+*Scope limit*: The integrator guide states that a wire-OR lane's ack is unused and pins no level for it, so lanes 0-6 are recorded in the log, not compared
 
 '''''
 
@@ -3178,8 +3178,8 @@ operation in flight at a reset, so the op-2 status of a discarded operation is n
 
 *Test Coverage*:
 
-* live control: lane 7 is the one lane both TB tops configure in req/ack mode (`XTRIG_INT_CT_MODE = 8'h80`; per the Integrator Guide cross-trigger port section a mode bit of 1 uses the ack, 0 is pulse-synchronisation with no ack). A request on lane 7 must raise `xtrig_ctm_dst_ack[7]` within the settle window and hold it, and releasing the request must clear it, so the "ack stays 0" legs below measure a path shown alive in the same run.
-* req drop without ack: assert then clear dst_req on pulse-sync lanes -> TB ack stays 0; SMC[1:0] idle (no phantom handshake)
+* live control: lane 7 is the one lane both TB tops configure in req/ack mode (`XTRIG_INT_CT_MODE[7].mode = MODE_POINT_TO_POINT`; per the Integrator Guide cross-trigger section a point-to-point lane uses the ack, and a wire-OR or toggle lane has no ack). A request on lane 7 must raise `xtrig_ctm_dst_ack[7]` within the settle window and hold it, and releasing the request must clear it, so the "ack stays 0" legs below measure a path shown alive in the same run.
+* req drop without ack: assert then clear dst_req on wire-OR lanes -> TB ack stays 0; SMC[1:0] idle (no phantom handshake)
 * double-req: change pattern mid-req without completing four-phase -> new pattern visible on DTP[9:2]; SMC[1:0] never polluted
 
 *Test Procedure*:

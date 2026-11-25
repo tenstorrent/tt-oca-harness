@@ -435,6 +435,7 @@ outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
   "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
   "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
+  "hw/sys/smc/bootrom/prod/build/release_hci/disasm/prod_rom.dis",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.hex",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.sym",
 ]

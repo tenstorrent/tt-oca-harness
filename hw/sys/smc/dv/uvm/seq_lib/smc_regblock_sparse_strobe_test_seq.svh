@@ -16,9 +16,9 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   localparam string ChkRestoreNonvac = "CHK-REGBLOCK-WIDE-RESTORE-NONVAC";
   localparam string ChkNoZeroerStart = "CHK-REGBLOCK-WIDE-NO-ZEROER-START";
   localparam string ChkBusyControl = "CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL";
-  // DEST and SIZE setup/restore writes and restore reads are catalogued comparisons.
-  localparam int unsigned ControlComparisons = 6;
-  localparam int unsigned ControlFixedAccesses = 8;
+  // DEST and SIZE setup/restore writes and setup/restore reads are catalogued comparisons.
+  localparam int unsigned ControlComparisons = 8;
+  localparam int unsigned ControlFixedAccesses = 10;
   localparam int unsigned ControlPollBound = 4096;
   localparam bit [63:0] ControlTarget = SmcSpmBase + SmcSpmSize - SmcMemBytes;
   localparam string ChkLaneCoverage = "CHK-REGBLOCK-WIDE-LANE-COVERAGE";
@@ -102,6 +102,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   protected task safe_read(bit [63:0] addr, bit [63:0] expected, string name);
     bit [63:0] observed;
     mem_read(addr, observed, name);
+    check_evidence(ChkBaseline, {name, " safe state"}, observed, expected);
     if (observed !== expected)
       `uvm_fatal(get_type_name(), $sformatf(
                  "%s is not in its required safe state: expected=0x%016h observed=0x%016h",
@@ -270,6 +271,10 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       int unsigned control_polls = 0;
       mem_write(SmcZeroerDestAddr, ControlTarget, "Zeroer control destination");
       mem_write(SmcZeroerSizeAddr, SmcMemBytes, "Zeroer control size");
+      mem_read_check(ChkBusyControl, SmcZeroerDestAddr, ControlTarget,
+                     "Zeroer control destination readback");
+      mem_read_check(ChkBusyControl, SmcZeroerSizeAddr, SmcMemBytes,
+                     "Zeroer control size readback");
       samples_before_control = tb_vif.zeroer_busy_sample_count;
       mem_write(SmcZeroerCtrlStatusAddr, ZEROER_CTRL_CTRL_STATUS_REG_DEFAULT,
                 "Zeroer control start");

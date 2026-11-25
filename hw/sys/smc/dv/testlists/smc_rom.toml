@@ -628,6 +628,7 @@ args = [
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_master.rom.hex",
     "+dft_scenario=mem_repair_fail",
+    "+fuse_dft_ignore_error=0",
     "+rom_test_timeout=200000000",
 ]
 
@@ -644,6 +645,7 @@ args = [
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_master.rom.hex",
     "+dft_scenario=mbist_fail",
+    "+fuse_dft_ignore_error=0",
     "+rom_test_timeout=200000000",
 ]
 
@@ -660,6 +662,7 @@ args = [
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_master.rom.hex",
     "+dft_scenario=mbist_timeout",
+    "+fuse_dft_ignore_error=0",
     "+rom_test_timeout=200000000",
 ]
 
@@ -667,8 +670,7 @@ args = [
 # terminal members above, plus a bypass strap or SMC_CONFIG.dft_ignore_error,
 # and must keep booting: occp_sanity's GetVersion and its WriteData of
 # TEST_PASS into target scratch 0 prove OCCP service after the check. Every
-# member names +fuse_dft_ignore_error explicitly. An MBIST abort with
-# dft_ignore_error set has no member; the specification does not settle it.
+# member names +fuse_dft_ignore_error explicitly.
 
 [[tests]]
 name = "smc_rom_mem_repair_bypass_test"
@@ -761,6 +763,62 @@ args = [
     "+bfm_rom_hex=occp_sanity.rom.hex",
     "+dft_continue_case=mbist_ignore",
     "+fuse_dft_ignore_error=1",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
+[[tests]]
+name = "smc_rom_mbist_abort_ignore_error_test"
+module = "smc_rom_dft_continue_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+args = [
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+dft_continue_case=mbist_abort_ignore",
+    "+fuse_dft_ignore_error=1",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
+[[tests]]
+name = "smc_rom_mbist_and_mem_repair_ignore_error_test"
+module = "smc_rom_dft_continue_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+# Known limitation: scratch 15 keeps one code, so the repair
+# failure's 0xBADC0FFE replaces the MBIST failure's 0xDEADBEEF.
+args = [
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+dft_continue_case=mbist_and_mem_repair_ignore",
+    "+fuse_dft_ignore_error=1",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
+]
+
+[[tests]]
+name = "smc_rom_boot_hart_gate_test"
+module = "smc_rom_boot_hart_gate_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+# The DFT lines stay passing. occp_sanity's exchange bounds the window in which
+# all four target harts' retirements are sampled.
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
+args = [
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_sanity.rom.hex",
     "+rom_test_timeout=200000000",
     "+fuse_transport_timeout=400",
 ]
@@ -909,7 +967,7 @@ tests = [
 
 [[groups]]
 name = "occp_rom"
-expected_count = 42
+expected_count = 45
 tests = [
     "smc_occp_sanity_test",
     "smc_occp_random_command_test",
@@ -947,6 +1005,9 @@ tests = [
     "smc_rom_both_dft_bypasses_test",
     "smc_rom_mem_repair_ignore_error_test",
     "smc_rom_mbist_ignore_error_test",
+    "smc_rom_mbist_abort_ignore_error_test",
+    "smc_rom_mbist_and_mem_repair_ignore_error_test",
+    "smc_rom_boot_hart_gate_test",
     "smc_rom_efuse_shadow_override_test",
     "smc_prod_rom_mid_boot_cold_reset_test",
     "smc_occp_random_jump_test",

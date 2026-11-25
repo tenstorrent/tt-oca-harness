@@ -2019,7 +2019,7 @@ read-only tap. "Hole" = no stimulus can reach it.
 |`otbn_lc_escalate` |`$OTBN.lc_escalate_en_i` |Hole: tied off, no control window
 |`aes_lc_escalate` |`$AES.lc_escalate_en_i` |Hole: tied off, no control window
 |`esrc_signal_monitor` |`$ESRC.signal_monitor_o` |Hole: no SEP-level net
-|`esrc_oscillator` |Ring oscillators and their nets under `$ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source` |Hole: the bench forces the noise past these nets, so they have no observable effect on the noise. The lane 0 sample clock is the `esrc_sample_clk` tap
+|`esrc_oscillator` |Ring oscillators in `u_sep_trng.u_entropy_rosc_array` and their nets up to `$ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_sampler` |Hole: the bench forces the noise past these nets, so they have no observable effect on the noise. The lane 0 sample clock is the `esrc_sample_clk` tap
 |===
 
 Spec documents of this section (paths relative to the repository root).
