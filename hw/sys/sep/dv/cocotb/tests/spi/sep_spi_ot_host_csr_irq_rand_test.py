@@ -85,7 +85,10 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   CHK-SPI-ALERT-TEST. The graded FCOV window is open from the
                   ALERT_TEST write to the end of the sample window and
                   samples ``sep_ras_cg.cp_ras_rise.periph_bus_err_spi``.
-                  The controls are those of CHK-SPI-ALERT-TEST.
+                  The controls are those of CHK-SPI-ALERT-TEST, plus an
+                  OKAY response to the ALERT_TEST write
+                  (CTRL-MISSING SPI-ALERT-BUS-ERR-RESP otherwise), because
+                  a SLVERR response sets the same bit through the bridge.
   CHK-SPI-INTG-FAULT: the bench input ``spi_host_intg_inject_i`` forces the
                   command-integrity checker input of the SPI host register
                   block for one STATUS read. The fatal_fault alert is sent,
@@ -429,10 +432,10 @@ _RESP_SLVERR = 2
 # Clear rounds of the integrity-fault leg. Each round must show the bit set
 # again after the clear; at least one must also show it fall.
 _INTG_ROUNDS = 3
-# spi_alert_tx_probe_o encoding {alert_p, alert_n} of prim_alert_pkg::alert_tx_t:
-# idle is the sender reset value, an alert drives the pair to the opposite levels.
-_ALERT_TX_IDLE = 0b01
-_ALERT_TX_FIRED = 0b10
+# spi_alert_tx_probe_o is the differential pair {alert_p, alert_n}. The leaf
+# takes the idle levels from the tap before the ALERT_TEST write (they must be
+# complementary) and counts an alert as a flip of both wires from idle.
+_ALERT_PAIR = 0b11
 
 # ---- Legs L1 to L4 -----------------------------------------------------------
 TEST = "sep_spi_ot_host_csr_irq_rand_test"
@@ -989,7 +992,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             if v.is_resolvable:
                 base = int(v) if base is None else base
                 diff |= int(v) ^ base
-            if alert < 0 and self.rd_known(tap) == _ALERT_TX_FIRED:
+            if alert < 0 and self.rd_known(tap) == self._alert_fired:
                 alert = i
         await NextTimeStep()
         return high, first, diff, alert
@@ -1008,7 +1011,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         dut = cocotb.top
         bit = ras_bit("periph_bus_err", _PBE_SPI)
         out = {"fall": 0, "rise": 0, "alert": 0, "line": 0}
-        prev, prev_tap = None, _ALERT_TX_IDLE
+        prev, prev_tap = None, self._alert_idle
         while not stop:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
@@ -1018,7 +1021,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 out["rise"] += int(prev == 0 and v == 1)
             prev = v
             tap = self.rd_known(dut.spi_alert_tx_probe_o)
-            out["alert"] += int(tap == _ALERT_TX_FIRED and prev_tap != _ALERT_TX_FIRED)
+            fired = self._alert_fired
+            out["alert"] += int(tap == fired and prev_tap != fired)
             prev_tap = tap
             vec = dut.sep_internal_interrupts_probe_o
             out["line"] += (self.rd_known(vec, mask=1 << _SPI_AGG) >> _SPI_AGG) & 1
@@ -1116,10 +1120,12 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await ReadOnly()
         alert_pre = self.rd_known(cocotb.top.spi_alert_tx_probe_o)
         await NextTimeStep()
-        if alert_pre != _ALERT_TX_IDLE:
+        self._alert_idle = alert_pre
+        self._alert_fired = alert_pre ^ _ALERT_PAIR
+        if alert_pre not in (0b01, 0b10):
             msg = (
                 f"CTRL-MISSING SPI-ALERT-REACH seed={seed} alert tap 0b{alert_pre:02b} before "
-                f"the ALERT_TEST write (idle 0b{_ALERT_TX_IDLE:02b})"
+                f"the ALERT_TEST write (an idle pair is complementary)"
             )
             self.logger.error(msg)
             raise AssertionError(msg)
@@ -1155,6 +1161,15 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             self.logger.error(msg)
             raise AssertionError(msg)
         self.logger.info("CTRL-SPI-ALERT-REACH seed=%d alert seen at clk=%d", seed, alert_clk)
+        # A SLVERR response would set the same bit through the bridge, so the
+        # alert path is graded only behind an OKAY write.
+        if alert_wr.resp_code != _RESP_OKAY:
+            msg = (
+                f"CTRL-MISSING SPI-ALERT-BUS-ERR-RESP seed={seed} ALERT_TEST write "
+                f"bresp={alert_wr.resp_code}; the alert path needs an OKAY write"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         st = await self.spi.rd(INTR_STATE)
         pbe.append(self._pbe_text("post", await self._pbe()))
         await self._pbe_clear()
