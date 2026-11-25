@@ -13,50 +13,22 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-The receiver assembles an 8-bit ATB stream into probe-ID and counter messages.
-Software reads completed messages through a 32-bit AXI4-Lite register interface
-and explicitly pops each message. The core defaults to eight queued messages
-and four counters per message; these are elaboration parameters, not software
-settings. Threshold and missing-last-packet interrupts report service needs.
+The receiver captures an 8-bit ATB stream as raw beats. Each accepted beat
+stores its 7-bit ATB ID and 8 data bits in a FIFO, 32 entries deep by default.
+Software reads and pops beats through `TELEMETRY_DATA` on a 32-bit AXI4-Lite
+register interface. The depth is an elaboration parameter, not a software
+setting. A threshold interrupt reports when the FIFO needs service.
 
-Reception does not stop when the message queue fills: a new message replaces
-the oldest one, including while software is reading it through several
-registers. The
+The receiver applies backpressure when the FIFO is full: `atready_o` stays low
+and no beat is dropped. The
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-telemetry-receiver[Telemetry Receiver section]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-telemetry-receiver[Telemetry Receiver section]
 endif::backend-pdf[]
-of the Programmer's Guide gives the buffer, flush and interrupt procedures. The receiver does not use `atid_i` to maintain separate
-source contexts; producers sharing a receiver must serialize complete messages.
-
-[[telemetry-receiver-message-format]]
-=== Message Format
-
-Eight little-endian ATB beats form a 64-bit packet. One or more packets
-form a message that ends when `last_packet` is set.
-
-<<telemetry-packet-fields-table>> defines the fields carried in each telemetry packet.
-
-[[telemetry-packet-fields-table]]
-[width="100%",cols="20%,15%,65%",options="header",]
-.Telemetry packet fields
-|====================================================================================
-|Field |Width |Location
-|`last_packet` |1 bit |Bit 63 of each packet
-|`probe_id` |5 bits |Bits `[60:56]` of the first packet, inside the data byte of block 6
-|block _i_ |9 bits |Bits `[9i+8:9i]` for _i_ = 0 to 6: valid at bit `9i+8`, data at `[9i+7:9i]`
-|counter |32 bits |Four consecutive blocks, most-significant byte first
-|====================================================================================
-
-Block 0 of the first packet is not decoded; counter 0 begins at block 1 of the
-first packet, and later packets contribute all seven blocks. The `probe_id` bits
-are also data bits `[6:2]` of block 6 of the first packet, so the counter byte
-that falls on that block carries the probe ID in those bits.
-
-A counter is valid only when all four of its blocks are valid. The number of
-counters per message is parameterized (default 4); the field layout is fixed.
+of the Programmer's Guide gives the drain, flush and interrupt procedures. The
+receiver stores `atid_i` with each beat and keeps no per-source state.
 
 ifdef::backend-html5[]
 include::partial$telemetry_receiver/doc/architecture.adoc[]
