@@ -1923,7 +1923,7 @@ ports through <<dtp-ic-reset-overrides>>.
 
 |Function-level cool reset and isolation
 |Reset unit `ISOLATE_REQ_*` registers
-|SMC firmware prepares and recovers; a PCIe FLR triggers it
+|SMC firmware prepares and recovers; `isolate_sequence_trigger_i` triggers it, for example on a PCIe FLR
 |<<smc-flr-isolation>>
 
 |External CPU cluster non-debug-module reset
@@ -2053,7 +2053,7 @@ section of the Technical Reference Manual. To prepare and recover from an FLR:
   acknowledge before its isolation request falls.
 
 To isolate subsystems without a cool reset, set their bits in `ISOLATE_REQ_REG`
-and clear them to release. Software cannot start the FLR counters, and this
+and clear them to release. Software cannot start the reset timeout counters, and this
 request does not assert the memory-repair skip. No register confirms that
 isolation has completed outside an FLR.
 

@@ -334,8 +334,7 @@ module smc #(
                                                                            // SMC mailboxes, one
                                                                            // per mailbox.
 
-  input  logic        isolate_sequence_trigger_i,  // Isolation sequence trigger, active-high, from any
-                                                   // cause such as a PCIe function-level reset; its
+  input  logic        isolate_sequence_trigger_i,  // Isolation sequence trigger, active-high; its
                                                    // rising edge starts the reset unit's isolation
                                                    // and reset sequence.
   input  logic [31:0] isolate_req_ack_i,  // Per-subsystem isolation acknowledges to the reset

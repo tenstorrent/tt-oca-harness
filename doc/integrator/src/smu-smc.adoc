@@ -672,6 +672,34 @@ Trace memory interfaces (`trace_mem_req_o` and `trace_mem_resp_i`) connect to tr
 instances for storing captured debug data. `smc_ip_integration.sv` shows an example set of
 RAM instances that can be adapted to your debug requirements.
 
+== Subsystem Isolation Integration
+
+`isolate_req_o[i]` requests isolation of subsystem i. Gate the reset that
+subsystem receives with its `isolate_req_o` bit: the SMC does not hold
+`ss_reset_ctrl_o[i].cold_reset_n` off an isolated subsystem, so the gate is
+what keeps the subsystem out of reset while it is isolated.
+
+A rising edge on `isolate_sequence_trigger_i` raises the isolate flag to the
+subsystems enabled in `ISOLATE_REQ_SMCEN_REG` and starts the isolation sequence,
+which ends in a cool reset of the SMU. Drive it from whichever event must isolate the subsystems, for example a
+function-level reset; tie it low if unused.
+
+Drive `isolate_req_ack_i[i]` high once subsystem i has nothing in flight across
+its boundary, only while `isolate_req_o[i]` is high, and lower it before
+`isolate_req_o[i]` falls. The acknowledges are asynchronous to the SMC. Tie low
+the bits of subsystems without an acknowledge; the sequence then waits for its
+full timeout.
+
+The
+ifdef::backend-html5[]
+xref:ocah-docs:smc:clk_rst.adoc#smc-cool-reset-scope[Function Level Reset and Isolation]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Function Level Reset and Isolation_
+endif::backend-pdf[]
+section of the Technical Reference Manual describes the sequence and the cool
+reset.
+
 == Bring-Up Sequence
 
 The recommended bring-up sequence begins with asserting `rst_cold_ni` while stabilizing
@@ -689,33 +717,6 @@ performs additional initialization including peripheral configuration, memory
 testing (unless disabled), and system health checks. The `smc_init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
-
-A rising edge on `isolate_sequence_trigger_i` starts the isolation and reset
-sequence, for example on a PCIe Function Level Reset (FLR). The SMC raises
-the `isolate_req_o` bits enabled in `ISOLATE_REQ_SMCEN_REG`, then asserts the cool
-reset once every one of those subsystems raises its `isolate_req_ack_i` bit, or
-once `ISOLATE_REQ_FLR_COUNTER_VALUE` expires, whichever is first.
-
-Drive `isolate_req_ack_i[i]` high when subsystem i has nothing in flight across
-its boundary, and only while `isolate_req_o[i]` is high; lower it before
-`isolate_req_o[i]` falls. The acknowledges are asynchronous to the SMC. Tie the
-bits of subsystems without an acknowledge low: the sequence then waits for the
-full count whenever such a subsystem is enabled in `ISOLATE_REQ_SMCEN_REG`.
-
-Isolation remains asserted until SMC firmware writes 1 to `ISOLATE_REQ_SMC_REG`
-bit 0 to clear the FLR isolation latch; it is not released by the cool reset.
-
-Subsystems never see a cool reset: each `ss_reset_ctrl_o[i].cold_reset_n`
-asserts as on a chip cold reset, and the SMC does not hold it off an isolated
-subsystem. Gate the reset each subsystem receives with its `isolate_req_o` bit
-so that the subsystem stays out of reset while the bit is high. The
-ifdef::backend-html5[]
-xref:ocah-docs:smc:clk_rst.adoc#smc-cool-reset-scope[Function Level Reset and Isolation]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-_Function Level Reset and Isolation_
-endif::backend-pdf[]
-section of the Technical Reference Manual describes the cool reset.
 
 See `hw/top/smu_wrapper.sv` and `hw/top/smc_ip_integration.sv` for reference
 bring-up wiring examples covering clock, reset, strap, and peripheral connections.

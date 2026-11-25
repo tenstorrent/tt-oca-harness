@@ -15,7 +15,7 @@ module smc_reset_unit (
 
   input  logic                                   clk_ref_i,  // Reference clock for the powergood
                                                              // stretcher, reset de-glitchers and
-                                                             // FLR counters.
+                                                             // reset timeout counters.
   input  logic                                   clk_smc_i,  // SMC core clock for the reset-unit
                                                              // registers and FLR isolation logic.
   input  logic                                   clk_periph_i,  // Peripheral clock; only the
@@ -48,7 +48,7 @@ module smc_reset_unit (
                                                                               // reset, active-low, with
                                                                               // deassertion synchronized to the
                                                                               // reference clock; also resets the
-                                                                              // FLR counters.
+                                                                              // reset timeout counters.
   output logic                                   rst_cold_stable_smc_clk_no,  // De-glitched and extended cold
                                                                               // reset, active-low, with
                                                                               // deassertion synchronized to the
@@ -84,12 +84,10 @@ module smc_reset_unit (
                                                                      // ISOLATE_REQ_PINEN_REG and
                                                                      // skip_mem_repair_o.
   input  logic                                   isolate_sequence_trigger_i,  // Isolation sequence
-                                                                              // trigger, active-high,
-                                                                              // from any cause such as a
-                                                                              // PCIe function-level reset;
-                                                                              // its rising edge sets
+                                                                              // trigger, active-high; its
+                                                                              // rising edge sets
                                                                               // ISOLATE_REQ_SMC and starts
-                                                                              // the FLR cool-reset counters.
+                                                                              // the reset timeout counters.
   input  logic                                   rst_cool_ni,  // Cool reset from the pin,
                                                                // active-low; de-glitched over 32
                                                                // reference clock cycles into the

@@ -15,11 +15,11 @@
 `include "ocah_registers.svh"
 
 module smc_cool_reset_wrap (
-  input  logic                                   clk_ref_i,  // Reference clock for the FLR counters
+  input  logic                                   clk_ref_i,  // Reference clock for the reset timeout counters
                                                              // and rst_cool_no.
   input  logic                                   rst_cold_ref_ni,  // Stable cold reset, active-low,
                                                                    // synchronized to clk_ref_i;
-                                                                   // resets the FLR counters and
+                                                                   // resets the reset timeout counters and
                                                                    // releases rst_cool_no.
   input  logic                                   rst_primary_ref_ni,  // Primary reset, active-low,
                                                                       // synchronized to clk_ref_i;
@@ -53,12 +53,11 @@ module smc_cool_reset_wrap (
                                                                      // preserves that register across
                                                                      // cold reset while high.
   input  logic                                   isolate_sequence_trigger_i,  // Isolation sequence
-                                                                              // trigger, active-high,
-                                                                              // from any cause such as a
-                                                                              // PCIe function-level reset;
-                                                                              // its synchronized rising
-                                                                              // edge sets ISOLATE_REQ_SMC
-                                                                              // and starts the FLR counters.
+                                                                              // trigger, active-high; its
+                                                                              // synchronized rising edge
+                                                                              // sets ISOLATE_REQ_SMC and
+                                                                              // starts the reset timeout
+                                                                              // counters.
   input  logic [31:0]                            isolate_req_ack_i,  // Isolation acknowledge, one bit
                                                                      // per isolate_req_o bit, active-high,
                                                                      // asynchronous: subsystem i has
@@ -72,8 +71,7 @@ module smc_cool_reset_wrap (
                                                                           // recorded as a pin cool
                                                                           // reset.
   output logic [31:0]                            isolate_req_o,  // Controls isolation of
-                                                                 // subsystems like PCIe
-                                                                 // and/or ETH during FLR:
+                                                                 // subsystems:
                                                                  // ISOLATE_REQ_REG, OR the
                                                                  // pin-enabled bits while the
                                                                  // pin is high, OR the
@@ -321,7 +319,7 @@ module smc_cool_reset_wrap (
   // FLR Isolate request control //
   /////////////////////////////////
 
-  // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems like PCIe and/or ETH.
+  // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems.
   `OCAH_FFL(
       isolate_req_reg,
       (isolate_req_reg & ~isolate_req_reg_wr_mask) | (isolate_req_reg_wr_data & isolate_req_reg_wr_mask),
@@ -353,7 +351,6 @@ module smc_cool_reset_wrap (
     end
   end
 
-  // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems like PCIe and/or ETH.
   `OCAH_FFL(
       isolate_req_smcen_reg,
       (isolate_req_smcen_reg & ~isolate_req_smcen_reg_wr_mask) | (isolate_req_smcen_reg_wr_data & isolate_req_smcen_reg_wr_mask),
@@ -369,11 +366,11 @@ module smc_cool_reset_wrap (
   // Skip memory repair & MBIST during FLR if isolate request is asserted
   assign skip_mem_repair_o = isolate_req_pin_sync_smc | isolate_req_smc_reg;
 
-  //////////////////
-  // FLR Counters //
-  //////////////////
+  ////////////////////////////
+  // Reset Timeout Counters //
+  ////////////////////////////
 
-  // Reset condition for flr counters to retain value depsite cool reset
+  // Reset condition for the reset timeout counters to retain their value despite cool reset
   always_ff @(posedge clk_smc_i or negedge rst_cold_smc_ni) begin
     if (~rst_cold_smc_ni) begin
       flr_set_cnt       <= '0;
