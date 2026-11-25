@@ -124,6 +124,8 @@ These 36 entries have a `module` that differs from the test name:
 * `smc_rom_mem_repair_fail_test` runs `smc_rom_dft_fail_test` with the controller image `occp_master`.
 * `smc_rom_mbist_fail_test` runs `smc_rom_dft_fail_test` with the controller image `occp_master`.
 * `smc_rom_mbist_timeout_test` runs `smc_rom_dft_fail_test` with the controller image `occp_master`.
+* `smc_rom_invalid_lc_state_0x4_test` runs `smc_rom_invalid_lc_state_test` with the controller image `occp_master`.
+* `smc_rom_invalid_lc_state_0x5_test` runs `smc_rom_invalid_lc_state_test` with the controller image `occp_master`.
 * `smc_rom_mem_repair_bypass_test` runs `smc_rom_dft_continue_test` with the controller image `occp_sanity`.
 * `smc_rom_mbist_bypass_test` runs `smc_rom_dft_continue_test` with the controller image `occp_sanity`.
 * `smc_rom_both_dft_bypasses_test` runs `smc_rom_dft_continue_test` with the controller image `occp_sanity`.
