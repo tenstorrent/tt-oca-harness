@@ -27724,16 +27724,16 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The sink's read side, which the other trace leaves never use: `Trdstramrplow` driven across the 0x400-byte window and `Trdstramdata` read at each position, after an all-zero baseline is taken from the same port before any trace has run. The trace first runs until the sink's wrap flag reports one pass of the window, so every position read holds a word the trace wrote.
+* The sink's read side, which the trace fill leaves never use: `Trdstramrplow` driven across the 0x400-byte window and `Trdstramdata` read at each position, after an all-zero baseline is taken from the same port before any trace has run. The trace first runs until the sink's wrap flag reports one pass of the window, so every position read holds a word the trace wrote.
 * The window and pointer fields sit above two reserved bits and hardware writes them too, so the register's plain read-write mask leaves them out; they are written through each field's own bit positions.
 * The read pointer is also placed on every 8-byte word inside the window's first 64-byte set, both on the empty buffer before the trace (with the write pointer moved to the same word) and after the fill, not only on set boundaries.
 * `Trdstrammode` at both values of its one-bit field, each written with the sink active and enabled and read back.
 * `Trdstramactive` taken from 1 to 0 with `Trdstramenable` held at 1, with a captured trace still in the window.
-* `Trdstramrplow` read before and after each empty-buffer `Trdstramdata` read.
+* `Trdstramwplow` read before, and `Trdstramrplow` read before and after, each empty-buffer `Trdstramdata` read: `dfd_dst_sink.rdl` states that every `Trdstramdata` read advances the read pointer by one word, and that a read while the RAM holds no unread data returns 0 and still advances it.
 * The CLA debug-bus mux in toggle mode (`CDbgMuxSelLo` `Dbmmode` 3, `Dbmid` 0), uncompressed (`Trdstformat` 0), traced into a window spanning the whole 16 KiB of the eight trace RAMs until the `Trdstramwplow` samples show the write pointer past the midpoint and wrapped back, in a bounded poll; the trace is then stopped with the DST enable cleared.
 * All eight 2 KiB segments of that window read out through `Trdstramdata`, 512 reads each from the
   segment start, with `Trdstramrplow` sampled after each of the first 16 reads and after the last;
-  the number of pointer-advancing reads and the bits the words carry are logged.
+  the bits the words carry are logged.
 * `Trdstramrplow` placed on `Trdstramlimitlow` and one data read taking it back to `Trdstramstartlow`.
 
 *Test Procedure*:
@@ -27750,9 +27750,9 @@ Drive `smc_dfd_trace_sink_readout_test_seq`. Each checker below is a named compa
 |`CHK-DST-SINK-READOUT` |At least one of the words the RAM data port returned after the trace was captured is non-zero against that baseline, so the trace is readable back through the register interface; an all-zero read-out fails it
 |`CHK-DST-SINK-MODE` |The sink was armed and run at both values of `Trdstrammode`, each read back exactly; a value the register does not accept fails it
 |`CHK-DST-SINK-DEACTIVATE` |`Trdstramactive` went from 1 to 0 with the enable held and the change read back; a sink already inactive beforehand fails it
-|`CHK-DST-TOGGLE-EMPTY-RP` |On each of the 7 empty-buffer positions the `Trdstramrplow` reads before and after the `Trdstramdata` read, and the data read, each complete with a resolvable value; the pointer pair and the data word are logged beside the documented unchanged pointer, which the bench does not follow (observation only); a missing response, an X value or a timeout fails it
+|`CHK-DST-TOGGLE-EMPTY-RP` |On each of the 7 empty-buffer positions, with the write and read pointers written to the same word and `Trdstramwplow` read back on that word with `Trdstramwrap` 0, `Trdstramrplow` reads that word before the `Trdstramdata` read and one word on after it, and the data read returns 0 (`dfd_dst_sink.rdl`, `Trdstramrplow` and `Trdstramdata`); a pointer left in place, a pointer moved by any other amount or a non-zero data word fails it. No trace has written the RAM at these reads
 |`CHK-DST-TOGGLE-FILL` |`CDbgMuxSelLo` reads back `Dbmmode` 3 and `Dbmid` 0 and `Trdstformat` reads back 0, and within the poll bound the `Trdstramwplow` samples show the write pointer at or beyond the 16 KiB window's midpoint 0x2000 and, at a later sample, below the highest position seen; every sample's pointer and wrap flag are logged, the flag never required since it stays set once an earlier leg has set it. A readback other than written, a pointer that never reaches the midpoint or never wraps back, or the poll bound running out fails it
-|`CHK-DST-TOGGLE-RP-ADVANCE` |In every segment each `Trdstramrplow` sample equals the segment start plus one word per read that advances the pointer, wrapping from the limit to the start, the pointer does not move again once a read has left it in place, and the first read advances it; any other pointer value, or a pointer left at the segment start, fails it. A pointer advance does not show that the read returned trace data, since the pointer also advances on reads of an empty buffer; `CHK-DST-TOGGLE-PAYLOAD` carries the data claim
+|`CHK-DST-TOGGLE-RP-ADVANCE` |In every segment each `Trdstramrplow` sample, taken after each of the first 16 data reads and after the last, equals the segment start plus one word per `Trdstramdata` read, wrapping from the limit to the start; any other pointer value, including a pointer a read left in place, fails it. A pointer advance does not show that the read returned trace data, since the pointer also advances on reads of an empty buffer; `CHK-DST-TOGGLE-PAYLOAD` carries the data claim
 |`CHK-DST-TOGGLE-PAYLOAD` |Every segment returns more than one distinct 32-bit word, and `CDbgMuxSelLo` still reads `Dbmmode` 3, `Dbmid` 0 after the read-out; the bits seen at 1 and at 0 per segment are logged. A segment of one constant word or a changed mux readback fails it
 |`CHK-DST-TOGGLE-RP-WRAP` |After the data read with the read pointer on `Trdstramlimitlow`, `Trdstramrplow` reads `Trdstramstartlow` (0); any other value fails it
 |`CHK-TIMEOUT-PATHS` |The two bounded waits, the first fill in action sweeps and the toggle fill in write-pointer polls, log their bound and last state; an expiry fails the test
@@ -27763,7 +27763,7 @@ Drive `smc_dfd_trace_sink_readout_test_seq`. Each checker below is a named compa
 
 *Pass Criteria*: `CHK-DST-SINK-BASELINE`, `CHK-DST-SINK-DEACTIVATE`, `CHK-DST-SINK-MODE`, `CHK-DST-SINK-READOUT`, `CHK-DST-TOGGLE-EMPTY-RP`, `CHK-DST-TOGGLE-FILL`, `CHK-DST-TOGGLE-RP-ADVANCE`, `CHK-DST-TOGGLE-PAYLOAD`, `CHK-DST-TOGGLE-RP-WRAP`, `CHK-TIMEOUT-PATHS`, `CHK-NONVAC` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: None stated.
+*Scope limit*: The empty-buffer reads are taken before any trace has written the RAM, so the 0 they return does not separate an empty read from a read of the RAM's reset content; an empty read after a capture is not driven, since the wrap flag stays set once the window has filled. `CHK-DST-TOGGLE-RP-ADVANCE` samples the read pointer after the first 16 reads of a segment and after the last, so a read between them that left the pointer in place, offset by a double advance in the same span, is not seen.
 '''''
 
 [[sec-218-smc_dfd_sink_mmr_sweep_test]]
@@ -56340,12 +56340,12 @@ Drive `smc_dfd_cla_irq_plic_source_test_seq`. Each checker below is a named comp
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: The CLA debug interrupt is a level held until software releases it (#3389): `dfd_cla.rdl` `CDbgEapStatus` states that a W2C write while `EnableEap` is set clears only the status bit, and that clearing `EnableEap` and then writing the W2C bit releases the interrupt; `EnableEap` states that setting it again re-arms the EAPs. `dfd.adoc` and `interrupts.adoc` describe the same sequence.
+*Objective*: The CLA debug interrupt is a level held until software releases it (#3389): `dfd_cla.rdl` `CDbgEapStatus` states that a W2C write while `EnableEap` is set clears only the status bit, and that clearing `EnableEap` and then writing the W2C bit releases the interrupt; `EnableEap` states that setting it again re-arms the EAPs. `dfd.adoc` and `interrupts.adoc` describe the same sequence. `CDbgEapStatus` also states that a status bit sets in every cycle in which its EAP relation holds while its node is current and `EnableEap` is set, and that a W2C write then leaves the bit at 1.
 
 *Test Coverage*:
 
 * The CLA is armed and `Action0` of node 0 pair 0 is walked under an activating relation until `tb_cla_interrupt` rises (`smc_dfd_cla_action_seq_utils`), and the first code that raises it has to be 2, the debug-interrupt code of `hw/sys/smc/doc/dfd.adoc` (Action Codes); the pair is then held on a relation that did not fire, with the action still selected.
-* After each step the `CDbgEapStatus.Node0Eap0` bit and `tb_cla_interrupt` are sampled and logged as `OBS-CLA-IRQ` lines: fired, quiet, two W2C writes with `EnableEap` 1, `EnableEap` 0, a W2C, `EnableEap` 1 again, the activating relation driven again.
+* After each step the `CDbgEapStatus.Node0Eap0` bit and `tb_cla_interrupt` are sampled and logged as `OBS-CLA-IRQ` lines: fired, a W2C write with the activating relation still selected, quiet, two W2C writes with `EnableEap` 1, `EnableEap` 0, a W2C, `EnableEap` 1 again, the activating relation driven again.
 
 *Test Procedure*:
 
@@ -56358,14 +56358,15 @@ Drive `smc_dfd_cla_irq_w2c_release_test_seq`. Each checker below is a named comp
 |===
 |Checker |Description
 |`CHK-CLA-ACTION-CODE` |The first `Action0` code, walked upward from 0, after which `tb_cla_interrupt` reads 1 is 2, the debug-interrupt code of `hw/sys/smc/doc/dfd.adoc` (Action Codes); a line raised by code 0 or 1, or first raised by any other code, fails it
+|`CHK-CLA-EAP-SET-OVER-W2C` |With the activating relation still selected and `EnableEap` 1, both read back after the write and logged as `CTRL-CLA-W2C-RELATION-ON`, a W2C write leaves the status bit 1 and `tb_cla_interrupt` 1; a status bit that reads 0 after it, or a line that drops, fails it. The same W2C write with the pair quiet reads the status 0 under `CHK-CLA-IRQ-W2C-HOLD`, so the relation is the only difference between the two
 |`CHK-CLA-IRQ-W2C-HOLD` |With the pair quiet and `EnableEap` 1, a W2C write leaves the status bit 0 and `tb_cla_interrupt` 1, and a second W2C write leaves the same; a status still set or a line that drops after either fails it
 |`CHK-CLA-IRQ-EAP-RELEASE` |Clearing `EnableEap` alone leaves the status bit 0 and `tb_cla_interrupt` 1; the W2C write that follows reads both 0; setting `EnableEap` again with the pair quiet leaves both 0; the activating relation driven after that re-arm reads both 1. A line dropped by `EnableEap` alone, a line still held after the W2C, a line or status set by the re-arm itself, or a pair that does not fire after the re-arm fails it
 |===
 
 
-*Pass Criteria*: `CHK-CLA-ACTION-CODE`, `CHK-CLA-IRQ-EAP-RELEASE` and `CHK-CLA-IRQ-W2C-HOLD` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CLA-ACTION-CODE`, `CHK-CLA-EAP-SET-OVER-W2C`, `CHK-CLA-IRQ-EAP-RELEASE` and `CHK-CLA-IRQ-W2C-HOLD` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The PLIC side of the line is graded by `smc_dfd_cla_irq_plic_source_test`; the PLIC claim and complete steps of the service sequence are not driven. Only node 0 pair 0 is fired.
+*Scope limit*: The PLIC side of the line is graded by `smc_dfd_cla_irq_plic_source_test`; the PLIC claim and complete steps of the service sequence are not driven. Only node 0 pair 0 is fired. The status bit is sampled through register reads, so `CHK-CLA-EAP-SET-OVER-W2C` does not separate a set that wins inside the cycle of the W2C write from a status cleared in that cycle and set again in the next.
 '''''
 
 [[sec-610-smc_ext_irq_upper_walk_test]]

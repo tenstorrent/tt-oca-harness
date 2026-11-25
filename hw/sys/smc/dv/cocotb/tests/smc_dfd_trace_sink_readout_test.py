@@ -28,8 +28,9 @@ from smc_base_test import smc_base_test
 #   sink armed for the baseline: off write, 6 window writes, enable
 #     write + readback                                                        9
 #   baseline: the seek write, its readback, the data read                     3
-#   empty buffer: 7 x (write-pointer write, read-pointer write, read-pointer
-#     read, data read, read-pointer read), then the two pointer restores     37
+#   empty buffer: 7 x (write-pointer write, read-pointer write, write-pointer
+#     read, read-pointer read, data read, read-pointer read), then the two
+#     pointer restores                                                       44
 #   DST enable write + readback                                               2
 #   CLA arm: EAP reset write, control write, 2 for the LogicalOp discovery    4
 #   fill: 64 action writes and the wrap-flag read, one sweep at least        65
@@ -49,8 +50,8 @@ from smc_base_test import smc_base_test
 #   restore: CDbgMuxSelLo, sink start, limit, write and read pointers, DST,
 #     EAP, CLA control, funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL      12
 #                                                                         ------
-#                                                                          4756
-TRACE_SINK_READOUT_MIN_CSR_ACCESSES = 4756
+#                                                                          4763
+TRACE_SINK_READOUT_MIN_CSR_ACCESSES = 4763
 
 
 @pyuvm.test()
@@ -86,6 +87,6 @@ class smc_dfd_trace_sink_readout_test(smc_base_test):
             details=(
                 f"{seq.nonzero_words} of {seq.words_read} words non-zero against baseline "
                 f"0x{seq.baseline:08x}, modes {sorted(set(seq.modes_programmed))}; "
-                f"toggle fill {seq.toggle_polls} polls, segment words {seq.segment_words}"
+                f"toggle fill {seq.toggle_polls} polls"
             ),
         )
