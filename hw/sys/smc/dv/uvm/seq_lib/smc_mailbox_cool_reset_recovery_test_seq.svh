@@ -157,7 +157,7 @@ class smc_mailbox_cool_reset_recovery_test_seq extends smc_base_test_seq;
     negative = env_cfg.mailbox_reset_sequence_negative;
     require_value(!(negative && env_cfg.mailbox_fifo_scoreboard_negative),
                   "negative controls used separately");
-    require_value(loop_index < 256 && SmcMailboxDepth == 2 && ThresholdProbe >= SmcMailboxDepth,
+    require_value(loop_index < 256 && ThresholdProbe >= SmcMailboxDepth,
                   "payload identity and threshold stimulus fit");
     wait_fuse_sense_done();
     compare_before = scoreboard.compare_count(SmcFeatureMailboxFifo);

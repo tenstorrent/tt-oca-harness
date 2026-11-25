@@ -90,7 +90,7 @@ hold (``hw/sys/smc/doc/dfd.adoc``):
   wrap; ``Trdstramempty`` is read after the enable and logged, since when it
   clears and sets is not documented;
 * the DST is enabled and active, the ``Action0`` field of the current node's
-  pair 0 is driven over its range, whose start encoding is not documented,
+  pair 0 is driven over its range, without naming the trace-start code,
   and ``Trdstramwplow`` is polled until ``Trdstramwrap`` reads 1, every pointer
   sample before it no lower than the one before; the DST enable is then
   cleared and ``Trdstempty`` polled until it reads 1, and ``Trdstramempty``
