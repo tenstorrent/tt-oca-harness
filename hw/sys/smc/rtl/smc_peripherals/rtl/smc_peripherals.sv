@@ -25,8 +25,8 @@ module smc_peripherals #(
                                                  // literal because the open smc_external
                                                  // map is opaque. Passed to the peripheral
                                                  // crossbar.
-  parameter int unsigned CHIP_ID = 0,  // Chip type reported in CHIP_CONFIG.CHIP_ID, passed to
-                                       // smc_misc_wrap.
+  parameter int unsigned CHIPLET_TYPE = 0,  // Chiplet type reported in CHIP_CONFIG.CHIPLET_TYPE,
+                                            // passed to smc_misc_wrap.
   parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region, its
                                                                               // window at or above
                                                                               // EFUSE_SHIM_SIZE; '0 omits it.
@@ -1587,7 +1587,7 @@ module smc_peripherals #(
   ///////////////////
 
   smc_misc_wrap #(
-    .CHIP_ID                    (CHIP_ID),
+    .CHIPLET_TYPE               (CHIPLET_TYPE),
     .LC_STATE_WIDTH             (2 * smc_pkg::LcStateWidth)
   ) u_smc_misc_wrap (
     .clk_i                      (clk_smc_i),

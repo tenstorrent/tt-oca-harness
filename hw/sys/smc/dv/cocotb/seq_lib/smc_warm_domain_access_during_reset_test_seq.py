@@ -11,7 +11,7 @@ crossbar, so the response of a read of `SCRATCH_COLD_WARM` while
 `rst_warm_smc_clk_n` is low is recorded and not graded: a timeout, an error or
 a value are all accepted. The graded contract is liveness: once the reset
 releases, every read of `SCRATCH_COLD_WARM`, `SCRATCH_COLD`,
-`CHIP_CONFIG.CHIP_ID` and `RESET_UNIT.SS_CONFIG` completes.
+`CHIP_CONFIG.CHIPLET_TYPE` and `RESET_UNIT.SS_CONFIG` completes.
 
 The generated cpuif of `scratch_reg.sv` presents ready while it is held in reset
 and drops the request, so the demux keeps a read it never gets an answer for,
@@ -126,7 +126,7 @@ class smc_warm_domain_access_during_reset_test_seq(SmcCsrSeq):
             "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 0
         )
         cold_scratch = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)
-        chip_id = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR")
+        chiplet_type = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR")
         ss_config = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR")
 
         self.mon.start()
@@ -141,10 +141,10 @@ class smc_warm_domain_access_during_reset_test_seq(SmcCsrSeq):
         await self.csr_read("WARM_SCRATCH0_BOOT_RB", warm_scratch, expected=WARM_SCRATCH_PATTERN)
         await self.csr_write("COLD_SCRATCH0_BOOT", cold_scratch, COLD_SCRATCH_PATTERN)
         await self.csr_read("COLD_SCRATCH0_BOOT_RB", cold_scratch, expected=COLD_SCRATCH_PATTERN)
-        boot_chip_id = await self._bounded_read("boot_chip_id", chip_id)
+        boot_chiplet_type = await self._bounded_read("boot_chiplet_type", chiplet_type)
         boot_ss_config = await self._bounded_read("boot_ss_config", ss_config)
-        assert "TIMEOUT" not in (boot_chip_id, boot_ss_config), (
-            f"a miscellaneous-window read timed out before the reset: CHIP_ID={boot_chip_id} "
+        assert "TIMEOUT" not in (boot_chiplet_type, boot_ss_config), (
+            f"a miscellaneous-window read timed out before the reset: CHIPLET_TYPE={boot_chiplet_type} "
             f"SS_CONFIG={boot_ss_config}"
         )
 
@@ -173,7 +173,7 @@ class smc_warm_domain_access_during_reset_test_seq(SmcCsrSeq):
         post = {
             "SCRATCH_COLD_WARM": await self._bounded_read("after_release_warm", warm_scratch),
             "SCRATCH_COLD": await self._bounded_read("after_release_cold", cold_scratch),
-            "CHIP_ID": await self._bounded_read("after_release_chip_id", chip_id),
+            "CHIPLET_TYPE": await self._bounded_read("after_release_chiplet_type", chiplet_type),
             "SS_CONFIG": await self._bounded_read("after_release_ss_config", ss_config),
         }
         post_text = " ".join(f"{name}={res}" for name, res in post.items())

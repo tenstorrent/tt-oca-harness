@@ -115,7 +115,7 @@ remains available.
 
 After applying that policy, the ROM selects the reference or PLL-derived
 clock. It then initializes `bl0_state`, validates the lifecycle state, reports
-the SMC chip ID, and runs SHA-256 over the NIST `"abc"` vector as a
+the SMC chiplet type, and runs SHA-256 over the NIST `"abc"` vector as a
 crypto-engine self-test.
 
 The peripheral/bus reset function currently reports that the sequence is not

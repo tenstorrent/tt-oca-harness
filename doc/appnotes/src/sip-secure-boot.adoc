@@ -533,7 +533,7 @@ slots for warnings and errors. Each entry records a severity, the emitting stage
 next unread entry of either ring with `GetStatus` (<<sip-secure-boot-smc-smc>>).
 
 The SEP also reads the latched boot straps and the memory-health status from SMC
-registers, and the SMC chip ID for reporting only; the identity a manifest is
+registers, and the SMC chiplet type for reporting only; the identity a manifest is
 checked against comes from the SEP's own eFuses. The `primary_chiplet` and
 `boot_recovery` straps select the SPI flash or the SMC SRAM as the SEP's boot
 source.
@@ -772,8 +772,8 @@ this example that agent is SMC BL1 on chiplet 0, which can run only once chiplet
 management controller.
 
 Each target's bus address comes from its own eFuse identifier slots. When a slot
-is unprogrammed, the address falls back to a value formed from the strap chip
-ID and the `CHIP_CONFIG.CHIP_ID` register. An I2C address outside `0x08`-`0x77`
+is unprogrammed, the address falls back to a value formed from the `ADDR_SEL`
+straps and the `CHIP_CONFIG.CHIPLET_TYPE` register. An I2C address outside `0x08`-`0x77`
 is replaced with `0x55`. On I3C the value is the static address, and the
 controller can assign a dynamic address instead. Chiplets on one bus are
 separately addressable only when their fuses or straps give them distinct

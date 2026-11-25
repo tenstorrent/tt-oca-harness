@@ -16,7 +16,7 @@ from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
-    SMC_CHIP_CONFIG_CHIP_ID,
+    SMC_CHIP_CONFIG_CHIPLET_TYPE,
     SMC_CHIP_CONFIG_VERSION_LO,
     SMC_CHIP_CONFIG_VERSION_LO_RESET,
     smc_indexed_addr,
@@ -36,7 +36,7 @@ from seq_lib.smu_tb_pins import smc_primary_reset
 VERSION_LO = SMC_CHIP_CONFIG_VERSION_LO
 VERSION_LO_RESET = SMC_CHIP_CONFIG_VERSION_LO_RESET
 WINDOW_START = VERSION_LO
-WINDOW_END = SMC_CHIP_CONFIG_CHIP_ID
+WINDOW_END = SMC_CHIP_CONFIG_CHIPLET_TYPE
 # Mapped CSRs outside the VERSION_LO page.
 BELOW_CSR = WDT_CTRL_ADDR
 ABOVE_CSR = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)

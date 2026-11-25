@@ -30,7 +30,7 @@ in the `GLOBAL_BASE` register. The global aperture is also of size
 Assigning global system addresses to SMCs is platform policy. A policy that
 keys on the chiplet can use the values the boot ROM forms for the I2C/I3C bus
 addresses: the eFuse `I2C_I3C_ID` slots or, where a slot is unprogrammed, the
-`CHIP_ID` strap in `STRAPS_LO` combined with the `CHIP_CONFIG.CHIP_ID`
+`ADDR_SEL` straps in `STRAPS_LO` combined with the `CHIP_CONFIG.CHIPLET_TYPE`
 integration constant.
 It is the integrator's responsibility to assign subsystems to global address
 ranges that do not overlap with each other, or with the SMC's local-alias

@@ -1175,7 +1175,7 @@ not checks; the eight-way AxPROT matrix is graded by `CHK-SMU-PROT-S9-MATRIX`.
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `fabric`, `no_sep`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
 
-*Randomization*: RAND-NONE: directed, the feature has a single named window (inbound0 from VERSION_LO to CHIP_ID) and two fixed probes (VERSION_LO inside, the WDT page outside); nothing is drawn.
+*Randomization*: RAND-NONE: directed, the feature has a single named window (inbound0 from VERSION_LO to CHIPLET_TYPE) and two fixed probes (VERSION_LO inside, the WDT page outside); nothing is drawn.
 
 *Objective*: J2A programs inbound0; SMN VERSION_LO OKAY; WDT still DECERR.
 
@@ -1222,7 +1222,7 @@ not checks; the eight-way AxPROT matrix is graded by `CHK-SMU-PROT-S9-MATRIX`.
 
 *Run mode*: one testlist entry (`testlists/all.toml`, `--dut smu`); groups `fabric`, `hosted`, `all`; `timeout_sec` 1800; tags `depth`, `fabric`, `no_sep`; run mode `sep_rtl` (`+skip_fuse_sense` with the shadow preloads); firmware `elaboration` (mode `elaboration`); seed 1 (`reseed` 1, so one seed per regression); tool Verilator on `target = "compile_smu_chiplet"`.
 
-*Randomization*: RAND-NONE: directed, the stimulus is the fixed wide window, the fixed narrow window (VERSION_LO to CHIP_ID) and the clear, each probed at VERSION_LO and the WDT page; nothing is drawn.
+*Randomization*: RAND-NONE: directed, the stimulus is the fixed wide window, the fixed narrow window (VERSION_LO to CHIPLET_TYPE) and the clear, each probed at VERSION_LO and the WDT page; nothing is drawn.
 
 *Objective*: Wide -> shrink -> clear restores selective / BLOCK_BY_DEFAULT deny.
 

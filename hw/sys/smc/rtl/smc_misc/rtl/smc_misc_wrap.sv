@@ -4,13 +4,13 @@
 // Wrap SMC miscellaneous register targets on the misc AXI-Lite map.
 //
 // Demultiplexes the misc map onto cold scratch registers, cold-and-warm scratch
-// registers, the chip_config registers (version ID, chip ID and lifecycle state) and the
+// registers, the chip_config registers (version ID, chiplet type and lifecycle state) and the
 // NDM reset registers. Addresses outside those windows reach an error slave that returns
 // DECERR with read data 0xBADCAB1E.
 
 module smc_misc_wrap #(
-  parameter int unsigned CHIP_ID        = 0,  // Chip identifier reported by the chip_config CHIP_ID
-                                              // register.
+  parameter int unsigned CHIPLET_TYPE   = 0,  // Chiplet type reported by the chip_config
+                                              // CHIPLET_TYPE register.
   parameter int unsigned LC_STATE_WIDTH = 8  // Width of lc_state_i, which the chip_config LC_STATE
                                              // register reports.
 ) (
@@ -217,7 +217,7 @@ module smc_misc_wrap #(
 
   assign hwif_in.VERSION_LO.version_lo.next = version_id[31:0];
   assign hwif_in.VERSION_HI.version_hi.next = version_id[63:32];
-  assign hwif_in.CHIP_ID.chip_id.next = CHIP_ID;
+  assign hwif_in.CHIPLET_TYPE.chiplet_type.next = CHIPLET_TYPE;
   assign hwif_in.LC_STATE.lc_state.next = lc_state_i;
 
   ///////////////////////

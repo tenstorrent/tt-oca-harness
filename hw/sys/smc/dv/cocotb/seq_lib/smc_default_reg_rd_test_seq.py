@@ -45,7 +45,10 @@ READABLE_REGS = [
     ),
     ("CHIP_CONFIG_VERSION_LO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")),
     ("CHIP_CONFIG_VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR")),
-    ("CHIP_CONFIG_CHIP_ID", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR")),
+    (
+        "CHIP_CONFIG_CHIPLET_TYPE",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR"),
+    ),
 ]
 
 # Stimulus-derived floor for the value compares -- the ONE DUT-sensitive check
