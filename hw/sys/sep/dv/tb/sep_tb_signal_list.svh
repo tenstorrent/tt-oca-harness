@@ -146,6 +146,12 @@
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block in tb_top.sv.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
+// SPI host register-bus command-integrity inject. Default 0. When 1, tb forces
+// a broken codeword onto the command-integrity decoder input of the SPI host
+// register block (software cannot emit a bad TL-UL user code). The checker
+// gates on a_valid, so an SPI register access is required. See the force
+// block in tb_top.sv.
+`SEP_TB_IN(logic, spi_host_intg_inject_i)
 // Mailbox WRITE_DATA unstrobed-lane inject. Default 0. While the arm is 1, a
 // W beat with WSTRB 0x0F or 0xF0 to the outbound WRITE_DATA of a mailbox
 // selected in mbox_lane_inject_mbx_i carries mbox_lane_inject_data_i on its
@@ -1166,8 +1172,8 @@
 `SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
 `SEP_TB_OUT(logic, dma_busy_probe_o)
 // OpenTitan SPI host fatal_fault alert sender output, observation-only:
-// [1] alert_p, [0] alert_n of u_spi_host.alert_tx_o[0]. sep_ot_spi_wrap leaves
-// the port open, so no CSR or port shows the alert that ALERT_TEST raises
+// [1] alert_p, [0] alert_n of u_spi_host.alert_tx_o[0]. The leaf reads the
+// handshake here and grades its effect at PERIPH_BUS_ERR_STATUS.spi
 // (owner `sep_spi_ot_host_csr_irq_rand_test`).
 `SEP_TB_OUT(logic [1:0], spi_alert_tx_probe_o)
 // SEP_TEST_CTRL read strobe of the CPU control register block,

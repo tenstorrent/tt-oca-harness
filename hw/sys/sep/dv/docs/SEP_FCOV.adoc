@@ -3184,7 +3184,7 @@ mailbox AXI beat scores no bin.
 read. A bit whose RDL row is `Reserved` with no access and no reset value has no stated
 value: it is masked from the bin and from its illegal bins. A value on read data in a row of
 this section ("reads 0", "equals 0b10", a population count, an X check) is the value of the
-field bits: `PERIPH_BUS_ERR_STATUS` and `PERIPH_BUS_ERR_CLEAR` bits [6:0],
+field bits: `PERIPH_BUS_ERR_STATUS` and `PERIPH_BUS_ERR_CLEAR` bits [7:0],
 `DMA_BUS_ERR_STATUS` bits [1:0], `DMA_BUS_ERR_CLEAR` bit 0 and the mailbox `CTRL` bits [1:0]
 (`sep_cpu_ctrl.adoc`, `axil_mailbox.adoc`). The read data of an offset that holds no
 register keeps its full-word value where the memory map states it (a hole reads 0).
@@ -7344,6 +7344,7 @@ record on the DUT output; the `CHK-RAS-*` lines of the host leaves
 |`km_correctable` |`sep_km_command_protocol_rand_test` |The field rises only in the fault legs, which run in `sep_km_command_protocol_rand_test_shard2`; the idle level is graded in both shards.
 |`dma_alert`, `crypto_alert` |`sep_pic_pending_map_walk_rand_test` |
 |`dma_reg_bus_err`, `periph_bus_err_aes`, `periph_bus_err_hmac`, `periph_bus_err_kmac`, `periph_bus_err_otbn`, `periph_bus_err_wdt` |`sep_cpu_bridge_fault_matrix_rand_test` |
+|`periph_bus_err_spi` |`sep_spi_ot_host_csr_irq_rand_test` |The graded window is open from the `ALERT_TEST` write to the end of the sample window of CHK-SPI-ALERT-TEST; the bin samples the rise that the write raises.
 |`dma_host_intg_err` |`sep_dma_basic_test` |
 |`csrng_fatal`, `edn_fatal` |`sep_drbg_fatal_err_inject_rand_test`, `sep_pic_pending_map_walk_rand_test` |Either owner fills the bin.
 |`entropy_fill_stall` |`sep_entropy_pool_aperture_test` |
