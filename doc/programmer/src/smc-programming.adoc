@@ -149,7 +149,8 @@ The programmer may check the status of the SRAM memory built-in self-test
 (MBIST) and SRAM Memory Repair before usage by reading the `STATUS_SMU` register.
 
 In the Production SMC ROM, this is performed by the \`__metal_mbist_early_check`
-and `__metal_memory_repair_check` respectively. It is recommended to use these
+and `__metal_memory_repair_check` respectively, on the boot hart only; the other
+harts skip both checks. It is recommended to use these
 implementations as reference, as these functions are implemented directly in
 assembly, without using any SRAM for storage, as that is what is being tested.
 Their operation is as follows:
@@ -1548,7 +1549,8 @@ Thus `0x0` is secure unprivileged data, `0x1` secure privileged data, `0x2`
 non-secure unprivileged data, and `0x3` non-secure privileged data.
 
 . Choose `ACCESS_FILTER.awprot_requirement` and `arprot_requirement` for the
-  intended writers and readers. Both reset to `0x1`.
+  intended writers and readers. Both reset to `0x1`, the value every SMC
+  initiator issues, the CPU cores in every privilege mode included.
 . Set `write_filter_enable` and/or `read_filter_enable` to enforce those
   requirements. The current transaction must satisfy any filter already
   enabled.

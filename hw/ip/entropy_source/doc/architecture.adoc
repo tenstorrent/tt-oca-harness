@@ -70,9 +70,9 @@ statistical requirements specified by the BSI agency.
 
 == Noise Generation
 
-The entropy source uses 12 independent ring oscillators as its noise source. Each ring oscillator is constructed from the shared OCAH primitives (`prim_clock_nand2`, `prim_buf`, `prim_stdmux2`) to preserve the asynchronous feedback-loop structure through technology mapping. Each oscillator has two configurable lengths: a `TOTAL_LENGTH` and a `TAPPED_LENGTH`, where a multiplexer selects between the short and long feedback paths. The `entropy_rosc_tune_fsm` toggles between these two lengths on a rising edge of any health test failure, providing a rudimentary frequency detuning mechanism.
+The entropy source uses 12 independent ring oscillators as its noise source. The oscillators live in `entropy_rosc_array`, which `sep_trng` instantiates beside `entropy_source`. `entropy_source` drives their enables and detunes on `rosc_ctrl_o`, holding the enables low in DFT test mode (`test_en_i`), and samples their asynchronous outputs, `rosc_noise_i` and the shared ring's `rosc_shared_clk_i`. `entropy_rosc_array` holds nothing but the rings, so a build may replace it under the same name: with a ring-oscillator hard macro, or with the loop-free stub that the Bender target `entropy_rosc_stub` selects. The stub's deterministic output fails the health tests. A hard macro must keep the rings' behaviour as well as their ports; the SEP integration guide lists what the rings must meet. Each ring oscillator is constructed from the shared OCAH primitives (`prim_clock_nand2`, `prim_buf`, `prim_stdmux2`) to preserve the asynchronous feedback-loop structure through technology mapping. Each oscillator has two configurable lengths: a `TOTAL_LENGTH` and a `TAPPED_LENGTH`, where a multiplexer selects between the short and long feedback paths. The `entropy_rosc_tune_fsm` toggles between these two lengths on a rising edge of any health test failure, providing a rudimentary frequency detuning mechanism.
 
-The oscillator output is sampled by a metastable D flip-flop (`prim_flop`) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (`rosc_sample_clk_i`) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR. Both selects are clock mux cells. Software changes a lane's source or division only while that generator is disabled. A division value outside 0-5 selects divide-by-4.
+The oscillator output is sampled by a metastable D flip-flop (`prim_flop`) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (`rosc_sample_clk_i`) or by the shared ring oscillator of `entropy_rosc_array` (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR. Both selects are clock mux cells. Software changes a lane's source or division only while that generator is disabled. A division value outside 0-5 selects divide-by-4.
 
 <<entropy-rosc-diagram>> shows the ring oscillators, sampling paths, and clock selection
 used to generate noise.
@@ -83,12 +83,13 @@ image::entropy-source-rosc-complex.svg[alt="Entropy source ring-oscillator compl
 
 <<entropy-rosc-diagram>> has three bands. The top band builds one sample clock
 per lane: `RING_OSC_CTRL.SAMPLE_CLK_SELECT` bit _i_ chooses `rosc_sample_clk_i`
-(0) or the shared ring oscillator (1), and
+(0) or the shared ring oscillator, `rosc_shared_clk_i` (1), and
 `GENERATOR_i_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE` picks one ripple-divider tap.
 The middle band is one of the twelve noise lanes; when `CTRL.AUTOTUNE_ENABLE` is
 set the lane detune follows the auto-tune FSM, otherwise
-`RING_OSC_TUNE.DETUNE` bit _i_. The bottom band is the ring oscillator used both
-in each lane and, with 109 and 53 stages, as the shared sampling oscillator. Green
+`RING_OSC_TUNE.DETUNE` bit _i_, and leaves on `rosc_ctrl_o`. The grey bottom band
+is `entropy_rosc_array`: the structure of each of its rings, the twelve noise rings
+and, with 109 and 53 stages, the shared sampling ring. Green
 lines carry asynchronous oscillator signals, brown lines are in the sample-clock
 domain and grey lines are in the `clk_i` domain or are controls.
 <<entropy-rosc-lengths-table>> lists the lane ring lengths.
