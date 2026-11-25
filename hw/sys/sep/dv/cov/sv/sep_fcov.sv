@@ -40964,14 +40964,14 @@ module sep_fcov (
       bins strap_stable_while_km_runs = {2'd2};
     }
     // {class (0 shadow map, 1 interface control, 2 token registers, 3 gap
-    // 0x1101C, 4 gap 0x11474, 5 gap 0x11C00), response (0 OKAY, 1 SLVERR with
+    // 0x11024, 4 gap 0x11474, 5 gap 0x11C00), response (0 OKAY, 1 SLVERR with
     // read data 0xBADCAB1E in class 0 and gap 5, 0x0 in gaps 3 and 4)}.
     cp_efw_read_class: coverpoint v[3:0] iff (pt == 5'd7) {
       bins shadow_okay = {4'b000_0};
       bins shadow_slverr = {4'b000_1};
       bins ctrl_okay = {4'b001_0};
       bins token_okay = {4'b010_0};
-      bins gap_1101c_slverr = {4'b011_1};
+      bins gap_11024_slverr = {4'b011_1};
       bins gap_11474_slverr = {4'b100_1};
       bins gap_11c00_slverr = {4'b101_1};
       ignore_bins no_such_response = {4'b001_1, 4'b010_1, 4'b011_0, 4'b100_0, 4'b101_0};
@@ -42447,7 +42447,7 @@ module sep_fcov (
     return w inside {5'd1, 5'd4, 5'd11, 5'd13, 5'd19, 5'd20, 5'd21, 5'd22, 5'd23};
   endfunction
 
-  // eFuse gap of an address: 1 0x1101C to 0x113FF, 2 0x11474 to 0x117FF,
+  // eFuse gap of an address: 1 0x11024 to 0x113FF, 2 0x11474 to 0x117FF,
   // 3 0x11C00 to 0x11FFF, 0 none.
   function automatic logic [1:0] km_ef_gap(logic [31:0] a);
     if (km_rng(a, KmEfCtrlBase + KmRowExt[4], KmEfCtrlBase + KmRowSpan[4])) return 2'd1;

@@ -1110,8 +1110,9 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     for ch in CHANNELS:
         d.word_order(ch)
     # Past the interface-control extent, after its pinned first word: word offsets
-    # up to 0xFC.
-    cands = list(range(IFCTL_EXTENT + 4, 0x100, 4))
+    # to the end of the interface-control window.
+    ifctl = sep_map_row(EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS"))
+    cands = list(range(IFCTL_EXTENT + 4, ifctl.end + 1 - ifctl.base, 4))
     offsets = d.sample("past_extent_offsets", cands, 7)
     rw_offs = {field_offset(n) + 4 * w for n in SHADOW_RW_FIELDS for w in range(field_n_words(n))}
     # Zone 1: the words of the eFuse wrapper page past each sub-block's register
