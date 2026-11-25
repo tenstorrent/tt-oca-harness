@@ -21,15 +21,11 @@ module uart_wrap #(
                                                             // read-data FIFO.
 
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR = 0,  // Base of instance 0's window; a multiple of the spacing.
-  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      = 0,  // Size of each instance's register map; at most the spacing.
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_SPACING              = 0,  // Size of each instance's window and the stride between instances and their internal map bases; a power of two.
 
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_REG_MAP_BASE_ADDR = 0,  // Instance 0's UART register-map base.
-  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_REG_MAP_SIZE      = 0,  // Per-instance UART register-map size.
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,  // Instance 0's log-engine register-map base.
-  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,  // Per-instance log-engine register-map size.
   parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Instance 0's CTRL register-map base.
-  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0,  // Per-instance CTRL register-map size.
 
   localparam int unsigned NumRegMaps = NUM_UARTS  // Decode targets: one per instance.
 ) (
@@ -99,9 +95,6 @@ module uart_wrap #(
   //////////////////////////////
   // AXI4-Lite Register Demux //
   //////////////////////////////
-
-  `OCAH_ASSERT_STATIC(InstanceMapFitsWindow_A,
-                      UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE <= UART_LOG_ENGINE_WRAP_SPACING)
 
   typedef logic [uart_wrap_pkg::RegAddrWidth-1:0] range_addr_t[NumRegMaps];
 
@@ -188,11 +181,8 @@ module uart_wrap #(
       .LOG_ENGINE_FIFO_DEPTH (LOG_ENGINE_FIFO_DEPTH),
 
       .UART_REG_MAP_BASE_ADDR (UART_REG_MAP_BASE_ADDR + i * UART_LOG_ENGINE_WRAP_SPACING),
-      .UART_REG_MAP_SIZE      (UART_REG_MAP_SIZE),
       .LOG_ENGINE_REG_MAP_BASE_ADDR (LOG_ENGINE_REG_MAP_BASE_ADDR + i * UART_LOG_ENGINE_WRAP_SPACING),
-      .LOG_ENGINE_REG_MAP_SIZE      (LOG_ENGINE_REG_MAP_SIZE),
-      .UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + i * UART_LOG_ENGINE_WRAP_SPACING),
-      .UART_LOG_ENGINE_CTRL_REG_MAP_SIZE (UART_LOG_ENGINE_CTRL_REG_MAP_SIZE)
+      .UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + i * UART_LOG_ENGINE_WRAP_SPACING)
     ) u_uart_log_engine_wrap (
       // Global Interface
       .clk_i,

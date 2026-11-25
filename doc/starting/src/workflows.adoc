@@ -138,18 +138,20 @@ block to the SMC or the SEP:
   reaches a page leads to one port; `OCAH_ASSERT_XBAR_PAGE_OWNER` in each
   crossbar fails elaboration otherwise.
 * A generated block decodes its whole window without further work:
-  `make regen-regs` sizes the window from the map that places the block and
-  writes its address width to `hw/common/regs/gen/addr_widths.mk`. It fails when
-  a block placed directly in the SMC or SEP map does not start on a 4 KiB
-  boundary, or when a window is not a power of two whose base is a multiple of
-  its size.
+  `make regen-regs` sizes the window of every unit from the map that places it
+  and records it in `hw/common/regs/gen/windows.json`, with what each generated
+  block answers between and past its registers. The address width of each
+  generated block, the window packages and the generated memory maps are all
+  read from that record. The run fails when a block placed
+  directly in the SMC or SEP map does not start on a 4 KiB boundary, or when a
+  window is not a power of two whose base is a multiple of its size.
 * Add an array whose stride is wider than one instance to
   `OCAH_REG_NO_ERR_BLOCKS`, so that its padding answers `OKAY`.
-* The generated memory map takes the window of a generated block, and of a
-  wrapper placed directly in the SMC or SEP map, from the same rules, with the
-  response past their registers. In the RDL, state the window and responses of
-  any other block, such as a vendored one. `make regen-regs-adoc` fails on an
-  assignment that repeats a value the generator gives.
+* In the RDL, state only what the generator cannot derive: the responses of a
+  block whose decoder the flow does not generate, such as a vendored one, and
+  its window where that is wider than its pages in the SMC or SEP map or
+  narrower than the space its wrapper leaves it. `make regen-regs` fails on an
+  assignment that states a value the generator derives.
 
 == DV Firmware
 

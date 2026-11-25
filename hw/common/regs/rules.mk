@@ -14,9 +14,8 @@
 # path has to be absolute, and the flow runs peakrdl from the block directory.
 OCAH_PEAKRDL_CFG_IN ?= $(OCAH_ROOT)/hw/common/regs/peakrdl.toml.in
 OCAH_PEAKRDL_CFG ?= $(OCAH_ROOT)/hw/common/regs/build/peakrdl.toml
-OCAH_REGBLOCK_DEPS = $(OCAH_PEAKRDL_CFG) $(OCAH_ROOT)/tools/regs/regblock_range.py $(OCAH_REG_ADDR_WIDTHS)
-# The blocks with generated register RTL. Evaluating the memory-map rules expands
-# it, so it is defined before them.
+OCAH_REGBLOCK_DEPS = $(OCAH_PEAKRDL_CFG) $(OCAH_ROOT)/tools/regs/regblock_range.py $(OCAH_ROOT)/tools/regs/common/windows.py $(OCAH_REG_WINDOWS)
+# The blocks with generated register RTL.
 OCAH_REG_SV_NAMES = $(sort \
   $(foreach b,$(OCAH_REG_PLAIN_BLOCK_IDS),$(if $(call ocah_reg_sv_skipped,$(b)),,$(call ocah_reg_name,$(b)))) \
   $(foreach b,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(call ocah_reg_sv_blocks,$(b))))
@@ -37,12 +36,12 @@ ocah_reg_stamp_after = $(if $(filter 1,$(OCAH_REG_DEFER_STAMP)),, && $(OCAH_REG_
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
 # input, output, name/bitfields, log. regblock's $(7) is its ocah_reg_regblock_opts.
 ocah_reg_run_cheader  = "$(OCAH_REG_PEAKRDL)" --peakrdl-cfg "$(OCAH_PEAKRDL_CFG)" c-header-desc $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
-ocah_reg_run_regblock = "$(OCAH_REG_PEAKRDL)" --peakrdl-cfg "$(OCAH_PEAKRDL_CFG)" regblock-range $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)"$(if $(strip $(6)), --rename "$(strip $(6))") -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" $(7) --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
+ocah_reg_run_regblock = "$(OCAH_REG_PEAKRDL)" --peakrdl-cfg "$(OCAH_PEAKRDL_CFG)" regblock-range $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)"$(if $(strip $(6)), --rename "$(strip $(6))") -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" $(7) --windows "$(OCAH_REG_WINDOWS)" --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
 # AsciiDoc register docs are emitted directly from RDL by a custom generator that
 # produces a linked summary table and per-register headings with field tables.
 # $(2) = input RDL, $(3) = output adoc, $(4) = log.
 ocah_reg_run_adoc     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdladoc.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
-ocah_reg_run_memory_map = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlmap.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) --repo-root "$(OCAH_ROOT)" --err-check-blocks "$(OCAH_REG_ERR_CHECK_BLOCKS)" --no-rtl-blocks "$(OCAH_REG_NO_RTL_BLOCKS)" --regblocks "$(OCAH_REG_SV_NAMES)" --wrappers "$(OCAH_REG_WRAPPER_BLOCKS)" --no-err-blocks "$(OCAH_REG_NO_ERR_BLOCKS)" --addr-widths "$(OCAH_REG_ADDR_WIDTHS)" $(foreach t,$(OCAH_REG_PAGE_TOPS),--pages "$(call ocah_reg_rdl,$(t))") --config "$(call ocah_reg_memory_map_config,$(1))" --format $(2) "$(call ocah_reg_rdl,$(1))" "$(3)" 2>&1 | tee "$(call ocah_reg_build,$(1))/memory_map_$(2).log"
+ocah_reg_run_memory_map = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlmap.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) --repo-root "$(OCAH_ROOT)" --windows "$(OCAH_REG_WINDOWS)" --config "$(call ocah_reg_memory_map_config,$(1))" --format $(2) "$(call ocah_reg_rdl,$(1))" "$(3)" 2>&1 | tee "$(call ocah_reg_build,$(1))/memory_map_$(2).log"
 ocah_reg_run_html     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlhtml.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_svh      = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlsvh.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 # $(4) = bitfields policy (none|ltoh), $(5) = log.
@@ -189,12 +188,12 @@ endef
 # Validated whole-address-space memory maps are distinct from the register
 # detail exporter above and are enabled only for blocks listed in classify.mk.
 define ocah_reg_memory_map_rule
-$(call ocah_reg_memory_map_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_REG_ADDR_WIDTHS) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py $(OCAH_ROOT)/tools/regs/common/windows.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_memory_map_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_REG_WINDOWS) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py $(OCAH_ROOT)/tools/regs/common/windows.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating memory-map documentation for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1),adoc,$$@)'
 
-$(call ocah_reg_memory_map_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_REG_ADDR_WIDTHS) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py $(OCAH_ROOT)/tools/regs/common/windows.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_memory_map_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_REG_WINDOWS) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py $(OCAH_ROOT)/tools/regs/common/windows.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating memory-map Python data for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1),py,$$@)'
@@ -232,7 +231,7 @@ $(foreach block,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(eval $(call ocah_reg_composite
 # Plain leaves: single-file sv (or skip when RTL is elsewhere), docs, C header.
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call $(if $(call ocah_reg_sv_skipped,$(block)),ocah_reg_sv_skip_rule,ocah_reg_sv_plain_rule),$(block))))
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call ocah_reg_doc_plain_rule,$(block))))
-$(foreach block,$(filter $(OCAH_REG_MEMORY_MAP_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_memory_map_rule,$(block))))
+$(foreach block,$(filter $(OCAH_REG_MEMORY_MAP_IDS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_memory_map_rule,$(block))))
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call ocah_reg_cheader_plain_rule,$(block))))
 # Opt-in leaves only: RAL is not generated for every block.
 $(foreach block,$(filter $(OCAH_REG_RAL_LEAF_BLOCKS),$(OCAH_REG_PLAIN_BLOCK_IDS)),$(eval $(call ocah_reg_ral_plain_rule,$(block))))
@@ -260,10 +259,10 @@ $(foreach block,$(OCAH_REG_BLOCKS),$(if $(call ocah_reg_param_deps,$(block)),$(e
 # collateral. The regen-diff CI job already guards collateral staleness, so pull
 # the depfiles in only for the goals that regenerate.
 #
-# The address widths classify.mk includes are remade on the same goals only. The
-# generator rewrites them only when they change, so make restarts, and the
-# regblocks rebuild, only for a real change. The top-level Makefile's aliases
-# name the same goals without the ocah- prefix.
+# The windows file is remade on the same goals only. The generator rewrites it
+# only when it changes, so the regblocks and memory maps rebuild only for a real
+# change. The top-level Makefile's aliases name the same goals without the ocah-
+# prefix.
 OCAH_REGEN_DEP_GOALS := \
   ocah-regen-regs ocah-regen-regs-sv ocah-regen-regs-h ocah-regen-regs-addrpkg \
   ocah-regen-regs-svh ocah-regen-regs-py ocah-regen-regs-ral ocah-regen-regs-json \
@@ -276,8 +275,8 @@ ifneq ($(filter $(OCAH_REGEN_DEP_GOALS) $(OCAH_REGEN_DEP_GOALS:ocah-%=%),$(MAKEC
 $(OCAH_REG_WINDOWS_STAMP): $(foreach t,$(OCAH_REG_WINDOW_TOPS),$(call ocah_reg_rdl,$(t))) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/hw/common/regs/classify.mk $(OCAH_ROOT)/tools/regs/rdlwindows.py $(OCAH_ROOT)/tools/regs/common/windows.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(@D)"
 	@echo "Sizing register block windows"
-	@$(ocah_sh) '"$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlwindows.py" -u "$(OCAH_REGBLOCK_UDP)" --regblocks "$(OCAH_REG_SV_NAMES)" --wrappers "$(OCAH_REG_WRAPPER_BLOCKS)" -o "$(OCAH_REG_ADDR_WIDTHS)" --depfile "$(OCAH_REG_WINDOWS_DEP)" --target "$@" $(foreach t,$(OCAH_REG_WINDOW_TOPS),--top "$(call ocah_reg_rdl,$(t))" $(if $(call ocah_reg_window_pkg,$(t)),--pages "$(call ocah_reg_window_pkg,$(t))") $(call ocah_reg_incdirs,$(t)) $(call ocah_reg_rdl_params,$(t)))'
+	@$(ocah_sh) '"$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlwindows.py" -u "$(OCAH_REGBLOCK_UDP)" --regblocks "$(OCAH_REG_SV_NAMES)" --wrappers "$(OCAH_REG_WRAPPER_BLOCKS)" --err-check-blocks "$(OCAH_REG_ERR_CHECK_BLOCKS)" --no-err-blocks "$(OCAH_REG_NO_ERR_BLOCKS)" -o "$(OCAH_REG_WINDOWS)" --depfile "$(OCAH_REG_WINDOWS_DEP)" --target "$@" $(foreach t,$(OCAH_REG_WINDOW_TOPS),--top "$(call ocah_reg_rdl,$(t))" $(if $(call ocah_reg_window_pkg,$(t)),--pages "$(call ocah_reg_window_pkg,$(t))") $(call ocah_reg_incdirs,$(t)) $(call ocah_reg_rdl_params,$(t)))'
 	@touch "$@"
 
-$(OCAH_REG_ADDR_WIDTHS) $(foreach t,$(OCAH_REG_PAGE_TOPS),$(call ocah_reg_window_pkg,$(t))): $(OCAH_REG_WINDOWS_STAMP) ;
+$(OCAH_REG_WINDOWS) $(foreach t,$(OCAH_REG_PAGE_TOPS),$(call ocah_reg_window_pkg,$(t))): $(OCAH_REG_WINDOWS_STAMP) ;
 endif

@@ -19,7 +19,6 @@ localparam longint unsigned SEP_TOP_KMAC_WINDOW_SIZE = 64'h1000;
 localparam longint unsigned SEP_TOP_EDN_WINDOW_SIZE = 64'h1000;
 localparam longint unsigned SEP_TOP_CSRNG_WINDOW_SIZE = 64'h1000;
 localparam longint unsigned SEP_TOP_ENTROPY_SOURCE_WINDOW_SIZE = 64'h1000;
-localparam longint unsigned SEP_TOP_TRNG_WINDOW_SIZE = 64'h1000;
 localparam longint unsigned SEP_TOP_SEP_LIFECYCLE_CTRL_WINDOW_SIZE = 64'h1000;
 localparam longint unsigned SEP_TOP_KM_MAILBOX_SEP_WINDOW_SIZE = 64'h1000;
 localparam longint unsigned SEP_TOP_SEP_EFUSE_WRAP_WINDOW_SIZE = 64'h1000;
@@ -33,9 +32,7 @@ localparam longint unsigned SEP_TOP_SEP_CPU_CTRL_WINDOW_SIZE = 64'h2000;
 localparam longint unsigned SEP_TOP_SPI_CONTROLLER_WINDOW_SIZE = 64'h1000;
 localparam longint unsigned SEP_TOP_AP_REGION_WINDOW_SIZE = 64'h800000;
 localparam longint unsigned SEP_TOP_STEE_REGION_WINDOW_SIZE = 64'h800000;
-localparam longint unsigned SEP_TOP_SEP_EXTERNAL_WINDOW_SIZE = 64'h20000000;
 localparam longint unsigned SEP_TOP_SEP_ICCM_WINDOW_SIZE = 64'h40000;
 localparam longint unsigned SEP_TOP_SEP_DCCM_WINDOW_SIZE = 64'h20000;
-localparam longint unsigned SEP_TOP_PIC_WINDOW_SIZE = 64'h8000;
 
 endpackage

@@ -6,7 +6,8 @@
 #   `desc` text and has no --template hook. Drop it once the descriptions land
 #   upstream.
 # - regblock-range (tools/regs/regblock_range.py): regblock with an address error
-#   for out-of-range accesses only.
+#   for out-of-range accesses only, and the address width the windows file
+#   records for the block.
 
 [peakrdl]
 # Absolute: the register flow runs peakrdl from the block directory, not the

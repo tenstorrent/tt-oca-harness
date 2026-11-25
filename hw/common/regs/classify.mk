@@ -115,14 +115,24 @@ OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 # including their existing regs/gen/adoc/<block>.adoc tables and do not belong
 # here. Each entry reads presentation directives from doc/memmap.toml and
 # emits regs/gen/adoc/memory_map.adoc.
+#
+# A flag after a colon marks a map that places generated register blocks:
+# tools/regs/rdlwindows.py sizes the window each unit under it owns (the rules
+# are in tools/regs/common/windows.py). `pages` also holds the map's children
+# to 4 KiB boundaries and whole pages, which the top's generated
+# <top>_window_pkg gives the crossbars; `windows` sizes them without that.
 OCAH_REG_MEMORY_MAP_BLOCKS ?= \
-  hw/sys/sep \
-  hw/sys/smc \
-  hw/ip/key_manager \
-  hw/ip/cross_trigger/cross_trigger_network \
+  hw/sys/sep:pages \
+  hw/sys/smc:pages \
+  hw/ip/key_manager:windows \
+  hw/ip/cross_trigger/cross_trigger_network:windows \
   hw/ip/efuse/regs/efuse_interface_ctrl \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
 OCAH_REG_MEMORY_MAP_BLOCKS += $(OCAH_REG_MEMORY_MAP_BLOCKS_EXTRA)
+ocah_reg_maps_flagged = $(patsubst %:$(1),%,$(filter %:$(1),$(OCAH_REG_MEMORY_MAP_BLOCKS)))
+OCAH_REG_MEMORY_MAP_IDS := $(foreach map,$(OCAH_REG_MEMORY_MAP_BLOCKS),$(firstword $(subst :, ,$(map))))
+OCAH_REG_PAGE_TOPS := $(call ocah_reg_maps_flagged,pages)
+OCAH_REG_WINDOW_TOPS := $(OCAH_REG_PAGE_TOPS) $(call ocah_reg_maps_flagged,windows)
 OCAH_REG_MEMORY_MAP_DEPS_hw_sys_sep := \
   $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_cpu_logical.rdl \
   $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_memory_map.rdl
@@ -161,17 +171,11 @@ OCAH_REG_NO_ERR_BLOCKS ?= \
   filter_ctrl \
   gpio_intf
 
-# The maps that place the generated register blocks. tools/regs/rdlwindows.py
-# sizes the window each block decodes from them (the rules are in
-# tools/regs/common/windows.py) and writes OCAH_REG_ADDR_WIDTH_<stem> for each
-# block whose window is wider than its registers need. The children of a page
-# top start on 4 KiB boundaries and own whole pages, which the top's generated
-# <top>_window_pkg gives the crossbars.
-OCAH_REG_WINDOW_TOPS ?= hw/sys/smc hw/sys/sep hw/ip/key_manager \
-  hw/ip/cross_trigger/cross_trigger_network
-OCAH_REG_PAGE_TOPS ?= hw/sys/smc hw/sys/sep
-OCAH_REG_ADDR_WIDTHS := $(OCAH_ROOT)/hw/common/regs/gen/addr_widths.mk
--include $(OCAH_REG_ADDR_WIDTHS)
+# tools/regs/rdlwindows.py records every window it sizes, and what each generated
+# decoder answers in it, in OCAH_REG_WINDOWS. The regblock exporter reads from it
+# the address width of each block whose window is wider than its registers need,
+# and the memory maps read the same file.
+OCAH_REG_WINDOWS := $(OCAH_ROOT)/hw/common/regs/gen/windows.json
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))

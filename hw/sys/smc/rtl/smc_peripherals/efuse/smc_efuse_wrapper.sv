@@ -166,9 +166,6 @@ module smc_efuse_wrapper #(
   localparam smc_pkg::smc_axi_lite_32_addr_t SupplementaryLast =
       SupplementaryBase + smc_pkg::smc_axi_lite_32_addr_t'(4 * SupplementaryPortWords - 1);
 
-  `OCAH_ASSERT_STATIC(EfusePageAligned_A,
-                      EfusePageBase % smc_pkg::smc_axi_lite_32_addr_t'(smc_pkg::RegPageSize) == 0)
-
   smc_pkg::smc_axil_32_32_req_t  [2:0] axil_smc_otp_jtag_req_filtered;
   smc_pkg::smc_axil_32_32_resp_t [2:0] axil_smc_otp_jtag_resp_filtered;
 

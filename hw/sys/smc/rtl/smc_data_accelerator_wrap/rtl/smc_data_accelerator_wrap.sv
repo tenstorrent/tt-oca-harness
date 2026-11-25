@@ -87,8 +87,6 @@ module smc_data_accelerator_wrap #(
   localparam int unsigned DmaCtrlDmaPort = 0;
   localparam int unsigned DmaCtrlErrPort = 1;
 
-  `OCAH_ASSERT_STATIC(DmaCtrlBaseAligned_A,
-                      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR % smc_pkg::RegPageSize == 0)
   `OCAH_ASSERT_STATIC(DmaCtrlMapFitsWindow_A,
                       smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE <= (1 << smc_pkg::DmaCtrlAddrW))
   `OCAH_ASSERT_STATIC(DmaCtrlMapEndsOnBusWord_A,

@@ -2,13 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-"""Generate the address width of each register block from the maps that place it.
+"""Size the window of every unit the maps place, and what its decoder answers there.
 
 Each map follows its own --top: the RDL, then --pages PKG if its children own
-whole 4 KiB pages, then its -I and -P options. PKG is a SystemVerilog package of
-the window each of those children owns. The address widths go to a make fragment.
-Each output is rewritten only when its content changes, so that make reruns the
-block generators only for a real change.
+whole 4 KiB pages, then its -I and -P options. The windows file records every
+window and response, and the address width of each register block whose window
+is wider than its registers need. Each PKG, a SystemVerilog package of the
+windows of a page top's children, is rendered from it. Each output is rewritten
+only when its content changes, so that make reruns the generators that read it
+only for a real change.
 """
 
 from __future__ import annotations
@@ -21,7 +23,11 @@ from systemrdl import RDLCompileError, RDLCompiler
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.rdlview import parse_rdl_params  # noqa: E402
-from common.windows import WindowSizer, render_widths, render_window_pkg  # noqa: E402
+from common.windows import (  # noqa: E402
+    WindowSizer,
+    render_window_pkg,
+    render_windows,
+)
 
 
 def _compile(rdl: str, udp: str, incdirs: list[str], parameters: dict[str, int]):
@@ -53,7 +59,11 @@ def main() -> int:
     parser.add_argument("-u", "--udp-rdl-file", required=True)
     parser.add_argument("--regblocks", required=True, help="blocks with generated register RTL")
     parser.add_argument("--wrappers", required=True, help="maps whose children share their window")
-    parser.add_argument("-o", "--output", required=True)
+    parser.add_argument(
+        "--err-check-blocks", default="", help="regblocks that refuse every unmapped address"
+    )
+    parser.add_argument("--no-err-blocks", default="", help="regblocks that answer OKAY throughout")
+    parser.add_argument("-o", "--output", required=True, help="the windows file")
     parser.add_argument("--depfile", help="make depfile of every RDL read")
     parser.add_argument("--target", help="the make target the depfile names")
     args = parser.parse_args(argv[: starts[0]] if starts else argv)
@@ -66,7 +76,12 @@ def main() -> int:
     top_parser.add_argument("-I", "-i", "--incdir", action="append", default=[])
     top_parser.add_argument("-P", "--parameter", action="append", default=[])
 
-    sizer = WindowSizer(args.regblocks.split(), args.wrappers.split())
+    sizer = WindowSizer(
+        args.regblocks.split(),
+        args.wrappers.split(),
+        args.err_check_blocks.split(),
+        args.no_err_blocks.split(),
+    )
     sources: set[str] = set()
     packages: dict[Path, str] = {}
     for group in groups:
@@ -78,18 +93,18 @@ def main() -> int:
         except RDLCompileError:
             return 1
         sources.update(str(Path(path).resolve()) for path in files)
-        windows = sizer.add_top(node, top.pages is not None)
+        sizer.add_top(node, top.pages is not None)
         if top.pages is not None:
-            packages[top.pages] = render_window_pkg(node, windows)
-    widths = sizer.widths()
+            packages[top.pages] = node.inst_name
+    sized = sizer.sized()
     if sizer.errors:
         for error in sizer.errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
 
-    _write(Path(args.output), render_widths(widths))
-    for path, content in packages.items():
-        _write(path, content)
+    _write(Path(args.output), render_windows(sized))
+    for path, top_name in packages.items():
+        _write(path, render_window_pkg(top_name, sized))
 
     if args.depfile:
         prerequisites = sorted(sources)

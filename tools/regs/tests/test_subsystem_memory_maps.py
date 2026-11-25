@@ -3,16 +3,17 @@
 
 from __future__ import annotations
 
+import json
 import re
 import unittest
 from pathlib import Path
 
 from tools.regs.common.memorymap import build_views, compile_root, load_config
-from tools.regs.common.windows import Decoders, state_windows
+from tools.regs.common.windows import state_windows
 
 ROOT = Path(__file__).resolve().parents[3]
 UDP = ROOT / "hw/common/regs/regblock_udps.rdl"
-PAGE_TOPS = {"hw/sys/smc/regs/smc.rdl", "hw/sys/sep/regs/sep.rdl"}
+WINDOWS = json.loads((ROOT / "hw/common/regs/gen/windows.json").read_text())["windows"]
 
 
 def catalog() -> list[Path]:
@@ -38,12 +39,7 @@ def catalog() -> list[Path]:
     return sorted({path for pattern in patterns for path in ROOT.glob(pattern)})
 
 
-def configured_views(
-    config_path: str,
-    rdl: str | None = None,
-    top: str | None = None,
-    decoders: Decoders | None = None,
-):
+def configured_views(config_path: str, rdl: str | None = None, top: str | None = None):
     config = load_config(ROOT / config_path)
     sources = config.get("sources")
     if not sources:
@@ -53,10 +49,7 @@ def configured_views(
     roots = {}
     for source in sources:
         root = compile_root(ROOT / source["rdl"], UDP, catalog(), source["top"])
-        if decoders is not None:
-            errors = state_windows(root.top, source["rdl"] in PAGE_TOPS, decoders)
-            if errors:
-                raise AssertionError("\n".join(errors))
+        state_windows(root.top, WINDOWS)
         roots[source["name"]] = root
     return build_views(config, roots)
 
@@ -223,10 +216,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         sep = rows_by_key(
             next(
                 view
-                for view in configured_views(
-                    "hw/sys/sep/doc/memmap.toml",
-                    decoders=Decoders(frozenset({"km_mailbox_sep"}), frozenset(), frozenset(), {}),
-                )
+                for view in configured_views("hw/sys/sep/doc/memmap.toml")
                 if view.name == "sep-components"
             )
         )

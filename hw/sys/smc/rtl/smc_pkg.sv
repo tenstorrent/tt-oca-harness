@@ -38,10 +38,6 @@ package smc_pkg;
   // however much of it the smc_external map allocates.
   localparam int unsigned SmcExternalWindowSize = 32'h40_0000;
 
-  // An AXI burst never crosses one of these pages, so a crossbar rule that starts and ends on
-  // them keeps a burst on one target.
-  localparam longint unsigned RegPageSize = 64'h1000;
-
   localparam int unsigned AxiDataWidth = 64;
   localparam int unsigned AxiStrbWidth = AxiDataWidth / 8;
   localparam int unsigned AxiUserWidth = 12;

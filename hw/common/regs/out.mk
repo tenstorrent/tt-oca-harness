@@ -18,11 +18,11 @@ ocah_reg_cpu_if      = $(or $(OCAH_REG_CPU_IF_$(call ocah_reg_key,$(1))),$(OCAH_
 # its end and OKAY for a gap between registers; one on OCAH_REG_ERR_CHECK_BLOCKS
 # answers SLVERR for every unmapped address and illegal read/write instead, and one
 # on OCAH_REG_NO_ERR_BLOCKS answers OKAY for every address.
-# OCAH_REG_ADDR_WIDTH_<stem>, generated into OCAH_REG_ADDR_WIDTHS, widens the CPU
-# port to the window the block owns; the instantiating wrapper must then drive
-# the block's offset, not a slice of the bus address.
+# A block that OCAH_REG_WINDOWS gives an address width has its CPU port widened to
+# the window it owns; the instantiating wrapper must then drive the block's
+# offset, not a slice of the bus address.
 # OCAH_REG_REGBLOCK_OPTS_<stem> adds further regblock options.
-ocah_reg_regblock_opts = $(if $(filter $(1),$(OCAH_REG_ERR_CHECK_BLOCKS)),--err-if-bad-addr --err-if-bad-rw,$(if $(filter $(1),$(OCAH_REG_NO_ERR_BLOCKS)),,--err-if-out-of-range)) $(addprefix --addr-width ,$(OCAH_REG_ADDR_WIDTH_$(1))) $(OCAH_REG_REGBLOCK_OPTS_$(1))
+ocah_reg_regblock_opts = $(if $(filter $(1),$(OCAH_REG_ERR_CHECK_BLOCKS)),--err-if-bad-addr --err-if-bad-rw,$(if $(filter $(1),$(OCAH_REG_NO_ERR_BLOCKS)),,--err-if-out-of-range)) $(OCAH_REG_REGBLOCK_OPTS_$(1))
 # PeakRDL addrmap parameter overrides (`-P NAME=VALUE`). Keyed by the RDL stem.
 ocah_reg_rdl_params = $(foreach p,$(OCAH_REG_RDL_PARAMS_$(call ocah_reg_name,$(1))),-P $(p))
 # Non-empty when the block's register RTL is sourced outside regblock.
@@ -69,7 +69,7 @@ ocah_reg_adoc_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1))
 ocah_reg_memory_map_config = $(abspath $(dir $(call ocah_reg_rdl,$(1)))/../doc/memmap.toml)
 ocah_reg_memory_map_output = $(call ocah_reg_gen,$(1))/adoc/memory_map.adoc
 ocah_reg_memory_map_py_output = $(call ocah_reg_gen,$(1))/py/$(call ocah_reg_name,$(1))_memory_map.py
-ocah_reg_memory_map_target = $(if $(filter $(1),$(OCAH_REG_MEMORY_MAP_BLOCKS)),$(call ocah_reg_memory_map_output,$(1)) $(call ocah_reg_memory_map_py_output,$(1)))
+ocah_reg_memory_map_target = $(if $(filter $(1),$(OCAH_REG_MEMORY_MAP_IDS)),$(call ocah_reg_memory_map_output,$(1)) $(call ocah_reg_memory_map_py_output,$(1)))
 ocah_reg_memory_map_deps = $(OCAH_REG_MEMORY_MAP_DEPS_$(call ocah_reg_key,$(1)))
 
 # Per-sub-block output lists for a composite top (one file each, so make rebuilds

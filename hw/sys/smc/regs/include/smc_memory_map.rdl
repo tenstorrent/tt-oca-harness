@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Memory-map annotations of smc_top: aperture sizes, descriptions and the response an access
-// outside a unit's registers receives. smc.rdl includes this file inside smc_top, and only
-// the memory-map generator defines OCAH_DOC_MEMORY_MAP. The generator gives a unit with a
-// generated decoder its window and the response past its registers, and fails on a line
-// that states them again.
+// Memory-map annotations of smc_top: descriptions, the response an access outside a unit's
+// registers receives, and the aperture of a unit wider than its whole pages. smc.rdl
+// includes this file inside smc_top, and only the generators of the windows and of the
+// memory map define OCAH_DOC_MEMORY_MAP. The window generator gives every unit its whole
+// pages, and a unit with a generated decoder its responses, and fails on a line that states
+// them again.
 
 `define OCAH_SMC_OKAY ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY}
 `define OCAH_SMC_DECERR ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR}
@@ -16,6 +17,7 @@
     ocah_gap_resp = `OCAH_SMC_DECERR;
     smc_cluster_wdt_wrap->ocah_hole_note = "Responses past each watchdog's registers are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY there, with read data 0.";
     debug_module->ocah_hole_resp = `OCAH_SMC_DECERR;
+    debug_module->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     debug_module->ocah_hole_note = "Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.";
     smc_reset_unit->desc = "System reset control.";
     smc_i2c_wrap->desc = "I2C and SMBus controller.";
@@ -24,15 +26,12 @@
     dfx_ctrl->desc = "DFT status exposed to boot firmware.";
     smc_pwm->desc = "Pulse-width modulator.";
     smc_base_config->desc = "SMC base-address and aperture configuration.";
-    smc_mailbox->ocah_aperture_size = 0x20000;
     smc_mailbox->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_mailbox->desc = "Thirty-two bidirectional mailbox pairs.";
-    dma_ctrl->ocah_aperture_size = 0x1000;
     dma_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     dma_ctrl->ocah_past_extent_note = "The registers accept single-beat accesses only. A burst answers SLVERR with read data 0xBADCAB1E on every beat, including a burst inside the registers.";
     dma_ctrl->desc = "Direct-memory-access controller.";
     smc_cpu_ctrl->desc = "SMC CPU-cluster control.";
-    dtp_ctrl_reg->ocah_aperture_size = 0x1000;
     dtp_ctrl_reg->ocah_past_extent_resp = `OCAH_SMC_FORWARD;
     dtp_ctrl_reg->desc = "512-entry DTP control block.";
     dtp_ctrl_reg->ocah_hole_resp = `OCAH_SMC_FORWARD;
@@ -49,19 +48,15 @@
     smc_cluster_clint->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_cluster_clint->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_clint->desc = "Core-Local Interruptor.";
-    smc_cluster_core0_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core0_beu->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_cluster_core0_beu->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core0_beu->desc = "Core 0 bus-error unit.";
-    smc_cluster_core1_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core1_beu->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_cluster_core1_beu->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core1_beu->desc = "Core 1 bus-error unit.";
-    smc_cluster_core2_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core2_beu->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_cluster_core2_beu->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core2_beu->desc = "Core 2 bus-error unit.";
-    smc_cluster_core3_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core3_beu->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_cluster_core3_beu->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core3_beu->desc = "Core 3 bus-error unit.";

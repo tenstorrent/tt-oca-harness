@@ -157,9 +157,6 @@ module sep_efuse_wrapper #(
   localparam sep_efuse_pkg::addr_t EfuseShimLast =
       sep_efuse_pkg::addr_t'(EfuseShimBase + EFUSE_SHIM_SIZE - 1);
 
-  `OCAH_ASSERT_STATIC(EfusePageAligned_A,
-                      EfusePageBase % sep_efuse_pkg::addr_t'(sep_pkg::RegPageSize) == 0)
-
   jtag_target_e jtag_aw_target;
   jtag_target_e jtag_ar_target;
 
