@@ -79,11 +79,12 @@ UART0_REG = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", 0
 )
 EFUSE_WORD = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
-# LOCKS carries no read lock and its low word is the one non-zero word of the bench eFuse image.
-EFUSE_FRESH_WORD = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+# HARNESS_LOCKS carries no read lock and its low word is the one non-zero word of the bench
+# eFuse image.
+EFUSE_FRESH_WORD = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 EFUSE_FRESH_EXPECT = efuse_preload_word_at(EFUSE_FRESH_WORD)
 EFUSE_FRESH_SOURCE = (
-    f"{EFUSE_DEFAULT_HEX.name} word for SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR "
+    f"{EFUSE_DEFAULT_HEX.name} word for SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR "
     f"0x{EFUSE_FRESH_WORD:08x}"
 )
 DTP_WINDOW = smc_addr("SMC_TOP_DTP_CTRL_REG_BASE_ADDR")

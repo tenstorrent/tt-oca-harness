@@ -134,7 +134,7 @@ addrmap dfd_dst_sink {
         field {
             sw = rw;
             hw = rw;
-            desc = "Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.";
+            desc = "Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Every trDstRamData read advances it by one word, including a read while the RAM holds no unread data, and from trDstRamLimitLow it wraps to trDstRamStartLow.";
         } Trdstramrplow[31:2] = 0x0;
     } Trdstramrplow @ 0x28;
     reg {
@@ -151,7 +151,7 @@ addrmap dfd_dst_sink {
         field {
             sw = r;
             hw = w;
-            desc = "Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.";
+            desc = "Reading returns the 32-bit word at trDstRamRPLow and advances trDstRamRPLow by one word. A read while the RAM holds no unread data returns 0 and still advances the pointer, so software that polls this register while the sink is empty skips words it has not yet received. Read only while trDstRamWPLow differs from trDstRamRPLow or trDstRamWrap is set.";
         } Trdstramdata[31:0] = 0x0;
     } Trdstramdata @ 0x40;
     reg {

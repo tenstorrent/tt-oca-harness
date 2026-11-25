@@ -1200,7 +1200,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         await self._graded(False)
         await self.stop_fifo_drain()
         assert self.drbg_sb.report()
-        self.drbg_sb.stop()
+        await self.drbg_sb.stop()
         rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
         self.logger.info("INFO-RELEASE %s release_clks=%d", tag, rec["release_clks"])

@@ -171,7 +171,10 @@ in a second channel on the left of `u_smc_cpu`.
   `ext_boot_seq_done_i` and holds it set until the next cold reset.
 * `fuse_reset_n` releases once fuse sensing completes, the qualified
   `ext_boot_seq_done_i` is set and any boot stall ends. It holds the warm reset
-  and resets the scratch RAM zero-fill sequencer.
+  and resets the scratch RAM zero-fill sequencer. The first boot-ROM fetch
+  after it releases already uses the L1 instruction cache, so external logic
+  sets `ext_boot_seq_done_i` only once the L1 cache macros, as well as the
+  scratchpad, are safe to use.
 * `cluster_uncore_reset_n` resets the uncore of the generated cluster: its
   buses, coherence manager, CLINT, PLIC, boot ROM interface, the bus side of
   the debug module and the four watchdogs. It also resets the delay that holds

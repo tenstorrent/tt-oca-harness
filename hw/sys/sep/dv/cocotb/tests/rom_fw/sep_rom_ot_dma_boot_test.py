@@ -79,6 +79,8 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     # Overridden by the signed sibling (sep_rom_ot_secure_boot_test), which reuses
     # this whole flow and only swaps the image and tightens the assertions.
     flash_image = _FLASH_IMAGE
+    # False holds the forced ESRC noise input at 0 so the entropy health test fails.
+    drive_esrc_noise = True
     # Cycle budget for poll_boot. Class data so a test whose boot ends earlier --
     # a negative test that is refused before the payload is ever fetched -- can
     # trim it. poll_boot breaks out on fw_done, so this is normally a backstop;
@@ -175,7 +177,8 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         # only FORCES the decorrelator inputs from this port -- it generates
         # nothing. Without a driver the port sits at 0, the repetition health test
         # trips, and the ROM correctly refuses to boot on a dead entropy source.
-        cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
+        if self.drive_esrc_noise:
+            cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
 
         efuse_img = self.build_efuse_image()
         self.write_efuse_image(efuse_img)

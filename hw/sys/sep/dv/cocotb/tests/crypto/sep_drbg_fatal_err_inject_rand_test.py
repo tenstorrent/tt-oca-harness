@@ -473,7 +473,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         close_graded_window(self.logger)
         set_drbg_fatal_pass(False, self.logger)
         self._ras_shape(ras_m0)
-        self._stop_sb()
+        await self._stop_sb()
         await self.vec.stop()
         await self.ras.stop()
         self.chk.finish()
@@ -516,9 +516,9 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
     def _now(self) -> int:
         return self.vec.clk
 
-    def _stop_sb(self) -> None:
+    async def _stop_sb(self) -> None:
         if self.sb is not None:
-            self.sb.stop()
+            await self.sb.stop()
             self.sb = None
 
     async def _wait_probe(self, cond, bound: int) -> bool:
@@ -534,7 +534,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
     async def _trng_reset(self) -> None:
         """TRNG reset 0 then 1 on SW_RESET_N bit 5, with the probes of the release."""
         dut = cocotb.top
-        self._stop_sb()
+        await self._stop_sb()
         await self.swrst.park("trng")
         if not await self._wait_probe(
             lambda: self.rd(dut.trng_reset_active_probe_o, mask=1) == 1, TRNG_RELEASE_CAP

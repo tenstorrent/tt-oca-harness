@@ -47,12 +47,18 @@ _enter:
     /* SRAM initialization must occur before any stack operations. */
     jal ra, __metal_sram_init_early
 
+    /* Only the boot hart checks memory health; it owns scratch register 15. */
+    csrr t0, mhartid
+    la t1, __metal_boot_hart
+    bne t0, t1, .Lmemory_checks_done
+
     /* MBIST validation after SRAM initialization, before memory repair status handling. */
     jal ra, __metal_mbist_early_check
 
     /* Memory repair validation after SRAM initialization. */
     jal ra, __metal_memory_repair_check
 
+.Lmemory_checks_done:
     /* Configure global pointer after early memory checks complete. */
 .option push
 .option norelax

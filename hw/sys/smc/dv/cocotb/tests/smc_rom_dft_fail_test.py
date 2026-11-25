@@ -13,6 +13,9 @@ ROM must record the right code in scratch 15, and it must then stay halted. A RO
 recorded the failure and carried on booting would pass a scratch-15-only test while being
 exactly the defect this is looking for.
 
+Each halt must come from the failure alone, so the member pins +fuse_dft_ignore_error=0 and
+the target's SMC_CONFIG shadow is read back with dft_ignore_error clear before the cores fetch.
+
 The controller instance boots normally and is not gated on.
 
 Halt is checked on the target's retired PC. A WFI loop is either one instruction or the
@@ -23,6 +26,7 @@ Plusargs:
     +rom_bin64=<image>        target production ROM               (required)
     +bfm_rom_hex=<image>      controller rom-mode image           (required)
     +dft_scenario=<name>      failure mode, see above             (required)
+    +fuse_dft_ignore_error=0  SMC_CONFIG.dft_ignore_error clear   (required)
     +rom_test_timeout=<ns>    bound on reaching the status write  (default: DEFAULT_POLL_ITERS)
 """
 
@@ -32,7 +36,11 @@ import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.smc_dft_status_driver import DFX_CTRL_STATUS_SMU, EXPECTED_STATUS, SmcDftStatusDriver
+from env.smc_dft_status_driver import (
+    DFX_CTRL_STATUS_SMU,
+    EXPECTED_STATUS,
+    SmcDftStatusDriver,
+)
 from env.smc_virt_console import VirtConsole
 from smc_dual_base_test import (
     SMC_CLK_PERIOD_NS,
@@ -45,6 +53,7 @@ from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
     SCRATCH_MBIST_STATUS,
     SCRATCH_POST_CODE,
+    SMC_CONFIG_DFT_IGNORE_ERROR,
     describe_post_code,
     required_plusarg,
 )
@@ -57,7 +66,7 @@ DEFAULT_POLL_ITERS = 4000
 HALT_SETTLE_CYCLES = 2000
 HALT_WINDOW_CYCLES = 20_000
 HALT_SAMPLE_CYCLES = 20
-REQUIRED_EVIDENCE = ("CHK-ROM-DFT-FAIL",)
+REQUIRED_EVIDENCE = ("CHK-ROM-DFT-FUSE-CLEAR", "CHK-ROM-DFT-FAIL")
 
 
 def _poll_iterations() -> tuple[int, str]:
@@ -107,6 +116,11 @@ async def smc_rom_dft_fail_test(harness: SmcDualHarness) -> None:
         raise AssertionError(
             f"+dft_scenario={scenario!r} is not one of {', '.join(sorted(EXPECTED_STATUS))}"
         )
+    named_ignore = int(required_plusarg("fuse_dft_ignore_error", "smc_rom_dft_fail_test"), 0)
+    if named_ignore != 0:
+        raise AssertionError(
+            f"{scenario} needs +fuse_dft_ignore_error=0, the entry passes {named_ignore}"
+        )
     poll_iters, poll_source = _poll_iterations()
 
     cocotb.log.info(
@@ -149,6 +163,21 @@ async def smc_rom_dft_fail_test(harness: SmcDualHarness) -> None:
         (dfx >> 4) & 1,
         (dfx >> 8) & 1,
         (dfx >> 12) & 1,
+    )
+
+    smc_config = await driver.read_smc_config()
+    if smc_config & SMC_CONFIG_DFT_IGNORE_ERROR or harness.efuse.dft_ignore_error:
+        raise AssertionError(
+            f"{scenario}: target SMC_CONFIG shadow {smc_config:#010x} (image bit 15 = "
+            f"{harness.efuse.dft_ignore_error}) permits continuation, so a halt would not "
+            "show that the failure alone stops the boot"
+        )
+    cocotb.log.info(
+        "CHK-ROM-DFT-FUSE-CLEAR: %s before target fetch: SMC_CONFIG shadow=%#010x "
+        "(dft_ignore_error=0, image bit 15 = %s)",
+        scenario,
+        smc_config,
+        harness.efuse.dft_ignore_error,
     )
 
     await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM)

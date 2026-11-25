@@ -3,9 +3,12 @@
 
 // Combine NRINGS entropy generators through a GF(2^8) BIW extractor into one 32-bit stream.
 //
-// Each lane has a noise source, decorrelator, per-lane health test, and auto-tune FSM.
+// Each lane has a noise sampler, decorrelator, per-lane health test, and auto-tune FSM.
 // Per-lane jitter_ro_*, sample_clk_*, and decorrelator_* inputs configure each generator;
 // health_test_* inputs are shared.
+//
+// The ring oscillators sit outside: rosc_ctrl_o drives their enables and detunes, and
+// rosc_noise_i and rosc_shared_clk_i return their asynchronous outputs.
 //
 // The block hosts the shared window counter and window_wrap_pulse_o, which resets all
 // per-lane health-test windows together. module_enable_i keeps the window counter running
@@ -24,6 +27,11 @@ module entropy_generator_complex #(
   input       logic                    rst_ni,  // Active-low asynchronous reset.
   input       logic                    sample_clk_i,  // External sample clock for lanes that do not
                                                       // select the shared ring oscillator.
+  output      entropy_source_pkg::rosc_ctrl_t rosc_ctrl_o,  // Ring-oscillator enables and
+                                                            // detunes.
+  input       logic [NRINGS-1:0]       rosc_noise_i,  // Noise ring outputs, asynchronous.
+  input       logic                    rosc_shared_clk_i,  // Shared sample-clock ring output,
+                                                           // asynchronous.
   output      logic [31:0]             entropy_stream_o,  // GF(2^8) extractor output: byte k is
                                                           // lane k times lane k+4 plus lane k+8,
                                                           // byte 0 in bits 31:24.
@@ -120,67 +128,6 @@ module entropy_generator_complex #(
                                                             // ends every window.
 );
 
-  /////////////////////
-  // Local parameters
-  /////////////////////
-
-  // Full ring lengths, selected while a lane's detune is high.
-  localparam int unsigned TotalLength0 = 5, TotalLength1 = 7;
-  localparam int unsigned TotalLength2 = 11, TotalLength3 = 13;
-  localparam int unsigned TotalLength4 = 17, TotalLength5 = 19;
-  localparam int unsigned TotalLength6 = 6, TotalLength7 = 8;
-  localparam int unsigned TotalLength8 = 12, TotalLength9 = 15;
-  localparam int unsigned TotalLength10 = 18, TotalLength11 = 23;
-
-  // Shorter tapped lengths (higher frequency), selected while a lane's detune is low.
-  localparam int unsigned TappedLength0 = 3, TappedLength1 = 5;
-  localparam int unsigned TappedLength2 = 9, TappedLength3 = 10;
-  localparam int unsigned TappedLength4 = 14, TappedLength5 = 16;
-  localparam int unsigned TappedLength6 = 4, TappedLength7 = 7;
-  localparam int unsigned TappedLength8 = 11, TappedLength9 = 13;
-  localparam int unsigned TappedLength10 = 15, TappedLength11 = 21;
-
-  //////////
-  // Types
-  //////////
-
-  // Lookup functions used to parameterise the generate loop below
-  function automatic int get_total_length(input int idx);
-    unique case (idx)
-      0:       return TotalLength0;
-      1:       return TotalLength1;
-      2:       return TotalLength2;
-      3:       return TotalLength3;
-      4:       return TotalLength4;
-      5:       return TotalLength5;
-      6:       return TotalLength6;
-      7:       return TotalLength7;
-      8:       return TotalLength8;
-      9:       return TotalLength9;
-      10:      return TotalLength10;
-      11:      return TotalLength11;
-      default: return 29;
-    endcase
-  endfunction
-
-  function automatic int get_tapped_length(input int idx);
-    unique case (idx)
-      0:       return TappedLength0;
-      1:       return TappedLength1;
-      2:       return TappedLength2;
-      3:       return TappedLength3;
-      4:       return TappedLength4;
-      5:       return TappedLength5;
-      6:       return TappedLength6;
-      7:       return TappedLength7;
-      8:       return TappedLength8;
-      9:       return TappedLength9;
-      10:      return TappedLength10;
-      11:      return TappedLength11;
-      default: return 19;
-    endcase
-  endfunction
-
   /////////////
   // Signals
   /////////////
@@ -230,6 +177,11 @@ module entropy_generator_complex #(
 
   assign count_err_o = window_cntr_err | (|generator_count_err);
 
+  // The shared ring runs and detunes while any lane requests it.
+  assign rosc_ctrl_o.noise_enable  = jitter_ro_enable_i;
+  assign rosc_ctrl_o.shared_enable = |sample_clk_enable_i;
+  assign rosc_ctrl_o.shared_detune = |sample_clk_ro_detune_i;
+
   assign entropy_stream_o       = biw_data;
   assign entropy_stream_valid_o = biw_valid;
 
@@ -243,8 +195,7 @@ module entropy_generator_complex #(
     .clk_i,
     .rst_ni,
     .sample_clk_i        (sample_clk_i),
-    .enable_i            (sample_clk_enable_i),
-    .detune_ro_i         (sample_clk_ro_detune_i),
+    .shared_clk_i        (rosc_shared_clk_i),
     .sample_clk_select_i (sample_clk_select_i),
     .sample_clk_divide_i (sample_clk_divide_i),
     .sample_clk_o        (sample_clk)
@@ -269,12 +220,10 @@ module entropy_generator_complex #(
     .err_o             (window_cntr_err)
   );
 
-  // Per-lane generator: noise source + decorrelator + per-lane health test
+  // Per-lane generator: noise sampler + decorrelator + per-lane health test
   for (genvar i = 0; i < NRINGS; i++) begin : gen_ecmplx
     entropy_generator #(
-      .TOTAL_LENGTH  (get_total_length (i)),
-      .TAPPED_LENGTH (get_tapped_length(i)),
-      .CLKDIV_WIDTH  (CLKDIV_WIDTH)
+      .CLKDIV_WIDTH(CLKDIV_WIDTH)
     ) u_generator (
       .clk_i,
       .rst_ni,
@@ -282,6 +231,8 @@ module entropy_generator_complex #(
       .auto_tune_enable_i         (jitter_ro_auto_tune_enable_i [i]),
       .detune_ro_i                (jitter_ro_detune_i           [i]),
       .sample_clk_i               (sample_clk                   [i]),
+      .noise_async_i              (rosc_noise_i                 [i]),
+      .detune_o                   (rosc_ctrl_o.noise_detune     [i]),
       .sample_clk_div_i           (decorrelator_sample_clk_div_i),
       .bypass_decorrelator_i      (decorrelator_bypass_i        [i]),
       .entropy_byte_mask_i        (decorrelator_entropy_byte_mask_i),

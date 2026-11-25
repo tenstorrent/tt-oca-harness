@@ -6334,10 +6334,10 @@ a log entry. The log entries go through round robin arbitration.</ipxact:descrip
         <ipxact:displayName>Efuse address map of physical efuse macro</ipxact:displayName>
         <ipxact:description>Address map for efuse shadow registers providing access to various chip configuration and ID fields</ipxact:description>
         <ipxact:baseAddress>'hc0007000</ipxact:baseAddress>
-        <ipxact:range>'h400</ipxact:range>
+        <ipxact:range>'h100</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:register>
-          <ipxact:name>LOCKS</ipxact:name>
+          <ipxact:name>HARNESS_LOCKS</ipxact:name>
           <ipxact:description>Lock controls for each fuse field. When write locked, the corresponding field is not
 programmable. When read locked, the shadow register is not readable.
 
@@ -6533,8 +6533,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare3_write_lock</ipxact:name>
-            <ipxact:description>Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.</ipxact:description>
+            <ipxact:name>spare_tail_write_lock</ipxact:name>
+            <ipxact:description>Spare tail write lock (slot 7). When set, no SPARE_TAIL element is writable.</ipxact:description>
             <ipxact:bitOffset>14</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6546,8 +6546,224 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare3_read_lock</ipxact:name>
-            <ipxact:description>Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.</ipxact:description>
+            <ipxact:name>spare_tail_read_lock</ipxact:name>
+            <ipxact:description>Spare tail read lock (slot 7). When set, no SPARE_TAIL element is readable.</ipxact:description>
+            <ipxact:bitOffset>15</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>SUPPLEMENTARY_LOCKS</ipxact:name>
+          <ipxact:description>Lock controls for the supplementary fuse region. When write locked, the corresponding
+supplementary lock region is not programmable. When read locked, its shadow register is
+not readable.</ipxact:description>
+          <ipxact:addressOffset>'h8</ipxact:addressOffset>
+          <ipxact:size>64</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>region0_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 0 write lock. When set, supplementary lock region 0 is not writable.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region0_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 0 read lock. When set, supplementary lock region 0 is not readable.</ipxact:description>
+            <ipxact:bitOffset>1</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region1_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 1 write lock. When set, supplementary lock region 1 is not writable.</ipxact:description>
+            <ipxact:bitOffset>2</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region1_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 1 read lock. When set, supplementary lock region 1 is not readable.</ipxact:description>
+            <ipxact:bitOffset>3</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region2_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 2 write lock. When set, supplementary lock region 2 is not writable.</ipxact:description>
+            <ipxact:bitOffset>4</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region2_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 2 read lock. When set, supplementary lock region 2 is not readable.</ipxact:description>
+            <ipxact:bitOffset>5</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region3_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 3 write lock. When set, supplementary lock region 3 is not writable.</ipxact:description>
+            <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region3_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 3 read lock. When set, supplementary lock region 3 is not readable.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region4_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 4 write lock. When set, supplementary lock region 4 is not writable.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region4_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 4 read lock. When set, supplementary lock region 4 is not readable.</ipxact:description>
+            <ipxact:bitOffset>9</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region5_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 5 write lock. When set, supplementary lock region 5 is not writable.</ipxact:description>
+            <ipxact:bitOffset>10</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region5_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 5 read lock. When set, supplementary lock region 5 is not readable.</ipxact:description>
+            <ipxact:bitOffset>11</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region6_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 6 write lock. When set, supplementary lock region 6 is not writable.</ipxact:description>
+            <ipxact:bitOffset>12</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region6_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 6 read lock. When set, supplementary lock region 6 is not readable.</ipxact:description>
+            <ipxact:bitOffset>13</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region7_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 7 write lock. When set, supplementary lock region 7 is not writable.</ipxact:description>
+            <ipxact:bitOffset>14</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>region7_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 7 read lock. When set, supplementary lock region 7 is not readable.</ipxact:description>
             <ipxact:bitOffset>15</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6559,8 +6775,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare4_write_lock</ipxact:name>
-            <ipxact:description>Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.</ipxact:description>
+            <ipxact:name>region8_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 8 write lock. When set, supplementary lock region 8 is not writable.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6572,8 +6788,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare4_read_lock</ipxact:name>
-            <ipxact:description>Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.</ipxact:description>
+            <ipxact:name>region8_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 8 read lock. When set, supplementary lock region 8 is not readable.</ipxact:description>
             <ipxact:bitOffset>17</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6585,8 +6801,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare5_write_lock</ipxact:name>
-            <ipxact:description>Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.</ipxact:description>
+            <ipxact:name>region9_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 9 write lock. When set, supplementary lock region 9 is not writable.</ipxact:description>
             <ipxact:bitOffset>18</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6598,8 +6814,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare5_read_lock</ipxact:name>
-            <ipxact:description>Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.</ipxact:description>
+            <ipxact:name>region9_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 9 read lock. When set, supplementary lock region 9 is not readable.</ipxact:description>
             <ipxact:bitOffset>19</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6611,8 +6827,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare6_write_lock</ipxact:name>
-            <ipxact:description>Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.</ipxact:description>
+            <ipxact:name>region10_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 10 write lock. When set, supplementary lock region 10 is not writable.</ipxact:description>
             <ipxact:bitOffset>20</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6624,8 +6840,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare6_read_lock</ipxact:name>
-            <ipxact:description>Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.</ipxact:description>
+            <ipxact:name>region10_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 10 read lock. When set, supplementary lock region 10 is not readable.</ipxact:description>
             <ipxact:bitOffset>21</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6637,8 +6853,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare7_write_lock</ipxact:name>
-            <ipxact:description>Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.</ipxact:description>
+            <ipxact:name>region11_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 11 write lock. When set, supplementary lock region 11 is not writable.</ipxact:description>
             <ipxact:bitOffset>22</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6650,8 +6866,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare7_read_lock</ipxact:name>
-            <ipxact:description>Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.</ipxact:description>
+            <ipxact:name>region11_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 11 read lock. When set, supplementary lock region 11 is not readable.</ipxact:description>
             <ipxact:bitOffset>23</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6663,8 +6879,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare8_write_lock</ipxact:name>
-            <ipxact:description>Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.</ipxact:description>
+            <ipxact:name>region12_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 12 write lock. When set, supplementary lock region 12 is not writable.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6676,8 +6892,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare8_read_lock</ipxact:name>
-            <ipxact:description>Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.</ipxact:description>
+            <ipxact:name>region12_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 12 read lock. When set, supplementary lock region 12 is not readable.</ipxact:description>
             <ipxact:bitOffset>25</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6689,8 +6905,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare9_write_lock</ipxact:name>
-            <ipxact:description>Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.</ipxact:description>
+            <ipxact:name>region13_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 13 write lock. When set, supplementary lock region 13 is not writable.</ipxact:description>
             <ipxact:bitOffset>26</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6702,8 +6918,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare9_read_lock</ipxact:name>
-            <ipxact:description>Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.</ipxact:description>
+            <ipxact:name>region13_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 13 read lock. When set, supplementary lock region 13 is not readable.</ipxact:description>
             <ipxact:bitOffset>27</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6715,8 +6931,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare10_write_lock</ipxact:name>
-            <ipxact:description>Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.</ipxact:description>
+            <ipxact:name>region14_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 14 write lock. When set, supplementary lock region 14 is not writable.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6728,8 +6944,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare10_read_lock</ipxact:name>
-            <ipxact:description>Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.</ipxact:description>
+            <ipxact:name>region14_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 14 read lock. When set, supplementary lock region 14 is not readable.</ipxact:description>
             <ipxact:bitOffset>29</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6741,8 +6957,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare11_write_lock</ipxact:name>
-            <ipxact:description>Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.</ipxact:description>
+            <ipxact:name>region15_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 15 write lock. When set, supplementary lock region 15 is not writable.</ipxact:description>
             <ipxact:bitOffset>30</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6754,8 +6970,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare11_read_lock</ipxact:name>
-            <ipxact:description>Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.</ipxact:description>
+            <ipxact:name>region15_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 15 read lock. When set, supplementary lock region 15 is not readable.</ipxact:description>
             <ipxact:bitOffset>31</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6767,8 +6983,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare12_write_lock</ipxact:name>
-            <ipxact:description>Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.</ipxact:description>
+            <ipxact:name>region16_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 16 write lock. When set, supplementary lock region 16 is not writable.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6780,8 +6996,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare12_read_lock</ipxact:name>
-            <ipxact:description>Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.</ipxact:description>
+            <ipxact:name>region16_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 16 read lock. When set, supplementary lock region 16 is not readable.</ipxact:description>
             <ipxact:bitOffset>33</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6793,8 +7009,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare13_write_lock</ipxact:name>
-            <ipxact:description>Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.</ipxact:description>
+            <ipxact:name>region17_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 17 write lock. When set, supplementary lock region 17 is not writable.</ipxact:description>
             <ipxact:bitOffset>34</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6806,8 +7022,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare13_read_lock</ipxact:name>
-            <ipxact:description>Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.</ipxact:description>
+            <ipxact:name>region17_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 17 read lock. When set, supplementary lock region 17 is not readable.</ipxact:description>
             <ipxact:bitOffset>35</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6819,8 +7035,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare14_write_lock</ipxact:name>
-            <ipxact:description>Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.</ipxact:description>
+            <ipxact:name>region18_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 18 write lock. When set, supplementary lock region 18 is not writable.</ipxact:description>
             <ipxact:bitOffset>36</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6832,8 +7048,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare14_read_lock</ipxact:name>
-            <ipxact:description>Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.</ipxact:description>
+            <ipxact:name>region18_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 18 read lock. When set, supplementary lock region 18 is not readable.</ipxact:description>
             <ipxact:bitOffset>37</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6845,8 +7061,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare15_write_lock</ipxact:name>
-            <ipxact:description>Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.</ipxact:description>
+            <ipxact:name>region19_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 19 write lock. When set, supplementary lock region 19 is not writable.</ipxact:description>
             <ipxact:bitOffset>38</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6858,8 +7074,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare15_read_lock</ipxact:name>
-            <ipxact:description>Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.</ipxact:description>
+            <ipxact:name>region19_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 19 read lock. When set, supplementary lock region 19 is not readable.</ipxact:description>
             <ipxact:bitOffset>39</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6871,8 +7087,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare16_write_lock</ipxact:name>
-            <ipxact:description>Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.</ipxact:description>
+            <ipxact:name>region20_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 20 write lock. When set, supplementary lock region 20 is not writable.</ipxact:description>
             <ipxact:bitOffset>40</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6884,8 +7100,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare16_read_lock</ipxact:name>
-            <ipxact:description>Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.</ipxact:description>
+            <ipxact:name>region20_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 20 read lock. When set, supplementary lock region 20 is not readable.</ipxact:description>
             <ipxact:bitOffset>41</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6897,8 +7113,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare17_write_lock</ipxact:name>
-            <ipxact:description>Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.</ipxact:description>
+            <ipxact:name>region21_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 21 write lock. When set, supplementary lock region 21 is not writable.</ipxact:description>
             <ipxact:bitOffset>42</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6910,8 +7126,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare17_read_lock</ipxact:name>
-            <ipxact:description>Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.</ipxact:description>
+            <ipxact:name>region21_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 21 read lock. When set, supplementary lock region 21 is not readable.</ipxact:description>
             <ipxact:bitOffset>43</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6923,8 +7139,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare18_write_lock</ipxact:name>
-            <ipxact:description>Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.</ipxact:description>
+            <ipxact:name>region22_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 22 write lock. When set, supplementary lock region 22 is not writable.</ipxact:description>
             <ipxact:bitOffset>44</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6936,8 +7152,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare18_read_lock</ipxact:name>
-            <ipxact:description>Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.</ipxact:description>
+            <ipxact:name>region22_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 22 read lock. When set, supplementary lock region 22 is not readable.</ipxact:description>
             <ipxact:bitOffset>45</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6949,8 +7165,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare19_write_lock</ipxact:name>
-            <ipxact:description>Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.</ipxact:description>
+            <ipxact:name>region23_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 23 write lock. When set, supplementary lock region 23 is not writable.</ipxact:description>
             <ipxact:bitOffset>46</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6962,8 +7178,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare19_read_lock</ipxact:name>
-            <ipxact:description>Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.</ipxact:description>
+            <ipxact:name>region23_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 23 read lock. When set, supplementary lock region 23 is not readable.</ipxact:description>
             <ipxact:bitOffset>47</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6975,8 +7191,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare20_write_lock</ipxact:name>
-            <ipxact:description>Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.</ipxact:description>
+            <ipxact:name>region24_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 24 write lock. When set, supplementary lock region 24 is not writable.</ipxact:description>
             <ipxact:bitOffset>48</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -6988,8 +7204,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare20_read_lock</ipxact:name>
-            <ipxact:description>Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.</ipxact:description>
+            <ipxact:name>region24_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 24 read lock. When set, supplementary lock region 24 is not readable.</ipxact:description>
             <ipxact:bitOffset>49</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7001,8 +7217,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare21_write_lock</ipxact:name>
-            <ipxact:description>Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.</ipxact:description>
+            <ipxact:name>region25_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 25 write lock. When set, supplementary lock region 25 is not writable.</ipxact:description>
             <ipxact:bitOffset>50</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7014,8 +7230,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare21_read_lock</ipxact:name>
-            <ipxact:description>Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.</ipxact:description>
+            <ipxact:name>region25_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 25 read lock. When set, supplementary lock region 25 is not readable.</ipxact:description>
             <ipxact:bitOffset>51</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7027,8 +7243,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare22_write_lock</ipxact:name>
-            <ipxact:description>Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.</ipxact:description>
+            <ipxact:name>region26_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 26 write lock. When set, supplementary lock region 26 is not writable.</ipxact:description>
             <ipxact:bitOffset>52</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7040,8 +7256,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare22_read_lock</ipxact:name>
-            <ipxact:description>Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.</ipxact:description>
+            <ipxact:name>region26_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 26 read lock. When set, supplementary lock region 26 is not readable.</ipxact:description>
             <ipxact:bitOffset>53</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7053,8 +7269,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare23_write_lock</ipxact:name>
-            <ipxact:description>Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.</ipxact:description>
+            <ipxact:name>region27_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 27 write lock. When set, supplementary lock region 27 is not writable.</ipxact:description>
             <ipxact:bitOffset>54</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7066,8 +7282,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare23_read_lock</ipxact:name>
-            <ipxact:description>Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.</ipxact:description>
+            <ipxact:name>region27_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 27 read lock. When set, supplementary lock region 27 is not readable.</ipxact:description>
             <ipxact:bitOffset>55</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7079,8 +7295,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare24_write_lock</ipxact:name>
-            <ipxact:description>Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.</ipxact:description>
+            <ipxact:name>region28_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 28 write lock. When set, supplementary lock region 28 is not writable.</ipxact:description>
             <ipxact:bitOffset>56</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7092,8 +7308,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare24_read_lock</ipxact:name>
-            <ipxact:description>Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.</ipxact:description>
+            <ipxact:name>region28_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 28 read lock. When set, supplementary lock region 28 is not readable.</ipxact:description>
             <ipxact:bitOffset>57</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7105,8 +7321,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare25_write_lock</ipxact:name>
-            <ipxact:description>Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.</ipxact:description>
+            <ipxact:name>region29_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 29 write lock. When set, supplementary lock region 29 is not writable.</ipxact:description>
             <ipxact:bitOffset>58</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7118,8 +7334,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare25_read_lock</ipxact:name>
-            <ipxact:description>Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.</ipxact:description>
+            <ipxact:name>region29_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 29 read lock. When set, supplementary lock region 29 is not readable.</ipxact:description>
             <ipxact:bitOffset>59</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7131,8 +7347,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare26_write_lock</ipxact:name>
-            <ipxact:description>Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.</ipxact:description>
+            <ipxact:name>region30_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 30 write lock. When set, supplementary lock region 30 is not writable.</ipxact:description>
             <ipxact:bitOffset>60</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7144,8 +7360,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare26_read_lock</ipxact:name>
-            <ipxact:description>Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.</ipxact:description>
+            <ipxact:name>region30_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 30 read lock. When set, supplementary lock region 30 is not readable.</ipxact:description>
             <ipxact:bitOffset>61</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7157,8 +7373,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare27_write_lock</ipxact:name>
-            <ipxact:description>Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.</ipxact:description>
+            <ipxact:name>region31_write_lock</ipxact:name>
+            <ipxact:description>Supplementary region 31 write lock. When set, supplementary lock region 31 is not writable.</ipxact:description>
             <ipxact:bitOffset>62</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7170,8 +7386,8 @@ EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error until it is cleared.</ipxact:descrip
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spare27_read_lock</ipxact:name>
-            <ipxact:description>Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.</ipxact:description>
+            <ipxact:name>region31_read_lock</ipxact:name>
+            <ipxact:description>Supplementary region 31 read lock. When set, supplementary lock region 31 is not readable.</ipxact:description>
             <ipxact:bitOffset>63</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7191,7 +7407,7 @@ the lifecycle state fails its integrity check, JTAG reads of this range are
 blocked as well. Encoding
 is adopter-defined; the harness does not interpret or consume the value. The
 slot-0 read lock still hides the bits when set.</ipxact:description>
-          <ipxact:addressOffset>'h8</ipxact:addressOffset>
+          <ipxact:addressOffset>'h10</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>value</ipxact:name>
@@ -7211,7 +7427,7 @@ it.</ipxact:description>
           <ipxact:name>I2C_I3C_ID</ipxact:name>
           <ipxact:description>I2C/I3C interface ID</ipxact:description>
           <ipxact:dim>9</ipxact:dim>
-          <ipxact:addressOffset>'h28</ipxact:addressOffset>
+          <ipxact:addressOffset>'h30</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>interface_id</ipxact:name>
@@ -7232,7 +7448,7 @@ it.</ipxact:description>
           <ipxact:name>SMC_CONFIG</ipxact:name>
           <ipxact:description>SMC boot and configuration controls sourced from fuse. Only the low word carries
 assigned bits, so firmware reads it as a single 32-bit access.</ipxact:description>
-          <ipxact:addressOffset>'h70</ipxact:addressOffset>
+          <ipxact:addressOffset>'h78</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>rom_flip_endianness</ipxact:name>
@@ -7310,7 +7526,7 @@ assigned bits, so firmware reads it as a single 32-bit access.</ipxact:descripti
         <ipxact:register>
           <ipxact:name>OCCP_TRANSPORT_TIMEOUT</ipxact:name>
           <ipxact:description>OCCP transport timeout in the low word; upper word reserved.</ipxact:description>
-          <ipxact:addressOffset>'h78</ipxact:addressOffset>
+          <ipxact:addressOffset>'h80</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>timeout</ipxact:name>
@@ -7340,9 +7556,9 @@ assigned bits, so firmware reads it as a single 32-bit access.</ipxact:descripti
         <ipxact:register>
           <ipxact:name>SPARE</ipxact:name>
           <ipxact:description>Individually lockable 256-bit spare region, reserved for fields assigned after the
-RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:description>
-          <ipxact:dim>28</ipxact:dim>
-          <ipxact:addressOffset>'h80</ipxact:addressOffset>
+RTL is frozen. Each element has its own write/read lock pair in HARNESS_LOCKS.</ipxact:description>
+          <ipxact:dim>3</ipxact:dim>
+          <ipxact:addressOffset>'h88</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
@@ -7357,13 +7573,34 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>SPARE_TAIL</ipxact:name>
+          <ipxact:description>64-bit spare region at the end of the map, reserved for fields assigned after the
+RTL is frozen. All elements share the slot-7 write/read lock pair in
+HARNESS_LOCKS.</ipxact:description>
+          <ipxact:dim>3</ipxact:dim>
+          <ipxact:addressOffset>'he8</ipxact:addressOffset>
+          <ipxact:size>64</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:description>Spare fuse bits for future use.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>64</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>efuse_interface_ctrl</ipxact:name>
         <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
         <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
         <ipxact:baseAddress>'hc0008000</ipxact:baseAddress>
-        <ipxact:range>'h1c</ipxact:range>
+        <ipxact:range>'h24</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>EFUSE_INTERFACE_CTRL_STATUS</ipxact:name>
@@ -7459,21 +7696,9 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program, and reports program progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to program</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_data</ipxact:name>
             <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
@@ -7553,21 +7778,9 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_READ_CTRL</ipxact:name>
-          <ipxact:description>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to read</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_read_go</ipxact:name>
             <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
@@ -7728,6 +7941,42 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.</ipxact:d
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_PROGRAM_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</ipxact:description>
+          <ipxact:addressOffset>'h1c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_READ_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</ipxact:description>
+          <ipxact:addressOffset>'h20</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -43481,7 +43730,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Trdstramrplow</ipxact:name>
-              <ipxact:description>Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.</ipxact:description>
+              <ipxact:description>Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Every trDstRamData read advances it by one word, including a read while the RAM holds no unread data, and from trDstRamLimitLow it wraps to trDstRamStartLow.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -43516,7 +43765,7 @@ reaches termination value.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>Trdstramdata</ipxact:name>
-              <ipxact:description>Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.</ipxact:description>
+              <ipxact:description>Reading returns the 32-bit word at trDstRamRPLow and advances trDstRamRPLow by one word. A read while the RAM holds no unread data returns 0 and still advances the pointer, so software that polls this register while the sink is empty skips words it has not yet received. Read only while trDstRamWPLow differs from trDstRamRPLow or trDstRamWrap is set.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44024,7 +44273,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44036,7 +44285,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44156,7 +44405,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44168,7 +44417,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44198,7 +44447,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44210,7 +44459,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44330,7 +44579,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44342,7 +44591,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44372,7 +44621,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44384,7 +44633,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44504,7 +44753,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44516,7 +44765,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44546,7 +44795,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44558,7 +44807,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44678,7 +44927,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44690,7 +44939,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44720,7 +44969,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44732,7 +44981,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44852,7 +45101,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44864,7 +45113,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44894,7 +45143,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -44906,7 +45155,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45026,7 +45275,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45038,7 +45287,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45068,7 +45317,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45080,7 +45329,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45200,7 +45449,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45212,7 +45461,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45242,7 +45491,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45254,7 +45503,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45374,7 +45623,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45386,7 +45635,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -45525,7 +45774,7 @@ reaches termination value.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgEapStatus</ipxact:name>
-            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit.</ipxact:description>
+            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit. A status bit sets in every cycle in which its EAP relation holds while its node is current and EnableEap is set, and that set takes priority over a w2c write in the same cycle, which then leaves the bit at 1. Write the w2c bit once the relation is false, the node is no longer current or EnableEap is clear.</ipxact:description>
             <ipxact:addressOffset>'h188</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -46583,7 +46832,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46595,7 +46844,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46715,7 +46964,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46727,7 +46976,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46757,7 +47006,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46769,7 +47018,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46889,7 +47138,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46901,7 +47150,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46931,7 +47180,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -46943,7 +47192,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47063,7 +47312,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47075,7 +47324,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47105,7 +47354,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47117,7 +47366,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47237,7 +47486,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47249,7 +47498,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47279,7 +47528,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47291,7 +47540,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47411,7 +47660,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47423,7 +47672,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47453,7 +47702,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47465,7 +47714,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47585,7 +47834,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47597,7 +47846,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47627,7 +47876,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47639,7 +47888,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47759,7 +48008,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47771,7 +48020,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47801,7 +48050,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action0</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47813,7 +48062,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action1</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47933,7 +48182,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action2</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -47945,7 +48194,7 @@ reaches termination value.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Action3</ipxact:name>
-              <ipxact:description>Select an Action</ipxact:description>
+              <ipxact:description>Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49944,7 +50193,7 @@ reaches termination value.</ipxact:description>
         <ipxact:displayName>SMC External Window Address Map</ipxact:displayName>
         <ipxact:description>Adopter-provided external register window, split into mandatory and supplementary regions.</ipxact:description>
         <ipxact:baseAddress>'hc0400000</ipxact:baseAddress>
-        <ipxact:range>'h6548</ipxact:range>
+        <ipxact:range>'hb000</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>mandatory</ipxact:name>
@@ -50047,7 +50296,7 @@ Strap assignments in this range:
           <ipxact:displayName>SMC External Supplementary Region Address Map</ipxact:displayName>
           <ipxact:description>Supplementary adopter blocks in the external window: extra controllers, extra GPIO registers, and PVT.</ipxact:description>
           <ipxact:addressOffset>'h4000</ipxact:addressOffset>
-          <ipxact:range>'h2548</ipxact:range>
+          <ipxact:range>'h7000</ipxact:range>
         </ipxact:registerFile>
       </ipxact:addressBlock>
       <ipxact:addressBlock>
