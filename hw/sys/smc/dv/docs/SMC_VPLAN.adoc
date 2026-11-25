@@ -757,7 +757,7 @@ sources)
 |`smc_telemetry_receiver_csr_test`, `smc_telemetry_atb_capture_test`,
 `smc_telemetry_buffer_overflow_test`, `smc_telemetry_irq_aggregate_test`,
 `smc_telemetry_receiver_isolation_test`
-|`smc_periph_fcov` (`c_atb_transfer_accepted`, `c_distinct_atid_values`, `c_receiver_0_decode`,
+|`smc_periph_fcov` (`c_atb_transfer_accepted`, `c_atb_backpressure`, `c_distinct_atid_values`, `c_receiver_0_decode`,
 `c_receiver_2_decode`, `c_irq_telemetry`); `smc_clk_fcov` (`c_atb_capture_on_clk_telemetry`);
 `smc_rst_seq_fcov` (`c_telemetry_reset_released`)
 |`REGRESSION`: ATB capture and CSR leaves with their own checkers, no canonical scenario
@@ -3148,7 +3148,7 @@ Drive `smc_telemetry_receiver_csr_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-TELEMETRY-RECEIVER-CSR` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-TELEMETRY-RECEIVER-CSR` and `CHK-TELEMETRY-RECEIVER-<rx>-ATB` (rx 0 to 2) hold after their compares. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Ordering, backpressure and flushes are graded by `smc_telemetry_atb_capture_test`;
 this card scores one beat per receiver.
@@ -4658,7 +4658,8 @@ receiver flush.
 * Pending hold: with `afready_i` low the request holds `afvalid_o` at 1 on every sample for 2048
   `clk_smc_i` cycles and `CTRL` bit 8 at 1 on reads taken about every 64 cycles; once `afready_i`
   rises both clear within 64 cycles.
-* Rewrite while pending: a second write of `TELEMETRY_TX_FLUSH` while the request is pending ends in
+* Rewrite while pending: after a second write of `TELEMETRY_TX_FLUSH` while the request is pending,
+  `CTRL` bit 8 reads 1 and `afvalid_o` is 1 while `afready_i` is low; the request ends in
   one completion within 64 cycles of `afready_i` rising, with `afvalid_o` 0 and `CTRL` bit 8 0. The
   number of `afvalid_o` rising edges is printed and not compared (not stated by the specification).
 * Threshold kept (`telemetry_receiver.rdl`, `CTRL`): with `BUFFER_THRESHOLD` 3 written together with
@@ -4704,7 +4705,8 @@ receiver flush.
   it and leaves `CTRL` bit 8 at 0, each within 64 cycles; the two cycle counts are printed
 |`CHK-TELEMETRY-TX-FLUSH-PENDING-HOLD` |For 2048 cycles with `afready_i` low `afvalid_o` stays 1 and
   `CTRL` bit 8 stays 1, and both clear within 64 cycles after `afready_i` rises
-|`CHK-TELEMETRY-TX-FLUSH-REWRITE` |A second write of one while pending ends in one completion with
+|`CHK-TELEMETRY-TX-FLUSH-REWRITE` |A second write of one while pending leaves `CTRL` bit 8 at 1 and
+  `afvalid_o` at 1 while `afready_i` is low, and ends in one completion with
   `afvalid_o` 0 and `CTRL` bit 8 0 within 64 cycles of `afready_i` rising; the number of `afvalid_o`
   rises is printed and not compared
 |`CHK-TELEMETRY-TX-FLUSH-THRESHOLD-KEPT` |`CTRL` reads 0x3100 while the request is pending and
@@ -15758,7 +15760,7 @@ draws nothing from the seed.
 
 * `fabric.adoc` (Protection Bit Pass-Through) passes every protection bit through the fabric unmodified, and `memory_map.adoc` gives each endpoint its window and response, so an endpoint answers a request the same whatever AxPROT, AxUSER, AxREGION, AxQOS, AxLOCK, AxCACHE, AxLEN or AxID it carries.
 * **Check set.** One register per endpoint, 59 endpoints in eight classes: the internal-crossbar targets (GPIO interface 0, DFX, base configuration, cpu_ctrl), each of the 32 filter entries (inbound and outbound 0..15, `START_ADDR`), the alias, M-mode and Xvisor remaps (instance 0), mailbox port 0 (`WIRQT`), every peripheral-crossbar target (reset unit `ISOLATE_REQ_FLR_COUNTER_VALUE`, misc scratch, AVSBus, I2C 0..2, UART, log engines 0..3, telemetry receiver 0, OCTS, I3C 0), the eFuse shadow and interface-control windows, the zeroer and iDMA control windows and the DFD/CLA window. Every probe is held against the generated contract before any access: no field may carry a read action, a modified write or write-only access, so a write-back of the value it holds changes nothing.
-* **Seed and reference.** `memory_map.adoc` answers an in-extent hole of most of these blocks with OKAY and 0x0, and almost every probe resets to 0x0, so a misdecode into a hole would pass a data compare against the reset word. Before the sweep, a zero-attribute write therefore seeds a distinct non-zero word into every probe whose seeded bits have no effect while its block is idle (52 endpoints: plain read-write fields, the filter `START_ADDR` entries with `entry_enabled` clear, the remap offsets with `valid` clear, the reserved byte of `DEBUG_BUS_MUX`, the `MISSING_LAST` interrupt enable, and `WIRQT` = 1, since `axil_mailbox.adoc` reduces a threshold at or above the mailbox depth to depth - 1). Each endpoint then takes a read with every attribute zero (AxCACHE included). That word is the only expected value the leaf uses, and on every compared endpoint it must be non-zero; a seeded plain read-write probe must read back its seed exactly. The four unseeded compared probes (AVSBus `AVS_CFG_0`, eFuse `EFUSE_READ_REQ_TIMEOUT`, GPIO `ACCESS_FILTER`, base configuration) hold non-zero reset words. Every seeded probe is written back to its pre-seed word, and read back, at the end of the run. Each attribute checker line reports `nonzero-reference=<k>/<n>`.
+* **Seed and reference.** `memory_map.adoc` answers an in-extent hole of most of these blocks with OKAY and 0x0, and almost every probe resets to 0x0, so a misdecode into a hole would pass a data compare against the reset word. Before the sweep, a zero-attribute write therefore seeds a distinct non-zero word into every probe whose seeded bits have no effect while its block is idle (52 endpoints: plain read-write fields, the filter `START_ADDR` entries with `entry_enabled` clear, the remap offsets with `valid` clear, the reserved byte of `DEBUG_BUS_MUX`, and `WIRQT` = 1, since `axil_mailbox.adoc` reduces a threshold at or above the mailbox depth to depth - 1). Each endpoint then takes a read with every attribute zero (AxCACHE included). That word is the only expected value the leaf uses, and on every compared endpoint it must be non-zero; a seeded plain read-write probe must read back its seed exactly. The four unseeded compared probes (AVSBus `AVS_CFG_0`, eFuse `EFUSE_READ_REQ_TIMEOUT`, GPIO `ACCESS_FILTER`, base configuration) hold non-zero reset words. Every seeded probe is written back to its pre-seed word, and read back, at the end of the run. Each attribute checker line reports `nonzero-reference=<k>/<n>`.
 * **Per attribute value.** A read with the value, a write-back of the reference with the same value, and a zero-attribute read. On a compared endpoint the read must answer OKAY with the reference, the write OKAY, and the zero-attribute read OKAY with the reference. AxPROT 0x1..0x7 then 0x0, followed by a zero-attribute read per endpoint; AxUSER 0xFFF, a walking one over the twelve bits (which bits carry the source ID is open) and 0x000; AxREGION and AxQOS 0x1, 0x2, 0x4, 0x8, 0xF, 0x0; AxLOCK 1 then 0; AxCACHE 0x1, 0x2, 0x3, 0x6, 0x7, 0xA, 0xB, 0xE, 0xF, 0x0; AxLEN 0; AxID 0x01, 0x15, 0x2A, 0x3F, 0x00 with RID and BID required to equal AxID.
 * **Debug manager.** The JTAG AXI input reads the reset unit's seeded `ISOLATE_REQ_FLR_COUNTER_VALUE` with AxPROT 0x3 then 0x0; each word must equal the SEP_IN reference, and both RRESPs are logged (which inbound managers carry the attribute is open).
 * **AxLEN > 0** only on the burst set whose footprint lies in side-effect-free read-write registers: the M-mode and Xvisor output remaps from `region_attrs` of instance 0 with AxLEN 1, 3 and 7, the alias remap from `region_start` of instance 0 with AxLEN 1, and the reset unit from `SS_CONFIG_HOLD` with AxLEN 1. Each takes an INCR read and a write of the footprint's reference words in 8-byte beats; every beat's response and data, the B response and the footprint read before and after are logged, not compared. A footprint register that moved is written back to its reference before the AxLEN 0 sweep.
@@ -50259,7 +50261,7 @@ and in order. `smc_telemetry_atb_capture_test` grades one full fill and drain of
   while `STATUS` stays at `BUFFER_FULL` alone (`telemetry_receiver.rdl`: a full FIFO drops
   `atready_o`; nothing is overwritten and nothing is dropped).
 * Threshold at depth. With 32 beats queued, `CTRL.BUFFER_THRESHOLD` of 31 asserts
-  `INTR_STATUS.BUFFER_THRESHOLD` and 32 and 0xFFF do not; each value reads back as written
+  `INTR_STATUS.BUFFER_THRESHOLD` and 32, 0x040, 0x05F, 0x800 and 0xFFF do not; each value reads back as written
   (`telemetry_receiver.rdl`: only values below the buffer depth can assert the interrupt).
 * Overflow order. The first `TELEMETRY_DATA` read frees one slot: the held source moves exactly one
   beat in and `STATUS.BUFFER_FULL` sets again. Reading on returns all 64 offered beats once each, in
@@ -50296,7 +50298,7 @@ and in order. `smc_telemetry_atb_capture_test` grades one full fill and drain of
 |===
 |Checker |Description
 |`CHK-TELEM12-FULL` |On receivers 1 and 2, a stream longer than the FIFO and the crossing FIFO hold set `STATUS.BUFFER_FULL` and stalled the source with exactly 40 beats accepted, and over 200 more cycles none was accepted and `STATUS` stayed 0x10
-|`CHK-TELEMETRY-THRESHOLD-AT-DEPTH` |On receivers 1 and 2 holding 32 beats, `CTRL.BUFFER_THRESHOLD` 31 set `INTR_STATUS.BUFFER_THRESHOLD` and 32 and 0xFFF did not; each value read back unchanged
+|`CHK-TELEMETRY-THRESHOLD-AT-DEPTH` |On receivers 1 and 2 holding 32 beats, `CTRL.BUFFER_THRESHOLD` 31 set `INTR_STATUS.BUFFER_THRESHOLD` and 32, 0x040, 0x05F, 0x800 and 0xFFF did not; each value read back unchanged
 |`CHK-TELEM12-OVERFLOW-ORDER` |On receivers 1 and 2, one read let exactly one held beat in and `STATUS.BUFFER_FULL` set again; the drain returned all 64 offered beats once each, in order, then an empty FIFO
 |`CHK-TELEM12-PUSH-POP-WINDOW` |On receivers 1 and 2, for every offset a beat pushed against a read with 31 queued left all 32 readable once each and in order
 |`CHK-TELEM12-TX-FLUSH` |On receivers 1 and 2, with `afready_i` at its bench level (high), `CTRL.TELEMETRY_TX_FLUSH` self-cleared within the bound, `STATUS` read 0x00, and the three queued beats drained in order; the `afready_i`-low handshake is not reachable on this bench
@@ -54193,7 +54195,7 @@ net or the register that the observation would need.
 |The transmitter flush handshake of telemetry receivers 1 and 2 (`afvalid` / `afready`).
 |`hw/sys/smc/dv/tb/tb_top.sv` exports `tb_telemetry0_afvalid` and drives `tb_telemetry0_afready` for receiver 0 only; the `afready` of every other receiver is held high and its `afvalid` is not exported.
 |`ADD-PORT`
-|`smc_telemetry_receiver_isolation_test` grades the isolation on receiver 0's pins; `smc_telemetry_atb_capture_test` runs its transmitter-flush leg on receiver 0 only.
+|`smc_telemetry_buffer_overflow_test` grades the self-clear of `CTRL.TELEMETRY_TX_FLUSH` on receivers 1 and 2 with `afready` held high (`CHK-TELEM12-TX-FLUSH`); `smc_telemetry_receiver_isolation_test` only prints whether their flush pins exist; the `afready`-low handshake is graded on receiver 0 by `smc_telemetry_atb_capture_test` and `smc_telemetry_tx_flush_test`.
 |<<smc-vplan-area-power,POWER>>
 |The write responses the zeroer receives from the output fabric.
 |The signal list carries `tb_zeroer_bvalid` and no response code for the zeroer's B channel.

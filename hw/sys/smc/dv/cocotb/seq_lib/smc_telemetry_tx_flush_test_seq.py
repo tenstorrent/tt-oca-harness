@@ -321,6 +321,11 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
         await self._await_afvalid(dut, 1, "rewrite_afvalid_rise")
         await self.csr_write("TX_FLUSH_REWRITE_SECOND", CTRL, TX_FLUSH_BM)
         pending = await self.csr_read("TX_FLUSH_REWRITE_PENDING", CTRL)
+        assert pending & TX_FLUSH_BM, (
+            f"CTRL.TELEMETRY_TX_FLUSH clear after the second write with afready_i low "
+            f"(CTRL=0x{pending:08x})"
+        )
+        assert _level(afvalid) == 1, "afvalid_o low after the second write with afready_i low"
         monitor.check("rewrite")
         afready.value = 1
         rewrite_fall = await self._await_afvalid(dut, 0, "rewrite_afvalid_fall")

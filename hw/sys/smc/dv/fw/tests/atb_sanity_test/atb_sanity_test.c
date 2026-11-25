@@ -5,8 +5,8 @@
  * @brief Telemetry Sanity Basic Test - Register Reset Values
  *
  * Verifies that firmware can read the registers of Telemetry Receiver
- * instance 0 and that one field of each register it reads holds its
- * generated reset value.
+ * instance 0 and that the fields it checks hold their generated reset
+ * values.
  */
 
 #include <stdint.h>
@@ -65,46 +65,22 @@ int main(void) {
 
     test_step = 4;
     write_scratch(1, test_step);
-    simputs("Step 4: Read TELEMETRY_PROBE_ID register\n");
-    uint32_t probe_id_val = read_reg(
-        SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR(0));
-    expect_field("TELEMETRY_PROBE_ID.PROBE_ID", probe_id_val,
-                 TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm,
-                 TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bp,
-                 TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_reset);
+    simputs("Step 4: Read TELEMETRY_DATA register on the empty buffer\n");
+    uint32_t data_val = read_reg(
+        SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_DATA_BASE_ADDR(0));
+    expect_field("TELEMETRY_DATA.DATA", data_val, TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_bm,
+                 TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_bp,
+                 TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_reset);
+    expect_field("TELEMETRY_DATA.ATID", data_val, TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_bm,
+                 TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_bp,
+                 TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_reset);
+    expect_field("TELEMETRY_DATA.VALID", data_val, TELEMETRY_RECEIVER__TELEMETRY_DATA__VALID_bm,
+                 TELEMETRY_RECEIVER__TELEMETRY_DATA__VALID_bp,
+                 TELEMETRY_RECEIVER__TELEMETRY_DATA__VALID_reset);
 
     test_step = 5;
     write_scratch(1, test_step);
-    simputs("Step 5: Read TELEMETRY_COUNTER_VLDS register\n");
-    uint32_t counter_vlds_val = read_reg(
-        SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR(0));
-    expect_field("TELEMETRY_COUNTER_VLDS.COUNTER_VLDS", counter_vlds_val,
-                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bm,
-                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bp,
-                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_reset);
-
-    test_step = 6;
-    write_scratch(1, test_step);
-    simputs("Step 6: Read telemetry counter values\n");
-    simputs("  Reading first 6 counter registers...\n");
-    for (int i = 0; i < 6; i++) {
-        uint32_t counter_addr =
-            SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR(0,
-                                                                                               i);
-        uint32_t counter_val = read_reg(counter_addr);
-        simputs("  TELEMETRY_COUNTER[");
-        simputshex32("", i);
-        simputs("] @ ");
-        simputshex32("", counter_addr);
-        expect_field("TELEMETRY_COUNTER.COUNTER", counter_val,
-                     TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_bm,
-                     TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_bp,
-                     TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_reset);
-    }
-
-    test_step = 7;
-    write_scratch(1, test_step);
-    simputs("Step 7: Test Complete\n");
+    simputs("Step 5: Test Complete\n");
     simputs("  ========================================\n");
     simputs("  All telemetry registers accessible\n");
     simputs("  CTRL:                  0x");
@@ -113,13 +89,9 @@ int main(void) {
     simputs("  STATUS:                0x");
     simputshex32("", status_val);
     simputs("\n");
-    simputs("  TELEMETRY_PROBE_ID:    0x");
-    simputshex32("", probe_id_val);
+    simputs("  TELEMETRY_DATA:        0x");
+    simputshex32("", data_val);
     simputs("\n");
-    expect_field("TELEMETRY_COUNTER_VLDS.COUNTER_VLDS", counter_vlds_val,
-                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bm,
-                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bp,
-                 TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_reset);
     simputs("  ========================================\n");
 
     // Signal test completion

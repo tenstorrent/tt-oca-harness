@@ -11,8 +11,8 @@ of receiver 0; this leaf runs receivers 1 and 2 past their bound and holds them 
   ``atready`` drops with exactly ``HELD_CAPACITY`` beats accepted at the pins, and over a hold
   window the source stays stalled with ``STATUS.BUFFER_FULL`` set.
 * **Threshold at depth.** With the FIFO full, ``CTRL.BUFFER_THRESHOLD`` of ``BUFFER_DEPTH - 1``
-  asserts ``INTR_STATUS.BUFFER_THRESHOLD`` and ``BUFFER_DEPTH`` and ``0xFFF`` do not: "only
-  values below the buffer depth can assert the interrupt".
+  asserts ``INTR_STATUS.BUFFER_THRESHOLD`` and ``BUFFER_DEPTH``, ``0x040``, ``0x05F``, ``0x800``
+  and ``0xFFF`` do not: "only values below the buffer depth can assert the interrupt".
 * **Overflow order.** One ``TELEMETRY_DATA`` read frees one slot, the held source moves exactly
   one beat in and ``STATUS.BUFFER_FULL`` sets again. Reading on returns every beat of the
   stream exactly once and in order, then an empty FIFO.
@@ -58,8 +58,17 @@ STREAMS = {
     1: _stream(0x10, 0x01, HELD_CAPACITY + OFFER_EXTRA),
     2: _stream(0x50, 0x81, HELD_CAPACITY + OFFER_EXTRA),
 }
-#: `CTRL.BUFFER_THRESHOLD` values with the INTR_STATUS each must give on a full FIFO.
-THRESHOLD_AT_DEPTH = ((BUFFER_DEPTH - 1, True), (BUFFER_DEPTH, False), (0xFFF, False))
+#: `CTRL.BUFFER_THRESHOLD` values with the INTR_STATUS each must give on a full FIFO. The values
+#: above the depth have their low six bits below it, so a compare that drops the upper bits of
+#: the 12-bit field asserts the interrupt on them.
+THRESHOLD_AT_DEPTH = (
+    (BUFFER_DEPTH - 1, True),
+    (BUFFER_DEPTH, False),
+    (0x040, False),
+    (0x05F, False),
+    (0x800, False),
+    (0xFFF, False),
+)
 WINDOW_OFFSETS = tuple(range(-4, 5))
 TX_FLUSH_BEATS = {1: _stream(0x70, 0x31, 3), 2: _stream(0x74, 0x61, 3)}
 #: Cycles the full FIFO is watched with the source stalled.

@@ -19,11 +19,12 @@ class smc_telemetry_receiver_csr_test(smc_base_test):
     """U4-6: TELEMETRY CSR reset, INTR_TEST -> tb_telemetry_irq_any, one beat per receiver."""
 
     required_evidence = (
+        "CHK-TELEMETRY-RECEIVER-0-ATB",
         "CHK-TELEMETRY-RECEIVER-1-ATB",
         "CHK-TELEMETRY-RECEIVER-2-ATB",
         "CHK-TELEMETRY-RECEIVER-CSR",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 
