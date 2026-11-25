@@ -3214,7 +3214,11 @@ c_dbg_eap_status:
       action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI).
       A w2c write does not release a debug interrupt while EnableEap is set: the EAP
       holds the interrupt and the write clears only the status bit. To release it, clear
-      EnableEap, then write the w2c bit.'
+      EnableEap, then write the w2c bit. A status bit sets in every cycle in which its
+      EAP relation holds while its node is current and EnableEap is set, and that set
+      takes priority over a w2c write in the same cycle, which then leaves the bit at
+      1. Write the w2c bit once the relation is false, the node is no longer current
+      or EnableEap is clear.'
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     HW_WRITE: CLA

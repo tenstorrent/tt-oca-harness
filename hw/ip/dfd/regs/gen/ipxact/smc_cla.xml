@@ -311,7 +311,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Trdstramrplow</ipxact:name>
-              <ipxact:description>Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.</ipxact:description>
+              <ipxact:description>Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Every trDstRamData read advances it by one word, including a read while the RAM holds no unread data, and from trDstRamLimitLow it wraps to trDstRamStartLow.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -346,7 +346,7 @@
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>Trdstramdata</ipxact:name>
-              <ipxact:description>Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.</ipxact:description>
+              <ipxact:description>Reading returns the 32-bit word at trDstRamRPLow and advances trDstRamRPLow by one word. A read while the RAM holds no unread data returns 0 and still advances the pointer, so software that polls this register while the sink is empty skips words it has not yet received. Read only while trDstRamWPLow differs from trDstRamRPLow or trDstRamWrap is set.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2355,7 +2355,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgEapStatus</ipxact:name>
-            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit.</ipxact:description>
+            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit. A status bit sets in every cycle in which its EAP relation holds while its node is current and EnableEap is set, and that set takes priority over a w2c write in the same cycle, which then leaves the bit at 1. Write the w2c bit once the relation is false, the node is no longer current or EnableEap is clear.</ipxact:description>
             <ipxact:addressOffset>'h188</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>

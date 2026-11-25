@@ -182,7 +182,7 @@ typedef union {
 #define DFD_DST_SINK__TRDSTRAMRPLOW__RSVD10_bp 0
 #define DFD_DST_SINK__TRDSTRAMRPLOW__RSVD10_bw 2
 #define DFD_DST_SINK__TRDSTRAMRPLOW__RSVD10_reset 0x0
-// Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.
+// Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Every trDstRamData read advances it by one word, including a read while the RAM holds no unread data, and from trDstRamLimitLow it wraps to trDstRamStartLow.
 #define DFD_DST_SINK__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bm 0xfffffffc
 #define DFD_DST_SINK__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bp 2
 #define DFD_DST_SINK__TRDSTRAMRPLOW__TRDSTRAMRPLOW_bw 30
@@ -190,7 +190,7 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t Rsvd10 :2;
-        // Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Each trDstRamData read that returns unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.
+        // Read pointer, in 32-bit words; bits [31:2] of the byte address of the word the next trDstRamData read returns. Every trDstRamData read advances it by one word, including a read while the RAM holds no unread data, and from trDstRamLimitLow it wraps to trDstRamStartLow.
         uint32_t Trdstramrplow :30;
     } f;
     uint32_t w;
@@ -209,14 +209,14 @@ typedef union {
 } dfd_dst_sink__Trdstramrphigh_t;
 
 // reg - dfd_dst_sink::Trdstramdata
-// Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.
+// Reading returns the 32-bit word at trDstRamRPLow and advances trDstRamRPLow by one word. A read while the RAM holds no unread data returns 0 and still advances the pointer, so software that polls this register while the sink is empty skips words it has not yet received. Read only while trDstRamWPLow differs from trDstRamRPLow or trDstRamWrap is set.
 #define DFD_DST_SINK__TRDSTRAMDATA__TRDSTRAMDATA_bm 0xffffffff
 #define DFD_DST_SINK__TRDSTRAMDATA__TRDSTRAMDATA_bp 0
 #define DFD_DST_SINK__TRDSTRAMDATA__TRDSTRAMDATA_bw 32
 #define DFD_DST_SINK__TRDSTRAMDATA__TRDSTRAMDATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Reading launches a trace-RAM read at trDstRamRPLow. When the RAM holds unread data, the read returns that 32-bit word and advances trDstRamRPLow; otherwise the pointer does not move.
+        // Reading returns the 32-bit word at trDstRamRPLow and advances trDstRamRPLow by one word. A read while the RAM holds no unread data returns 0 and still advances the pointer, so software that polls this register while the sink is empty skips words it has not yet received. Read only while trDstRamWPLow differs from trDstRamRPLow or trDstRamWrap is set.
         uint32_t Trdstramdata :32;
     } f;
     uint32_t w;
@@ -1474,7 +1474,7 @@ typedef union {
 } dfd_cla__CDbgSignalEdgeDetectCfg_t;
 
 // reg - dfd_cla::CDbgEapStatus
-// Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit.
+// Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit. A status bit sets in every cycle in which its EAP relation holds while its node is current and EnableEap is set, and that set takes priority over a w2c write in the same cycle, which then leaves the bit at 1. Write the w2c bit once the relation is false, the node is no longer current or EnableEap is clear.
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bm 0x1
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bp 0
 #define DFD_CLA__CDBGEAPSTATUS__NODE0EAP0_bw 1
