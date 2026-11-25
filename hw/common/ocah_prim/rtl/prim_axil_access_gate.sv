@@ -51,7 +51,7 @@ module prim_axil_access_gate #(
 );
 
   localparam logic PassPort = 1'b0;
-  localparam logic ErrPort = 1'b1;
+  localparam logic ErrPort  = 1'b1;
 
   axil_req_t  [1:0] axil_reqs;
   axil_resp_t [1:0] axil_resps;
@@ -109,7 +109,7 @@ module prim_axil_access_gate #(
   logic pass_active;
 
   prim_axi_snoop #(
-    .OUTSTANDING_TX (MAX_TRANS)
+    .OUTSTANDING_TX(MAX_TRANS)
   ) u_pass_snoop (
     .clk_i            (clk_i),
     .rst_ni           (rst_ni),
