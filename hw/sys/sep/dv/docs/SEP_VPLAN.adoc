@@ -3262,7 +3262,7 @@ feature, and the note says how the test treats the blocked leg.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |PERIPH_BUS_ERR_STATUS has one bit each for aes, hmac, kmac, otbn, csrng and edn (plus wdt and spi). The bit is the wrapper's sticky bridge error, latches on a TL-UL error response, is cleared by the matching PERIPH_BUS_ERR_CLEAR bit and ORs into PIC source 43.
 |CSRNG and EDN bits of PERIPH_BUS_ERR_STATUS. The spec says the bits latch on a TL-UL error and states no access that makes these wrappers return one; the DRBG adapter answers every CPU access to them, so none reaches the bridge bit. Source: `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc` (`DMA_BUS_ERR_CLEAR`, `PERIPH_BUS_ERR_STATUS`, `PERIPH_BUS_ERR_CLEAR`); `hw/sys/sep/doc/crypto.adoc` (OpenTitan Alert Termination).
-|`sep_cpu_bridge_fault_matrix_rand_test` drives HMAC, KMAC and OTBN with in-extent holes, and AES and WDT with a partial write (`sep_cpu_ctrl.adoc:63-68`: a byte strobe that misses a byte the register owns)
+|`sep_cpu_bridge_fault_matrix_rand_test` drives HMAC, KMAC and OTBN with in-extent holes, the SPI host with a read of the write-only `TXDATA` window or a write of the read-only `RXDATA` window, and AES and WDT with a partial write (`sep_cpu_ctrl.adoc:63-68`: a byte strobe that misses a byte the register owns)
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |Partial strobe merge
 |What is the merge rule for a partial strobe inside a half (`spi.adoc`, Features)?

@@ -13,10 +13,17 @@ Contract (``hw/sys/sep/doc/interrupts.adoc``, sources 41 to 43;
 Only"; ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc``,
 ``ERROR_CODE``, ``STATUS``):
 
-* a CPU access to an in-extent hole of a register bridge answers SLVERR and
-  latches the block bit of ``PERIPH_BUS_ERR_STATUS`` (aes 0, hmac 1, kmac 2,
-  otbn 3, csrng 4, edn 5, wdt 6); source 43 (vector bit 42) is the OR of the
-  seven bits;
+* a CPU access that the register bridge of a block answers with a TL-UL
+  error answers SLVERR and latches the block bit of ``PERIPH_BUS_ERR_STATUS``
+  (``periph_bus_err_e``: aes 0, hmac 1, kmac 2, otbn 3, csrng 4, edn 5, wdt 6,
+  spi 7); source 43 (vector bit 42) is the OR of the bits. The faulting
+  accesses are a read or a write of an in-extent hole of HMAC, KMAC or OTBN,
+  and, for the SPI host, a read of the write-only TXDATA window or a write of
+  the read-only RXDATA window (``hw/sys/sep/doc/spi.adoc``, "Register-Bus
+  Faults"; ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson``,
+  windows ``RXDATA`` ``swaccess: "ro"`` and ``TXDATA`` ``swaccess: "wo"``;
+  the SPI aperture has no in-extent hole,
+  ``hw/sys/sep/regs/gen/adoc/memory_map.adoc:81``);
 * a partial write (a byte strobe that misses a byte the register owns) to an
   AES or watchdog register answers SLVERR and latches that block's bit alone
   (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:63-68``); the register
@@ -41,7 +48,8 @@ SLVERR; the outbound port taps ``PR-OUT`` and ``PR-OUT-RSP`` count the source
 reads and their SLVERR responses; the read-only tap
 ``sep_cpu_ctrl_err_pulse_probe_o`` ([8:0] fault pulses, [17:9] clear pulses,
 order aes, hmac, kmac, otbn, csrng, edn, wdt, dma reg_path, dma host_path) is
-the anchor of the same-cycle coincidence. The races drive the clear write and
+the anchor of the same-cycle coincidence. The tap has no spi pair, so the
+races run on hmac, kmac and otbn only. The races drive the clear write and
 the faulting access concurrently on the CPU-LSU master and sweep the offset
 between them: each trial measures the clock of both pulses and moves the
 offset by their distance, inside a bounded range and number of trials.
@@ -51,10 +59,11 @@ clock (``env/sep_bit_watch.pic_vector_watch``) for each rise of vector bits 40,
 41 and 42 and the other bits that move in its clock.
 
 Randomization (``SepSeededRng`` from the run seed): the block order of hmac,
-kmac and otbn, the sweep order, the hole offset of each block, the
-read-or-write choice of each re-fault, the clear order of bits 0 to 6, the 1
-to 3 clear masks (each with at least two set bits, one of them the bit of an
-unlatched block), the re-trigger blocks, the DMA source address inside the
+kmac, otbn and spi, the sweep order of hmac, kmac and otbn, the hole offset of
+each of those three blocks, the read-or-write choice of each re-fault, the
+clear order of all PERIPH_BUS_ERR_STATUS bits, the 1 to 3 clear masks (each
+with at least two set bits, one of them the bit of an unlatched block), the
+re-trigger blocks (the cleared one from hmac, kmac and otbn), the DMA source address inside the
 fixed outbound window and the copy size; then the order of the AES and
 watchdog partial writes and, for each, the byte range of the strobe (1 to 3
 contiguous lanes of the register word that miss a byte the register owns) and
@@ -98,10 +107,12 @@ Checkers:
                   before, and for the first 16 of them the clock and those
                   bits (the six bits with an unstated idle level are not
                   compared).
-  CHK-RESP        a hole write answers SLVERR.
+  CHK-RESP        a fault write (a hole write, or an SPI RXDATA write)
+                  answers SLVERR.
   CHK-LATCH       PERIPH_BUS_ERR_STATUS equals the faulted set.
   CHK-OR          vector bit 42 equals (status != 0).
-  CHK-CLR-MATRIX  a clear bit clears only its own block (seven bits + drain).
+  CHK-CLR-MATRIX  a clear bit clears only its own block (every status bit +
+                  drain).
   CTRL-NONVAC     each matrix and mask step starts with at least two bits.
   CHK-MASK        a mask clear gives the faulted set AND NOT mask.
   CHK-AGAIN       a cleared block re-latches; a re-fault keeps the other bits.
@@ -174,7 +185,8 @@ old value up to the clear pulse of its own latch on
 ``sep_cpu_ctrl_err_pulse_probe_o`` and is not compared after that pulse.
 Each half is its own check on its own line, named
 ``CHK-RAS-DMA_REG_BUS_ERR-<HALF>`` and ``CHK-RAS-PERIPH_BUS_ERR_<BLOCK>-<HALF>``
-for BLOCK in AES, HMAC, KMAC, OTBN, WDT:
+for BLOCK in AES, HMAC, KMAC, OTBN, WDT. The spi bit is not compared here:
+the pulse tap has no spi clear pulse to end its clear span.
 
                   IDLE  0 on every clock from the first graded step to the
                         first fault of that latch.
@@ -188,7 +200,8 @@ for BLOCK in AES, HMAC, KMAC, OTBN, WDT:
 
 The leaf raises once at its end if any half failed. Not compared: the raced
 block bit during its same-cycle trials (``INFO-RAS-PERIPH_BUS_ERR-RACE``) and
-the bits at 0 during the accesses to blocks outside the seven bits and from
+the bits at 0 during the accesses to blocks outside the PERIPH_BUS_ERR_STATUS
+bits and from
 the SI (``INFO-RAS-PERIPH_BUS_ERR-HOLE``): no sentence states the field there.
 The csrng and edn bits are not graded: no access of this leaf raises them
 (``INFO-RAS-PERIPH_BUS_ERR-CSRNG_EDN``). The delays from the fault access to
@@ -229,7 +242,17 @@ from env.sep_pic_map import vec_bit
 from env.sep_ras_map import PERIPH_BUS_ERR_BLOCKS, RasChkLines, check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import AES, HMAC, KMAC, OTBN, SEP_CPU_CTRL, WDT_TIMER, register_fields, sym
+from sep_reg_meta import (
+    AES,
+    HMAC,
+    KMAC,
+    OTBN,
+    SEP_CPU_CTRL,
+    SPI_CONTROLLER,
+    WDT_TIMER,
+    register_fields,
+    sym,
+)
 from sep_reg_meta import sep_reg as _sep_reg
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import (
@@ -263,8 +286,11 @@ RESP_OKAY, RESP_SLVERR, RESP_DECERR = 0, 2, 3
 SI_HOLE_RDATA = 0xFFFF_FFFF
 RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
-BLOCKS = ("hmac", "kmac", "otbn")
-PERIPH_BITS = ("aes", "hmac", "kmac", "otbn", "csrng", "edn", "wdt")
+# Blocks with a fault/clear pulse pair on sep_cpu_ctrl_err_pulse_probe_o that
+# the hole legs and the races reach.
+TAPPED_BLOCKS = ("hmac", "kmac", "otbn")
+BLOCKS = (*TAPPED_BLOCKS, "spi")
+PERIPH_BITS = PERIPH_BUS_ERR_BLOCKS
 BIT = {n: SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", n) for n in PERIPH_BITS}
 PERIPH_MASK = SEP_CPU_CTRL.mask32("PERIPH_BUS_ERR_STATUS")
 DMA_MASK = SEP_CPU_CTRL.mask32("DMA_BUS_ERR_STATUS")
@@ -278,9 +304,20 @@ HOLE_RANGE = {
     "kmac": (kmac_reg_unmapped_addr(), sym("KMAC_STATE_MEM_BASE_ADDR")),
     "otbn": (otbn_reg_unmapped_addr(), sym("OTBN_IMEM_MEM_BASE_ADDR")),
 }
-LEGAL = {"hmac": HMAC.addr("CFG"), "kmac": KMAC.addr("STATUS"), "otbn": OTBN.addr("STATUS")}
+# SPI host fault accesses: a read of the write-only TXDATA window and a write
+# of the read-only RXDATA window (spi_host.hjson).
+SPI_FAULT = {
+    "rd": sym("SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR"),
+    "wr": sym("SPI_CONTROLLER_RXDATA_0__MEM_BASE_ADDR"),
+}
+LEGAL = {
+    "hmac": HMAC.addr("CFG"),
+    "kmac": KMAC.addr("STATUS"),
+    "otbn": OTBN.addr("STATUS"),
+    "spi": SPI_CONTROLLER.addr("STATUS"),
+}
 # sep_cpu_ctrl_err_pulse_probe_o bit of each latch: fault pulse, clear pulse.
-PROBE_ORDER = PERIPH_BITS + ("dma_reg", "dma_host")
+PROBE_ORDER = ("aes", "hmac", "kmac", "otbn", "csrng", "edn", "wdt", "dma_reg", "dma_host")
 PROBE_SET = {n: i for i, n in enumerate(PROBE_ORDER)}
 PROBE_CLR = {n: i + len(PROBE_ORDER) for i, n in enumerate(PROBE_ORDER)}
 VEC_MASK = (1 << IRQ_DMA_REG_PATH) | (1 << IRQ_DMA_HOST_PATH) | (1 << IRQ_PERIPH_OR)
@@ -314,12 +351,11 @@ PARTIAL_BLOCKS = tuple(PARTIAL_REG)
 # the register clock domain crossing and completes in a few watchdog clocks.
 WDT_CLK_RATIO = 8
 
-# Register blocks outside the seven PERIPH_BUS_ERR_STATUS bits, by generated
+# Register blocks outside the PERIPH_BUS_ERR_STATUS bits, by generated
 # block name. Their unbacked word is a drawn in-extent hole where the generated
 # memory map gives the window one, else the first word past the extent.
 OTHER_BLOCKS = (
     ("esrc", "ENTROPY_SOURCE"),
-    ("spi", "SPI_CONTROLLER"),
     ("km", "KM_MAILBOX_SEP"),
     ("otp", "EFUSE_INTERFACE_CTRL"),
     ("lc", "SEP_LIFECYCLE_CTRL"),
@@ -394,10 +430,10 @@ class _Cfg:
         self.seed = seed
         self.block_order = list(BLOCKS)
         rng.shuffle(self.block_order)
-        self.sweep_order = list(BLOCKS)
+        self.sweep_order = list(TAPPED_BLOCKS)
         rng.shuffle(self.sweep_order)
         self.hole = {}
-        for b in BLOCKS:
+        for b in TAPPED_BLOCKS:
             lo, hi = HOLE_RANGE[b]
             self.hole[b] = lo + 4 * rng.randrange((hi - lo) // 4)
         self.refault_ops = ["rd" if rng.getrandbits(1) else "wr" for _ in range(96)]
@@ -410,7 +446,7 @@ class _Cfg:
                 if bin(mk).count("1") >= 2 and any(mk >> i & 1 for i in UNLATCHABLE):
                     break
             self.masks.append(mk)
-        self.retrig_clear = rng.choice(BLOCKS)
+        self.retrig_clear = rng.choice(TAPPED_BLOCKS)
         self.retrig_set = rng.choice([b for b in BLOCKS if b != self.retrig_clear])
         self.dma_size = 4 * rng.randrange(1, MAX_COPY // 4 + 1)
         span = (WIN_HI + 1 - WIN_LO - self.dma_size) // 4
@@ -476,7 +512,7 @@ class _Cfg:
     def draw_lines(self) -> list[str]:
         return [
             f"block_order={','.join(self.block_order)} sweep_order={','.join(self.sweep_order)}",
-            "holes=" + ",".join(f"{b}:0x{self.hole[b]:08x}" for b in BLOCKS),
+            "holes=" + ",".join(f"{b}:0x{a:08x}" for b, a in self.hole.items()),
             "clear_order=" + ",".join(PERIPH_BITS[i] for i in self.clear_order),
             "masks=" + ",".join(f"0x{m:02x}" for m in self.masks),
             f"retrigger clear={self.retrig_clear} still_set={self.retrig_set}",
@@ -729,7 +765,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             "CHK-AGAIN": 2,
             "CHK-HOST": 1,
             "CHK-DMA-HOST-HOLD": 1,
-            "CHK-RACE": n_blk + 1,
+            "CHK-RACE": len(TAPPED_BLOCKS) + 1,
         }
         exp.update({f"CHK-SRC{src}-RISE": 1 for src in RISE_SRC})
         return exp
@@ -821,9 +857,10 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         return op
 
     async def _fault(self, b: str, op: str) -> int:
-        """One access to the hole of ``b``; grades the response; updates the model."""
-        addr = self.c.hole[b]
-        self.ras.begin_rise(b)
+        """One faulting access to ``b``; grades the response; updates the model."""
+        addr = SPI_FAULT[op] if b == "spi" else self.c.hole[b]
+        if b in RAS_LATCH:
+            self.ras.begin_rise(b)
         if op == "wr":
             self.wr_faults += 1
             resp, _ = await self._acc(SepAxiOp.WRITE, addr, 0xA5A5_0000 | (addr & 0xFFFF))
@@ -1045,7 +1082,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
     async def _info_hole(self, init: str, block: str, addr: int, access) -> tuple[int, int]:
         """INFO-BRIDGE-HOLE: one unbacked-word read and the fault latch state around it.
 
-        No line states whether a fault in a block outside the seven
+        No line states whether a fault in a block outside the
         PERIPH_BUS_ERR_STATUS bits, or a fault from the SI, latches a bit. The
         line logs the response, the read data, the status, vector bit 42 and
         the fault pulses; a bit the access set is cleared again so the stimulus
