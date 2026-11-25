@@ -7,9 +7,9 @@ Proves SMU glue on real TB ports (same class as clock-stop remap):
   1. xtrig_ctm_dst_req[7:0] -> dtp_xtrig_ctm_dst_req[9:2]; SMC[1:0] stay 0
   2. xtrig_ctm_dst_ack[7] follows dst_req[7] within a settle window and holds:
      lane 7 is the one lane the TB configures for req/ack handshaking
-     (XTRIG_INT_CT_MODE = 8'h80). The integrator guide says a mode-0 lane's
-     ack is "unused" and pins no level for it, so lanes 0-6 are recorded, not
-     compared
+     (XTRIG_INT_CT_MODE[7].mode = MODE_POINT_TO_POINT). The integrator guide
+     says a wire-OR lane's ack is unused and pins no level for it, so lanes
+     0-6 are recorded, not compared
   3. xtrig_ctm_src_ack[7:0] -> dtp_xtrig_ctm_src_ack[9:2]; ack[1:0] hardwired 0
   4. TB xtrig_ctm_src_req stays idle (0) while only ack is driven (no DTP peer)
 """
@@ -26,10 +26,10 @@ DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
 SRC_ACK_PATS = (0x01, 0x80, 0x3C)
 
 # Lane 7 is the only lane the TB configures for req/ack handshaking (both TB
-# tops set XTRIG_INT_CT_MODE = 8'h80). The integrator guide (SMU cross-trigger
-# port table) says that when a mode bit is 0 the lane is pulse-synchronised and
-# its ack is unused; it pins no level for an unused ack, so only lane 7's ack
-# is compared and lanes 0-6 are logged as observed.
+# tops set XTRIG_INT_CT_MODE[7].mode = MODE_POINT_TO_POINT). The SMU port
+# table says that the ack of a wire-OR lane is unused; it pins no level for an
+# unused ack, so only lane 7's ack is compared and lanes 0-6 are logged as
+# observed.
 #
 # The ack is a synchronised handshake, not a combinational remap, so the
 # property is settle-and-hold: within ACK_SETTLE cycles ack[7] must reach

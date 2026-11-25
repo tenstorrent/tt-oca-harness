@@ -13,7 +13,7 @@
 // SMC-reserved lanes (XtrigSmcIntCtLanes, XtrigSmcClkStopLanes) before passing them to DTP.
 //
 // DefaultCfg enables every JTAG feature with one extra STAP and zero ID fields, and sets 16
-// CTPs, 8 exposed internal CT lanes, 8 exposed clock-stop requests, all lanes in pulse-sync
+// CTPs, 8 exposed internal CT lanes, 8 exposed clock-stop requests, all lanes in wire-OR
 // mode, pipeline depths of 3, 256 SMC interrupts, two outstanding SMC AXI-Lite transactions,
 // 4-byte eFuse shim windows and SMC chip type 0. It includes the SEP with a zero
 // secure-disable token, three external TRNG streams, Adams Bridge masking on and a one-cycle
@@ -25,6 +25,9 @@ package smu_pkg;
   localparam int unsigned XtrigSmcIntCtLanes = 2;
   localparam int unsigned XtrigSmcClkStopLanes = 1;
   localparam int unsigned XtrigIntCtModeWidth = 32;
+
+  // Configuration of each SMU-exposed internal cross-trigger lane.
+  typedef cross_trigger_port_pkg::ctp_int_cfg_t [XtrigIntCtModeWidth-1:0] xtrig_int_ct_mode_t;
 
   typedef struct packed {
     int unsigned NUM_INT_TO_SMC;  // Width of smc_ext_interrupts_i, 1 to 256; smu zero-extends
@@ -76,11 +79,12 @@ package smu_pkg;
     int unsigned XTRIG_NUM_CLK_STOP_REQ;  // SMU-exposed clock-stop request count, at least 1;
                                           // the DTP gets these plus the
                                           // XtrigSmcClkStopLanes SMC lane below them.
-    logic [XtrigIntCtModeWidth-1:0] XTRIG_INT_CT_MODE;  // Per exposed lane, 0 for pulse
-                                                        // sync and 1 for req/ack. Bits at
-                                                        // and above XTRIG_NUM_INT_CT are
-                                                        // ignored, and the SMC lanes are
-                                                        // always pulse sync.
+    xtrig_int_ct_mode_t XTRIG_INT_CT_MODE;  // Per exposed lane, the CTP mode (wire-OR
+                                            // pulse, point-to-point req/ack, or toggle)
+                                            // and stretch. Lanes at and above
+                                            // XTRIG_NUM_INT_CT are ignored, and the SMC
+                                            // lanes are always wire-OR with the default
+                                            // stretch.
 
     // Pipeline depths
     logic [1:0] SMC_OTP_RD_PL_DEPTH;  // DTP JTAG2AXI read pipeline depth toward the SMC OTP, 0
@@ -106,6 +110,10 @@ package smu_pkg;
                                        // CHIP_ID straps for the I3C and I2C address of an
                                        // unprogrammed eFuse identifier slot. Forwarded to the
                                        // SMC CHIP_ID.
+    smc_efuse_pkg::supplementary_fuse_cfg_t SMC_SUPPLEMENTARY_FUSE;  // Supplementary fuse region, '0 for none;
+    // see smc_efuse_pkg::supplementary_fuse_cfg_t
+    // for the constraints. Forwarded to
+    // the SMC SUPPLEMENTARY_FUSE.
 
     // SEP
     bit          SEP;                    // 1 includes the Secure Execution Processor and the
@@ -166,7 +174,7 @@ package smu_pkg;
       XTRIG_NUM_CTP: dtp_pkg::DefaultNumCtp,
       XTRIG_NUM_INT_CT: dtp_pkg::DefaultNumIntCt - XtrigSmcIntCtLanes,
       XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DefaultNumClkStopReq - XtrigSmcClkStopLanes,
-      XTRIG_INT_CT_MODE: '0,
+      XTRIG_INT_CT_MODE: {XtrigIntCtModeWidth{cross_trigger_port_pkg::CtpIntCfgDefault}},
       SMC_OTP_RD_PL_DEPTH: 2'h3,
       SMC_OTP_WR_PL_DEPTH: 2'h3,
       SMC_RD_PL_DEPTH: 2'h3,
@@ -174,6 +182,7 @@ package smu_pkg;
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
       SMC_CHIP_ID: 32'd0,
+      SMC_SUPPLEMENTARY_FUSE: '0,
       SEP: 1'b1,
       SEP_EFUSE_SHIM_SIZE: 32'h4,
       SEP_SEC_DISABLE_TOKEN: '0,
@@ -204,7 +213,7 @@ package smu_pkg;
       XTRIG_NUM_CTP: dtp_pkg::DefaultNumCtp,
       XTRIG_NUM_INT_CT: dtp_pkg::DefaultNumIntCt - XtrigSmcIntCtLanes,
       XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DefaultNumClkStopReq - XtrigSmcClkStopLanes,
-      XTRIG_INT_CT_MODE: '0,
+      XTRIG_INT_CT_MODE: {XtrigIntCtModeWidth{cross_trigger_port_pkg::CtpIntCfgDefault}},
       SMC_OTP_RD_PL_DEPTH: 2'h3,
       SMC_OTP_WR_PL_DEPTH: 2'h3,
       SMC_RD_PL_DEPTH: 2'h3,
@@ -212,6 +221,7 @@ package smu_pkg;
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
       SMC_CHIP_ID: 32'd0,
+      SMC_SUPPLEMENTARY_FUSE: '0,
       SEP: 1'b0,
       SEP_EFUSE_SHIM_SIZE: 32'h4,
       SEP_SEC_DISABLE_TOKEN: '0,
@@ -243,11 +253,18 @@ package smu_pkg;
   endfunction
 
   // DTP per-lane CT mode vector, wide enough for every legal XTRIG_NUM_INT_CT.
-  typedef logic [XtrigIntCtModeWidth+XtrigSmcIntCtLanes-1:0] dtp_ct_mode_t;
+  typedef cross_trigger_port_pkg::ctp_int_cfg_t [XtrigIntCtModeWidth+XtrigSmcIntCtLanes-1:0]
+      dtp_ct_mode_t;
 
-  // DTP per-lane CT mode: the exposed lanes' modes above the zeroed SMC-reserved lanes.
+  // DTP per-lane CT mode: the exposed lanes' modes above the SMC-reserved lanes, which take the
+  // default wire-OR configuration, as do the lanes at and above XTRIG_NUM_INT_CT.
   function automatic dtp_ct_mode_t dtp_xtrig_int_ct_mode(input smu_cfg_t cfg);
-    return {cfg.XTRIG_INT_CT_MODE & ~('1 << cfg.XTRIG_NUM_INT_CT), {XtrigSmcIntCtLanes{1'b0}}};
+    dtp_ct_mode_t lanes =
+        {(XtrigIntCtModeWidth + XtrigSmcIntCtLanes){cross_trigger_port_pkg::CtpIntCfgDefault}};
+    for (int unsigned i = 0; i < XtrigIntCtModeWidth; i++) begin
+      if (i < cfg.XTRIG_NUM_INT_CT) lanes[i+XtrigSmcIntCtLanes] = cfg.XTRIG_INT_CT_MODE[i];
+    end
+    return lanes;
   endfunction
 
 endpackage : smu_pkg

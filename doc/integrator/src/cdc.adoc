@@ -245,7 +245,8 @@ reviewed constraints and waivers rather than reconstructing them.
   pins for DFT and strap ports), `<block>.static_signals.tcl` (quasi-static
   signals, CDC only), the shared type-level setup in
   `flows/cdc/cdc_rdc_setup.tcl` (synchronizer and verified-IP modules, gray
-  annotations) and the block's instance-level `<block>.cdc_rdc_setup.tcl`.
+  annotations), the block's instance-level `<block>.cdc_rdc_setup.tcl` and, for
+  SMC and SMU, `<block>.pad_boundary.tcl` (the pad boundary, block top only).
 * `hw/sys/<block>/cdc/<block>.vccdc*.waiver.tcl` and
   `hw/sys/<block>/rdc/<block>.vcrdc*.waiver.tcl` hold the reviewed waivers, one
   file for Tenstorrent-owned RTL and, where needed, an `.opensource_ip` file
@@ -280,6 +281,24 @@ constraints re-anchor through `cdc_inst`, and generated clocks registered with
 `cdc_group_extra` land in the parent's single `cdc_apply_async_groups`. Waiver
 filter fields carry a `${PREFIX}` token for the same reason. `flows/cdc/README.md`
 summarises the layout.
+
+The pad boundary is also block-top only, because it models the SMC and SEP pad
+ports as the edge of the chip. Under your top these are skipped:
+
+* the `core2pad_o` output ignore paths and the AVS sdata synchroniser on
+  `pad2core_i[51]`, in `hw/sys/smc/cdc/smc.pad_boundary.tcl`;
+* the AVS and SPI GPIO clocks on `core2pad_o[49]`, `core2pad_o[9]` and
+  `pad2core_i[9]`, in `smc_clocks.sdc`;
+* `ENTROPY_ROSC_CLK` on `entropy_rosc_sample_clk_i`, in `sep_clocks.sdc`.
+
+Constrain the equivalent at your own pads: ignore the GPIO register to pad
+output crossings on your pad-side outputs, qualify the AVS serial data where it
+enters your design, stamp the exported clocks on your pads, and define whatever
+clock you drive onto the SEP entropy sample input.
+`hw/sys/smu/cdc/smu.pad_boundary.tcl` shows the complete set for a top whose
+ports are those pads. Do not apply these to the SMC or SEP instance pins: with a
+bidirectional pad, `core2pad_o` returns to `pad2core_i`, and an ignore ending at
+the SMC pin would also hide the crossings into the SMC receive synchronisers.
 
 == What is covered
 

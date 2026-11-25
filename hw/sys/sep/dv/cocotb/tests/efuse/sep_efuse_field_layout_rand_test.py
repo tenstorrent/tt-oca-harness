@@ -21,8 +21,9 @@ makes no program, no shadow write and no lock write.
 The offset table comes from the RDL-generated register header (``SEP_EFUSE_MAP_*_REG_OFFSET``
 of ``regs/gen/py/sep_reg.py``, through ``SepEfuseImage``) and the widths from the
 register sizes of the RDL-generated IP-XACT (``regs/gen/ipxact/sep.xml``); a table that
-does not tile words 0 to 255 with 43 registers fails the leaf before any DUT access
-(``SETUP FAIL reason=table_tile``). The used-bit masks come from the RDL field masks
+does not tile words 0 to 255 with 43 registers logs ``CTRL-MISSING TABLE-TILE`` and
+fails the leaf before any DUT access (``SETUP FAIL reason=table_tile``); a table that
+tiles them logs ``CTRL-TABLE-TILE`` before the first DUT access. The used-bit masks come from the RDL field masks
 (``field_used_masks`` of ``env/sep_efuse_plan.py``).
 
 Checkers:
@@ -132,17 +133,18 @@ class sep_efuse_field_layout_rand_test(sep_base_test):
 
         # Step 1: offset table from the generated map; fails before any DUT access.
         table = offset_table()
-        if not table_tiles(table):
-            self.logger.error(
-                "SETUP FAIL seed=%d reason=table_tile rows=%d table=%s", seed, len(table), table
-            )
-            raise AssertionError(f"SETUP FAIL seed={seed} reason=table_tile")
+        tiles = table_tiles(table)
 
         # Steps 2-4: the plan (prestaged image, drawn classes, jtag_id_i).
         p = plan(TEST, seed)
         for line in p.log_lines():
             self.logger.info("%s", line)
         self.chk = SepChkLog(self, TEST, seed)
+        if not self.chk.ctrl("TABLE-TILE", tiles, rows=len(table)):
+            self.logger.error(
+                "SETUP FAIL seed=%d reason=table_tile rows=%d table=%s", seed, len(table), table
+            )
+            raise AssertionError(f"SETUP FAIL seed={seed} reason=table_tile")
         self.fd = SepEfuseFd(self)
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")

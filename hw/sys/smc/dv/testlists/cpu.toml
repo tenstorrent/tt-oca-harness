@@ -611,6 +611,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+args = ["+smc_reset_sva_need_iso_l2_blocked"]
 
 [[tests]]
 name = "smc_spm_bank_formula_test"
@@ -673,6 +674,14 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_dfd_cla_irq_plic_source_test"
 module = "smc_dfd_cla_irq_plic_source_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_irq_w2c_release_test"
+module = "smc_dfd_cla_irq_w2c_release_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]

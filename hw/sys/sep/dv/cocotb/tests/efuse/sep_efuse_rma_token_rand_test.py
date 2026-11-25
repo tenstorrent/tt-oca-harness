@@ -17,13 +17,14 @@ walk match and mismatch.
 After that walk, the same test covers the token-comparator redundancy
 fault path: common-mode invert of a match (legal mismatch, no sticky),
 common-mode invert of a mismatch (legal match, no sticky -- the fail-open
-hole), collapsed pair, two-instance disagreement, 6'b111111 on the match
-status, sticky bit / IRQ survive a valid-token retry, and
-``sep_internal_interrupts[39]`` (PIC source 40). Collapse and disagreement
-have no frontdoor; the tb injects them on the RMA_SIP comparator rails. A cold
-reset clears the sticky fault bits and the interrupt, and the detector re-arms
-after it (CHK-FAULT-RESET). At RMA_CHIP_1 a JTAG read of TOKEN_MATCH_FAULT
-equals the AXI read (CHK-JTAG-FAULT).
+hole), collapsed pair, 6'b111111 on the match status, sticky bit / IRQ
+survive a valid-token retry, and ``sep_internal_interrupts[39]`` (PIC source
+40). Collapse and disagreement have no frontdoor; the tb injects them on the
+RMA_SIP comparator rails. A cold reset clears the sticky fault bits and the
+interrupt, and the detector re-arms after it (CHK-FAULT-RESET). At RMA_CHIP_1
+a JTAG read of TOKEN_MATCH_FAULT equals the AXI read (CHK-JTAG-FAULT). Last,
+after a second cold-reset re-sense shows the SIP fault bit and the interrupt at
+0 (CTRL-DISAGREE-PRE), a two-instance disagreement sets both (CHK-DISAGREE).
 
 Between the SIP and the CHIPLET walk, with LC_STATE at RMA_SIP, one zero bit of
 a spare field with no write lock in the image is programmed through
@@ -158,19 +159,23 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
 
         bad = SepRmaTokenMatchSeq(kind, token ^ 1)
         await self.start_seq(bad)
-        assert bad.match_code == TOKEN_MISMATCH, (
-            f"{name} wrong token gave code 0x{bad.match_code:02x}, expected the "
-            f"mismatch code 0x{TOKEN_MISMATCH:02x}. Checking only 'not a match' "
-            "would also accept the redundancy-fault code, which is a different "
-            "contract entirely."
-        )
         locked = sep_efuse_otp_program_seq(bit, expect_err=True)
         await self.start_seq(locked)
-        assert locked.saw_err, f"{name} mismatch program did not return PROGRAM_ERR"
+        # The exact mismatch code, not "not a match": the redundancy-fault code
+        # is a different contract.
+        assert bad.match_code == TOKEN_MISMATCH and locked.saw_err, (
+            f"CHK-MISMATCH FAIL: {name} wrong token code=0x{bad.match_code:02x} "
+            f"(want 0x{TOKEN_MISMATCH:02x}), LC_STATE bit {bit} program "
+            f"saw_err={int(bool(locked.saw_err))} (want 1)"
+        )
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         await self._check_lc(image, before, f"{name}-mismatch")
         self.logger.info(
-            "CHK-MISMATCH PASS: %s wrong token did not update LC (%s)", name, lc_state_name(before)
+            "CHK-MISMATCH PASS: %s wrong token code=0x%02x program saw_err=%d, LC stayed %s",
+            name,
+            bad.match_code,
+            int(bool(locked.saw_err)),
+            lc_state_name(before),
         )
 
         good = SepRmaTokenMatchSeq(kind, token)
@@ -224,7 +229,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         addr = bit_address(f, w, b)
         bank = SepEfuseBank(cocotb.top)
         pre = bank.read()
-        prog = sep_efuse_otp_program_once_seq(addr, read_back=True)
+        prog = sep_efuse_otp_program_once_seq(addr)
         await self.start_seq(prog)
         post = bank.read()
         diff = bank_diff(pre, post)
@@ -413,18 +418,6 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             irq_after,
         )
 
-        await self._set_inject(TOKEN_CMP_INJECT_DISAGREE)
-        code = await self._present_sip(sip_token)
-        fault = await self._rd_fault()
-        irq = self._irq39()
-        assert code == TOKEN_ERROR, f"two-instance disagree must force 6'b111111, got 0x{code:02x}"
-        assert fault & FAULT_RMA_SIP, f"disagree lost the SIP sticky bit: 0x{fault:x}"
-        assert irq == 1, "disagree did not keep irq39 asserted"
-        self.logger.info(
-            "CHK-DISAGREE PASS: instance disagree -> code=0x%02x FAULT=0x%08x irq39=1", code, fault
-        )
-        await self._set_inject(TOKEN_CMP_INJECT_OFF)
-
         await self._set_inject(TOKEN_CMP_INJECT_COLLAPSE, TOKEN_CMP_SEL_CHIPLET)
         code = await self._present_kind(TOKEN_RMA_CHIPLET, cfg.chiplet_token)
         fault = await self._rd_fault()
@@ -469,6 +462,66 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         assert jtag_data == fault, f"JTAG TOKEN_MATCH_FAULT 0x{jtag_data:x} != AXI 0x{fault:x}"
         self.logger.info("CHK-JTAG-FAULT PASS: JTAG read 0x%08x == AXI after RMA_CHIP", jtag_data)
 
+    async def _cold_resense(self, cfg: SepRmaTokenCfg) -> None:
+        """Drop any comparator injection and cold-reset re-sense at RMA_CHIP_1."""
+        # Drop the injection first: a fault still being driven would re-latch on
+        # the next comparison.
+        await self._set_inject(TOKEN_CMP_INJECT_OFF)
+
+        # Re-sense at the state the part has actually reached. The walks above
+        # advanced LC_STATE to RMA_CHIPLET_1, and the LC_STATE shadow is not
+        # rolled back by a re-sense -- staging a PROD image here would make the
+        # backdoor shadow check compare the sensed 0x7 against an expected 0x1.
+        # resense, not bring_up: bring_up_no_cpu calls start_clocks, which has no
+        # idempotence guard, so a mid-test call spawns a second driver on clk_i,
+        # clk_wdt_i and entropy_rosc_sample_clk_i. resense pulses rst_ni with the
+        # clocks already running.
+        image = self.select_efuse_image(lc_raw=LC_RMA_CHIP_1, fixed=cfg.image_fixed())
+        # The OTP keeps the spare bit the RMA_SIP program set; the golden keeps it too.
+        if self._spare_landed is not None:
+            word, mask = self._spare_landed
+            image.words[word] |= mask
+        self.write_efuse_image(image)
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+
+    async def _disagree_from_reset(self, cfg: SepRmaTokenCfg) -> None:
+        """A two-instance disagreement sets the SIP fault bit and raises irq39.
+
+        Runs from a cold-reset re-sense, so both start at 0 and the 0 -> 1
+        change follows the disagreement.
+        """
+        await self._cold_resense(cfg)
+        fault_pre = await self._rd_fault()
+        irq_pre = self._irq39()
+        assert fault_pre == 0 and irq_pre == 0, (
+            f"CTRL-DISAGREE-PRE FAIL: after the cold-reset re-sense "
+            f"TOKEN_MATCH_FAULT=0x{fault_pre:08x} irq39={irq_pre}, expected 0 and 0"
+        )
+        self.logger.info(
+            "CTRL-DISAGREE-PRE PASS: TOKEN_MATCH_FAULT=0x%08x irq39=%d before the disagreement",
+            fault_pre,
+            irq_pre,
+        )
+        await self._set_inject(TOKEN_CMP_INJECT_DISAGREE)
+        code = await self._present_sip(cfg.sip_token)
+        fault = await self._rd_fault()
+        irq = self._irq39()
+        await self._set_inject(TOKEN_CMP_INJECT_OFF)
+        assert code == TOKEN_ERROR and fault & FAULT_RMA_SIP and irq == 1, (
+            f"CHK-DISAGREE FAIL: instance disagree -> code=0x{code:02x} (want "
+            f"0x{TOKEN_ERROR:02x}), FAULT 0x{fault_pre:08x} -> 0x{fault:08x} (want bit0 "
+            f"0x{FAULT_RMA_SIP:08x} set), irq39 {irq_pre} -> {irq} (want 1)"
+        )
+        self.logger.info(
+            "CHK-DISAGREE PASS: instance disagree -> code=0x%02x FAULT 0x%08x -> 0x%08x "
+            "irq39 %d -> %d",
+            code,
+            fault_pre,
+            fault,
+            irq_pre,
+            irq,
+        )
+
     async def _fault_clears_on_reset(self, cfg: SepRmaTokenCfg) -> None:
         """The sticky fault bits clear on cold reset.
 
@@ -488,27 +541,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             "the release below would prove nothing about the interrupt"
         )
 
-        # Drop the injection first: a fault still being driven would re-latch on
-        # the next comparison and the clear would be indistinguishable from a
-        # failure to re-fault.
-        await self._set_inject(TOKEN_CMP_INJECT_OFF)
-
-        # Re-sense at the state the part has actually reached. The walks above
-        # advanced LC_STATE to RMA_CHIPLET_1, and the LC_STATE shadow is not
-        # rolled back by a re-sense -- staging a PROD image here would make the
-        # backdoor shadow check compare the sensed 0x7 against an expected 0x1
-        # and fail on the image, never reaching the fault-latch question.
-        # resense, not bring_up: bring_up_no_cpu calls start_clocks, which has no
-        # idempotence guard, so a mid-test call spawns a second driver on clk_i,
-        # clk_wdt_i and entropy_rosc_sample_clk_i. resense pulses rst_ni with the
-        # clocks already running, which is what this phase needs.
-        image = self.select_efuse_image(lc_raw=LC_RMA_CHIP_1, fixed=cfg.image_fixed())
-        # The OTP keeps the spare bit the RMA_SIP program set; the golden keeps it too.
-        if self._spare_landed is not None:
-            word, mask = self._spare_landed
-            image.words[word] |= mask
-        self.write_efuse_image(image)
-        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        await self._cold_resense(cfg)
 
         fault = await self._rd_fault()
         irq = self._irq39()
@@ -562,3 +595,4 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
 
         await self._token_fault_path(cfg)
         await self._fault_clears_on_reset(cfg)
+        await self._disagree_from_reset(cfg)

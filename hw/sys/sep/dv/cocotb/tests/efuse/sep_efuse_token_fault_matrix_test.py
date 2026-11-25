@@ -41,17 +41,21 @@ sticky ``TOKEN_MATCH_FAULT`` bits and stays asserted;
 reset). The level before the inject is 0 (graded by CHK-FAULT-CELL) and no reset
 lies in the window, so a second rise needs a fall the specification forbids. A
 cell with no rise of bit 39 fails. The other bits of ``sep_internal_interrupts``
-that moved in the clock of the rise are logged (OBS-SRC40-COINCIDENT), with no
+that moved in the clock of the rise are logged (INFO-SRC40-COINCIDENT), with no
 bit exempt for the same clock and the six bits with an unstated idle level left
 out (``env/sep_bit_watch.pic_vector_watch``); no document states that no other
 source moves.
 
-Checkers: CHK-BIND, CHK-FAULT-CELL, CHK-SRC40-RISE, CHK-FAULT-STICKY,
+Checkers: CHK-FAULT-CELL, CHK-SRC40-RISE, CHK-FAULT-STICKY,
 CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-FAULT-RESET-WORDS, CHK-LATCH-FREEZE.
-CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
+CTRL-LATCH-GO-REACH (each freeze cell): the token array reads back the frozen
+token and the go write under the freeze completes OKAY, so an unchanged digest is
+not a go that never reached the channel; a miss logs ``CHK-HOOK FAIL`` and ends the
+leaf. CHK-FAULT-RESET-WORDS reads the eight array words after the reset of each fault
 cell and prints their digest beside the digest of the expected token (the words
 are secret); it also fails when an expected word is 0, since a cleared word would
-read the same. Controls: CTRL-SEC-DIS-MATCH
+read the same. Controls: CTRL-BIND (the SHA-256 of 32 zero bytes equals the bench
+SEC_DIS digest), CTRL-SEC-DIS-MATCH
 (code ``0x15`` and ``security_disable_o`` 1) and CTRL-SEC-DIS-DROP (code ``0x2a``
 and ``security_disable_o`` 0), before each cell that uses the SEC_DIS channel. A
 common-mode cell logs the N/A line of the three fault-only checkers. A failing hook control logs
@@ -72,7 +76,7 @@ samples at the event. ``sep_sec_dis_activation_cg.x_verdict_out`` (error) sample
 at the event: its compare is the compare of its check.
 ``sep_pic_source_map_cg.cp_src_exclusive_other`` (s40) also samples at the event;
 its exclusivity compare is the sampler's own, since CHK-SRC40-RISE grades the rise
-and OBS-SRC40-COINCIDENT only logs the other bits. The first FAIL closes the window and keeps it
+and INFO-SRC40-COINCIDENT only logs the other bits. The first FAIL closes the window and keeps it
 closed for the rest of the leaf.
 """
 
@@ -106,7 +110,7 @@ from env.sep_efuse_plan import (
     token_words,
     write_token,
 )
-from env.sep_efuse_test_lib import SepEfuseFd, chk_bind, hook_fail, sig_bits
+from env.sep_efuse_test_lib import SepEfuseFd, ctrl_bind, hook_fail, sig_bits
 from env.sep_fabric_common import RESP_NAME
 from env.sep_fcov_gate import (
     close_graded_window,
@@ -239,7 +243,6 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
     """Comparator copy faults, common-mode flips and the digest latch freeze."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-FAULT-CELL",
         "CHK-SRC40-RISE",
         "CHK-FAULT-STICKY",
@@ -288,7 +291,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
     def _check_src40(
         self, vec: SepVecWatch, mark: VecMark, ch: str, kind: str, copy: int | None
     ) -> bool:
-        """CHK-SRC40-RISE: bit 39 rises exactly once after ``mark``; OBS-SRC40-COINCIDENT.
+        """CHK-SRC40-RISE: bit 39 rises exactly once after ``mark``; INFO-SRC40-COINCIDENT.
 
         The OBS line logs the other bits that moved in the clock of each rise: the
         whole vector except bit 39 and the six bits with an unstated idle level, no
@@ -304,7 +307,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
             moved = 0
             for _clk, m in smears:
                 moved |= m
-            self.chk.obs(
+            self.chk.info(
                 "SRC40-COINCIDENT",
                 **cell,
                 rises=len(rises),
@@ -730,6 +733,22 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         dig_f, val_f, _te = self._latch(ch)
         readback = [await self.fd.rd(a) for a in TOKEN_ARRAY_ADDR[ch]]
         rb_ok = readback == token_words(tok_b)
+        # The frozen digest proves no update only if the token and the go reached the
+        # channel: the array reads back token B, and the go write completed OKAY.
+        go_done = int(not go.timed_out)
+        go_resp = RESP_NAME.get(-1 if go.timed_out else int(go.resp_code), str(go.resp_code))
+        if not self.chk.ctrl(
+            "LATCH-GO-REACH",
+            rb_ok and go_done and go_resp == "OKAY",
+            ch=_CH_NAME[ch],
+            readback_b=int(rb_ok),
+            go_done=go_done,
+            go_resp=go_resp,
+        ):
+            getattr(dut, _TE_INJECT[ch]).value = 0
+            hook_fail(
+                self.chk, reason="latch_go_reach", ch=_CH_NAME[ch], go_done=go_done, go_resp=go_resp
+            )
 
         getattr(dut, _TE_INJECT[ch]).value = 0
         await ClockCycles(dut.clk_i, 2)
@@ -786,7 +805,7 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         faults = p.leg["faults"]
         order = p.leg["cell_order"]
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
         self.sdis_ctl_seen = False
         self.graded_fail = False
         self.cell_idx = 0

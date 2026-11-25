@@ -287,49 +287,55 @@ class smu_secure_tm_real_sense_window_test_seq:
         self._site("done_rise_2", DONE_BOUND, "clk_smu_i")
         self._site("strobe_raise", STROBE_BOUND, "clk_smu_i")
         self._site("strobe_lower", STROBE_BOUND, "clk_smu_i")
-        dut.rst_cold_ni.value = 1
-        dut.jtag_trst.value = 1
-        window_task = cocotb.start_soon(self._window(rises_before, base))
-        tck_task = cocotb.start_soon(self._tck_counter())
-        await self.test.jtag_tap_reset(TAP_RESET_TCK)
-        await tck_task
-        window = await window_task
-        samples, highs = window["samples"], window["highs"]
-        self.log.info("CELL strobes_at_done resp_words=%d (informational)", window["strobes"])
-        self.log.info(
-            "CELL stays_0_after_release_before_sample samples=%d highs=%d", samples, highs
-        )
-        sb.expect_eq(
-            "secure_tm_o samples from release to done: enough, none high",
-            (samples >= MIN_WINDOW_SAMPLES, highs),
-            (True, 0),
-            evidence=CLEAR,
-        )
-        self.log.info(
-            "CELL strap_1_before_sample pulse_samples=%d highs=%d %s",
-            window["pulse_samples"],
-            window["pulse_highs"],
-            self._drawn(),
-        )
-        if self.missed_window:
+        # smu_secure_tm_window_cg samples from the release to the 512 samples after the
+        # completion rise.
+        dut.tb_fcov_gate.value = 1
+        try:
+            dut.rst_cold_ni.value = 1
+            dut.jtag_trst.value = 1
+            window_task = cocotb.start_soon(self._window(rises_before, base))
+            tck_task = cocotb.start_soon(self._tck_counter())
+            await self.test.jtag_tap_reset(TAP_RESET_TCK)
+            await tck_task
+            window = await window_task
+            samples, highs = window["samples"], window["highs"]
+            self.log.info("CELL strobes_at_done resp_words=%d (informational)", window["strobes"])
             self.log.info(
-                "CHK-SEP-SECURE-TM-NO-EARLY-FOLLOW: window missed, strap at 1 at the rise; "
-                "leg not claimed %s",
+                "CELL stays_0_after_release_before_sample samples=%d highs=%d", samples, highs
+            )
+            sb.expect_eq(
+                "secure_tm_o samples from release to done: enough, none high",
+                (samples >= MIN_WINDOW_SAMPLES, highs),
+                (True, 0),
+                evidence=CLEAR,
+            )
+            self.log.info(
+                "CELL strap_1_before_sample pulse_samples=%d highs=%d %s",
+                window["pulse_samples"],
+                window["pulse_highs"],
                 self._drawn(),
             )
-        else:
-            sb.expect_eq(
-                f"secure_tm_o samples while the strap pulses at 1 before done {self._drawn()}",
-                (window["pulse_samples"] > 0, window["pulse_highs"]),
-                (True, 0),
-                evidence=NO_FOLLOW,
-            )
+            if self.missed_window:
+                self.log.info(
+                    "CHK-SEP-SECURE-TM-NO-EARLY-FOLLOW: window missed, strap at 1 at the rise; "
+                    "leg not claimed %s",
+                    self._drawn(),
+                )
+            else:
+                sb.expect_eq(
+                    f"secure_tm_o samples while the strap pulses at 1 before done {self._drawn()}",
+                    (window["pulse_samples"] > 0, window["pulse_highs"]),
+                    (True, 0),
+                    evidence=NO_FOLLOW,
+                )
 
-        self._step("S6", "after the done rise with the strap at 0")
-        after_high = 0
-        for _ in range(AFTER_EDGE_SAMPLES):
-            await RisingEdge(dut.clk_smu_i)
-            after_high += self._bit("tb_secure_tm")
+            self._step("S6", "after the done rise with the strap at 0")
+            after_high = 0
+            for _ in range(AFTER_EDGE_SAMPLES):
+                await RisingEdge(dut.clk_smu_i)
+                after_high += self._bit("tb_secure_tm")
+        finally:
+            dut.tb_fcov_gate.value = 0
         self.log.info("CELL after_edge_strap_0 samples=%d highs=%d", AFTER_EDGE_SAMPLES, after_high)
         if not self.missed_window:
             sb.expect_eq(

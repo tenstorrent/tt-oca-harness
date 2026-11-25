@@ -94,7 +94,7 @@ Checkers:
                   848). Controls: CFG reads PREFETCH 1 and timeout 0, STATUS reads
                   PREFETCHED 0 before the read, TREADY is high before the read
                   and the read start shows a TREADY-low stretch (length logged,
-                  OBS-SMP-READ-DIP) before the entropy initialization starts.
+                  INFO-SMP-READ-DIP) before the entropy initialization starts.
   CHK-SMP-WR     writes to DATA and PREFETCH_DATA answer SLVERR and leave STATUS
                   and PREFETCH_DATA unchanged, on the stalled stream and again
                   with a prefetched word held (a known PREFETCH_DATA value).
@@ -117,7 +117,7 @@ Checkers:
                   SLVERR and zero data (``architecture.adoc`` "Errors and
                   reset" and the state table). These values hold whichever
                   event ends the read, so the stated priority of a stream error
-                  over a timeout is not graded; ``OBS-SMP-STRM`` logs
+                  over a timeout is not graded; ``INFO-SMP-STRM`` logs
                   TIMEOUT_ERR after the read;
                   a write of 0 keeps STREAM_ERR and a write of 1 clears it.
                   Controls: the stalled timeouts and the first read after the
@@ -186,11 +186,11 @@ reads back with bit 0 set before each leg) and ``CTRL-SMP-EXT-SEL-INTERNAL``
 (it reads back the written value, bit 0 clear, after each entropy
 initialization).
 
-Log only: ``OBS-SMP-PRE-WITHDRAW-READ`` (the response of the DATA read whose
+Log only: ``INFO-SMP-PRE-WITHDRAW-READ`` (the response of the DATA read whose
 start gives the withdrawal its TREADY-low clock: the text does not state
 whether that read ends through the stream error, so it is not graded; the
 line also carries the exact COUNT_BAD delta of CHK-SMP-PRE-WITHDRAW),
-``OBS-SMP-STRM`` (TIMEOUT_ERR and the exact COUNT_BAD delta of a withdrawal in
+``INFO-SMP-STRM`` (TIMEOUT_ERR and the exact COUNT_BAD delta of a withdrawal in
 the first active cycle), ``OBS-SMP-NEXT-HELD``
 (whether the refilled word differs), ``INFO-SMP-LOOP`` (the read-loop data
 summary), ``INFO-SMP-STRM-CTRL-READS`` (the responses and data of the reads of
@@ -622,6 +622,15 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
     # --- scenario ----------------------------------------------------------------
 
     async def run_scenario(self) -> None:
+        self.noise = None
+        try:
+            await self._scenario()
+        finally:
+            if self.noise is not None:
+                await self.noise.stop()
+                self.noise = None
+
+    async def _scenario(self) -> None:
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
         self.rng = SepSeededRng(seed)
@@ -638,7 +647,6 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         self.marks: list[int] = []
         self.true_withdrawals = 0
         self.first_active_graded = 0
-        self.noise = None
         self.entropy_cfg = SepEntropyCfg(glen=_EDN_GLEN, reseed_interval=_EDN_RESEED_EVERY)
 
         # Step 1: cold reset, stalled stream (no entropy initialization), KM boot.
@@ -1549,13 +1557,14 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         st_pre, st_part, st_post = stv("wd_pre"), stv("wd_partial"), stv("wd_post")
         wd_irq = self._irq(res[at["wd_irq"]].value)
         wd_pre_irq = self._irq(res[at["wd_pre_irq"]].value)
-        self.chk.obs(
+        self.chk.info(
             "SMP-PRE-WITHDRAW-READ",
             slv=ra.slv,
             dec=ra.dec,
             data=_h(ra.value),
             timeout_err=pl.st(st_post, "TIMEOUT_ERR"),
             count_bad_delta=pl.st(st_post, "COUNT_BAD") - pl.st(st_pre, "COUNT_BAD"),
+            chk="CHK-SMP-PRE-WITHDRAW",
         )
 
         # Active read: setup controls.
@@ -1579,7 +1588,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             tready_before_read=rel.get("tready_at_start"),
             read_start_clk=rel.get("read_start_clk", "none"),
         )
-        self.chk.obs("SMP-READ-DIP", dip_clks=rel.get("dip_clks", "none"))
+        self.chk.info("SMP-READ-DIP", dip_clks=rel.get("dip_clks", "none"))
         self.chk.ctrl(
             "SMP-PRE-DISCRIM",
             b1 is not None and b2 is not None and b1 != b2 and partial_word != b2,
@@ -2164,12 +2173,13 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 set_km_strm_pass(True, self.logger)
                 await ClockCycles(cocotb.top.clk_i, 2)
             if not idle:
-                self.chk.obs(
+                self.chk.info(
                     "SMP-STRM",
                     case=case,
                     timeout=t,
                     timeout_err=pl.st(st, "TIMEOUT_ERR"),
                     count_bad_delta=delta,
+                    chk="CHK-SMP-STRM",
                 )
         await RisingEdge(cocotb.top.clk_i)
         set_km_strm_pass(False, self.logger)
@@ -2205,7 +2215,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
         self.logger.info("LOG tready_monitor xz_cycles=%d runs=%d", self.mon.xz, len(self.mon.runs))
         self.mon.stop()
         if self.noise is not None:
-            self.noise.kill()
+            await self.noise.stop()
             self.noise = None
         self.chk.ok(
             "NONVAC",

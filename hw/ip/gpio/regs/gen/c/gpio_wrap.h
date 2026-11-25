@@ -221,11 +221,10 @@ typedef struct __attribute__ ((__packed__)) {
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_bp 16
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_bw 1
 #define GPIO_CTRL__CONTROL__CONFIG_ENABLE_reset 0x0
-// When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default
+// Reflects the INPUT_BY_DEFAULT parameter of the instance: 1 when the pad is an input by default and strap capture is supported, 0 otherwise. Fixed at integration; not a capture-done or reset-done flag.
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bm 0x100000
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bp 20
 #define GPIO_CTRL__CONTROL__STRAP_VALID_bw 1
-#define GPIO_CTRL__CONTROL__STRAP_VALID_reset 0x1
 // This register holds the captured value that was applied to the pad when reset was de-asserted.
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_bm 0x200000
 #define GPIO_CTRL__CONTROL__STRAP_VALUE_bp 21
@@ -251,7 +250,7 @@ typedef union {
         // Setting this choosing the register values for PAD settings. This includes pull_enable, pull_select, and schmitt_select
         uint32_t config_enable :1;
         uint32_t :3;
-        // When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default
+        // Reflects the INPUT_BY_DEFAULT parameter of the instance: 1 when the pad is an input by default and strap capture is supported, 0 otherwise. Fixed at integration; not a capture-done or reset-done flag.
         uint32_t strap_valid :1;
         // This register holds the captured value that was applied to the pad when reset was de-asserted.
         uint32_t strap_value :1;

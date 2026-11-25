@@ -10,7 +10,7 @@ lanes. The word is primed with a known value first and the expected result is
 computed from the AXI lane rule, so a stage that widens the strobe, drops it,
 or writes the whole beat fails the compare rather than looking normal.
 
-OBS-OTBN-MEM-BUSY-ACCESS: the memory windows are OTBN IMEM and DMEM. The
+INFO-OTBN-MEM-BUSY-ACCESS: the memory windows are OTBN IMEM and DMEM. The
 no_cpu run does not bring EDN up, so OTBN stays in its post-reset internal wipe
 (STATUS BUSY_SEC_WIPE_INT). The OTBN register text states that a busy OTBN
 reads 0 and ignores the write; each window write and readback is logged, not
