@@ -755,7 +755,9 @@ registers that have a function in a JTAG2AXI bridge.
 The geometry of a bridge is in `sbcs`: `sbasize` gives the address width, and
 the `sbaccess*` bits give the access sizes, of which the largest is the data
 width. When `sbautoincrement` is 1, the address advances by the access size
-after each access.
+after each access that completes without an error. After an access that ends
+with an AXI error response, the address does not change. This includes the
+DECERR response of a disabled bridge (<<ptap-debug-disable>>).
 
 A write to `sbcs` while `sbbusy` is 1, and an access to an `sbaddress` or
 `sbdata` register while `sbbusy` or `sbbusyerror` is 1, sets `sbbusyerror` and
@@ -834,11 +836,18 @@ the status of the last operation, not 0, and a Capture-DR of the DTMCS register
 returns the same status in `dmistat`. A debugger that needs a known status after
 a TAP reset writes `dmireset`.
 
-`rst_n_i` is the reset of each bridge. It asserts asynchronously, and the bridge
+`rst_n_i` is the reset of each bridge. It asserts asynchronously. `tdr2axi`
 releases it synchronously in the `clk_i` domain and in the TCK domain, three
 cycles of the respective clock after `rst_n_i` deasserts. The TCK domain of a
 bridge therefore leaves reset only while TCK runs. While `test_en_i` is 1,
 `scan_rst_ni` replaces the synchronized resets.
+
+The debug-disable logic of a bridge has no reset synchronizer. Its select
+register, the demultiplexer, the error slave and the register slice of an AXI4
+manager port take `rst_n_i` directly, and they leave reset when `rst_n_i`
+deasserts. The select register resets to the error slave, so `tdr2axi` cannot
+send a request to the manager port before the select has the value of the
+disable input (<<ptap-debug-disable>>).
 
 While the reset is active in the TCK domain, the bridge ignores Update-DR, and
 the DMI register captures 0 in every field. After the reset, `dmcontrol.dmactive`
