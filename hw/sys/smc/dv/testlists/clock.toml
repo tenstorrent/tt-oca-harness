@@ -305,6 +305,14 @@ timeout_sec = 1800
 tags = ["ci", "clock"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_clock_gate_inflight_completes_test"
+module = "smc_clock_gate_inflight_completes_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "clock"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "clock"
 tests = [
@@ -336,6 +344,7 @@ tests = [
     "smc_cg_dft_reset_bringup_test",
     "smc_cg_zeroer_activity_bringup_test",
     "smc_clk_ratio_rand_test",
+    "smc_clock_gate_inflight_completes_test",
 ]
 
 [[tests]]
