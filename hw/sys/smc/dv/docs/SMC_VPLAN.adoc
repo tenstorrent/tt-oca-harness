@@ -27394,7 +27394,7 @@ draws nothing from the seed.
 
 * The DFD clock held on through `DFX_CTRL.DEBUG_CTRL.force_clk_en`, and every value of the 6-bit `DEBUG_BUS_MUX.Dbmid` field written in the normal debug mode its RDL description names, so every debug-bus mux of the array passes its lanes.
 * The DST enabled with `Trdstformat` at the uncompressed value its own RDL description names, the trace funnel enabled, and the trace RAM sink given a 0x1000-byte window, written through the limit field's own bit positions, and activated.
-* The CLA armed and `CDbgNode0Eap0.Action0` driven over all 64 values of its 6-bit field. Which action code starts a trace is published by no RDL, generated header or MMR specification, so the sweep names none and reads the outcome off the DUT.
+* The CLA armed and `CDbgNode0Eap0.Action0` driven over all 64 values of its 6-bit field. `hw/sys/smc/doc/dfd.adoc` (Action Codes) gives the trace start, stop and pulse codes; the sweep holds the DUT to none of them, names none and reads the outcome off the DUT.
 * `Trdstcontrol.Trdstempty` and `Trdstramwplow`, both read at their RDL reset first, are the two hardware-driven witnesses that the accumulator bank left the empty state and that a filled bank was taken by the sink.
 
 * After the hand-off the sink enable is cleared with the sink kept active and stop-on-wrap clear, and the action field is driven over its whole range again. The window has never wrapped in this run (the wrap flag is sticky, so this has to happen before any wrap), so the sink's wrap-flag update sees a sink neither enabled nor set to stop on wrap while trace still arrives. What a disabled sink does with that trace is not in the register contract, so the write pointer is recorded, not held to a value (`CHK-DST-TRACE-SINK-DISABLED`).
@@ -27418,7 +27418,7 @@ Drive `smc_dfd_trace_accumulator_fill_test_seq`. Each checker below is a named c
 
 *Pass Criteria*: `CHK-DST-TRACE-ACCUMULATE`, `CHK-DST-TRACE-BANK-HANDOFF`, `CHK-DST-TRACE-IDLE`, `CHK-DST-TRACE-SINK-DISABLED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: Which action code starts a trace is published by no RDL, generated header or MMR specification, so the sweep names none and reads the outcome off the DUT. What a disabled sink does with trace that still arrives is not in the register contract, so the write pointer after the sink enable is cleared is recorded, not held to a value.
+*Scope limit*: `hw/sys/smc/doc/dfd.adoc` (Action Codes) gives the trace start, stop and pulse codes; the sweep holds the DUT to none of them, names none and reads the outcome off the DUT. What a disabled sink does with trace that still arrives is not in the register contract, so the write pointer after the sink enable is cleared is recorded, not held to a value.
 '''''
 
 [[sec-213-smc_dfd_cla_counter_edge_test]]
@@ -27441,7 +27441,7 @@ Drive `smc_dfd_trace_accumulator_fill_test_seq`. Each checker below is a named c
 
 *Test Coverage*:
 
-* The four `CDbgClaCounter<n>Cfg` instances: `Target`, `UpperTarget` and `ResetOnTarget` are programmed, and the hardware-driven `Counter` and `UpperCounter` fields are read back after every value of the 6-bit `Action0` field. Which action code increments or clears a counter is published by no RDL, generated header or MMR specification, so the sweep names none.
+* The four `CDbgClaCounter<n>Cfg` instances: `Target`, `UpperTarget` and `ResetOnTarget` are programmed, and the hardware-driven `Counter` and `UpperCounter` fields are read back after every value of the 6-bit `Action0` field. `hw/sys/smc/doc/dfd.adoc` (Action Codes) gives the counter increment, clear and auto-increment codes; the sweep holds the DUT to none of them and names none.
 * `CDbgSignalEdgeDetectCfg`: every value of both 7-bit select fields and both values of both polarity bits, written and read back with the CLA armed and the debug bus in normal debug mode.
 
 *Test Procedure*:
@@ -27463,7 +27463,7 @@ Drive `smc_dfd_cla_counter_edge_test_seq`. Each checker below is a named compare
 
 *Pass Criteria*: `CHK-CLA-COUNTER-CLEARS`, `CHK-CLA-COUNTER-COUNTS`, `CHK-CLA-COUNTER-RESET`, `CHK-CLA-EDGE-SELECT-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: Which action code increments or clears a counter is published by no RDL, generated header or MMR specification, so the sweep names none. Which debug-bus signal an edge-detect select value names is not in the register contract, so no detected edge is claimed; the select sweep is a claim about the configuration surface only.
+*Scope limit*: `hw/sys/smc/doc/dfd.adoc` (Action Codes) gives the counter increment, clear and auto-increment codes; the sweep holds the DUT to none of them and names none. Which debug-bus signal an edge-detect select value names is not in the register contract, so no detected edge is claimed; the select sweep is a claim about the configuration surface only.
 '''''
 
 [[sec-214-smc_dfd_trace_format_sweep_test]]
@@ -27985,7 +27985,7 @@ draws nothing from the seed.
 * The leaf ends in the sink's memory mode (`Trdstrammode` = 1). The memory write-out is never accepted in this bench, so the frames the sink stages in its local RAM are never drained, it backpressures the DST, and in this state the sink's memory-mode flush also reaches the DST. The trace runs uncompressed with the periodic timestamp at its shortest period and the traced bus switched under each of 100 writes of the restarting action, so data and timestamp packets keep asking for space the backpressured sink does not free and the packetizer has to retry them. No register reports the backpressure: `Trdstempty` reads 0 after the 100 writes, which shows data in the DST with the trace held on, and it reads 0 for a stream draining into a RAM-mode sink too, so the leaf claims the flag, not the backpressure. Still in memory mode, the sink enable is then cleared with the sink active and stop-on-wrap set, and the trace is stopped the same way, so the sink's memory-mode stop terms and its empty computation see staged frames with nothing arriving; the sink control is read across that without a claim on the empty flag, and the trace is restarted. The sink is then re-armed in RAM mode and the stream has to resume, after which the RAM data port is read back to back while the stream writes, so register reads meet RAM writes; every wait is bounded, so a sink stuck in backpressure fails the leaf instead of stalling it. It runs last because a software stop after it does not empty the packetizer. The staged-RAM lap rows cannot be reached: the read side only advances through the tied memory write-out, and backpressure at half the staging RAM stops the write side long before it can lap.
 * The uncompressed stream runs at the longest frame length the field offers, so the fixed-size packets carry the accumulator's write offset through every even position before a frame closes, and then at the shortest frame and stream lengths. With `Trdstempty` at 0 and the restarting action written before each of four write-pointer reads, the pointer has to advance at every read, so the stream is still running into the sink when the trace is stopped by clearing `Trdstenable` alone with `Trdstactive` held at 1, so the DST clock keeps running while the stream winds down with packets in flight, and the write pointer has to park. A register read takes a fixed number of `clk_smc_i` cycles and the DST, the sink and the read path all run on that clock, so the bound is a count of reads and holds at every sys-clock period. `Trdstempty` is then read over 32 polls and recorded without a claim; see the first known DUT behaviour below.
 * The trace is then run into a sink with `Trdstramstoponwrap` set, and the sink enable is cleared afterwards with the sink kept active and the setting still held.
-* `Trdstsyncmode` is walked through every value of its field under both values of `Trdsttimestampconfig`, on a fresh sink with a 0x10000-byte window, so the stream under one value does not carry the write pointer a whole lap, and the pointer is read before the walk and after each value and has to move under each. The RDL description publishes only the timestamp value of the sync mode and marks the others as not applicable, so the walk takes the whole field range. Under each value a short action burst is followed by the restarting action measured in the odd-offset walk, held for 24 writes: a sweep of the action field passes values that stop the trace as well as start it, so a sweep alone runs the stream for about eleven 64-byte frames and leaves it stopped, short of the shortest stream length.
+* `Trdstsyncmode` is walked through every value of its field under both values of `Trdsttimestampconfig`, on a fresh sink with a 0x10000-byte window, so the stream under one value does not carry the write pointer a whole lap, and the pointer is read before the walk and after each value and has to move under each. The `Trdstsyncmode` description and `hw/sys/smc/doc/dfd.adoc` (Trace RAM Format) give value 1 as stream counting and value 2 as the periodic timestamp, with 0 and 3 off; the walk takes the whole field range. Under each value a short action burst is followed by the restarting action measured in the odd-offset walk, held for 24 writes: a sweep of the action field passes values that stop the trace as well as start it, so a sweep alone runs the stream for about eleven 64-byte frames and leaves it stopped, short of the shortest stream length.
 * Last of all, frame mode is turned off in `CDbgDebugTraceCfg`, the uncompressed stream is held on and the enable cleared with the DST active, and `Trdstempty` is read over a bounded number of polls without a claim; the outcome is recorded below.
 
 *Known limitation*: the accumulator's bank states are not visible at the register interface, so this leaf produces the boundary stimulus but cannot witness which bank state a given frame shape reaches. An uncompressed packet is a fixed 10 bytes against a 32-byte bank, so the boundary only ever lands on even offsets, and the long-frame stretch carries it through all of them; the odd offsets need odd-sized compressed packets, which the odd-offset walk produces. No checker claims `Trdstempty` returns to 1 after `Trdstenable` is cleared alone with `Trdstactive` held while packets are in flight; the packetizer does not empty at every clock phase of the stop (first known DUT behaviour below).
@@ -28319,8 +28319,8 @@ each block, addresses taken from the generated register map); bench signal `tb_f
 
 * Every software-writable field of the six DST registers (`dfd_dst.rdl`) is written alone with
   all ones and then all zeros, the other fields at their RDL reset value, and read back. Fields
-  the hardware also writes (`Trdstinsttracing`) and `Trdstformat`, whose supported value set the
-  specification does not state, are printed, not compared.
+  the hardware also writes (`Trdstinsttracing`) and `Trdstformat`, whose values
+  `hw/sys/smc/doc/dfd.adoc` (Trace RAM Format) describes, are printed, not compared.
 * Writing one field to the complement of its baseline value leaves every other software-writable,
   non-hardware-driven field of its register and every other register of the DST block as it was.
 * The bit positions no DST field covers (for example `Trdstcontrol` bits 8:7, 10, 14, 19:18 and
@@ -28398,7 +28398,7 @@ with the last observed signal or register on expiry
 values printed (the specification does not state the values); `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every
 sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: `Trdstformat`, whose supported value set the specification does not state, and the
+*Scope limit*: `Trdstformat`, whose values `hw/sys/smc/doc/dfd.adoc` (Trace RAM Format) describes, and the
 fields the hardware also writes (`Trdstinsttracing`) are printed, not compared. The bit positions no
 DST field covers are written with ones and zeros and their stored values printed, with no value
 compared, because `dfd_dst.rdl` declares no field there. The reads of `Trdstinsttracing` and
@@ -54168,10 +54168,6 @@ Where a test uses part of a blocked feature, the note says what the test does.
 [cols="2,5,6,5",options="header"]
 |===
 |Area |Feature |Open specification question |Note
-|<<smc-vplan-area-jtag,JTAG>>
-|The CLA action encoding: `integration/rdl/smc/dfd_cla.rdl` gives each of `Action0` to `Action3` a 6-bit "Select an Action" field, and `hw/sys/smc/doc/interrupts.adoc` names `cpu_interrupts_o` bit 321 as the CLA interrupt.
-|Blocked: the specification does not state which action code selects which action (the debug interrupt, the trace triggers, the counter controls). Source: `integration/rdl/smc/dfd_cla.rdl` (`Action0` to `Action3`); `hw/sys/smc/doc/dfd.adoc`; `hw/sys/smc/doc/interrupts.adoc` (SMC CPU Interrupt Vector Map).
-|The CLA entries (`smc_dfd_cla_node_eap_sweep_test`, `smc_dfd_cla_counter_edge_test`, `smc_dfd_cla_live_bus_test`, `smc_dfd_cla_snapshot_capture_test`, `smc_dfd_trace_accumulator_fill_test`) program the action index and grade the pair activation, the clear and the counters; the mapping of an action code to its effect is not graded, and the sweeps over the action values log the outcome of each.
 |<<smc-vplan-area-mailbox,MAILBOX>>
 |The mailbox clock gate closes during an idle gap while `CLOCK_GATE_CONTROL.mailbox_cg_en` is set.
 |Blocked: the specification does not state whether the gate closes on an idle gap with the enable set, nor after how many idle cycles. Source: `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`CLOCK_GATE_CONTROL.mailbox_cg_en`, "Clockgate enable for the mailbox"); `hw/sys/smc/doc/clk_rst.adoc` (Subsystem Controls and Clock Gating).
@@ -56303,7 +56299,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The CLA is armed and `Action0` of node 0 pair 0 is walked under an activating relation until `tb_cla_interrupt` rises, as `smc_dfd_cla_irq_w2c_release_test` walks it; `tb_plic_pending_322` is then polled up to four times.
+* The CLA is armed and `Action0` of node 0 pair 0 is walked under an activating relation until `tb_cla_interrupt` rises, as `smc_dfd_cla_irq_w2c_release_test` walks it, and the first code that raises it has to be 2, the debug-interrupt code of `hw/sys/smc/doc/dfd.adoc` (Action Codes); `tb_plic_pending_322` is then polled up to four times.
 * `tb_plic_pending_321`, `tb_plic_pending_322` and `tb_cla_interrupt` are sampled on every `clk_smc_i` rise from before the arm to after the last poll.
 
 *Test Procedure*:
@@ -56316,11 +56312,12 @@ Drive `smc_dfd_cla_irq_plic_source_test_seq`. Each checker below is a named comp
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-CLA-ACTION-CODE` |The first `Action0` code, walked upward from 0, after which `tb_cla_interrupt` reads 1 is 2, the debug-interrupt code of `hw/sys/smc/doc/dfd.adoc` (Action Codes); a line raised by code 0 or 1, or first raised by any other code, fails it
 |`CHK-CLA-IRQ-PLIC-322` |`tb_cla_interrupt` rises during the walk, `tb_plic_pending_322` is 0 on every sample before that rise and 1 within four polls after it, and `tb_plic_pending_321` is 0 on every sample; a line that never rises, a pending bit set early or never, or source 321 set fails it
 |===
 
 
-*Pass Criteria*: `CHK-CLA-IRQ-PLIC-322` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CLA-ACTION-CODE` and `CHK-CLA-IRQ-PLIC-322` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The hold and release of the line around the W2C write are the subject of `smc_dfd_cla_irq_w2c_release_test` (<<sec-609-smc_dfd_cla_irq_w2c_release_test>>) and are not graded here. Source 321 can only read 0 on this bench, which ties `tdr_dbg_ctrl_clock_stop_en_i` low.
 '''''
@@ -56347,7 +56344,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* The CLA is armed and `Action0` of node 0 pair 0 is walked under an activating relation until `tb_cla_interrupt` rises (`smc_dfd_cla_action_seq_utils`); the pair is then held on a relation that did not fire, with the action still selected.
+* The CLA is armed and `Action0` of node 0 pair 0 is walked under an activating relation until `tb_cla_interrupt` rises (`smc_dfd_cla_action_seq_utils`), and the first code that raises it has to be 2, the debug-interrupt code of `hw/sys/smc/doc/dfd.adoc` (Action Codes); the pair is then held on a relation that did not fire, with the action still selected.
 * After each step the `CDbgEapStatus.Node0Eap0` bit and `tb_cla_interrupt` are sampled and logged as `OBS-CLA-IRQ` lines: fired, a W2C write with the activating relation still selected, quiet, two W2C writes with `EnableEap` 1, `EnableEap` 0, a W2C, `EnableEap` 1 again, the activating relation driven again.
 
 *Test Procedure*:
@@ -56360,13 +56357,14 @@ Drive `smc_dfd_cla_irq_w2c_release_test_seq`. Each checker below is a named comp
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-CLA-ACTION-CODE` |The first `Action0` code, walked upward from 0, after which `tb_cla_interrupt` reads 1 is 2, the debug-interrupt code of `hw/sys/smc/doc/dfd.adoc` (Action Codes); a line raised by code 0 or 1, or first raised by any other code, fails it
 |`CHK-CLA-EAP-SET-OVER-W2C` |With the activating relation still selected and `EnableEap` 1, both read back after the write and logged as `CTRL-CLA-W2C-RELATION-ON`, a W2C write leaves the status bit 1 and `tb_cla_interrupt` 1; a status bit that reads 0 after it, or a line that drops, fails it. The same W2C write with the pair quiet reads the status 0 under `CHK-CLA-IRQ-W2C-HOLD`, so the relation is the only difference between the two
 |`CHK-CLA-IRQ-W2C-HOLD` |With the pair quiet and `EnableEap` 1, a W2C write leaves the status bit 0 and `tb_cla_interrupt` 1, and a second W2C write leaves the same; a status still set or a line that drops after either fails it
 |`CHK-CLA-IRQ-EAP-RELEASE` |Clearing `EnableEap` alone leaves the status bit 0 and `tb_cla_interrupt` 1; the W2C write that follows reads both 0; setting `EnableEap` again with the pair quiet leaves both 0; the activating relation driven after that re-arm reads both 1. A line dropped by `EnableEap` alone, a line still held after the W2C, a line or status set by the re-arm itself, or a pair that does not fire after the re-arm fails it
 |===
 
 
-*Pass Criteria*: `CHK-CLA-EAP-SET-OVER-W2C`, `CHK-CLA-IRQ-EAP-RELEASE` and `CHK-CLA-IRQ-W2C-HOLD` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CLA-ACTION-CODE`, `CHK-CLA-EAP-SET-OVER-W2C`, `CHK-CLA-IRQ-EAP-RELEASE` and `CHK-CLA-IRQ-W2C-HOLD` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The PLIC side of the line is graded by `smc_dfd_cla_irq_plic_source_test`; the PLIC claim and complete steps of the service sequence are not driven. Only node 0 pair 0 is fired. The status bit is sampled through register reads, so `CHK-CLA-EAP-SET-OVER-W2C` does not separate a set that wins inside the cycle of the W2C write from a status cleared in that cycle and set again in the next.
 '''''

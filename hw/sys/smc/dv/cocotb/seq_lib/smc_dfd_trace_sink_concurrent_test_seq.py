@@ -423,8 +423,8 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         """Empty the DST, re-enable it compressed, and find an action that restarts the trace.
 
         The enable is cleared alone with the DST active, and ``Trdstempty`` has
-        to read 1 within ``_DELIVER_POLLS`` polls before the restart. Which
-        action code starts a trace is not published, so the action field is
+        to read 1 within ``_DELIVER_POLLS`` polls before the restart. The
+        restart does not depend on the trace-start code: the action field is
         walked, the bus switched twice under each value, and the first value
         that makes ``Trdstempty`` read 0 is held: packets are arriving, so the
         trace is running.

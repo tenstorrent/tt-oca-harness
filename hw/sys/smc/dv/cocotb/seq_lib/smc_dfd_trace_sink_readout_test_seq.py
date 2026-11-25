@@ -58,8 +58,9 @@ A second leg then traces the CLA debug-bus mux in toggle mode
   ``Trdstramlimitlow`` it wraps to ``Trdstramstartlow``, so every pointer
   sample, taken after each of the first 16 reads and after the last, has to
   equal the segment start plus one word per data read. Which
-  bits the words carry is logged, not compared: the RAM address map and the
-  toggle payload format are not documented.
+  bits the words carry is logged, not compared: the RAM address map is not
+  documented, and the words are the packet stream of ``dfd.adoc`` Trace RAM
+  Format, which this leaf does not decode.
 * The read pointer is placed on the limit and one data read has to take it
   back to the window start.
 """
@@ -643,8 +644,8 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-DST-TOGGLE-PAYLOAD: %s; every segment more than one distinct word; mux "
-            "after=%d/%d (bit masks LINKED-ISSUE: the format and drivable byte lanes of the "
-            "trace words; the memory-mode encoding and when the wrap flag sets; how start "
+            "after=%d/%d (bit masks logged, the packet stream is not decoded; LINKED-ISSUE: "
+            "the memory-mode encoding and when the wrap flag sets; how start "
             "and limit address the trace RAM)",
             "; ".join(payload),
             mux_mode,

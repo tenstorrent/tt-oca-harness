@@ -21,6 +21,7 @@ class smc_dfd_cla_irq_w2c_release_test(smc_base_test):
     """Fire the debug-interrupt action, then grade the hold and the documented release."""
 
     required_evidence = (
+        "CHK-CLA-ACTION-CODE",
         "CHK-CLA-EAP-SET-OVER-W2C",
         "CHK-CLA-IRQ-EAP-RELEASE",
         "CHK-CLA-IRQ-W2C-HOLD",

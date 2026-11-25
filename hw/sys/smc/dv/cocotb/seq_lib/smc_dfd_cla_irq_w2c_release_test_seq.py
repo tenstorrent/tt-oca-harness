@@ -45,7 +45,11 @@ import cocotb
 from cocotb.triggers import ClockCycles
 
 from .smc_cla_regmap import cla_field
-from .smc_dfd_cla_action_seq_utils import SAMPLE_CYCLES, SmcDfdClaActionSeq
+from .smc_dfd_cla_action_seq_utils import (
+    ACTION_DEBUG_INTERRUPT,
+    SAMPLE_CYCLES,
+    SmcDfdClaActionSeq,
+)
 
 CHK_SET_OVER = "CHK-CLA-EAP-SET-OVER-W2C"
 CHK_HOLD = "CHK-CLA-IRQ-W2C-HOLD"
@@ -71,7 +75,9 @@ class smc_dfd_cla_irq_w2c_release_test_seq(SmcDfdClaActionSeq):
         await self.wait_fuse_sense_done()
         await self._write(self._eap(), {}, "reset")
         await self._write_ctrl(1, 1, 1, "arm")
-        action, activating, quiet = await self._discover("tb_cla_interrupt", "irq")
+        action, activating, quiet = await self._discover(
+            "tb_cla_interrupt", "irq", ACTION_DEBUG_INTERRUPT
+        )
         fired = await self._sample("fired")
         assert fired == (1, 1), (
             f"debug-interrupt action {action} with LogicalOp {activating}: status={fired[0]} "

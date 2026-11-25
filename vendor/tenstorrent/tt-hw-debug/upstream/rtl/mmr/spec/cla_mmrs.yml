@@ -357,7 +357,7 @@ c_dbg_node0_eap0:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -367,7 +367,7 @@ c_dbg_node0_eap0:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -471,7 +471,7 @@ c_dbg_node0_eap0:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -481,7 +481,7 @@ c_dbg_node0_eap0:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -512,7 +512,7 @@ c_dbg_node0_eap1:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -522,7 +522,7 @@ c_dbg_node0_eap1:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -626,7 +626,7 @@ c_dbg_node0_eap1:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -636,7 +636,7 @@ c_dbg_node0_eap1:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -667,7 +667,7 @@ c_dbg_node0_eap2:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -677,7 +677,7 @@ c_dbg_node0_eap2:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -781,7 +781,7 @@ c_dbg_node0_eap2:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -791,7 +791,7 @@ c_dbg_node0_eap2:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -822,7 +822,7 @@ c_dbg_node0_eap3:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -832,7 +832,7 @@ c_dbg_node0_eap3:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -936,7 +936,7 @@ c_dbg_node0_eap3:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -946,7 +946,7 @@ c_dbg_node0_eap3:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -977,7 +977,7 @@ c_dbg_node1_eap0:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -987,7 +987,7 @@ c_dbg_node1_eap0:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1091,7 +1091,7 @@ c_dbg_node1_eap0:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1101,7 +1101,7 @@ c_dbg_node1_eap0:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1132,7 +1132,7 @@ c_dbg_node1_eap1:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1142,7 +1142,7 @@ c_dbg_node1_eap1:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1246,7 +1246,7 @@ c_dbg_node1_eap1:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1256,7 +1256,7 @@ c_dbg_node1_eap1:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1287,7 +1287,7 @@ c_dbg_node1_eap2:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1297,7 +1297,7 @@ c_dbg_node1_eap2:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1401,7 +1401,7 @@ c_dbg_node1_eap2:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1411,7 +1411,7 @@ c_dbg_node1_eap2:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1442,7 +1442,7 @@ c_dbg_node1_eap3:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1452,7 +1452,7 @@ c_dbg_node1_eap3:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1556,7 +1556,7 @@ c_dbg_node1_eap3:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1566,7 +1566,7 @@ c_dbg_node1_eap3:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1597,7 +1597,7 @@ c_dbg_node2_eap0:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1607,7 +1607,7 @@ c_dbg_node2_eap0:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1711,7 +1711,7 @@ c_dbg_node2_eap0:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1721,7 +1721,7 @@ c_dbg_node2_eap0:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1752,7 +1752,7 @@ c_dbg_node2_eap1:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1762,7 +1762,7 @@ c_dbg_node2_eap1:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1866,7 +1866,7 @@ c_dbg_node2_eap1:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1876,7 +1876,7 @@ c_dbg_node2_eap1:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1907,7 +1907,7 @@ c_dbg_node2_eap2:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -1917,7 +1917,7 @@ c_dbg_node2_eap2:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2021,7 +2021,7 @@ c_dbg_node2_eap2:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2031,7 +2031,7 @@ c_dbg_node2_eap2:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2062,7 +2062,7 @@ c_dbg_node2_eap3:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2072,7 +2072,7 @@ c_dbg_node2_eap3:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2176,7 +2176,7 @@ c_dbg_node2_eap3:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2186,7 +2186,7 @@ c_dbg_node2_eap3:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2217,7 +2217,7 @@ c_dbg_node3_eap0:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2227,7 +2227,7 @@ c_dbg_node3_eap0:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2331,7 +2331,7 @@ c_dbg_node3_eap0:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2341,7 +2341,7 @@ c_dbg_node3_eap0:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2372,7 +2372,7 @@ c_dbg_node3_eap1:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2382,7 +2382,7 @@ c_dbg_node3_eap1:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2486,7 +2486,7 @@ c_dbg_node3_eap1:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2496,7 +2496,7 @@ c_dbg_node3_eap1:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2527,7 +2527,7 @@ c_dbg_node3_eap2:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2537,7 +2537,7 @@ c_dbg_node3_eap2:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2641,7 +2641,7 @@ c_dbg_node3_eap2:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2651,7 +2651,7 @@ c_dbg_node3_eap2:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2682,7 +2682,7 @@ c_dbg_node3_eap3:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2692,7 +2692,7 @@ c_dbg_node3_eap3:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2796,7 +2796,7 @@ c_dbg_node3_eap3:
     FIELDS_RANGE: '13:8'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -2806,7 +2806,7 @@ c_dbg_node3_eap3:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Select an Action
+    DESCRIPTION: "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
