@@ -13,7 +13,7 @@ int main(void) {
     if (hartid == 0) {
         uint32_t version_low, version_low_expected;
         uint32_t version_high, version_high_expected;
-        uint32_t chip_id;
+        uint32_t chiplet_type;
         uint32_t lc_state;
 
         // Both version words must read their reset values
@@ -26,8 +26,8 @@ int main(void) {
         version_high = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR);
         write_scratch(1, version_high);
 
-        chip_id = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR);
-        write_scratch(1, chip_id);
+        chiplet_type = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR);
+        write_scratch(1, chiplet_type);
 
         lc_state = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR);
         write_scratch(1, lc_state);

@@ -493,7 +493,7 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
                     "scratch.rdl sw=rw hw=na, warm domain window top"});
 
   // --- chip_config.rdl ---
-  // VERSION_LO/HI and CHIP_ID are `sw=r; hw=w`, driven by smc_misc_wrap from
+  // VERSION_LO/HI and CHIPLET_TYPE are `sw=r; hw=w`, driven by smc_misc_wrap from
   // its integration parameters; this bench leaves those parameters at their
   // defaults, which are the constants the generated map declares, so the
   // compare is exact. VERSION_LO's default is non-zero, so a read path stuck
@@ -508,10 +508,11 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR),
       SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_VERSION_HI_REG_DEFAULT),
       "chip_config.rdl sw=r hw=w from integration constant"});
-  entries.push_back('{"CHIP_CONFIG_CHIP_ID",
-                    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR),
-                    SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_CHIP_ID_REG_DEFAULT),
-                    "chip_config.rdl sw=r hw=w from the CHIP_ID module parameter"});
+  entries.push_back(
+      '{"CHIP_CONFIG_CHIPLET_TYPE",
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR),
+      SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_CHIPLET_TYPE_REG_DEFAULT),
+      "chip_config.rdl sw=r hw=w from the CHIPLET_TYPE module parameter"});
   // LC_STATE is `sw=r; hw=w` and the UVM harness drives tb_lc_state with the
   // complementary TEST_DEV encoding rather than the RDL default, so its read
   // is an integration value with no default contract: decode-only.

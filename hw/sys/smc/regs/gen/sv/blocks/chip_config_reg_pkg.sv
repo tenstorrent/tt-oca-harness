@@ -28,11 +28,11 @@ package chip_config_reg_pkg;
 
     typedef struct {
         logic [31:0] next;
-    } chip_config__CHIP_ID__chip_id__in_t;
+    } chip_config__CHIPLET_TYPE__chiplet_type__in_t;
 
     typedef struct {
-        chip_config__CHIP_ID__chip_id__in_t chip_id;
-    } chip_config__CHIP_ID__in_t;
+        chip_config__CHIPLET_TYPE__chiplet_type__in_t chiplet_type;
+    } chip_config__CHIPLET_TYPE__in_t;
 
     typedef struct {
         logic [7:0] next;
@@ -45,7 +45,14 @@ package chip_config_reg_pkg;
     typedef struct {
         chip_config__VERSION_LO__in_t VERSION_LO;
         chip_config__VERSION_HI__in_t VERSION_HI;
-        chip_config__CHIP_ID__in_t CHIP_ID;
+        chip_config__CHIPLET_TYPE__in_t CHIPLET_TYPE;
         chip_config__LC_STATE__in_t LC_STATE;
     } chip_config__in_t;
+
+    typedef enum logic [1:0] {
+        chip_config__chiplet_type_e__MEMORY = 'h0,
+        chip_config__chiplet_type_e__CPU = 'h1,
+        chip_config__chiplet_type_e__AI_COMPUTE = 'h2,
+        chip_config__chiplet_type_e__ETHERNET = 'h3
+    } chip_config__chiplet_type_e_e;
 endpackage

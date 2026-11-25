@@ -47,7 +47,7 @@ STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR"
 STRAPS_HI = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR")
 VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 VERSION_HI = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR")
-CHIP_ID = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR")
+CHIPLET_TYPE = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR")
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 LOCAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
@@ -142,12 +142,12 @@ class smc_cpu_boot_regs_read_test_seq(SmcCsrSeq):
 
         ver_lo = await self._rd("VERSION_LO", VERSION_LO, VERSION_LO_RESET, 4)
         ver_hi = await self._rd("VERSION_HI", VERSION_HI, 0, 4)
-        chip_id = await self._rd("CHIP_ID", CHIP_ID, 0, 4)
+        chiplet_type = await self._rd("CHIPLET_TYPE", CHIPLET_TYPE, 0, 4)
         self._stamp("S5")
         self._chk(
             "CHK-BOOT-CHIPCFG-RESET",
             "S5",
-            f"VERSION_LO=0x{ver_lo:08x} VERSION_HI=0x{ver_hi:08x} CHIP_ID=0x{chip_id:08x} "
+            f"VERSION_LO=0x{ver_lo:08x} VERSION_HI=0x{ver_hi:08x} CHIPLET_TYPE=0x{chiplet_type:08x} "
             f"(expected 0x{VERSION_LO_RESET:08x} 0x0 0x0)",
         )
 

@@ -385,8 +385,8 @@ localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_OFFSET         
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_ADDR                                             = 32'hC0002900;
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_OFFSET                                           = 32'h00000004;
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_REG_ADDR                                             = 32'hC0002904;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_OFFSET                                              = 32'h00000008;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_ADDR                                                = 32'hC0002908;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_REG_OFFSET                                         = 32'h00000008;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_REG_ADDR                                           = 32'hC0002908;
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_OFFSET                                             = 32'h0000000C;
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR                                               = 32'hC000290C;
 
@@ -10954,7 +10954,7 @@ localparam longint unsigned RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_D
 localparam longint unsigned SCRATCH_SCRATCH_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned CHIP_CONFIG_VERSION_LO_REG_DEFAULT                                                    = 32'h000100A0;
 localparam longint unsigned CHIP_CONFIG_VERSION_HI_REG_DEFAULT                                                    = 32'h00000000;
-localparam longint unsigned CHIP_CONFIG_CHIP_ID_REG_DEFAULT                                                       = 32'h00000000;
+localparam longint unsigned CHIP_CONFIG_CHIPLET_TYPE_REG_DEFAULT                                                  = 32'h00000000;
 localparam longint unsigned CHIP_CONFIG_LC_STATE_REG_DEFAULT                                                      = 32'h0000000F;
 localparam longint unsigned NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT                                                = 32'h00000000;
@@ -11623,8 +11623,8 @@ localparam int unsigned CHIP_CONFIG_VERSION_LO_VERSION_LO_SHIFT                 
 localparam int unsigned CHIP_CONFIG_VERSION_HI_VERSION_HI_MASK                                                    = 32'hFFFFFFFF;
 localparam int unsigned CHIP_CONFIG_VERSION_HI_VERSION_HI_SHIFT                                                   = 0;
 
-localparam int unsigned CHIP_CONFIG_CHIP_ID_CHIP_ID_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned CHIP_CONFIG_CHIP_ID_CHIP_ID_SHIFT                                                         = 0;
+localparam int unsigned CHIP_CONFIG_CHIPLET_TYPE_CHIPLET_TYPE_MASK                                                = 32'hFFFFFFFF;
+localparam int unsigned CHIP_CONFIG_CHIPLET_TYPE_CHIPLET_TYPE_SHIFT                                               = 0;
 
 localparam int unsigned CHIP_CONFIG_LC_STATE_LC_STATE_MASK                                                        = 32'hFF;
 localparam int unsigned CHIP_CONFIG_LC_STATE_LC_STATE_SHIFT                                                       = 0;
@@ -17632,8 +17632,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   chip_id ;
-} chip_config_chip_id_reg_t;
+    logic [31:0]   chiplet_type ;
+} chip_config_chiplet_type_reg_t;
 
 
 

@@ -318,7 +318,7 @@ them from the generated SMC map; the values shown are those of the open map.
 |*Resource* |*Offset* |*ROM usage*
 |Captured straps `STRAPS_LO` / `STRAPS_HI` |`0x40_3000` / `0x40_3004` |Latched hardware straps
 (<<sec:straps>>).
-|`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([S12]).
+|`CHIP_CONFIG_CHIPLET_TYPE` |`0x2908` |Chiplet type, diagnostic only ([S12]).
 |`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
 |SMC CPU_CTRL scratch registers |`0x39080 + 8·index` |Coordination protocol
 (<<tbl:smc_scratch>>).
@@ -533,7 +533,7 @@ read in the flow |<<sec:fuses>>
 |<<sec:handoff>>
 |[S11] |Lifecycle policy |LC_STATE read + validated; invalid state bricks the SMU
 |<<sec:fuses>>
-|[S12] |Chip ID |`CHIP_CONFIG_CHIP_ID` read and reported |<<sec:smc_sync>>
+|[S12] |Chip ID |`CHIP_CONFIG_CHIPLET_TYPE` read and reported |<<sec:smc_sync>>
 |[S13] |Peripheral/bus reset |OCAH-specific peripheral reset sequencing |<<sec:cpu_init>>
 |[S14] |Crypto init |SHA-256 self-test against NIST vector |<<sec:cpu_init>>
 |[S15] |SEP SRAM clear |The first `SRAM_SCRUB_BYTES` of SRAM zeroed (default 0: skipped)
@@ -757,7 +757,7 @@ touches no hardware, reports `REF_CLK_SELECTED` and returns the 100 MHz referenc
 with a PLL driver overrides it through `OCAH_FW_OVERLAY_SOURCES_sep`.
 |[S10] `bl0_state` |Hand-off block initialized at the top of DCCM (<<sec:handoff>>).
 |[S11] lifecycle |LC_STATE read + policy (<<sec:fuses>>).
-|[S12] chip ID |`CHIP_CONFIG_CHIP_ID` read and reported.
+|[S12] chip ID |`CHIP_CONFIG_CHIPLET_TYPE` read and reported.
 |[S13] peripheral reset |OCAH-specific peripheral/bus reset sequencing.
 |[S14] crypto self-test |SHA-256 of `"abc"` computed on the HMAC block and compared against
 the NIST reference digest. See requirement below.
@@ -1314,9 +1314,9 @@ the SMC's `SRAM_INIT`/`BUFFER_READY` indications.
 
 === Chip Identification ([S12])
 
-`CHIP_CONFIG_CHIP_ID` (SMC window offset `0x2908`) is read once and reported on the status
+`CHIP_CONFIG_CHIPLET_TYPE` (SMC window offset `0x2908`) is read once and reported on the status
 channel (low 16 bits as an `INFO_EXT` status word). The read is diagnostic: it gives DV and a
-debugger the part's identity, and exercises the SMC `chip_config` path while a failure there is
+debugger the kind of chiplet, and exercises the SMC `chip_config` path while a failure there is
 still attributable.
 
 No boot decision is taken from it. The identity a manifest binds to comes from the SEP eFuse

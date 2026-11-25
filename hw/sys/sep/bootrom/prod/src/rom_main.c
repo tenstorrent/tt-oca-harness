@@ -27,7 +27,7 @@
 //   [S09]  PLL/clock init (strap-controlled)
 //   [S10]  init_bl0_state()   (must precede every bl0_state writer)
 //   [S11]  lifecycle policy
-//   [S12]  chip ID identification (reads SMC CHIP_CONFIG_CHIP_ID)
+//   [S12]  chip ID identification (reads SMC CHIP_CONFIG_CHIPLET_TYPE)
 //   [S13]  peripheral/bus reset
 //   [S14]  crypto/security init
 //   [S15]  EXT SRAM clear
@@ -654,13 +654,13 @@ void rom_main(void) {
     uint32_t lc_state = rom_lifecycle_policy();
 
     // ── [S12] Chip ID identification ──
-    // Read CHIP_CONFIG_CHIP_ID from the SMC chip_config
+    // Read CHIP_CONFIG_CHIPLET_TYPE from the SMC chip_config
     // block and report for DV/debugger visibility.
     {
         report_status(STATUS_TYPE_DEBUG, SEP_MSG_CHIP_ID_CHECK);
-        const uint32_t chip_id = smc_read_chip_id();
-        report_status(STATUS_TYPE_INFO_EXT, (uint16_t)(chip_id & 0xFFFFu));
-        simputshex32("CHIP_ID=", chip_id);
+        const uint32_t chiplet_type = smc_read_chiplet_type();
+        report_status(STATUS_TYPE_INFO_EXT, (uint16_t)(chiplet_type & 0xFFFFu));
+        simputshex32("CHIP_ID=", chiplet_type);
     }
 
     // [S03] DFT / MBIST / MEM_REPAIR boot-gating now runs in vector.S, before the

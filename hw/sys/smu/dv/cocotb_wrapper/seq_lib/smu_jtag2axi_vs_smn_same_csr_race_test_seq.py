@@ -19,7 +19,7 @@ from ocah_axi_vip import RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
-    SMC_CHIP_CONFIG_CHIP_ID,
+    SMC_CHIP_CONFIG_CHIPLET_TYPE,
     SMC_CHIP_CONFIG_VERSION_LO,
     SMC_CHIP_CONFIG_VERSION_LO_RESET,
 )
@@ -50,7 +50,7 @@ VERSION_LO_RESET = SMC_CHIP_CONFIG_VERSION_LO_RESET
 PAT_J = 0x17A6_0001
 PAT_S = 0x5A11_0002
 WINDOW_START = SCRATCH_COLD_ADDR
-WINDOW_END = SMC_CHIP_CONFIG_CHIP_ID
+WINDOW_END = SMC_CHIP_CONFIG_CHIPLET_TYPE
 # The J2A AW handshake must show up within one DR shift plus fabric latency;
 # a bridge that never launches is a failure here, not a hang.
 J2A_AW_TIMEOUT_NS = 200_000

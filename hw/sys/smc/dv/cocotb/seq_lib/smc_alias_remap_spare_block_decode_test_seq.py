@@ -42,7 +42,7 @@ if str(_SMC_REG_PY) not in sys.path:
     sys.path.insert(0, str(_SMC_REG_PY))
 
 from smc_reg import (  # noqa: E402
-    CHIP_CONFIG_CHIP_ID_REG_DEFAULT,
+    CHIP_CONFIG_CHIPLET_TYPE_REG_DEFAULT,
     REMAP_REGION_REGION_START_REG_DEFAULT,
     SCRATCH_SCRATCH_REG_DEFAULT,
     WDT_CMP_REG_DEFAULT,
@@ -71,9 +71,9 @@ _ALIAS_PATTERN_7 = 0x0000_0000_5000_0000
 
 # --- spare blocks ------------------------------------------------------------
 SCRATCH_COLD_0 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)
-CHIP_CONFIG_CHIP_ID = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR")
+CHIP_CONFIG_CHIPLET_TYPE = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR")
 _SCRATCH_ALL_ONES = 0xFFFF_FFFF
-_CHIP_ID_WRITE = 0xA5A5_5A5A
+_CHIPLET_TYPE_WRITE = 0xA5A5_5A5A
 
 # --- mailbox: the two halves of pair 0 and pair 31 ---------------------------
 MBX_OUT0_IRQEN = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR")
@@ -165,17 +165,23 @@ class smc_alias_remap_spare_block_decode_test_seq(SmcDecodeProbeSeq):
         # chip_config.rdl declares every field `sw = r`, so the write must be
         # accepted by the block and must not change the value.
         await self.read_reset(
-            "CHIP_CONFIG_CHIP_ID_BEFORE", CHIP_CONFIG_CHIP_ID, CHIP_CONFIG_CHIP_ID_REG_DEFAULT
+            "CHIP_CONFIG_CHIPLET_TYPE_BEFORE",
+            CHIP_CONFIG_CHIPLET_TYPE,
+            CHIP_CONFIG_CHIPLET_TYPE_REG_DEFAULT,
         )
-        await self.csr_write("CHIP_CONFIG_CHIP_ID_WRITE", CHIP_CONFIG_CHIP_ID, _CHIP_ID_WRITE)
+        await self.csr_write(
+            "CHIP_CONFIG_CHIPLET_TYPE_WRITE", CHIP_CONFIG_CHIPLET_TYPE, _CHIPLET_TYPE_WRITE
+        )
         await self.read_reset(
-            "CHIP_CONFIG_CHIP_ID_AFTER", CHIP_CONFIG_CHIP_ID, CHIP_CONFIG_CHIP_ID_REG_DEFAULT
+            "CHIP_CONFIG_CHIPLET_TYPE_AFTER",
+            CHIP_CONFIG_CHIPLET_TYPE,
+            CHIP_CONFIG_CHIPLET_TYPE_REG_DEFAULT,
         )
         self.close_cell(
             "chip-config-write",
-            f"a write of 0x{_CHIP_ID_WRITE:08x} to CHIP_ID @0x{CHIP_CONFIG_CHIP_ID:08x} was "
+            f"a write of 0x{_CHIPLET_TYPE_WRITE:08x} to CHIPLET_TYPE @0x{CHIP_CONFIG_CHIPLET_TYPE:08x} was "
             f"accepted by the chip-config block and the register still read its generated reset "
-            f"0x{CHIP_CONFIG_CHIP_ID_REG_DEFAULT:x}, which is what `sw = r` on every field means "
+            f"0x{CHIP_CONFIG_CHIPLET_TYPE_REG_DEFAULT:x}, which is what `sw = r` on every field means "
             f"at this boundary",
         )
 

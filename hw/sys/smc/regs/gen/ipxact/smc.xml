@@ -1614,7 +1614,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
         <ipxact:registerFile>
           <ipxact:name>chip_config</ipxact:name>
           <ipxact:displayName>Chip Configuration Address Map</ipxact:displayName>
-          <ipxact:description>Chip version, identification, and lifecycle-state registers.</ipxact:description>
+          <ipxact:description>Chip version, chiplet type, and lifecycle-state registers.</ipxact:description>
           <ipxact:addressOffset>'h100</ipxact:addressOffset>
           <ipxact:range>'h10</ipxact:range>
           <ipxact:register>
@@ -1654,12 +1654,12 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>CHIP_ID</ipxact:name>
+            <ipxact:name>CHIPLET_TYPE</ipxact:name>
             <ipxact:addressOffset>'h8</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
-              <ipxact:name>chip_id</ipxact:name>
-              <ipxact:description>Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.</ipxact:description>
+              <ipxact:name>chiplet_type</ipxact:name>
+              <ipxact:description>Kind of chiplet the SMC is integrated in, a constant fixed when the SMC is integrated, not read from fuses: 0 = MEMORY, 1 = CPU, 2 = AI_COMPUTE, 3 = ETHERNET; values 4 and above are reserved. Bits 1:0 are the upper two bits of the boot ROM's fallback I2C and I3C address, so two chiplet types that share a bus must report different values. The register has no storage: a read returns that constant, and the reset value is the default constant.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1669,6 +1669,28 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
               <ipxact:bitWidth>32</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-only</ipxact:access>
+              <ipxact:enumeratedValues>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>MEMORY</ipxact:name>
+                  <ipxact:description>Memory chiplet</ipxact:description>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>CPU</ipxact:name>
+                  <ipxact:description>CPU chiplet</ipxact:description>
+                  <ipxact:value>'h1</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>AI_COMPUTE</ipxact:name>
+                  <ipxact:description>AI compute chiplet</ipxact:description>
+                  <ipxact:value>'h2</ipxact:value>
+                </ipxact:enumeratedValue>
+                <ipxact:enumeratedValue>
+                  <ipxact:name>ETHERNET</ipxact:name>
+                  <ipxact:description>Ethernet chiplet</ipxact:description>
+                  <ipxact:value>'h3</ipxact:value>
+                </ipxact:enumeratedValue>
+              </ipxact:enumeratedValues>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -50314,17 +50336,17 @@ reaches termination value.</ipxact:description>
 Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function
 consumes them.
 Strap assignments in this range:
-* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
-* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
+* bit 11: ADDR_SEL[3], strap pin CHIP_ID[3] - Selects the I2C/I3C fallback static address of identical chiplets
+* bit 12: ADDR_SEL[2], strap pin CHIP_ID[2] - Selects the I2C/I3C fallback static address of identical chiplets
 * bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process
 * bit 14: TEST_EN - Enable DFT test mode
-* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap
+* bit 15: ADDR_SEL[1], strap pin CHIP_ID[1] - Selects the I2C/I3C fallback static address of identical chiplets
 * bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
 * bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel
 * bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted
 * bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
 * bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
-* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
+* bit 23: ADDR_SEL[0], strap pin CHIP_ID[0] - Selects the I2C/I3C fallback static address of identical chiplets
 * bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master
 * bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>

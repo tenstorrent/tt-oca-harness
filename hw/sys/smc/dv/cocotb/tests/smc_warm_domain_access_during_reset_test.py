@@ -4,7 +4,7 @@
 
 Reproducer for #3408: the response of a read of `SCRATCH_COLD_WARM` while
 `rst_warm_smc_clk_n` is low is recorded, and every read of `SCRATCH_COLD_WARM`,
-`SCRATCH_COLD`, `CHIP_CONFIG.CHIP_ID` and `RESET_UNIT.SS_CONFIG` after the
+`SCRATCH_COLD`, `CHIP_CONFIG.CHIPLET_TYPE` and `RESET_UNIT.SS_CONFIG` after the
 release must complete.
 
 The leaf presents the in-reset AR on purpose, so its testlist entry passes

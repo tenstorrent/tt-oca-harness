@@ -711,6 +711,7 @@ module smu #(
     .l1_dcache_data_req_t(smc_l1_dcache_data_req_t),
     .l1_dcache_data_rsp_t(smc_l1_dcache_data_rsp_t),
     .EFUSE_SHIM_SIZE(CFG.SMC_EFUSE_SHIM_SIZE),
+    .CHIPLET_TYPE(CFG.SMC_CHIPLET_TYPE),
     .SUPPLEMENTARY_FUSE(CFG.SMC_SUPPLEMENTARY_FUSE)
   ) u_smc (
     .clk_smc_i                           (clk_smu_i),

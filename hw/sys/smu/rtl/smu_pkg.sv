@@ -14,9 +14,10 @@
 //
 // DefaultCfg enables every JTAG feature with one extra STAP and zero ID fields, and sets 16
 // CTPs, 8 exposed internal CT lanes, 8 exposed clock-stop requests, all lanes in wire-OR
-// mode, pipeline depths of 3, 256 SMC interrupts, two outstanding SMC AXI-Lite transactions
-// and 4-byte eFuse shim windows. It includes the SEP with a zero secure-disable token, three
-// external TRNG streams, Adams Bridge masking on and a one-cycle Adams Bridge SRAM latency.
+// mode, pipeline depths of 3, 256 SMC interrupts, two outstanding SMC AXI-Lite transactions,
+// 4-byte eFuse shim windows and SMC chiplet type 0 (memory). It includes the SEP with a zero
+// secure-disable token, three external TRNG streams, Adams Bridge masking on and a one-cycle
+// Adams Bridge SRAM latency.
 
 package smu_pkg;
 
@@ -104,6 +105,12 @@ package smu_pkg;
                                        // greater than 0 and smaller than
                                        // smc_pkg::SmcExternalWindowSize; forwarded to the
                                        // SMC EFUSE_SHIM_SIZE.
+    int unsigned SMC_CHIPLET_TYPE;     // Chiplet type the SMC reports in
+                                       // CHIP_CONFIG.CHIPLET_TYPE: 0 memory, 1 CPU, 2 AI
+                                       // compute, 3 Ethernet, others reserved. Bits 1:0 are
+                                       // the upper bits of the SMC ROM's fallback I3C and I2C
+                                       // address, so chiplet types sharing a bus must differ.
+                                       // Forwarded to the SMC CHIPLET_TYPE.
     smc_efuse_pkg::supplementary_fuse_cfg_t SMC_SUPPLEMENTARY_FUSE;  // Supplementary fuse region, '0 for none;
     // see smc_efuse_pkg::supplementary_fuse_cfg_t
     // for the constraints. Forwarded to
@@ -175,6 +182,7 @@ package smu_pkg;
       SMC_WR_PL_DEPTH: 2'h3,
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
+      SMC_CHIPLET_TYPE: 32'd0,
       SMC_SUPPLEMENTARY_FUSE: '0,
       SEP: 1'b1,
       SEP_EFUSE_SHIM_SIZE: 32'h4,
@@ -213,6 +221,7 @@ package smu_pkg;
       SMC_WR_PL_DEPTH: 2'h3,
       MAX_TRANS: 32'd2,
       SMC_EFUSE_SHIM_SIZE: 32'h4,
+      SMC_CHIPLET_TYPE: 32'd0,
       SMC_SUPPLEMENTARY_FUSE: '0,
       SEP: 1'b0,
       SEP_EFUSE_SHIM_SIZE: 32'h4,

@@ -22,8 +22,20 @@ The open HCI driver uses bits 6:0 as the static address.
 I2C controllers 0 and 1 take the low seven bits of slots 6 and 7.
 An I2C value outside `0x08` through `0x77` is replaced with `0x55`.
 
-If a selected eFuse slot is zero, the ROM forms a fallback identifier by ORing the four-bit chip ID from straps with `CHIP_CONFIG.CHIP_ID << 5`.
+A non-zero eFuse slot takes precedence over the fallback below.
+If a selected eFuse slot is zero, the ROM forms a fallback address from two values:
+
+* `CHIP_CONFIG.CHIPLET_TYPE`, the kind of chiplet the SMU is built as, its `CFG.SMC_CHIPLET_TYPE`: 0 memory, 1 CPU, 2 AI compute, 3 Ethernet, other values reserved; and
+* the four `ADDR_SEL` straps, which select the address of one die among identical dies, as the A0-An pins of an I2C device do.
+
+The seven-bit fallback address is `{CHIPLET_TYPE[1:0], 1'b0, ADDR_SEL[3:0]}`.
 The same fallback function is used for I2C and I3C slots.
+Each chiplet on a shared I2C or I3C bus that relies on the fallback needs a distinct `{CHIPLET_TYPE, ADDR_SEL}` pair.
+
+Chiplet type 0 with `ADDR_SEL` 0 through 7 gives addresses `0x00` through `0x07`.
+I2C reserves those addresses, MIPI I3C Basic v1.1.1 restricts `0x03` through `0x07`, and I3C itself uses `0x00` through `0x02`.
+An I2C channel given one of them takes `0x55` instead, as above.
+A memory chiplet whose I2C or I3C address relies on the fallback uses `ADDR_SEL` 8 through 15, or programs its eFuse identifier slots.
 
 I3C channels are started in subordinate mode.
 I2C channels are initialized in target mode.

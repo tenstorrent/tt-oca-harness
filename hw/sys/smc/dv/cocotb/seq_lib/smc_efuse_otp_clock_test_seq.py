@@ -49,9 +49,9 @@ CLOCK_GATE_CONTROL_RESET = SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT
 # values come from the generated block header (misc_wrap.h) rather than hand
 # literals, so address and value share one regenerated source.
 #
-# CHIP_ID carries an exact expectation: misc_wrap.h defines
-# CHIP_CONFIG__CHIP_ID__CHIP_ID_reset = 0x0 (chip_config.rdl ``chip_id = 0x0``).
-# No document states the chip identifier of this reference integration, so the
+# CHIPLET_TYPE carries an exact expectation: misc_wrap.h defines
+# CHIP_CONFIG__CHIPLET_TYPE__CHIPLET_TYPE_reset = 0x0 (chip_config.rdl ``chiplet_type = 0x0``).
+# No document states the chiplet type of this reference integration, so the
 # bench takes the RDL reset as the expected value, a DV-owned fact: an
 # integration that publishes another identifier fails here and is reported.
 CHIP_CONFIG_READS = [
@@ -66,9 +66,9 @@ CHIP_CONFIG_READS = [
         _chip_config_reset("VERSION_HI"),
     ),
     (
-        "CHIP_CONFIG_CHIP_ID",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR"),
-        _chip_config_reset("CHIP_ID"),
+        "CHIP_CONFIG_CHIPLET_TYPE",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIPLET_TYPE_BASE_ADDR"),
+        _chip_config_reset("CHIPLET_TYPE"),
     ),
 ]
 
@@ -100,7 +100,7 @@ class smc_efuse_otp_clock_test_seq(SmcCsrSeq):
             "CHK-EFUSE-OTP-CSR: %d SEP_IN AXI accesses completed OKAY and every "
             "one was exact-compared against a generated-map expected value "
             "(eFuse-shim probe + CLOCK_GATE_CONTROL reset default and stability "
-            "re-check + %d chip-config reads incl. CHIP_ID)",
+            "re-check + %d chip-config reads incl. CHIPLET_TYPE)",
             self.accesses,
             len(CHIP_CONFIG_READS),
         )

@@ -25,6 +25,8 @@ module smc #(
                                                   // opaque region, so this is a literal
                                                   // here and is overridden by an
                                                   // integration that models the block.
+  parameter int unsigned CHIPLET_TYPE = 0,  // Chiplet type reported in CHIP_CONFIG.CHIPLET_TYPE,
+                                            // passed to smc_peripherals.
   parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region, its
                                                                               // window at or above
                                                                               // EFUSE_SHIM_SIZE; '0 omits it.
@@ -786,9 +788,10 @@ module smc #(
   //////////////////////
 
   smc_peripherals #(
-    .MAX_TRANS              (MAX_TRANS),
-    .EFUSE_SHIM_SIZE        (EFUSE_SHIM_SIZE),
-    .SUPPLEMENTARY_FUSE           (SUPPLEMENTARY_FUSE)
+    .MAX_TRANS          (MAX_TRANS),
+    .EFUSE_SHIM_SIZE    (EFUSE_SHIM_SIZE),
+    .CHIPLET_TYPE       (CHIPLET_TYPE),
+    .SUPPLEMENTARY_FUSE (SUPPLEMENTARY_FUSE)
   ) u_smc_peripherals (
     .clk_ref_i                             (clk_ref_i),
     .clk_smc_i                             (clk_smc_i),
