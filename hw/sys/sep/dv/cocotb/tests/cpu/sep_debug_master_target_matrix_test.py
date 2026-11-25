@@ -12,7 +12,7 @@ EL2 debug module exists only in the full ``sep_cpu``:
 * Entry C (``cpu`` run mode, ``sep_debug_master_target_matrix_test``): the core
   runs a one-instruction spin loop at the boot ROM base (``jal x0, 0``, written
   into the ROM macro by backdoor before ``rst_ni`` rises). Steps 1 to 4 and 9 to
-  12 of the procedure.
+  12 of the procedure, with the debug-halt leg between steps 10 and 11.
 * Entry S (``no_cpu`` run mode on the ``default`` target,
   ``sep_debug_master_target_matrix_test_sba``, ``+sep_ext_port_responder``): the
   core is held by ``mpc_reset_run_req`` = 0 and the bench LSU master on the LSU
@@ -112,6 +112,23 @@ Checks:
                   Control: in the window with the enable at 1
                   ``dmi_uncore_en_o`` rises for a read and a write and
                   ``dmi_uncore_wr_en_o`` for the write.
+  CHK-WDT-HALT-COUNT: (entry C, debug-halt leg) with ``WDOG_CTRL`` enable and
+                  ``pause_in_sleep`` = 1, written by the debug master, and the
+                  core halted by ``dmcontrol.haltreq``, the count tap
+                  ``wdt_wdog_count_o`` advances by exactly the ``clk_wdt_i``
+                  rising edges counted at the pin between two samples taken at
+                  ``clk_wdt_i`` falling edges, HALT_TICKS apart
+                  (``hw/sys/sep/doc/watchdog.adoc:23``: the timer keeps counting
+                  while the CPU is halted in debug and ``pause_in_sleep`` has no
+                  effect; ``doc/programmer/src/sep-programming.adoc:673-675``;
+                  ``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:52``:
+                  one increment per AON clock tick). Controls: CTRL-WDT-HALT-CTRL
+                  (``WDOG_CTRL`` reads back enable and ``pause_in_sleep``, every
+                  ``sberror`` 0), CTRL-WDT-HALT (``dmstatus.allhalted`` reads 1
+                  before and after the samples and no retirement shows on the
+                  trace port between them) and CTRL-WDT-HALT-RESUME
+                  (``dmstatus.allresumeack`` reads 1 after ``resumereq`` and a
+                  retirement follows).
   CHK-DBG-RST   : (entry C) after a ``dbg_rstb_i`` pulse ``dmactive`` reads 0, a
                   retirement follows on the trace port, and the
                   ``sep_cpu_reset_n`` and ``sep_reset_n`` taps stay high from
@@ -135,6 +152,20 @@ Checks:
   CHK-DBG-ALIAS-BELOW: (entry S) the same for B - 8, just below the moved window.
                   Control of both: in the CHK-DBG-ALIAS-MOVE leg the same tap
                   pair shows a rewritten address.
+  CHK-ALIAS-OUTSIDE: (entry S) the OLD and BELOW addresses lie in 0xD000_0000
+                  to 0xFFFF_FFFF outside the window at B, so they reach no
+                  target (``hw/sys/sep/doc/cpu.adoc:68-74``; the window runs
+                  from B to 0xFFFF_FFFF, ``:59-66`` and the
+                  ``SEP_LOCAL_BASE_ADDR`` description,
+                  ``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl``):
+                  ``sberror`` is not 0 after the write and after the read,
+                  SRAM word 0 (``sram_word0_probe_o``) is unchanged over both,
+                  and the read data is not the low word of SRAM word 0. The
+                  write value differs from that low word, so a write that lands
+                  changes it. The debug system-bus error code is not stated, so
+                  only a non-zero ``sberror`` is graded. Control: the
+                  CHK-DBG-ALIAS-MOVE leg reaches the SRAM word with
+                  ``sberror`` 0 and changes it.
   CHK-DBG-POOL-RD : (entry S) one 64-bit debug-master read of the entropy-pool
                   ``STATUS`` (``hw/sys/sep/doc/entropy_pool.adoc:34``,
                   non-destructive; ``:40-41``, one 64-bit access) shows one AR at
@@ -229,9 +260,8 @@ Checks:
 The expected values are the drawn write values, the addresses of the generated
 register map and the rules of the specification; no expected value is read
 from the DUT except the independent-path reads of a live register. The
-responses of the accesses outside the moved window (OLD, BELOW) and of the
-PIC base, the hole word and the word past the secure DMA map are logged only;
-the specification states no debug-master response for them.
+responses of the PIC base, the hole word and the word past the secure DMA map
+are logged only; the specification states no debug-master response for them.
 
 FCOV: each graded instance runs in its own owner window, opened before its
 first access. The cells of the debug points and of the DMI points that the
@@ -244,9 +274,13 @@ Randomization (``SepSeededRng`` from the run seed): the order of the seven
 targets, the size order of each SRAM target, every write value (redrawn while
 it equals the value before the write), the LSU value ``new`` of each access
 (redrawn while it equals the write value in the graded bits), the set-up value
-of SRAM word 0, the moved base B (16 MiB aligned, 0xD100_0000 to 0xEF00_0000,
-so the reset alias and B - 8 are below the moved window and every moved alias
-is below 2**32) and the size order of the moved-alias leg. After the alias legs
+of SRAM word 0, the moved base B (16 MiB aligned, 0xD100_0000 to 0xFF00_0000:
+every legal base other than the reset value, ``hw/sys/sep/doc/cpu.adoc:59-66``;
+the specification states no alignment, and 16 MiB keeps the moved alias of SRAM
+word 0 inside the window, which ends at 0xFFFF_FFFF and shortens as B rises,
+while the reset alias and B - 8 stay below it), the size order of the
+moved-alias leg and, per outside access, its 32-bit write value (redrawn while
+it equals the low word of SRAM word 0). After the alias legs
 the leaf draws, in this order: the reset-controller and CSID values, the pool
 write word, the extension word and its reply and write words, the ICCM word, the DMA
 probe word,
@@ -277,7 +311,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, Timer
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_plan import DFT_GATE_BITS, shadow_addr
 from env.sep_efuse_test_lib import SepEfuseFd
@@ -302,9 +336,12 @@ from env.sep_field_compare import field_compare, lane32
 from env.sep_filter_model import FilterEntry
 from env.sep_jtag_dmi import (
     DM_DMCONTROL,
+    DM_DMSTATUS,
     DM_SBADDRESS0,
     DM_SBCS,
     DMCONTROL_DMACTIVE,
+    DMCONTROL_HALTREQ,
+    DMCONTROL_RESUMEREQ,
     IR_DMI,
     IR_WIDTH,
     PIN_MAP,
@@ -355,6 +392,17 @@ TEST = "sep_debug_master_target_matrix_test"
 _CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 _WDT = RegBlock("WDT_TIMER")
 WDT_BARK = _WDT.addr("WDOG_BARK_THOLD")
+WDT_BITE = _WDT.addr("WDOG_BITE_THOLD")
+WDT_CTRL = _WDT.addr("WDOG_CTRL")
+WDOG_CTRL_FIELDS = _WDT.mask("WDOG_CTRL")
+WDOG_EN = _WDT.field_mask("WDOG_CTRL", "enable")
+WDOG_PAUSE = _WDT.field_mask("WDOG_CTRL", "pause_in_sleep")
+# Bark and bite thresholds of the debug-halt leg: no count of the leaf reaches them.
+WDOG_FAR = 0xFFFF_FFFF
+COUNT_MASK = 0xFFFF_FFFF
+# dmstatus fields (RISC-V Debug Specification 0.13, Debug Module, dmstatus).
+DMSTATUS_ALLHALTED = 1 << 9
+DMSTATUS_ALLRESUMEACK = 1 << 17
 _HMAC = RegBlock("HMAC")
 _COLD = RegBlock("SEP_SCRATCH_COLD")
 _DMA = RegBlock("SECURE_DMA")
@@ -372,12 +420,16 @@ OLD_ALIAS = LOCAL_BASE_RESET + (SRAM_WORD - ALIAS_TARGET)
 if SRAM_WORD % 8:
     raise RuntimeError("SRAM word 0 is not 8-byte aligned")
 
-# Moved window base B (16 MiB aligned in [MOVED_LO, MOVED_HI]).
-MOVED_LO = 0xD100_0000
-MOVED_HI = 0xEF00_0000
+# Moved window base B (16 MiB aligned in [MOVED_LO, MOVED_HI]). The window runs
+# from B to WINDOW_END and does not wrap (hw/sys/sep/doc/cpu.adoc:59-66).
+WINDOW_END = 0xFFFF_FFFF
 MOVED_ALIGN = 0x0100_0000
+MOVED_LO = LOCAL_BASE_RESET + MOVED_ALIGN
+MOVED_HI = (WINDOW_END + 1) - MOVED_ALIGN
 if MOVED_LO <= OLD_ALIAS:
     raise RuntimeError("the reset alias of the SRAM word is not below the moved window")
+if SRAM_WORD - ALIAS_TARGET + 8 > MOVED_ALIGN:
+    raise RuntimeError("the moved alias of the SRAM word can fall past the window end")
 
 # The five register targets, 32-bit only: (name, address, RDL field mask of the word).
 REG_TARGETS = (
@@ -508,6 +560,9 @@ LABEL_HOLD = 2  # clk_i cycles a pass label holds its value
 # register CDC; a DMI read is two IR and two 41-bit DR scans, at least 0.4 us at the
 # shortest drawn TCK, so 1024 reads bound it with margin.
 SB_BUSY_READS = 1024
+DMSTATUS_POLLS = 64  # dmstatus reads after a haltreq or resumereq before CTRL-MISSING
+WDOG_CTRL_POLLS = 4  # WDOG_CTRL reads after its write before CTRL-MISSING
+HALT_TICKS = 16  # clk_wdt_i rising edges between the two count samples of the halt leg
 UNCORE_ADDRS = (0x50, 0x7F)  # lowest and highest 7-bit DMI address at or above 0x50
 UNCORE_FIRST = UNCORE_ADDRS[0]
 # dmi_req_probe_o (tb/sep_tb_signal_list.svh): bit 8 dmi_en, bit 7 dmi_wr_en,
@@ -1245,6 +1300,11 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             cells = dbg_sba_bits(SBA_CELL[acc.target], "id_hi_zero_r", "id_hi_zero_w")
             await self._inst_close(cells if ok else 0)
         control = int(all(self._rewritten(a) for a in moved) and bool(moved))
+        move_ok = int(
+            bool(moved)
+            and all(a.sberr == (0, 0) for a in moved)
+            and all(a.mid == a.wr and a.before != a.wr for a in moved)
+        )
         for chk, addr in (
             ("CHK-DBG-ALIAS-OLD", OLD_ALIAS),
             ("CHK-DBG-ALIAS-BELOW", base - 8),
@@ -1253,9 +1313,14 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             probe0 = self._probe(8)
             pair_mark = self._pair_mark()
             val = self.rng.getrandbits(32)
+            while val == probe0 & 0xFFFF_FFFF:
+                val = self.rng.getrandbits(32)
             werr = await self.dmi.sba_write(addr, val, size=4)
+            await ClockCycles(cocotb.top.clk_i, SETTLE)
+            probe_wr = self._probe(8)
             rd, rerr = await self.dmi.sba_read(addr, size=4)
             await ClockCycles(cocotb.top.clk_i, SETTLE)
+            probe1 = self._probe(8)
             pin, pout = self._pair_since(pair_mark)
             ok = (
                 sorted(c for c, _ in pin) == ["ar", "aw"]
@@ -1272,17 +1337,20 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 f"dbg_out={','.join(f'{c}:0x{a:08x}' for c, a in pout)} "
                 f"control_rewrite={control}",
             )
-            self.logger.info(
-                "OBS-ALIAS-OUTSIDE: %s addr=0x%08x wr=0x%08x sberror_wr=%d rd=0x%08x sberror_rd=%d "
-                "sram_word0=0x%016x->0x%016x",
-                chk,
-                addr,
-                val,
-                werr,
-                rd,
-                rerr,
-                probe0,
-                self._probe(8),
+            sram_lo = probe0 & 0xFFFF_FFFF
+            self._grade(
+                "CHK-ALIAS-OUTSIDE",
+                werr != 0
+                and rerr != 0
+                and probe_wr == probe0
+                and probe1 == probe0
+                and rd != sram_lo
+                and move_ok == 1,
+                f"leg={chk} window=0x{base:08x}..0x{WINDOW_END:08x} addr=0x{addr:08x} "
+                f"wr=0x{val:08x} sberror_wr={werr} sberror_rd={rerr} expect_sberror=nonzero "
+                f"rd=0x{rd:08x} sram_lo=0x{sram_lo:08x} "
+                f"sram_word0=0x{probe0:016x}->0x{probe_wr:016x}->0x{probe1:016x} "
+                f"control_move={move_ok}",
             )
             await self._inst_close(0)
         await self.sb_tap.stop()
@@ -2124,6 +2192,92 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         )
         return 0
 
+    async def _poll_dmstatus(self, bit: int) -> int:
+        """Read ``dmstatus`` until ``bit`` is 1, at most DMSTATUS_POLLS reads; return the last."""
+        st = 0
+        for _ in range(DMSTATUS_POLLS):
+            st = await self.dmi.dmi_read(DM_DMSTATUS)
+            if st & bit:
+                break
+        return st
+
+    async def _halt_wdt(self) -> None:
+        """Debug-halt leg (entry C, after step 10): the watchdog counts while the core is halted.
+
+        CHK-WDT-HALT-COUNT. "SEP ties ``wdt_debug_sleep_mode_i`` low, so the timer
+        keeps counting while the CPU is halted in debug and
+        ``WDOG_CTRL.pause_in_sleep`` has no effect." (``hw/sys/sep/doc/watchdog.adoc:23``;
+        also ``doc/programmer/src/sep-programming.adoc:673-675``). "Once the timer
+        is enabled, it increments on every tick of the AON clock."
+        (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:52``). The
+        debug master writes both thresholds to WDOG_FAR and ``WDOG_CTRL`` to
+        enable and ``pause_in_sleep`` = 1; a ``dmcontrol.haltreq`` halts the core.
+        The count tap ``wdt_wdog_count_o`` is sampled at a ``clk_wdt_i`` falling
+        edge, then again at the falling edge after HALT_TICKS rising edges counted
+        at the pin; the count advance equals those edges, with no allowance: the
+        count flop takes one step per rising edge and both samples fall between
+        rising edges. Controls: CTRL-WDT-HALT-CTRL (``WDOG_CTRL`` reads back the
+        written fields, every ``sberror`` 0); CTRL-WDT-HALT (``dmstatus.allhalted``
+        reads 1 before the first and after the second sample, and the trace port
+        shows no retirement between them); CTRL-WDT-HALT-RESUME (after a
+        ``resumereq``, ``dmstatus.allresumeack`` reads 1 and a retirement follows).
+        """
+        dut = cocotb.top
+        want = WDOG_EN | WDOG_PAUSE
+        werr = [
+            await self.dmi.sba_write(WDT_BARK, WDOG_FAR),
+            await self.dmi.sba_write(WDT_BITE, WDOG_FAR),
+            await self.dmi.sba_write(WDT_CTRL, want),
+        ]
+        for _ in range(WDOG_CTRL_POLLS):
+            ctrl, rerr = await self.dmi.sba_read(WDT_CTRL)
+            if ctrl & WDOG_CTRL_FIELDS == want:
+                break
+        ctrl &= WDOG_CTRL_FIELDS
+        ctrl_ok = ctrl == want and not any(werr) and rerr == 0
+        self._ctrl(
+            "WDT-HALT-CTRL",
+            ctrl_ok,
+            f"wdog_ctrl=0x{ctrl:x} expect=0x{want:x} bark_thold=0x{WDOG_FAR:x} "
+            f"bite_thold=0x{WDOG_FAR:x} sberror_wr={werr} sberror_rd={rerr}",
+        )
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE | DMCONTROL_HALTREQ)
+        st0 = await self._poll_dmstatus(DMSTATUS_ALLHALTED)
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
+        ret0 = self.retired
+        await FallingEdge(dut.clk_wdt_i)
+        c0 = self.rd(dut.wdt_wdog_count_o)
+        edges = 0
+        for _ in range(HALT_TICKS):
+            await RisingEdge(dut.clk_wdt_i)
+            edges += 1
+        await FallingEdge(dut.clk_wdt_i)
+        c1 = self.rd(dut.wdt_wdog_count_o)
+        ret1 = self.retired
+        st1 = await self.dmi.dmi_read(DM_DMSTATUS)
+        halt_ok = bool(st0 & DMSTATUS_ALLHALTED and st1 & DMSTATUS_ALLHALTED) and ret1 == ret0
+        self._ctrl(
+            "WDT-HALT",
+            halt_ok,
+            f"dmstatus_before=0x{st0:08x} dmstatus_after=0x{st1:08x} retired_between={ret1 - ret0}",
+        )
+        dcount = (c1 - c0) & COUNT_MASK
+        self._grade(
+            "CHK-WDT-HALT-COUNT",
+            ctrl_ok and halt_ok and dcount == edges,
+            f"seed={self.random_seed()} wdog_ctrl=0x{ctrl:x} count0=0x{c0:x} count1=0x{c1:x} "
+            f"dcount={dcount} clk_wdt_edges={edges} allow=0 halted={int(halt_ok)}",
+        )
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE | DMCONTROL_RESUMEREQ)
+        st2 = await self._poll_dmstatus(DMSTATUS_ALLRESUMEACK)
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
+        ret2 = await self._wait_retire(self.retired, "after resumereq")
+        self._ctrl(
+            "WDT-HALT-RESUME",
+            bool(st2 & DMSTATUS_ALLRESUMEACK),
+            f"dmstatus=0x{st2:08x} retired={ret2}",
+        )
+
     # ---------------------------------------------------------------- scenario
     async def run_scenario(self) -> None:
         dut = cocotb.top
@@ -2159,6 +2313,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 "CHK-DMI-ACTIVE",
                 "CHK-DMI-ACTIVE-IDLE",
                 "CHK-DMI-UNCORE",
+                "CHK-WDT-HALT-COUNT",
                 "CHK-DBG-RST",
             )
             entry = "C"
@@ -2188,6 +2343,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 "CHK-DBG-ALIAS-MOVE",
                 "CHK-DBG-ALIAS-OLD",
                 "CHK-DBG-ALIAS-BELOW",
+                "CHK-ALIAS-OUTSIDE",
                 "CHK-DBG-POOL-RD",
                 "CHK-DBG-POOL-WR",
                 "CHK-DBG-EXT",
@@ -2230,6 +2386,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 if ok
                 else 0
             )
+            await self._halt_wdt()
             dbg = await self._dbg_reset()
             wdt_low = await self._wdt_control()
             ok = (

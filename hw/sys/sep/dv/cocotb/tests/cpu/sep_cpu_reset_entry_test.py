@@ -108,13 +108,16 @@ Checks:
                        ``dmcontrol.ndmreset``: "except for the DM"). Reach line
                        CTRL-NDMRESET-SET: the ``ndmreset`` bit reads 1 after
                        the first write and 0 after the second.
-  OBS-NDMRESET-SCOPE : logged, not graded: for the four registers the routine
-                       arms (scratch cold and warm word 0, ``WKUP_THOLD_LO``,
-                       ``SEP_SW_DEBUG``), the value written before the pulse,
-                       which the last routine pass before it compared true, and
-                       the entry value the restarted routine reads. Open
-                       question: no specification states which SEP state
-                       outside the core the core's ``ndmreset`` resets.
+  CHK-NDMRESET-SCOPE : after the ``ndmreset`` restart, the restarted routine
+                       reads each of the four registers it arms (scratch cold
+                       and warm word 0, ``WKUP_THOLD_LO``, ``SEP_SW_DEBUG``)
+                       at the value it wrote before the pulse. ``ndmreset``
+                       resets the core complex only; the system and scratch
+                       registers and the watchdog keep their state
+                       (cpu.adoc:281-289). Control CTRL-NDMRESET-SCOPE-ARMED:
+                       the last routine pass before the pulse compared all
+                       four true, and each written value differs from the RDL
+                       reset value of its register.
   CHK-NO-EARLY-RETIRE: no trace beat while the ``sep_cpu_reset_n`` tap is low,
                        in every cold reset and every CPU reset of the leaf.
                        The ``ndmreset`` hold is not a reset of this record; it
@@ -350,12 +353,7 @@ DBG_ATTR = (
     ("CHK-DBG-AXCACHE", "cache", 4, 0b1111, 0b0000),
 )
 DBG_ATTR_CITE = "EL2 PRM core complex signals, sb_axi_aw*/sb_axi_ar* hardwired (cpu.adoc:23)"
-# The open question that OBS-NDMRESET-SCOPE logs.
-NDM_SCOPE_OPEN = (
-    "open question: no specification states which SEP state outside the core the core's "
-    "ndmreset resets (RISC-V Debug 0.13.2: every part of the system except the DM; "
-    "EL2 PRM: the hart); logged, not graded"
-)
+NDM_SCOPE_CITE = "cpu.adoc:281-289, ndmreset resets the core complex only"
 
 # The mailbox address has bit 55 clear, so the SMU path delivers it non-secure.
 FILTER_CFG_OPEN = (
@@ -1768,14 +1766,22 @@ class sep_cpu_reset_entry_test(sep_base_test):
             _WDT.reset("WKUP_THOLD_LO"),
             _CPU_CTRL.reset("SEP_SW_DEBUG"),
         )
-        self.logger.info(
-            "OBS-NDMRESET-SCOPE LOG before_pass=%s %s; %s",
-            "none" if before is None else before.val,
-            " ".join(
-                f"{n}={h(v)}->{h(a)}(rdl_reset={h(rv & 0xFFFF_FFFF)})"
-                for (n, _a, _m, v), a, rv in zip(ARMED, entry, resets)
-            ),
-            NDM_SCOPE_OPEN,
+        regs = " ".join(
+            f"{n}={h(v)}->{h(a)}(rdl_reset={h(rv & 0xFFFF_FFFF)})"
+            for (n, _a, _m, v), a, rv in zip(ARMED, entry, resets)
+        )
+        before_txt = "none" if before is None else before.val
+        armed_ok = before is not None and all(
+            v != rv & 0xFFFF_FFFF for (_n, _a, _m, v), rv in zip(ARMED, resets)
+        )
+        tag = "CTRL-NDMRESET-SCOPE-ARMED" if armed_ok else "CTRL-MISSING NDMRESET-SCOPE-ARMED"
+        self.logger.info("%s: before_pass=%s %s", tag, before_txt, regs)
+        if not armed_ok:
+            self._fail(f"{tag}: before_pass={before_txt} {regs}")
+        self._grade(
+            "CHK-NDMRESET-SCOPE",
+            marker is not None and all(a == v for (_n, _a, _m, v), a in zip(ARMED, entry)),
+            f"marker={name or 'none'} {regs} expect entry=written ({NDM_SCOPE_CITE})",
         )
 
     def _grade_dbg_attr(self) -> None:
@@ -1869,6 +1875,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-TRST-SCOPE",
             "CHK-NDMRESET-RESTART",
             "CHK-NDMRESET-DM",
+            "CHK-NDMRESET-SCOPE",
             "CHK-TDOEN-SHIFT",
             "CHK-DBG-AXBURST",
             "CHK-DBG-AXLOCK",

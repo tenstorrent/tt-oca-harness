@@ -56,15 +56,15 @@ Checks:
                       _BREADTH_FLOOR WREN and program transactions, one program
                       with the case's opcode at each random addr, and its data
                       and the BFM memory equal the SRAM source words read in
-                      the leaf's in-word byte order.
-    CHK-SPI-SB-TX   : per case, the SRAM source words read in the leaf's in-word
-                      byte order equal the monitor's wire decode at the case's
+                      the ByteOrder = 1 order.
+    CHK-SPI-SB-TX   : per case, the SRAM source words read in the ByteOrder = 1
+                      order equal the monitor's wire decode at the case's
                       lane width and the flash record's ``data_in``.
   In-word byte order (OpenTitan SPI_HOST "Input and Output Byte Ordering"):
-    every TXDATA word of the leaf goes on the wire in one of the two in-word
-    orders, the same order for every word (``SepSpiByteOrder`` of
-    ``env/sep_spi_lane_responder.py``). Which order is not graded: one
-    INFO-SPI-BYTEORDER line per leaf logs it. The firmware read-back
+    SEP sets ByteOrder = 1 (``spi_controller.rdl:124-127``), so every TXDATA
+    word goes on the wire bits 7:0 first (``SepSpiByteOrder`` of
+    ``env/sep_spi_lane_responder.py``). One CHK-SPI-BYTEORDER line per leaf
+    grades the word counts. The firmware read-back
     (CHK-DMA-TX) writes and reads through the same host and does not depend
     on the order.
     INFO-MULTICHUNK  : how the TX watermark paced each DMA transfer, logged and
@@ -176,7 +176,7 @@ class SepSpiDmaTxCase:
         """The data bytes whose ``pack_tx_words`` packing is the SRAM words.
 
         Least significant byte of each word first; ``SepSpiByteOrder.tx_bytes``
-        turns them into the wire bytes of the leaf's in-word order.
+        turns them into the wire bytes of the ByteOrder = 1 order.
         """
         return b"".join(w.to_bytes(4, "little") for w in self.data)
 
@@ -241,7 +241,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
     """Each DMA-fed PAGE PROGRAM lands in the flash BFM, paced by the TX watermark."""
 
     build_env = False
-    required_evidence = ("CHK-FW-CONSOLE",)
+    required_evidence = ("CHK-FW-CONSOLE", "CHK-SPI-BYTEORDER")
 
     def build_phase(self) -> None:
         super().build_phase()

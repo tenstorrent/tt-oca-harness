@@ -52,6 +52,15 @@ records, the trace events, the pulse counts and the field record:
 * CHK-TCM-UE      the DCCM load traps with mcause 5, the byte store with mcause
                   7, both with mscause 1 and one trace exception event; the clean
                   neighbour of each returns its data or lands its byte.
+* CHK-RAS-ICCM_ECC_UE-TRAP
+                  the fetch of the ICCM word with the double-bit flip takes one
+                  trap, with mcause 0x1 (instruction access fault) and mscause
+                  1, and no NMI; the ``iccm_ue`` window holds one trace
+                  exception event with ecause 1
+                  (``hw/sys/sep/doc/interrupts.adoc:378-389`` and ``:405-406``;
+                  ``sep_cpu_ctrl.rdl``, ``SEP_NMI_VEC``: an uncorrectable ICCM
+                  fetch error raises an instruction access fault through
+                  mtvec, not the NMI).
 * CHK-TCM-NMI     the vector-table read of source 2 ends in the NMI at the
                   programmed SEP_NMI_VEC with mcause 0xF000_1000.
 * CHK-TCM-DBG     each access pulses its own debug-bus bit (ICCM single 367,
@@ -90,10 +99,7 @@ wrong),
 ``INFO-TCM-DBG366-WIDTHS`` (the widths of the pulses outside that window, which no
 check of the leaf grades),
 ``INFO-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
-each window), ``INFO-RAS-<FIELD>-COUNT`` (rises per window) and
-``OBS-RAS-ICCM_ECC_UE-TRAP`` (the trap or NMI of the uncorrectable fetch,
-which the interrupt chapter and the ``SEP_NMI_VEC`` register text state
-differently).
+each window) and ``INFO-RAS-<FIELD>-COUNT`` (rises per window).
 Expected values come from the cited interrupt chapter, the draws and the image
 layout (the firmware symbol listing), never from a DUT read. cpu run mode,
 ``+skip_fuse_sense``, Verilator and VCS.
@@ -167,6 +173,7 @@ IUE_WORD = 0xE1F0_0037
 # hw/sys/sep/doc/interrupts.adoc: MCEIP cause, uncorrectable traps, NMI cause.
 MCAUSE_MCEIP = 0x8000_001E
 MCAUSE_EXT = 0x8000_000B
+MCAUSE_FETCH_FAULT = 1
 MCAUSE_LOAD_FAULT = 5
 MCAUSE_STORE_FAULT = 7
 MSCAUSE_ECC = 1
@@ -376,6 +383,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         "CHK-TCM-CLAMP",
         "CHK-TCM-UE",
         "CHK-TCM-NMI",
+        "CHK-RAS-ICCM_ECC_UE-TRAP",
         "CHK-TCM-DBG",
         "CHK-TCM-DBG366",
         "CHK-TCM-NO-PIC",
@@ -915,6 +923,41 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             n += 1
         return n
 
+    def _chk_iue(self) -> int:
+        """CHK-RAS-ICCM_ECC_UE-TRAP: the uncorrectable ICCM fetch traps through mtvec."""
+        iue = self._recs("IUE")
+        traps = self._traps("iccm_ue")
+        exc = [r for r in self._trace_in(self._window("iccm_ue")) if r[3] and not r[4]]
+        kv = iue[0].kv if len(iue) == 1 else {}
+        body = (
+            f"iue_record={iue[0].text if len(iue) == 1 else f'{len(iue)} lines'} traps="
+            + (
+                ",".join(
+                    f"mcause=0x{int(t['mcause']):08x}/mscause=0x{int(t['mscause']):x}"
+                    f"/mepc=0x{int(t['mepc']):08x}"
+                    for t in traps
+                )
+                or "none"
+            )
+            + f" trace_exceptions={len(exc)} trace_ecause="
+            + (",".join(str(r[5]) for r in exc) or "none")
+            + f" expect traps=1 mcause=0x{MCAUSE_FETCH_FAULT:08x} mscause=0x{MSCAUSE_ECC:x} nmis=0"
+        )
+        ok = (
+            bool(kv)
+            and int(kv["traps"]) == 1
+            and int(kv["nmis"]) == 0
+            and len(traps) == 1
+            and int(traps[0]["mcause"]) == MCAUSE_FETCH_FAULT
+            and int(traps[0]["mscause"]) == MSCAUSE_ECC
+            and len(exc) == 1
+            and exc[0][5] == MCAUSE_FETCH_FAULT
+        )
+        if not ok:
+            raise AssertionError(f"CHK-RAS-ICCM_ECC_UE-TRAP FAIL: {body}")
+        self.logger.info("CHK-RAS-ICCM_ECC_UE-TRAP PASS: %s", body)
+        return 1
+
     def _chk_nmi(self, sy: dict[str, int]) -> int:
         vec = sy["_nmi_handler"]
         rec = self._recs("NMI")
@@ -1190,16 +1233,6 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 wider=[f"{r}:{w}" for r, w in wide[:6]] or "none",
                 high_clocks=self.ras.high_clocks_since(rel, fld),
             )
-        iue = self._recs("IUE")
-        traps = self._traps("iccm_ue")
-        self.ras_chk.obs(
-            "RAS-ICCM_ECC_UE-TRAP",
-            iue_record=iue[0].text if iue else "missing",
-            traps=[
-                f"mcause=0x{int(t['mcause']):08x}/mscause=0x{int(t['mscause']):x}" for t in traps
-            ]
-            or "none",
-        )
 
     # ---- stimulus ----
     def _stage(self, cfg: TcmCfg, sy: dict[str, int]) -> str:
@@ -1315,6 +1348,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         n = self._chk_clamp()
         n += self._chk_ce_silent()
         n += self._chk_ue()
+        n += self._chk_iue()
         n += self._chk_nmi(sy)
         n += self._chk_dbg()
         n += self._chk_dbg366()

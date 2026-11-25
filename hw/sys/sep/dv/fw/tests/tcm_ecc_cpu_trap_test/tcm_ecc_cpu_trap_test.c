@@ -549,11 +549,10 @@ static void iue_nmi_h(void) {
     CSR_WRITE(mepc, (uint32_t)(uintptr_t)iccm_ue_resume);
 }
 
-// Uncorrectable ICCM fetch. The interrupt chapter and the SEP_NMI_VEC register
-// text state different traps for it, so the leg takes either one: the trap
-// handler resumes at mepc + 4 (iccm_ue_resume) and the NMI handler at
-// iccm_ue_resume. The IUE record logs which one came; the host grades the
-// sep_ras_o field, not the trap.
+// Uncorrectable ICCM fetch: an instruction access fault through mtvec, not the
+// NMI. The trap handler resumes at mepc + 4 (iccm_ue_resume). The NMI handler
+// counts an NMI and also resumes at iccm_ue_resume, so the IUE record shows a
+// wrong NMI instead of a hang.
 static void iccm_ue_leg(void) {
     rec_mark(1, "iccm_ue");
     nmi_register_handler(iue_nmi_h);
