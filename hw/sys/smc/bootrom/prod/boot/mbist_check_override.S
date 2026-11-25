@@ -21,7 +21,8 @@
  * No stack operations allowed - uses only registers
  *
  * Input: None
- * Output: Does not return if MBIST failed. Loops in wfi if failure detected.
+ * Output: Records the MBIST result in scratch 15 and returns, except after a failure
+ *         or abort with OTP SMC_CONFIG bit 15 (dft_ignore_error) clear, which loops in wfi.
  * Clobbers: t0, t1, t2, t3
  * Preserves: All other registers including ra
  */
@@ -77,37 +78,31 @@ mbist_check_complete:
     ret
 
 mbist_timeout:
-    /* MBIST aborted due to timeout - set scratchpad and halt */
+    /* MBIST aborted due to timeout - record the abort code */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_TIMEOUT_VAL
     sd      t1, 0(t0)
-    j       mbist_halt_cpu
+    j       mbist_check_ignore_error
 
 mbist_failed:
+    /* MBIST reported failure - record the failure code */
+    li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
+    li      t1, MBIST_STATUS_FAILED_VAL
+    sd      t1, 0(t0)
+
+mbist_check_ignore_error:
     /*
-     * MBIST reported failure - check OTP SMC_CONFIG bit 15 (MBIST ignore error flag)
+     * Check OTP SMC_CONFIG bit 15 (DFT ignore error flag).
      * Hardware bug workaround: If OTP SMC_CONFIG bit 15 is set, mem_repair/mbist
-     * can report false errors. Ignore the error and continue booting.
+     * can report false errors. Keep the recorded code and continue booting.
      */
     li      t0, SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL                /* SMC_CONFIG eFuse register address */
     ld      t1, 0(t0)                                                /* Read SMC_CONFIG register */
     li      t2, SMC_EFUSE_SMC_CONFIG_DFT_IGNORE_ERROR_MASK_VAL       /* 0x8000 exceeds andi immediate range */
     and     t1, t1, t2                                               /* Check bit 15 (DFT ignore) */
-    bnez    t1, mbist_error_ignored                                  /* If bit 15 set, ignore error */
+    beqz    t1, mbist_halt_cpu                                       /* Bit 15 clear - halt */
 
-    /* Bit 15 not set - treat as real failure and halt */
-    li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
-    li      t1, MBIST_STATUS_FAILED_VAL
-    sd      t1, 0(t0)
-    j       mbist_halt_cpu
-
-mbist_error_ignored:
-    /* OTP SMC_CONFIG bit 15 is set - ignore MBIST error and continue boot */
-    li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
-    li      t1, MBIST_STATUS_FAILED_VAL     /* Report actual failure status */
-    sd      t1, 0(t0)
-
-    /* Restore return address and continue normal boot */
+    /* Bit 15 set - restore return address and continue normal boot */
     mv      ra, t3
     ret
 

@@ -194,9 +194,9 @@ outbound path drives on `smu_axi_out`.
 [cols="2,3,1,1,2",options="header"]
 |===
 |Subsystem |Path |Source ID (AxUSER[3:0]) |Value |NS (AxPROT[1])
-|SMC |Direct path |`SMC_ID` |0x3 |Initiator's
-|SMC |M-mode remap window, for another processor's machine-mode firmware |`MMODE_ID` |0xC |Initiator's
-|SMC |Xvisor remap window, for another processor's hypervisor and guests |`OTHER_ID` |0x0 |Initiator's
+|SMC |Direct path |`SMC_ID` |0x3 |Inverse of address bit 55
+|SMC |M-mode remap window, for another processor's machine-mode firmware |`MMODE_ID` |0xC |Inverse of bit 55 of the remapped address
+|SMC |Xvisor remap window, for another processor's hypervisor and guests |`OTHER_ID` |0x0 |1
 |SEP |SMU aperture, or an address at or above `0x1_0000_0000`, from any SEP master |SEP |0xF |Inverse of address bit 55
 |SEP |AP region, through the AP-controlled remapper |`OTHERS` |0x0 |1
 |SEP |STEE region, through the STEE-controlled remapper |`OTHERS` |0x0 |Inverse of bit 55 of the remapped address
@@ -396,7 +396,7 @@ Type parameters are set internally based on SMC package types.
 |`XTRIG_NUM_CTP` |16 |CFG |Yes |External CTP count
 |`XTRIG_NUM_INT_CT` |8 |CFG + `XtrigSmcIntCtLanes` |Yes |SMU-exposed count; DTP adds the SMC-reserved lanes
 |`XTRIG_NUM_CLK_STOP_REQ` |8 |CFG + `XtrigSmcClkStopLanes` |Yes |SMU-exposed count; DTP adds the SMC-reserved lane
-|`XTRIG_INT_CT_MODE` |32 bits, low 8 consumed |DTP width |Yes |SMC-reserved DTP mode bits are 0 (pulse-sync)
+|`XTRIG_INT_CT_MODE` |32 lanes of `ctp_int_cfg_t`, low 8 consumed, all `CtpIntCfgDefault` |DTP width |Yes |Per lane, the mode (wire-OR, point-to-point, or toggle) and `stretch_mult`; the SMC-reserved DTP lanes are wire-OR with the default stretch
 |===
 
 The SMU remaps DTP internal-CT lanes above the SMC reservation onto the
@@ -665,12 +665,36 @@ with DECERR to all transactions.
 The low `smu_pkg::XtrigSmcIntCtLanes` DTP internal-CT lanes are reserved for
 SMC (both bits of `xtrigger_ss_o`). The SMU exposes the remaining DTP lanes, so
 the SMU `XTRIG_NUM_INT_CT` field is that many less than DTP's. The SMC uses
-pulse-synchronization mode, so ack signals for the reserved lanes are unused:
-the DTP `xtrig_ctm_src_ack_i` reserved slice is tied to `'0` and
-`xtrig_ctm_dst_ack_o` reserved bits are left unconnected. The usage of ack
-signals depends on the `XTRIG_INT_CT_MODE` parameter: when a mode bit is 0
-(pulse synchronization), the corresponding ack is unused; when 1 (req/ack
-handshaking), the ack must be connected to the cross trigger endpoint.
+wire-OR mode, so ack signals for the reserved lanes are unused: the DTP
+`xtrig_ctm_src_ack_i` reserved slice is tied to `'0` and `xtrig_ctm_dst_ack_o`
+reserved bits are left unconnected.
+
+Each exposed lane _i_ takes its configuration from `CFG.XTRIG_INT_CT_MODE[i]`, a
+`cross_trigger_port_pkg::ctp_int_cfg_t`. Its `mode` field selects the protocol
+on the lane, and its `stretch_mult` field sets the pulse stretch in wire-OR mode
+and the hold in toggle mode:
+
+* `MODE_WIRE_OR`: `xtrig_ctm_src_req_o[i]` carries a pulse of `stretch_mult + 1`
+  cycles per trigger, and the rising edge of `xtrig_ctm_dst_req_i[i]` is a
+  trigger. The acks are unused.
+* `MODE_POINT_TO_POINT`: a four-phase request/acknowledge handshake. The acks
+  must be connected to the cross trigger endpoint.
+* `MODE_TOGGLE`: each trigger is one level change of `xtrig_ctm_src_req_o[i]`,
+  and each level change of `xtrig_ctm_dst_req_i[i]` is one trigger. The acks are
+  unused.
+
+A toggle lane has no back-pressure, so the endpoint must obey these rules:
+
+* The endpoint holds each level on `xtrig_ctm_dst_req_i[i]` for a minimum of two
+  `clk_smu_i` cycles.
+* The DTP holds each level on `xtrig_ctm_src_req_o[i]` for a minimum of
+  `stretch_mult + 2` `clk_smu_i` cycles, and discards a trigger that arrives
+  during that hold. Set `stretch_mult` so that the hold is at least two cycles
+  of the endpoint's clock.
+* A reset of only one end of the lane while its output is high changes the
+  level that the other end sees, and the other end receives one trigger. Reset
+  the SMU and the endpoint together, or keep every cross trigger matrix route
+  through the lane closed until both ends are out of reset.
 
 === Clock Stop Request Interface
 
@@ -1099,14 +1123,13 @@ depends on `CFG.SEP`.
 |===
 |Module |Port |Tie-off Value |Reason
 
-|DTP |`xtrig_ctm_src_ack_i[XtrigSmcIntCtLanes-1:0]` |`'0` |SMC uses pulse-sync mode
+|DTP |`xtrig_ctm_src_ack_i[XtrigSmcIntCtLanes-1:0]` |`'0` |SMC lanes use wire-OR mode
 |===
 
 The remaining DTP `xtrig_ctm_src_ack_i` lanes (exposed as SMU
 `xtrig_ctm_src_ack_i[XTRIG_NUM_INT_CT-1:0]`) are ported out through the SMU.
-The integrator should tie off to `'0` when using pulse-sync mode
-(`XTRIG_INT_CT_MODE` bit = 0), or connect to actual ack signals when using
-req/ack mode (bit = 1).
+The integrator should tie off to `'0` on a wire-OR or toggle lane, or connect
+to actual ack signals on a point-to-point lane.
 
 == SMU Port Interface
 
