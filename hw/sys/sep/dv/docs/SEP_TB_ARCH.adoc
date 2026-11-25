@@ -1886,13 +1886,14 @@ paths and from the secure DMA; the initiator's AxUSER on the SMC path) does
 not use this record.
 
 |Approved against
-|`hw/sys/smc/doc/assets/smc-traffic-filters.svg` at commit `566ac589f`,
-`hw/ip/axi_filter/doc/index.adoc` at commit `ebd7951f8` and
-`hw/sys/sep/doc/fabric.adoc` at commit `ea25c9b44`. Recorded 2026-10-19; the
-dated record is the approval.
+|`hw/sys/smc/doc/assets/smc-traffic-filters.svg` with blob `05a7a2ac6`,
+`hw/ip/axi_filter/doc/index.adoc` with blob `b5ec812dd` and
+`hw/sys/sep/doc/fabric.adoc` with blob `170262961` (`git hash-object`, which a
+squash merge does not change). Reviewed 2026-11-25; the approver is named in
+the pull request that changed this row.
 
 |Review and expiry
-|Review again when a later commit changes any of the three files above.
+|Review again when the blob of any of the three files above changes.
 Remove the record, and grade the source ID on the bits that the sentence
 names, when a TRM sentence (`.adoc` or RDL) states the carrier of the source
 ID.
@@ -1919,9 +1920,9 @@ then `grep -n -e 'CTRL-FULL-CPU:' -e 'CTRL-PIN-WALK:'` in any log of `sep_test_e
 |`181 3 1`, `CTRL-FULL-CPU: required=1 full_cpu=1` and `CTRL-PIN-WALK: graded=184 inventory=184 missing=0 class_mismatch=0`.
 
 |Source ID carrier
-|`for f in hw/sys/smc/doc/assets/smc-traffic-filters.svg hw/ip/axi_filter/doc/index.adoc hw/sys/sep/doc/fabric.adoc; do git log -1 --format=%h -- $f; done`,
+|`for f in hw/sys/smc/doc/assets/smc-traffic-filters.svg hw/ip/axi_filter/doc/index.adoc hw/sys/sep/doc/fabric.adoc; do git hash-object $f | cut -c1-9; done`,
 then `grep -n 'AxUSER\[3:0\]' hw/sys/smc/doc/assets/smc-traffic-filters.svg`
-|`566ac589f`, `ebd7951f8` and `ea25c9b44` (a different hash is the review
+|`05a7a2ac6`, `b5ec812dd` and `170262961` (a different hash is the review
 trigger of the entry), and the `axi_filter_wrap` description names
 AxUSER[3:0].
 |===
