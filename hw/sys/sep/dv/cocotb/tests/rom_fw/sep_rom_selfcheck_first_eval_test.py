@@ -8,22 +8,15 @@ The contract, stimulus and checks are in sep_rom_selfcheck_patch_base.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_rv32_asm as asm
 from rom_fw.sep_rom_gate_ledger_base import CHECKS
 from rom_fw.sep_rom_selfcheck_patch_base import sep_rom_selfcheck_patch_base
-from rom_fw.sep_rom_selfcheck_reverify_base import lock_fault_edits
-
-INSN_LI_A0_1 = asm.addi(asm.A0, asm.ZERO, 1)
-INSN_RET = asm.jalr(asm.ZERO, asm.RA, 0)
+from rom_fw.sep_rom_selfcheck_reverify_base import force_true, lock_fault_edits
 
 
 @pyuvm.test()
 class sep_rom_selfcheck_first_eval_test(sep_rom_selfcheck_patch_base):
     def edits(self) -> dict[int, int]:
-        entry = self.img.syms["check_locks_first"]
-        edits = lock_fault_edits(self.img)
-        edits.update({entry: INSN_LI_A0_1, entry + 4: INSN_RET})
-        return edits
+        return lock_fault_edits(self.img) | force_true(self.img, "check_locks_first")
 
     def grade(self, obs, chk) -> None:
         self.grade_patched(obs, chk)

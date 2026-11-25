@@ -4662,6 +4662,22 @@ args = [
 ]
 
 [[tests]]
+# HOFF-050: with the recorded manifest address off the SRAM base, the first locus evaluation is
+# forced to pass; the second locus evaluation halts with 0xF004.
+name = "sep_rom_selfcheck_locus_first_eval_test"
+module = "rom_fw.sep_rom_selfcheck_locus_first_eval_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "tcm", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
 # HOFF-040: a jump over the whole payload-hash acceptance block reaches BL1 on a ROM without the
 # gate ledger and halts from the self-check with 0xF004 on this ROM.
 name = "sep_rom_gate_hash_bypass_test"

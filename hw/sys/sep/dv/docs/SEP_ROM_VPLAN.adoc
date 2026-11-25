@@ -21,7 +21,7 @@
 |Register sources |`hw/sys/sep/regs/` (SystemRDL) and the generated export `hw/sys/sep/regs/gen/`
 |Testbench architecture |<<sep-dv-testbench-architecture,SEP_TB_ARCH>>, Boot ROM Firmware Builds (<<_boot_rom_firmware_builds>>)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep --items rom_fw`)
-|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 272 tests
+|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 273 tests
 |===
 
 This plan is the technical contract for the Boot ROM firmware tests. It states
@@ -257,7 +257,7 @@ the jump into BL1, as `rom.adoc` defines it, on the `rom_boot` target.
 |===
 |Group |Role
 |`rom_fw_smoke` |Bring-up of the four boot paths and the hand-off magic: `sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` (`expected_count = 5`)
-|`rom_fw` |The credit denominator of this plan: 272 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
+|`rom_fw` |The credit denominator of this plan: 273 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
 |`all`, `cpu`, `cpu_stub` |Not members. They belong to <<sep-dv-verification-plan>>
 |===
 
@@ -374,7 +374,7 @@ those tests.
 |`SEP-ROM-ATT-060` |Self-hash verified by recompute before enrollment |<<sep-rom-vplan-smc-sram-boot>>, <<sep-rom-vplan-stall-timeout>> |2
 |`SEP-ROM-HOFF-030` |Fuse-secret locks set and independently re-verified |<<sep-rom-vplan-fuse-lock>> |4
 |`SEP-ROM-HOFF-040` |Gate ledger: full set + complement agree |<<sep-rom-vplan-spec-graded>> |10
-|`SEP-ROM-HOFF-050` |Doubled invariants, fail-fast, counter + tally |<<sep-rom-vplan-spec-graded>> |8
+|`SEP-ROM-HOFF-050` |Doubled invariants, fail-fast, counter + tally |<<sep-rom-vplan-spec-graded>> |9
 |`SEP-ROM-HOFF-060` |PMP release only after self-check, last write |<<sep-rom-vplan-spec-graded>> |2
 |`SEP-ROM-HOFF-070` |Jump orders memory: mepc, fence.i, fence, mret |<<sep-rom-vplan-spec-graded>> |1
 |`SEP-ROM-RETRY-010` |Two slots, rotate-aware order; one attempt for SMC paths |<<sep-rom-vplan-secondary-chiplet>>, <<sep-rom-vplan-secondary-secure>>, <<sep-rom-vplan-spi-slot-detect>>, <<sep-rom-vplan-primary-fail-backup>>, <<sep-rom-vplan-backup-manifest-fail>>, <<sep-rom-vplan-rom-key-revoked-primary>>, <<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>>, <<sep-rom-vplan-backup-toc>>, <<sep-rom-vplan-bl1-image>> , <<sep-rom-vplan-spec-graded>> |39
@@ -730,6 +730,7 @@ holds the stimulus, the checkers and the requirements.
 |`sep_rom_selfcheck_iter_skip_test` |<<sep-rom-vplan-spec-graded>> |one iteration's evaluation and counter increment skipped: 0xF004 from its counter compare.
 |`sep_rom_selfcheck_early_exit_test` |<<sep-rom-vplan-spec-graded>> |check loop left after one iteration: 0xF004 from the final tally.
 |`sep_rom_selfcheck_first_eval_test` |<<sep-rom-vplan-spec-graded>> |locks unset and the first lock evaluation forced true: 0xF004 from the second lock evaluation.
+|`sep_rom_selfcheck_locus_first_eval_test` |<<sep-rom-vplan-spec-graded>> |recorded manifest address moved off the SRAM base and the first locus evaluation forced true: 0xF004 from the second locus evaluation.
 |`sep_rom_gate_hash_bypass_test` |<<sep-rom-vplan-spec-graded>> |jump over the whole payload-hash acceptance block: 0xF004 from the ledger evaluation. On a ROM without the ledger the same fault reaches BL1 and this leaf fails; that run is the RED of the ledger, not a regression entry.
 |===
 
@@ -3158,7 +3159,7 @@ PASS record of its own.
 [[sep-rom-vplan-spec-graded]]
 ===== Leaves graded on `rom.adoc` shall sentences
 
-*Tests:* 56 entries from 42 leaf modules, all in `rom_fw.toml` and in the `rom_fw` group.
+*Tests:* 57 entries from 43 leaf modules, all in `rom_fw.toml` and in the `rom_fw` group.
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_observe_base.py` for the leaves that start from the common bring-up. The other leaves extend an existing test, keep all of its checks and add their own; the Stimulus cell names the parent.
 
@@ -3237,6 +3238,7 @@ Where the specification contradicts itself or leaves a value undefined, the leaf
 |`sep_rom_selfcheck_iter_skip_test` |Gate-ledger base (`sep_rom_gate_ledger_base.py`, on the observer base); TEST_DEV; SMC-SRAM boot. DV shortcut: the ROM bit-flip hook replaces the first instruction of the check loop with a jump to the counter compare after DMA_INIT_OK. |The compare follows the jump; no check, counter store or tally retires; 0xF004 from the counter compare. |`CHK-FAULT-TOOK-EFFECT`, `CHK-SKIPPED-EVAL`, the halt checks |`SEP-ROM-HOFF-050`
 |`sep_rom_selfcheck_early_exit_test` |Gate-ledger base (`sep_rom_gate_ledger_base.py`, on the observer base); TEST_DEV; SMC-SRAM boot. DV shortcut: the ROM bit-flip hook replaces the loop back-edge with a nop after DMA_INIT_OK. |Only the ledger check runs and its counter compare passes; 0xF004 from a tally compare. |`CHK-FAULT-TOOK-EFFECT`, `CHK-COMPLETED-ITERATIONS-PASSED`, the halt checks |`SEP-ROM-HOFF-050`
 |`sep_rom_selfcheck_first_eval_test` |Gate-ledger base (`sep_rom_gate_ledger_base.py`, on the observer base); TEST_DEV; SMC-SRAM boot. DV shortcut: the ROM bit-flip hook replaces the lock fault of `sep_rom_selfcheck_locks_unset_test` and makes check_locks_first return true after DMA_INIT_OK. |All five checks run; 0xF004 from the second lock evaluation. |`CHK-FAULT-TOOK-EFFECT`, `CTRL-LOCKS-UNSET`, `CHK-FIRST-EVAL-FORCED`, the halt checks |`SEP-ROM-HOFF-050`
+|`sep_rom_selfcheck_locus_first_eval_test` |Gate-ledger base (`sep_rom_gate_ledger_base.py`, on the observer base); TEST_DEV; SMC-SRAM boot. DV shortcut: the address flip of `sep_rom_selfcheck_locus_addr_test`, then the ROM bit-flip hook makes check_locus_first return true. |Read-back 0x1000_0010; all four stamps retired; only the ledger and both locus checks run; 0xF004 from the second locus evaluation. |`CHK-FAULT-TOOK-EFFECT`, `CHK-FORCED-RETIRED`, `CHK-ALL-STAMPS`, `CHK-FIRST-EVAL-FORCED`, the halt checks |`SEP-ROM-HOFF-050`
 |`sep_rom_gate_hash_bypass_test` |Gate-ledger base (`sep_rom_gate_ledger_base.py`, on the observer base); TEST_DEV; SMC-SRAM boot. DV shortcut: the ROM bit-flip hook replaces the instruction after the START_PAYLOAD_VALIDATION status store with a jump past the PAYLOAD_OK print after DMA_INIT_OK. |No PAYLOAD_VALIDATED or PAYLOAD_OK; HASH missing; 0xF004 from the ledger evaluation. On a ROM without the ledger the same fault reaches BL1 and this leaf fails (the RED of the ledger, not a regression entry). |`CHK-HASH-BLOCK-SKIPPED`, `CHK-HASH-UNSTAMPED`, the halt checks |`SEP-ROM-HOFF-040`
 |===
 
@@ -3359,6 +3361,7 @@ Where the specification contradicts itself or leaves a value undefined, the leaf
 |`sep_rom_selfcheck_iter_skip_test` |`CHK-SKIPPED-EVAL` |The next watched retirement after the jump is the counter compare; no check, counter store or tally retires. Spec: "an independent iteration counter is confirmed to equal `i+1` on every iteration".
 |`sep_rom_selfcheck_early_exit_test` |`CHK-COMPLETED-ITERATIONS-PASSED` |Only the ledger check ran and its counter compare passed. Spec: "a final tally re-confirms both counters equal the number of checks".
 |`sep_rom_selfcheck_first_eval_test` |`CHK-FIRST-EVAL-FORCED` |All five checks ran, so the forced first lock evaluation returned true. Spec: "twice each over independently evaluated (optimizer-opaque) operands".
+|`sep_rom_selfcheck_locus_first_eval_test` |`CHK-FIRST-EVAL-FORCED` |Exactly the ledger check and both locus checks ran, so the forced first locus evaluation returned true and the second halted. Spec: "twice each over independently evaluated (optimizer-opaque) operands".
 |`sep_rom_gate_hash_bypass_test` |`CHK-HASH-BLOCK-SKIPPED` |The jump retired after the START_PAYLOAD_VALIDATION word and its target is the next watched retirement; no PAYLOAD_VALIDATED word or PAYLOAD_OK line while later console lines appear.
 |===
 
@@ -3369,7 +3372,7 @@ Where the specification contradicts itself or leaves a value undefined, the leaf
 |===
 |Group |Tests |Purpose
 |`rom_fw_smoke` |`sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` |Bring-up of the SMC-SRAM, OpenTitan SPI DMA and PIO, and signed boot paths, and of the hand-off magic. Run it first after a ROM or toolchain change
-|`rom_fw` |All 272 entries of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
+|`rom_fw` |All 273 entries of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
 |===
 
 [source,bash]
@@ -3418,7 +3421,7 @@ The Boot ROM has no formal flow.
 [cols="4,1,4",options="header"]
 |===
 |Item |State |Note
-|Every test in the summary has a procedure group |Yes |272 tests in 40 groups
+|Every test in the summary has a procedure group |Yes |273 tests in 40 groups
 |Every documented test exists in `rom_fw.toml` and in the `rom_fw` group |Yes |Checked against both
 |Every test has at least one checker with a PASS record |Yes |Static check of the test source: 0 tests without one
 |`rom_fw` has an `expected_count` |No |`rom_fw_smoke` has one. `rom_fw` does not, so a dropped entry does not fail the testlist load

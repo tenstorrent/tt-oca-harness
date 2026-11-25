@@ -24,16 +24,20 @@ re-verification can halt the boot.
 * Locks: after DMA_INIT_OK the [S25] lock write is replaced by a nop and the [S26] branch on
   check_fuse_secrets_locked() by an unconditional jump to its pass path; the [S26] re-read
   still runs and prints FUSE_SECRETS_NOT_LOCKED, and the FUSELOCK stamp retires.
+* Locus first evaluation: the address flip, then check_locus_first returns true at once, so
+  only the second locus evaluation can halt.
 
 Checks: CHK-FAULT-TOOK-EFFECT (the locus held before the flip, the DCCM read-back is the
 recorded value with the flipped bits, and only the faulted leg of the locus rule now fails; or
 the replaced instructions retired and [S26] printed
 FUSE_SECRETS_NOT_LOCKED), CHK-ALL-STAMPS (all four gates' stores retired after the reset), and
-the halt contract with the halt at the first evaluation of the faulted check.
+the halt contract with the halt at the first evaluation of the faulted check (the second, when
+the first is forced true).
 """
 
 from __future__ import annotations
 
+from env import sep_rv32_asm as asm
 from env.sep_rv32_trace_decode import OP_LOAD, opcode
 from rom_fw.sep_rom_gate_ledger_base import (
     AFTER_S23_LINE,
@@ -50,6 +54,8 @@ SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 # STATUS_ENCODE(ERROR, BL0 1, FUSE_SECRETS_NOT_LOCKED): the [S26] failure report.
 STATUS_FUSE_NOT_LOCKED = 0x0F01_021D
+INSN_LI_A0_1 = asm.addi(asm.A0, asm.ZERO, 1)
+INSN_RET = asm.jalr(asm.ZERO, asm.RA, 0)
 
 
 def manifest_addr_field(rom) -> int:
@@ -69,6 +75,7 @@ class sep_rom_locus_flip_base(sep_rom_gate_ledger_base):
 
     data_mask = 0
     breaks_addr = False
+    halt_check = "check_locus_first"
 
     def target(self) -> int:
         raise NotImplementedError
@@ -112,7 +119,13 @@ class sep_rom_locus_flip_base(sep_rom_gate_ledger_base):
         reset_t = self.last_reset_t(obs)
         stamps = {g: self.stamps_retired(obs, g, reset_t) for g in GATES}
         chk.ok("ALL-STAMPS", all(stamps.values()), **stamps)
-        self.grade_halt(obs, chk, kind="eval", check="check_locus_first")
+        self.grade_halt(obs, chk, kind="eval", check=self.halt_check)
+
+
+def force_true(rom, check: str) -> dict[int, int]:
+    """Make one self-check evaluation return true without evaluating anything."""
+    entry = rom.syms[check]
+    return {entry: INSN_LI_A0_1, entry + 4: INSN_RET}
 
 
 def lock_fault_edits(rom) -> dict[int, int]:

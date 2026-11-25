@@ -1003,6 +1003,7 @@ tests = [
     "sep_rom_selfcheck_iter_skip_test",
     "sep_rom_selfcheck_early_exit_test",
     "sep_rom_selfcheck_first_eval_test",
+    "sep_rom_selfcheck_locus_first_eval_test",
     "sep_rom_gate_hash_bypass_test",
 ]
 
