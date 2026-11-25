@@ -8,11 +8,7 @@ import functools
 import logging
 import os
 import random
-import re
-import subprocess
-import sys
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
@@ -20,6 +16,7 @@ from cocotb.handle import Force
 from cocotb.regression import Test
 from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
+from env.smc_efuse_stimulus import SmcEfuseStimulus, regenerate_efuse_image
 from env.smc_env_cfg import (
     PLL_PERIPH_CLK_PERIOD_NS,
     PLL_REF_CLK_PERIOD_NS,
@@ -31,10 +28,6 @@ from env.smc_env_cfg import (
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiSlaveSequence
 from ocah_lib import require_file_plusargs
 from smc_base_test import FILE_PLUSARGS, _EvidenceRecorder, log_build_model_identity
-
-_DV_ROOT = Path(__file__).resolve().parents[2]
-_EFUSE_DIR = _DV_ROOT / "efuse_preload"
-assert _EFUSE_DIR.is_dir(), f"eFuse tooling not found at {_EFUSE_DIR}"
 
 # Clock periods in ns, the pll_wrap values of hw/sys/smc/dv/cocotb/env/
 # smc_env_cfg.py; the bench drives both instances' oscillators from one set.
@@ -76,71 +69,6 @@ def random_seed() -> int:
 
 
 FUSE_TRANSPORT_TIMEOUT_MIN = 400
-
-
-def regenerate_efuse_image(seed: int) -> dict[int, int]:
-    img = cocotb.plusargs.get("smc_efuse_hex")
-    if img is None:
-        return {}
-    img_path = Path(str(img))
-
-    randomized = img_path.parent / "efuse_config_randomized.toml"
-    forced_timeout = cocotb.plusargs.get("fuse_transport_timeout")
-    timeout_args = (
-        [] if forced_timeout is None else ["--transport-timeout", str(int(str(forced_timeout), 0))]
-    )
-    i2c_args = ["--i2c-ids"] if cocotb.plusargs.get("fuse_i2c_ids") is not None else []
-    # The generator needs Python 3.11+ (tomllib); a PATH python3 may be older than the venv.
-    try:
-        randomize = subprocess.run(
-            [
-                sys.executable,
-                str(_EFUSE_DIR / "randomize_efuse.py"),
-                str(_EFUSE_DIR / "configurations/default_efuse.toml"),
-                "--output_file",
-                str(randomized),
-                "--seed",
-                str(seed),
-                *timeout_args,
-                *i2c_args,
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(_EFUSE_DIR / "generate_efuse_preload.py"),
-                str(randomized),
-                "--output_file",
-                str(img_path),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except subprocess.CalledProcessError as exc:
-        # Otherwise the stale image from the build stage runs under a seed it does not match.
-        raise AssertionError(
-            f"eFuse image regeneration failed for seed {seed}:\n"
-            f"  {exc.cmd}\n  stdout: {exc.stdout}\n  stderr: {exc.stderr}"
-        ) from exc
-
-    cocotb.log.info(
-        "eFuse image regenerated for RANDOM_SEED=%d -> %s (%s)",
-        seed,
-        img_path,
-        result.stdout.strip(),
-    )
-    return _parse_i2c_ids(randomize.stdout)
-
-
-_I2C_ID_RE = re.compile(r"I2C_I3C_ID\[(\d)\]=(0x[0-9a-fA-F]+)")
-
-
-def _parse_i2c_ids(stdout: str) -> dict[int, int]:
-    return {int(slot): int(addr, 0) for slot, addr in _I2C_ID_RE.findall(stdout)}
 
 
 class DualCsr:
@@ -239,6 +167,7 @@ class SmcDualHarness:
         self.cpu_trace = {
             inst: SmcCpuTraceState(f"{inst}-hart0", cocotb.log) for inst in ("dut", "bfm")
         }
+        self.efuse = SmcEfuseStimulus()
         self.fuse_i2c_ids: dict[int, int] = {}
         self.boot_i2c = False
         self.straps: dict[str, int] = {"dut": 0, "bfm": 0}
@@ -271,7 +200,12 @@ class SmcDualHarness:
             state.dump(level)
 
     def idle_pins(
-        self, *, hold_dut_boot: bool, hold_bfm_boot: bool, dft_low: tuple[str, ...] = ()
+        self,
+        *,
+        hold_dut_boot: bool,
+        hold_bfm_boot: bool,
+        dft_low: tuple[str, ...] = (),
+        dut_primary: bool = True,
     ) -> None:
         dut = self.dut
         dut.powergood_i.value = 0
@@ -281,7 +215,7 @@ class SmcDualHarness:
         dut.tb_i3c0_scl_ext_low.value = 0
         dut.tb_i3c0_sda_ext_low.value = 0
 
-        dut.dut_chiplet_is_primary.value = 1
+        dut.dut_chiplet_is_primary.value = int(dut_primary)
         dut.bfm_chiplet_is_primary.value = 1
 
         # Boot stall is held from t=0 so reset vectors are programmed before either core fetches.
@@ -314,7 +248,14 @@ class SmcDualHarness:
         dut_lc_state: int | None = None,
         bfm_lc_state: int | None = None,
         dft_low: tuple[str, ...] = (),
+        dut_primary: bool | None = None,
+        dut_recovery: bool | None = None,
     ) -> None:
+        """``dut_primary`` / ``dut_recovery`` fix the target's role and recovery straps.
+
+        None keeps the default: a primary target with a seeded BOOT_RECOVERY. The controller is
+        always primary.
+        """
         log_build_model_identity(
             require_clean_tree=self.require_clean_tree, expect_target=DUAL_TARGET
         )
@@ -327,7 +268,12 @@ class SmcDualHarness:
             PERIPH_CLK_PERIOD_NS,
             random_seed(),
         )
-        self.idle_pins(hold_dut_boot=hold_dut_boot, hold_bfm_boot=hold_bfm_boot, dft_low=dft_low)
+        self.idle_pins(
+            hold_dut_boot=hold_dut_boot,
+            hold_bfm_boot=hold_bfm_boot,
+            dft_low=dft_low,
+            dut_primary=True if dut_primary is None else dut_primary,
+        )
 
         # After idle_pins, which resets both to TEST_DEV, and before cold reset is released.
         if dut_lc_state is not None:
@@ -336,7 +282,8 @@ class SmcDualHarness:
             self.set_lc_state("bfm", bfm_lc_state)
 
         # The eFuse bank reads its image when rst_ni releases, so regenerate it before any reset.
-        self.fuse_i2c_ids = regenerate_efuse_image(random_seed())
+        self.efuse = regenerate_efuse_image(random_seed(), cocotb.plusargs)
+        self.fuse_i2c_ids = self.efuse.i2c_ids
 
         # A cool reset must drop in-flight responses, not return them into the reset cluster.
         for inst in ("dut", "bfm"):
@@ -367,7 +314,7 @@ class SmcDualHarness:
         await ClockCycles(dut.clk_ref_i, 10)
 
         # A force issued at time 0 is accepted but has no effect, so straps wait until here.
-        self._apply_straps()
+        self._apply_straps(dut_primary=dut_primary, dut_recovery=dut_recovery)
 
         self.log.info("asserting powergood on both instances")
         dut.powergood_i.value = 1
@@ -462,7 +409,9 @@ class SmcDualHarness:
     def set_strap_bit(self, instance: str, bit: int) -> None:
         self.set_straps(instance, self.straps[instance] | (1 << bit))
 
-    def _apply_straps(self) -> None:
+    def _apply_straps(
+        self, *, dut_primary: bool | None = None, dut_recovery: bool | None = None
+    ) -> None:
         from smc_occp_dual_defs import (
             STRAP_BITS,
             STRAP_BOOT_I2C,
@@ -502,6 +451,9 @@ class SmcDualHarness:
         for name in ("TEST_EN", "SPI_USE_FUSED_CONFIG", "BOOT_RECOVERY", "ROTATE_UPDATE"):
             if name not in named:
                 target |= random.choice([0, 1]) << STRAP_BITS[name]
+        if dut_recovery is not None:
+            target &= ~(1 << STRAP_BITS["BOOT_RECOVERY"])
+            target |= int(dut_recovery) << STRAP_BITS["BOOT_RECOVERY"]
 
         self.addr_sel = random.randint(0, 0xF)
         target |= addr_sel_straps(self.addr_sel)
@@ -521,8 +473,9 @@ class SmcDualHarness:
         )
 
         # PRIMARY_CHIPLET must match chiplet_is_primary_i or firmware misreads the boot master.
-        for instance, value in (("dut", target), ("bfm", controller)):
-            self.set_straps(instance, value | (1 << STRAP_PRIMARY_CHIPLET))
+        target_primary = True if dut_primary is None else dut_primary
+        self.set_straps("dut", target | (int(target_primary) << STRAP_PRIMARY_CHIPLET))
+        self.set_straps("bfm", controller | (1 << STRAP_PRIMARY_CHIPLET))
         self.log.info("straps forced: dut=%#x bfm=%#x", self.straps["dut"], self.straps["bfm"])
 
     async def _check_boot_interface_strap(self, csr: DualCsr, instance: str) -> None:

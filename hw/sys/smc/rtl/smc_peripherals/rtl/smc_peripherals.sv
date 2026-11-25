@@ -25,8 +25,13 @@ module smc_peripherals #(
                                                  // literal because the open smc_external
                                                  // map is opaque. Passed to the peripheral
                                                  // crossbar.
-  parameter int unsigned CHIPLET_TYPE = 0  // Chiplet type reported in CHIP_CONFIG.CHIPLET_TYPE,
-                                           // passed to smc_misc_wrap.
+  parameter int unsigned CHIPLET_TYPE = 0,  // Chiplet type reported in CHIP_CONFIG.CHIPLET_TYPE,
+                                            // passed to smc_misc_wrap.
+  parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region, its
+                                                                              // window at or above
+                                                                              // EFUSE_SHIM_SIZE; '0 omits it.
+  localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
+      efuse_pkg::supplementary_port_words(SUPPLEMENTARY_FUSE.WORDS)
 ) (
   input  logic clk_ref_i,               // Reference clock for the reset unit, the AVSBus
                                         // controller and the peripheral CDC.
@@ -168,6 +173,8 @@ module smc_peripherals #(
                                                           // count.
   output logic        system_timer_octs_credits_left_debug_o,  // High while system timer
                                                                // credits remain.
+  output logic [1:0]  system_timer_octs_pulse_state_debug_o,  // System timer outbound pulse FSM
+                                                              // state.
 
   output smc_pkg::smc_axil_32_32_req_t  fuse_bank_ctrl_req_o,  // Request to the vendor eFuse
                                                                // shim CSRs.
@@ -216,6 +223,13 @@ module smc_peripherals #(
   output smc_efuse_pkg::efuse_map_t shadow_regs_o,  // eFuse shadow-register contents; zero
                                                     // until fuse sensing completes unless
                                                     // sep_security_disable_i is set.
+  output logic [SupplementaryPortWords-1:0][smc_efuse_pkg::NumFuseWordWidth-1:0]  // Supplementary fuse shadow-register
+                                                                                                                                                                    // contents; zero until fuse
+                                                                                                                                                                    // sensing completes unless
+                                                                                                                                                                    // sep_security_disable_i is set,
+                                                                                                                                                                    // and always without the supplementary
+                                                                                                                                                                    // region.
+               supplementary_shadow_regs_o,
 
   input  logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_request_i,    // Asynchronous NDM reset
                                                                             // request from each
@@ -359,13 +373,18 @@ module smc_peripherals #(
   output logic [smc_config_pkg::NumI2c-1:0][3:0] i2c_debug_o,   // I2C debug (4 bits per
                                                                 // I2C; see i2c_core.sv
                                                                 // for field definitions).
+  output logic [smc_config_pkg::NumI2c-1:0][11:0] i2c_fsm_state_debug_o,  // I2C FSM states (12
+                                                                          // bits per I2C; see
+                                                                          // i2c_core.sv).
 
-  output logic [9:0] efuse_debug_o      // eFuse controller status for the SMC debug bus:
+  output logic [9:0] efuse_debug_o,     // eFuse controller status for the SMC debug bus:
                                         // shadow-register write and read locks, program
                                         // and read locks, write-setup-only, LC-state
                                         // access, read and program timeouts, request
                                         // error and secure-test-mode block, from bit 0
                                         // upward.
+  output logic [5:0] efuse_fsm_state_debug_o  // eFuse controller FSM states; see
+                                              // efuse_interface_controller.sv.
 );
 
   /////////////////////////
@@ -531,6 +550,7 @@ module smc_peripherals #(
   // debug signals
   logic [16:0]                             avsbus_cur_state_debug;
   logic [smc_config_pkg::NumI2c-1:0][3:0]  i2c_debug_periph_clk;
+  logic [smc_config_pkg::NumI2c-1:0][11:0] i2c_fsm_state_debug_periph_clk;
 
   // System Timer OCTS signals
   logic timer_sync_load_primary;
@@ -544,7 +564,9 @@ module smc_peripherals #(
   ///////////////////
 
   smc_periph_axi_lite_xbar #(
-    .EFUSE_SHIM_SIZE(EFUSE_SHIM_SIZE)
+    .EFUSE_SHIM_SIZE   (EFUSE_SHIM_SIZE),
+    .SUPPLEMENTARY_FUSE_BASE (SUPPLEMENTARY_FUSE.BASE),
+    .SUPPLEMENTARY_FUSE_WORDS(SUPPLEMENTARY_FUSE.WORDS)
   ) u_smc_periph_axi_lite_xbar (
     .clk_i                            (clk_smc_i),
     .rst_ni                           (rst_primary_smc_clk_no),
@@ -829,6 +851,8 @@ module smc_peripherals #(
 
     .i2c_debug_periph_clk_i            (i2c_debug_periph_clk),
     .i2c_debug_smc_clk_o               (i2c_debug_o),
+    .i2c_fsm_state_debug_periph_clk_i  (i2c_fsm_state_debug_periph_clk),
+    .i2c_fsm_state_debug_smc_clk_o     (i2c_fsm_state_debug_o),
 
     .axil_uart_req_smc_clk_i           (axil_uart_req_smc_clk),
     .axil_uart_resp_smc_clk_o          (axil_uart_resp_smc_clk),
@@ -1111,7 +1135,8 @@ module smc_peripherals #(
 
     .i2c_irq_o                (i2c_irqs_periph_clk),
     .i2c_fifo_intg_err_o      (i2c_fifo_intg_err_periph_clk),
-    .i2c_debug_o              (i2c_debug_periph_clk)
+    .i2c_debug_o              (i2c_debug_periph_clk),
+    .i2c_fsm_state_debug_o    (i2c_fsm_state_debug_periph_clk)
   );
 
   //////////
@@ -1320,16 +1345,31 @@ module smc_peripherals #(
   /////////////////////
 
   logic fuse_reset_n;
-  logic ext_boot_seq_done_qual;
+  logic ext_boot_seq_done_qualified;
 
   ext_boot_seq_done_qual u_ext_boot_seq_done_qual (
     .clk_i                    (clk_smc_i),
     .rst_ni                   (rst_cold_stable_smc_clk_n),
     .ext_boot_seq_done_i      (ext_boot_seq_done_i),
-    .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
+    .ext_boot_seq_done_qual_o (ext_boot_seq_done_qualified)
   );
 
-  smc_efuse_wrapper u_smc_efuse_wrapper (
+  `OCAH_ASSERT_STATIC(
+      SupplementaryFuseWindow_A,
+      SUPPLEMENTARY_FUSE.WORDS == 0 || (SUPPLEMENTARY_FUSE.BASE % 4 == 0 && SUPPLEMENTARY_FUSE.BASE >= EFUSE_SHIM_SIZE && 64'(SUPPLEMENTARY_FUSE.BASE) + 4 * SUPPLEMENTARY_FUSE.WORDS <= 64'(smc_pkg::SmcExternalWindowSize)),
+      "SUPPLEMENTARY_FUSE.BASE must be word aligned with the window in smc_external at or above EFUSE_SHIM_SIZE")
+  `OCAH_ASSERT_STATIC(
+      SupplementaryFuseWords_A,
+      SUPPLEMENTARY_FUSE.WORDS <= smc_efuse_pkg::MaxSupplementaryFuseWords,
+      "SUPPLEMENTARY_FUSE.WORDS exceeds the supplementary fuse slot that sizes the fuse command")
+  `OCAH_ASSERT_STATIC(
+      SupplementaryLockRegionEnd_A, smc_efuse_pkg::supplementary_lock_region_end_valid(
+      SUPPLEMENTARY_FUSE),
+      "SUPPLEMENTARY_FUSE.LOCK_REGION_END must strictly increase, then be 0, and end at SUPPLEMENTARY_FUSE.WORDS")
+
+  smc_efuse_wrapper #(
+    .SUPPLEMENTARY_FUSE(SUPPLEMENTARY_FUSE)
+  ) u_smc_efuse_wrapper (
     .clk_i                           (clk_smc_i),
     .rst_ni                          (rst_primary_smc_clk_no),
     .test_en_i                       (test_en_i),
@@ -1354,13 +1394,15 @@ module smc_peripherals #(
     .efuse_shim_command_resp_i       (efuse_shim_command_resp_i),
 
     .sep_security_disable_i          (sep_security_disable_i),
-    .ext_boot_seq_done_i             (ext_boot_seq_done_qual),
+    .ext_boot_seq_done_i             (ext_boot_seq_done_qualified),
 
     .reset_n_o                       (fuse_reset_n),
     .fuse_sense_done_o               (fuse_sense_done_o),
     .shadow_regs_o                   (shadow_regs_o),
+    .supplementary_shadow_regs_o           (supplementary_shadow_regs_o),
 
     .efuse_debug_o                   (efuse_debug_o),
+    .efuse_fsm_state_debug_o         (efuse_fsm_state_debug_o),
     .locked_field_access_interrupt_o (locked_field_access_interrupt)
   );
 
@@ -1445,7 +1487,8 @@ module smc_peripherals #(
 
     .timer_gpio_enable_o   (timer_gpio_enable),
     .cur_credits_debug_o   (system_timer_octs_credits_debug_o),
-    .credits_left_debug_o  (system_timer_octs_credits_left_debug_o)
+    .credits_left_debug_o  (system_timer_octs_credits_left_debug_o),
+    .pulse_state_debug_o   (system_timer_octs_pulse_state_debug_o)
   );
 
   // Route sync outputs to padring only when primary
@@ -1610,7 +1653,7 @@ module smc_peripherals #(
     .scan_rst_ni                (scan_rst_ni)
   );
 
-  assign ext_boot_seq_done_qual_o = ext_boot_seq_done_qual;
+  assign ext_boot_seq_done_qual_o = ext_boot_seq_done_qualified;
 
   assign powergood_stable_o = powergood_stable;
 

@@ -96,6 +96,13 @@ class SepDrbgScoreboard:
     # Packed-probe index from the DV-owned sink table. Consuming tests bind
     # each name with a single-client beat delta before any concurrent fork.
     _CRYPTO_SINK_IDX = {f"CHK5_{name}": i for i, name in enumerate(CRYPTO_EDN_SINKS)}
+    # The crypto EDN adapter holds a 4-entry staging FIFO and a 1-entry FIFO per
+    # client (hw/sys/sep/doc/assets/sep-trng-distribution.svg, the TRNG
+    # distribution figure in hw/sys/sep/doc/trng.adoc), so at most this many
+    # accepted AXIS1 words wait for a client.
+    _AXIS1_STAGING_DEPTH = 4
+    _AXIS1_CLIENT_DEPTH = 1
+    AXIS1_RESIDUAL_MAX = _AXIS1_STAGING_DEPTH + _AXIS1_CLIENT_DEPTH * len(CRYPTO_EDN_SINKS)
 
     @staticmethod
     def _norm_mode(v, *, what):
@@ -197,6 +204,7 @@ class SepDrbgScoreboard:
         #             SHA 16:1 block boundary aligned with the RTL by construction.
         self.golden = SepEntropyGolden(**self._gk)
         self.chain = SepEntropyGolden(**self._gk)
+        self._compressor_bypass = bool(self._gk.get("compressor_bypass"))
 
         # CHK4 protocol-check state (genbits FIPS flag + Generate segmentation).
         # glen is the length the SEQUENCE commands; it is not a global invariant,
@@ -234,6 +242,7 @@ class SepDrbgScoreboard:
         self._axis2_needed = self.sink_mode["pool"] == "golden"
         self.axis1_q = deque()
         self._axis1_words = []
+        self._axis1_task = None
         self.axis2_q = deque()
         self._axis2_words = []
         self._km_words = []
@@ -274,6 +283,9 @@ class SepDrbgScoreboard:
         # Items past that count: (index, expected, actual), logged, never graded.
         self.observed = {k: [] for k in self._STREAMS}
         self._tasks = []
+        self._noise_run = False
+        self._noise_task = None
+        self._noise_before_write = False
         # Live runtime flag (not a one-shot fork decision). CHK5 sink / AXIS1
         # monitors are forked from start() but skip every cycle until
         # enable_chk5() — typically after the ESRC seed, before EDN enable —
@@ -281,12 +293,29 @@ class SepDrbgScoreboard:
         self.chk5_enable = False
 
     # ------------------------------------------------------------------ drive
-    def stop(self) -> None:
+    async def stop(self) -> None:
         """End every task ``start`` forked (noise driver and monitors).
+
+        Cancelling a task that waits on ``NextTimeStep`` leaves the simulator
+        callback registered on Verilator, and the simulator later calls the
+        freed callback data. From a clock edge to its write of
+        ``esrc_noise_ext_i`` in the next time step, the noise driver can wait on
+        ``NextTimeStep``, so ``stop`` clears the run flag and awaits the loop,
+        which returns after that write; ``stop`` then returns in a writable
+        phase. Between that write and the next clock edge the noise driver waits
+        on ``RisingEdge`` and is cancelled at once, like the monitors, so
+        ``stop`` returns while ``clk_i`` is halted. A second call does nothing.
 
         A leaf calls this before a TRNG reset that ends the bring-up the tasks
         observe; a later ``start`` forks a fresh set. Results stay readable.
         """
+        self._noise_run = False
+        noise, self._noise_task = self._noise_task, None
+        if noise is not None:
+            if self._noise_before_write:
+                await noise
+            else:
+                (getattr(noise, "cancel", None) or noise.kill)()
         for task in self._tasks:
             stop = getattr(task, "cancel", None) or task.kill
             stop()
@@ -295,11 +324,13 @@ class SepDrbgScoreboard:
     def start(self):
         """Fork the noise driver + per-stream monitors (after reset released)."""
         d = self.dut
+        self._noise_run = True
+        self._noise_before_write = True
+        self._noise_task = cocotb.start_soon(self._drive_noise())  # CHK1 runs inline here
         # CHK2 default = AXI frontdoor FIFO_RDATA drain (check_fifo_frontdoor),
         # the overflow-robust observation point. Only fork the live backdoor
         # wire-tap monitor (entropy_stream_data_o) when explicitly selected.
         self._tasks = [
-            cocotb.start_soon(self._drive_noise()),  # CHK1 runs inline here
             # CHK3: capture the seed on the REAL CSRNG seed handshake
             # (seed_valid && es_ack), not merely seed_valid -- the value the CSRNG
             # actually accepted.
@@ -332,8 +363,10 @@ class SepDrbgScoreboard:
         ]
         # AXIS1 golden tap (crypto-leg pre-adapter word stream): needed for any
         # golden crypto sink's per-sink routing compare + the genbits-chain membership.
+        self._axis1_task = None
         if self._axis1_needed:
-            self._tasks.append(cocotb.start_soon(self._mon_axis1_tap()))
+            self._axis1_task = cocotb.start_soon(self._mon_axis1_tap())
+            self._tasks.append(self._axis1_task)
         if self._axis2_needed:
             self._tasks.append(cocotb.start_soon(self._mon_axis2_tap()))
         # KM sink: AXIS endpoint, tvalid&&tready handshake.
@@ -493,7 +526,14 @@ class SepDrbgScoreboard:
             # upstream backpressure), so feeding every decor-valid would misframe
             # the SHA 16:1 blocks after block 0. The held decor byte word at the
             # accept cycle is BIW-compressed into the word the whitener consumes.
-            if state in ("wait_fill", "locked") and whiten_push and dut_decor is not None:
+            # With the compressor bypassed there is no whitener: the chain takes
+            # the sample on each esrc_stream_valid_gated_o strobe from the TRNG
+            # reset, and the golden selects every (N+1)th of them.
+            if self._compressor_bypass:
+                feed = _safe_int(d.esrc_stream_valid_gated_o) or 0
+            else:
+                feed = whiten_push
+            if state in ("wait_fill", "locked") and feed and dut_decor is not None:
                 self.chain.feed_decor_sample(dut_decor)
 
             prev_decor = dut_decor
@@ -513,7 +553,11 @@ class SepDrbgScoreboard:
                 )
             await NextTimeStep()
             d.esrc_noise_ext_i.value = self.noise_gen.step_all()
+            self._noise_before_write = False
+            if not self._noise_run:
+                return
             await RisingEdge(d.clk_i)
+            self._noise_before_write = True
             await ReadOnly()
 
     def _seed_golden(self, sr_packed):
@@ -1107,8 +1151,13 @@ class SepDrbgScoreboard:
             raise AssertionError(f"CHK-CHK1-RO-ENABLE FAIL: {line}")
         self.log.info("CHK-CHK1-RO-ENABLE PASS: %s", line)
 
-    def report(self):
-        """Log per-stream results; in strict mode raise on any mismatch."""
+    def report(self, *, axis1_residual: bool = False):
+        """Log per-stream results; in strict mode raise on any mismatch.
+
+        ``axis1_residual`` adds CHK-AXIS1-RESIDUAL (accepted AXIS1 words no client
+        took are at most ``AXIS1_RESIDUAL_MAX``; it fails when the AXIS1 tap is not
+        running or saw no beat), INFO-SB-GOLDEN-LEFT and the X/Z count INFO lines.
+        """
         self.log.info("==== sep_drbg_scoreboard CHK1..CHK5 report ====")
         any_fail = False
 
@@ -1389,6 +1438,16 @@ class SepDrbgScoreboard:
                     sorted(self.legal_gen_lengths),
                 )
                 any_fail = True
+        if axis1_residual:
+            if not self._report_axis1_residual():
+                any_fail = True
+            self._report_golden_left()
+            self.log.info("INFO-SB-XZ-ROUTED: beats=%d", self._xz_routed_beats)
+            self.log.info(
+                "INFO-SB-XZ-SCORED: beats=%d per_stream=%s",
+                sum(self._xz_scored_beats.values()),
+                dict(sorted(self._xz_scored_beats.items())),
+            )
         self.log.info("==== end report (strict=%s, any_fail=%s) ====", self.strict, any_fail)
         if self.strict and any_fail:
             raise AssertionError(
@@ -1396,3 +1455,44 @@ class SepDrbgScoreboard:
                 "evidence / protocol violation)"
             )
         return not any_fail
+
+    def _report_axis1_residual(self) -> bool:
+        """CHK-AXIS1-RESIDUAL; returns True on PASS."""
+        running = self._axis1_task is not None and not self._axis1_task.done()
+        accepted = len(self._axis1_words)
+        residual = len(self.axis1_q)
+        self.log.info(
+            "CTRL-AXIS1-RESIDUAL: tap_running=%d accepted=%d taken=%d residual=%d",
+            int(running),
+            accepted,
+            accepted - residual,
+            residual,
+        )
+        line = (
+            f"tap_running={int(running)} accepted={accepted} residual={residual} "
+            f"max={self.AXIS1_RESIDUAL_MAX}"
+        )
+        if running and accepted > 0 and residual <= self.AXIS1_RESIDUAL_MAX:
+            self.log.info("CHK-AXIS1-RESIDUAL PASS: %s", line)
+            return True
+        self.log.error("CHK-AXIS1-RESIDUAL FAIL: %s", line)
+        return False
+
+    def _report_golden_left(self) -> None:
+        """INFO-SB-GOLDEN-LEFT: golden items no DUT item matched, and the verified
+        genbits words no tapped stream (KM, AXIS1, AXIS2, pool) carried."""
+        left = {
+            key: len(self._expected_q(key))
+            for key, (qname, _) in self._STREAMS.items()
+            if qname is not None
+        }
+        unseen = Counter(self._genbits_words)
+        unseen.subtract(
+            Counter(self._km_words + self._axis1_words + self._axis2_words + self._pool_words)
+        )
+        self.log.info(
+            "INFO-SB-GOLDEN-LEFT: left=%s seed_packer_words=%d loss=%d",
+            left,
+            len(self.chain.unconsumed_seed_words()),
+            sum(n for n in unseen.values() if n > 0),
+        )

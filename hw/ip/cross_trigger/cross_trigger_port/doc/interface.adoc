@@ -22,10 +22,13 @@ ifndef::backend-html5[]
 The parameters and ports of `cross_trigger_port` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-`cross_trigger_port` includes the CSR interface. The register-free `cross_trigger_port_core` instead takes `mode_wire_or_i`,
+`cross_trigger_port` includes the CSR interface. The register-free `cross_trigger_port_core` instead takes `mode_i`,
 `invert_i`, `handshake_reset_i`, and `stretch_mult_i` as configuration inputs.
-At that core interface, `mode_wire_or_i = 1` selects wire-OR and `0` selects
-point-to-point; the CSR MODE field is inverted before reaching it.
+`mode_i` is a `cross_trigger_port_pkg::ctp_mode_e`: `MODE_WIRE_OR` (`2'b00`),
+`MODE_POINT_TO_POINT` (`2'b01`), or `MODE_TOGGLE` (`2'b10`); `2'b11` is not a
+mode. The CSR MODE field maps 0 to `MODE_WIRE_OR` and 1 to
+`MODE_POINT_TO_POINT`, so only a static `mode_i` selects toggle mode. In toggle
+mode `stretch_mult_i` sets the hold after each toggle.
 
 === Dependencies
 

@@ -106,7 +106,7 @@ addrmap dfd_dst {
         field {
             sw = rw;
             hw = r;
-            desc = "DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.";
+            desc = "DST timestamp configuration. 0: timestamp input from external source (CoreTime). 1: timestamp from CLA timesync. In the SMC the external timestamp input is tied to zero, so with the reset value 0 every timestamp packet carries zero; set 1 for a running timestamp.";
         } Trdsttimestampconfig[31:31] = 0x0;
     } Trdstimpl @ 0x4;
     reg {

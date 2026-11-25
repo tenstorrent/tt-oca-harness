@@ -23,7 +23,7 @@ While Active; ``hw/sys/sep/doc/otp_fuse_controller.adoc``, sections Shadow Regis
 and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
 ``hw/sys/sep/doc/security_disable.adoc``, Token Activation):
 
-  CHK-BIND          the SHA-256 of 32 zero bytes equals the bench SEC_DIS digest.
+  CTRL-BIND         (control) the SHA-256 of 32 zero bytes equals the bench SEC_DIS digest.
   CHK-STM-CTL       controls: ``secure_tm_o`` is 0 from reset release until sense
                     done and equals the strap after it; at strap 1 each frontdoor
                     target write leaves the shadow unchanged and ``FEAT_CTRL`` equals
@@ -32,14 +32,28 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``security_disable_o`` = 1 and an all-ones ``FEAT_CTRL``.
   CHK-STM-BLOCK-RESP  each strap-1 frontdoor target write completes with SLVERR:
                     secure test mode adds a shadow write lock on the four targets
-                    (``hw/ip/efuse/doc/architecture.adoc:402-403``;
-                    ``otp_fuse_controller.adoc:178-180``), and a shadow write that a
+                    (``hw/ip/efuse/doc/architecture.adoc:411-412``;
+                    ``otp_fuse_controller.adoc:181-183``), and a shadow write that a
                     lock blocks completes with SLVERR
-                    (``otp_fuse_controller.adoc:110-112``).
+                    (``otp_fuse_controller.adoc:112-114``).
   CHK-STM-PROG      no strap-1 program changes its bank bit (direct read in the strap-0
-                    epoch before any program of that epoch) and no ``PROGRAM`` or
-                    ``PROGRAM_READ_BACK`` command reaches ``efuse_shim_command_req_o``
-                    at strap 1.
+                    epoch before any program of that epoch) and no ``PROGRAM`` command
+                    reaches ``efuse_shim_command_req_o`` at strap 1.
+  CHK-STM-PROG-STATUS  the first strap-1 program reads ``program_done`` 1 and
+                    ``program_status`` 1 (Error) in ``EFUSE_PROGRAM_CTRL`` after
+                    ``W_prog``: a program start in secure test mode completes with an
+                    error without issuing a command
+                    (``hw/ip/efuse/doc/architecture.adoc:405``;
+                    ``efuse_interface_ctrl.rdl:90-91`` ``program_done``,
+                    ``:102-103`` ``program_status``). Control
+                    (``CTRL-STM-PROG-FRESH``): before that go both bits read their RDL
+                    reset value 0. Both bits hold until the next start, and a refused
+                    start sets them again in the same clock, so the four later
+                    strap-1 programs read the same word whether or not their go
+                    completed: ``INFO-STM-PROG-STATUS`` logs their word and the word
+                    of each strap-0 program. CHK-STM-PROG grades every strap-1 class
+                    at the bank and the tap; CHK-STM-PROG-CTL grades the strap-0
+                    outcome at the bank.
   CHK-STM-PROG-CTL  each strap-0 program lands inside ``W_prog`` (direct read) and
                     shows a program command with its address at the tap.
   CHK-STM-SECRET    at strap 1 the four secret fields read 0 at
@@ -56,7 +70,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     four targets are set-only in every state. PROD and RMA_SIP restrict
                     JTAG to the token block and log
                     ``INFO-BLOCKED CHK-STM-JTAG reason=lifecycle_gate``.
-  CHK-STM-FEAT-DEMOTED  a closing leg after the SEC_DIS control: for each demotion
+  CHK-STM-FEAT-DEMOTED  a strap-1 leg after the SEC_DIS control: for each demotion
                     {``DEMOTE_1``, ``DEMOTE_2``, both}, in seeded order, a cold reset
                     with the strap at 1, a full sense, the ``demote`` write and a
                     64-bit ``FEAT_CTRL`` read. ``secure_tm_o`` reads 1, each written
@@ -69,16 +83,36 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     bits set. On a PROD image a demoted row differs from the undemoted
                     row, so the leg shows that the demotion took effect at strap 1.
                     The write response is logged in the line, not graded.
-  INFO-STM-STATE     logs the drawn state and ``jtag_leg`` (1 when CHK-STM-JTAG runs)
+  CHK-STM-SECDIS-BLOCK  the last leg, at strap 1 after CHK-STM-FEAT-DEMOTED with no
+                    reset after it: a SEC_DIS go with the bench token, then the
+                    strap-1 bit of each target written again, frontdoor in every
+                    state and JTAG in TEST_DEV, PROD_END and RMA_CHIPLET. Each word
+                    reads back unchanged, and ``secure_tm_o`` and ``security_disable_o``
+                    read 1 before and after each write: SEC_DIS does not lift the
+                    secure test mode block (``otp_fuse_controller.adoc``, Shadow
+                    Register Updates and Test-Mode Protection; ``security_disable.adoc``:
+                    ``SECURE_TM`` is not a term of the feature-control computation). The
+                    strap-0 cells of the same words are the positive probe. The leg
+                    runs with the graded window closed and credits no coverage cell;
+                    the write response is logged in the line, not graded.
+  CTRL-STM-SECDIS-MATCH  the go of that leg returns the match code within
+                    ``MATCH_READS`` reads, ``security_disable_o`` reads 1 and
+                    ``secure_tm_o`` reads 1. On a failed match the leg skips its
+                    writes and the leaf fails.
+  INFO-STM-SECDIS-CELLS  counts the frontdoor and JTAG cells of that leg.
+  INFO-STM-STATE    logs the drawn state and ``jtag_leg`` (1 when CHK-STM-JTAG runs)
                     of the seed. A control line, not a check.
   CTRL-STM-WRITE-ISSUED  each target write returns a B response code of OKAY,
                     SLVERR or DECERR; an unreadable code (-1 from the JTAG port) is a
                     recorded failure. A write that gets no B response fails the
                     access itself (bus timeout).
-  CTRL-STM-PROG-ISSUED  after each program go of both straps, the software-owned
-                    fields of ``EFUSE_PROGRAM_CTRL`` (``efuse_addr``, ``efuse_data``,
-                    ``efuse_program_read_back``, ``program_enable``) read back equal to
-                    the go, so a strap-1 go that did not land fails.
+  CTRL-STM-PROG-ISSUED  after each program go of both straps, ``EFUSE_PROGRAM_ADDR``
+                    and the software-owned fields of ``EFUSE_PROGRAM_CTRL``
+                    (``efuse_data``, ``program_enable``) read back equal to the
+                    writes, so a strap-1 go that did not land fails.
+  CTRL-STM-PROG-FRESH  before the first strap-1 go, ``program_done`` and
+                    ``program_status`` read their RDL reset value 0, so
+                    CHK-STM-PROG-STATUS reads the completion of that go.
 
 Each strap-0 target cell is graded right after its readback. A strap-1 cell FAILs
 right after its readback when the word changed; it PASSes only after the strap-0
@@ -93,17 +127,20 @@ CHK-STM-JTAG-BLOCK-RESP line passed. Every other sample of the leaf (``x_prog_bl
 ``cp_state``) is held with the tag of its graded step (``set_ef_hold_tag``) and
 samples only when the leaf writes that tag to the pass label
 (``set_ef_hold_pass``) after every check of the step passed: the strap-1
-programs after CHK-STM-PROG, the strap-0 programs after CHK-STM-PROG-CTL, the
-secret reads after CHK-STM-SECRET and its strap-0 control, the JTAG writes of
+programs after CHK-STM-PROG-STATUS and CHK-STM-PROG, the strap-0 programs after
+CHK-STM-PROG-CTL, the secret reads after CHK-STM-SECRET and its strap-0 control, the JTAG writes of
 both straps after every CHK-STM-JTAG and CHK-STM-JTAG-CTL line.
 
-The status value of each program (``OBS-STM-PROG-STATUS``) and the response code of
-a strap-0 target write are logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
+The response code of a strap-0 target write is logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
 fields at ``efuse_shadow_probe_o`` at strap 1 and strap 0, against the staged words;
 the specification does not state whether secure test mode masks them) and
 ``OBS-DIGEST-PROG-STATE`` (a strap-0 program of a 0 bit of a drawn digest field: the
 OTP bit, the program commands at the tap and ``efuse_req_error``; the specification
-does not state in which states it lands). No step writes ``LC_STATE`` and no SEC_DIS go runs at strap 1. The closing
+does not state in which states it lands). ``OBS-STM-SECDIS-STRAP1-GO`` logs, on every
+seed, the match code, read count, ``security_disable_o``, ``secure_tm_o`` and
+``FEAT_CTRL`` of the strap-1 SEC_DIS go: the specification does not state what a
+token go does in secure test mode, so the match code and read count are open;
+``FEAT_CTRL`` reads all ones once a match holds and is logged. No step writes ``LC_STATE``. The demotion
 leg's resenses compare the shadow with the OTP array as the strap-0 programs
 left it.
 In RMA_CHIPLET the profile row is all ones with or without SEC_DIS, so there the
@@ -122,6 +159,7 @@ from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
     DIGEST_FIELDS,
+    PROGRAM_ADDR_ADDR,
     PROGRAM_CTRL_ADDR,
     SECRET_FIELDS,
     ST_PROD,
@@ -136,6 +174,7 @@ from env.sep_efuse_plan import (
     field_word,
     lc_state_class,
     plan,
+    program_addr_word,
     program_ctrl_word,
     shadow_addr,
     zero_bits,
@@ -145,7 +184,7 @@ from env.sep_efuse_test_lib import (
     SepEfuseFd,
     StrapHold,
     bit,
-    chk_bind,
+    ctrl_bind,
     direct_word,
     hold_strap,
     hook_fail,
@@ -193,12 +232,12 @@ _TAG_PROG1, _TAG_PROG0, _TAG_SECRET, _TAG_JTAG = 1, 2, 3, 4
 _PASS_HOLD = 2  # clocks a step tag stays on the pass label
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error")
 # Software-owned (sw=rw, hw=r) fields of EFUSE_PROGRAM_CTRL: they read back as written.
-_PG_RW = (
-    EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
-    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
-    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
-    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
-)
+_PG_RW = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_PROGRAM_CTRL", "efuse_data"
+) | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
+_PG_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
+_PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
+_PG_RESET = EFUSE_INTERFACE_CTRL.reset32("EFUSE_PROGRAM_CTRL")
 _REQ_ERR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
 )
@@ -209,10 +248,10 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
     """At strap 1 programs, shadow writes and secret outputs are blocked; at strap 0 they are not."""
 
     required_evidence = (
-        "CHK-BIND",
         "CHK-STM-CTL",
         "CHK-STM-BLOCK-RESP",
         "CHK-STM-PROG",
+        "CHK-STM-PROG-STATUS",
         "CHK-STM-PROG-CTL",
         "CHK-STM-SECRET",
         "CHK-STM-FEAT-DEMOTED",
@@ -412,7 +451,8 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         k, b = p.draw.choice("digest_prog_bit", zeros)
         addr = bit_address(f, k, b)
         mark = self.shim.mark()
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(addr))
+        await self.fd.wr(PROGRAM_ADDR_ADDR, program_addr_word(addr))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word())
         await ClockCycles(cocotb.top.clk_i, w_prog)
         status = await self.fd.rd(PROGRAM_CTRL_ADDR)
         await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
@@ -438,29 +478,45 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
 
         ``CTRL-STM-PROG-ISSUED`` requires the software-owned fields of
         ``EFUSE_PROGRAM_CTRL`` read back after ``w_prog`` to equal the go, so a go that
-        did not land fails. ``OBS-STM-PROG-STATUS`` logs the whole word: the TT texts
-        disagree on the status of a program blocked in secure test mode.
+        did not land fails. At strap 1, CHK-STM-PROG-STATUS requires ``program_done`` 1
+        and ``program_status`` 1 (Error) after the first go, which starts from both bits
+        at 0 (``CTRL-STM-PROG-FRESH``); ``INFO-STM-PROG-STATUS`` logs the whole word of
+        every other go.
         """
         cmds: dict[str, list] = {}
-        for cls in STM_PROGRAM_CLASSES:
+        if self._strap:
+            pre = await self.fd.rd(PROGRAM_CTRL_ADDR)
+            self._ctrl(
+                "STM-PROG-FRESH",
+                pre & (_PG_DONE | _PG_STATUS) == _PG_RESET & (_PG_DONE | _PG_STATUS),
+                strap=self._strap,
+                status=f"0x{pre:08x}",
+                program_done=int(bool(pre & _PG_DONE)),
+                program_status=int(bool(pre & _PG_STATUS)),
+            )
+        for i, cls in enumerate(STM_PROGRAM_CLASSES):
             pr = progs[cls]
             mark = self.shim.mark()
-            go = program_ctrl_word(pr["addr"])
+            addr_word = program_addr_word(pr["addr"])
+            go = program_ctrl_word()
+            await self.fd.wr(PROGRAM_ADDR_ADDR, addr_word)
             await self.fd.wr(PROGRAM_CTRL_ADDR, go)
             await ClockCycles(cocotb.top.clk_i, w_prog)
             status = await self.fd.rd(PROGRAM_CTRL_ADDR)
+            addr_rb = await self.fd.rd(PROGRAM_ADDR_ADDR)
             await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
             cmds[cls] = self.shim.programs_since(mark)
             self._ctrl(
                 "STM-PROG-ISSUED",
-                (status & _PG_RW) == (go & _PG_RW),
+                (status & _PG_RW) == (go & _PG_RW) and addr_rb == addr_word,
                 strap=self._strap,
                 cls=cls,
                 wrote=f"0x{go & _PG_RW:08x}",
                 readback=f"0x{status & _PG_RW:08x}",
+                addr_wrote=f"0x{addr_word:08x}",
+                addr_readback=f"0x{addr_rb:08x}",
             )
-            self.chk.obs(
-                "STM-PROG-STATUS",
+            fields = dict(
                 strap=self._strap,
                 cls=cls,
                 field=pr["field"],
@@ -468,8 +524,20 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 bit=pr["bit"],
                 addr=f"0x{pr['addr']:x}",
                 status=f"0x{status:08x}",
+                program_done=int(bool(status & _PG_DONE)),
+                program_status=int(bool(status & _PG_STATUS)),
                 program_cmds=len(cmds[cls]),
             )
+            if self._strap and i == 0:
+                self._grade(
+                    "STM-PROG-STATUS",
+                    status & (_PG_DONE | _PG_STATUS) == _PG_DONE | _PG_STATUS,
+                    exp_done=1,
+                    exp_status=1,
+                    **fields,
+                )
+            else:
+                self.chk.info("STM-PROG-STATUS", **fields)
         return cmds
 
     async def _strap1_demote_leg(self, state: str) -> None:
@@ -542,6 +610,84 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             )
             self._close()
 
+    async def _secdis_strap1_leg(self, state: str, jtag_leg: bool) -> None:
+        """CHK-STM-SECDIS-BLOCK: a SEC_DIS match at strap 1 leaves every target blocked.
+
+        Runs last: a match survives a cold reset and stops the next sense, so no
+        reset may follow it. The writes reuse the plan's strap-1 bits, which the
+        demotion leg's resenses left clear. The graded window stays closed.
+        """
+        self.required_evidence = (*self.required_evidence, "CHK-STM-SECDIS-BLOCK")
+        code, reads = await sec_dis_go(self.fd, TOKEN_ZERO, CODE_MATCH, max_reads=MATCH_READS)
+        rose = await wait_bit(self, "lcc_security_disable_probe_o", 1, SDIS_BOUND)
+        sdis = bit(self, "lcc_security_disable_probe_o")
+        stm = bit(self, "secure_tm_o")
+        # wait_bit returns in the read-only phase; leave it before the next access.
+        await ClockCycles(cocotb.top.clk_i, 1)
+        feat = await self._feat()
+        code_s = "none" if code is None else f"0x{code:02x}"
+        matched = self._ctrl(
+            "STM-SECDIS-MATCH",
+            code == CODE_MATCH and rose is not None and stm == 1,
+            state=state,
+            strap=1,
+            code=code_s,
+            reads=reads,
+            security_disable_o=sdis,
+            secure_tm_o=stm,
+        )
+        self.chk.obs(
+            "STM-SECDIS-STRAP1-GO",
+            state=state,
+            code=code_s,
+            reads=reads,
+            security_disable_o=sdis,
+            sdis_rose="none" if rose is None else rose,
+            secure_tm_o=stm,
+            feat=f"0x{feat:016x}",
+        )
+        if not matched:
+            return
+        targets = self.p.leg["targets"]
+        cells = {"fd": 0, "jtag": 0}
+        for src, idx, twin_idx in (("fd", 0, 2), ("jtag", 1, 3)):
+            if src == "jtag" and not jtag_leg:
+                continue
+            for t in self.p.leg["target_order"]:
+                stm_b = bit(self, "secure_tm_o")
+                sdis_b = bit(self, "lcc_security_disable_probe_o")
+                r = await self._target_write(targets[t][idx], src)
+                stm_a = bit(self, "secure_tm_o")
+                sdis_a = bit(self, "lcc_security_disable_probe_o")
+                self._ctrl(
+                    "STM-WRITE-ISSUED",
+                    r["resp"] in _B_RESPS,
+                    src=src,
+                    strap=1,
+                    target=t,
+                    addr=f"0x{r['addr']:08x}",
+                    resp=r["resp"],
+                )
+                twin = targets[t][twin_idx]
+                self._grade(
+                    "STM-SECDIS-BLOCK",
+                    r["unchanged"] and stm_b == stm_a == sdis_b == sdis_a == 1,
+                    state=state,
+                    strap=1,
+                    src=src,
+                    target=t,
+                    bit=f"{r['word']}:{r['bit']}",
+                    before=f"0x{r['before']:08x}",
+                    after=f"0x{r['after']:08x}",
+                    resp=r["resp"],
+                    secure_tm_o=f"{stm_b}/{stm_a}",
+                    security_disable_o=f"{sdis_b}/{sdis_a}",
+                    twin_bit=f"{twin['word']}:{twin['bit']}",
+                    twin_same_word=int(shadow_addr(twin["field"], twin["word"]) == r["addr"]),
+                )
+                cells[src] += 1
+        self.chk.info("STM-SECDIS-CELLS", state=state, jtag_leg=int(jtag_leg), **cells)
+
     # -- scenario ------------------------------------------------------------
 
     async def run_scenario(self) -> None:
@@ -577,7 +723,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         row = feat_ctrl_profile(p.lc_raw, p.sip_dis, p.sys_dis)
         self.logger.info("INFO-GOLDEN feat %s value=0x%016x", row.log(), row.value)
 
-        await chk_bind(self.chk)
+        await ctrl_bind(self.chk)
         self.write_efuse_image(p.image)
 
         # Strap-1 epoch.
@@ -850,6 +996,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             sdis_after_mismatch=bit(self, "lcc_security_disable_probe_o"),
         )
         await self._strap1_demote_leg(state)
+        await self._secdis_strap1_leg(state, jtag_leg)
         await self.shim.stop()
         # The monitor stop returns in the read-only phase; leave it before the drive.
         await ClockCycles(cocotb.top.clk_i, 1)

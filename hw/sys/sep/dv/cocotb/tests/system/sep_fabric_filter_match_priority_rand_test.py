@@ -40,14 +40,16 @@ Legs:
 * leg 2, source ID: exact, mismatch, wildcard, fall-through and upper AxUSER
   bits inbound; OTHERS against the AP and STEE remaps; on the SMU aperture
   outbound, two wildcard probes with distinct LSU AxUSER values read SEP's
-  source ID off PR-OUT (graded as not OTHERS and one value for both, logged
-  as OBS-FILT-SRC-ID: no specification gives the number), and the exact and
+  source ID off PR-OUT (graded as one value for both and equal to SEP's ID,
+  0xF, ``doc/integrator/src/smu-composition.adoc`` SEP row, with the reserved
+  AxUSER[11:4] 0, ``smu-composition.adoc:205-206``: CHK-FILT-SRC-ID),
+  and the exact and
   mismatch cells then take that ID as stimulus, so they grade that the
   outbound filter matches ``src_id`` against the replaced AxUSER[3:0];
 * leg 4, granule: seven (granule, shape, instance) cells probed at the widened
   edges.
 
-Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTRL-FILTER-RAND (stimulus
+Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CHK-FILT-SRC-ID, CTRL-FILTER-RAND (stimulus
 completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-IN,
 CHK-RESET-DENY-ARMED, CHK-RESET-DENY-CONTROL, CHK-RESET-DENY-SI, CHK-GRANULE,
 CHK-FILT-GROUP. CHK-RESET-DENY-IN: in the reset state, every inbound probe of
@@ -243,6 +245,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         "CHK-GRANULE",
         "CHK-FILT-GROUP",
         "CHK-RESET-DENY-SI",
+        "CHK-FILT-SRC-ID",
     )
 
     # ------------------------------------------------------------------
@@ -389,9 +392,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         vals = self._dbg_hist[max(0, m - 1) :]
         return ",".join("X" if x is None else f"0x{x:08x}" for x in vals) or "none"
 
-    def _obs_dbg(self, p: Probe, m: int, resp: int | None) -> None:
+    def _info_dbg(self, p: Probe, m: int, resp: int | None) -> None:
         self.logger.info(
-            "OBS-DBG-FILTER-HIT inst=%s cls=%s dir=%s addr=0x%08x resp=%s lane_191_160=%s",
+            "INFO-DBG-FILTER-HIT inst=%s cls=%s dir=%s addr=0x%08x resp=%s lane_191_160=%s",
             p.inst,
             p.cls,
             p.dir,
@@ -404,7 +407,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         """Run one probe and grade it against the model. Returns the evidence."""
         dm = self._dbg_mark()
         r = await self._run_graded(p)
-        self._obs_dbg(p, dm, r.resp)
+        self._info_dbg(p, dm, r.resp)
         return r
 
     async def _run_graded(self, p: Probe) -> Result:
@@ -1357,9 +1360,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 await self._src_pair("out", p, p, bad, good, "mismatch", s)
                 await self._src_pair("out", p, p, good, bad, "wildcard", 0)
         # Outbound exact and mismatch on the SMU aperture: the SMU path replaces the LSU
-        # AxUSER with SEP's source ID, which has no stated number. Wildcard probes
-        # with two distinct LSU AxUSER values read it off PR-OUT; the grade is not
-        # OTHERS and one value for both (SepSrcIdGrade). The exact and mismatch
+        # AxUSER with SEP's source ID. Wildcard probes with two distinct LSU
+        # AxUSER values read it off PR-OUT; the grade is 0xF and one value for
+        # both, with AxUSER[11:4] 0 (SepSrcIdGrade). The exact and mismatch
         # cells take the read ID as stimulus and an issued AxUSER whose [3:0]
         # differs from it, so a filter that matches the issued AxUSER fails them.
         users = draw_src_users(self.rng)
@@ -1385,7 +1388,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 )
         why = grade.finish(min_nonzero_issued=2)
         assert why is None, f"CHK-FILTER-SRC FAIL: smu src_id {why}"
-        self.logger.info("%s", grade.obs_line())
+        self.logger.info("%s", grade.chk_line())
         self.logger.info("CHK-FILTER-SRC PASS: inst=out class=smu_src_id %s", grade.summary())
         sep = grade.value()
         self.sep_id = sep
@@ -1519,13 +1522,13 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
     # Legs after the graded window: group_id against AxUSER[11:4], first probe
     # after the entry write
     # ------------------------------------------------------------------
-    async def _obs_si_read(self, p: Probe) -> tuple[int, int, int]:
+    async def _info_si_read(self, p: Probe) -> tuple[int, int, int]:
         """One SI read of ``p``: (resp, PR-INFLT AR count, PR-XEXT/PR-CSR AR count)."""
         mark = self._target_mark()
         mf = self.taps["PR-INFLT"].mark()
         dm = self._dbg_mark()
         seq = await self._si(p)
-        self._obs_dbg(p, dm, seq.resp_code)
+        self._info_dbg(p, dm, seq.resp_code)
         return seq.resp_code, self.taps["PR-INFLT"].count(mf, "ar"), self._seen(mark, p)[0]
 
     async def _group_leg(self) -> None:
@@ -1557,16 +1560,16 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             )
         await self._clear("in")
 
-    async def _obs_write_to_use(self) -> None:
+    async def _info_write_to_use(self) -> None:
         """Program one entry without the read-back and probe right after its last B."""
         await self._clear("in")
         idx = self.rng.randrange(self.inb.n)
         p = self._p_in("sram", False, self.rng.getrandbits(1))
         await self.inb.program(idx, self._entry(p, self._cover(p, False)), check=False)
         self.used["in"] = {idx}
-        resp, inflt, seen = await self._obs_si_read(p)
+        resp, inflt, seen = await self._info_si_read(p)
         self.logger.info(
-            "OBS-FILT-WRITE-TO-USE inst=in entry=%d addr=0x%08x resp=%s pr_inflt_ar=%d target_ar=%d",
+            "INFO-FILT-WRITE-TO-USE inst=in entry=%d addr=0x%08x resp=%s pr_inflt_ar=%d target_ar=%d",
             idx,
             p.addr,
             _RESP.get(resp),
@@ -1597,9 +1600,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self.start_seq(seq)
         if seq.resp_code != RESP_DECERR:
             mon.release_expected_decerr(1)
-        self._obs_dbg(p, dm, seq.resp_code)
+        self._info_dbg(p, dm, seq.resp_code)
         self.logger.info(
-            "OBS-FILT-WRITE-TO-USE inst=out entry=%d addr=0x%08x resp=%s pr_out_ar=%d",
+            "INFO-FILT-WRITE-TO-USE inst=out entry=%d addr=0x%08x resp=%s pr_out_ar=%d",
             idx,
             p.addr,
             _RESP.get(seq.resp_code),
@@ -1670,7 +1673,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._leg4()
         close_graded_window(self.logger)
         await self._group_leg()
-        await self._obs_write_to_use()
+        await self._info_write_to_use()
 
         for inst in ("in", "out"):
             s = self.stats[inst]

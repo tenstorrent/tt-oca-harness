@@ -6,11 +6,10 @@ The expected values the composition leaves compare against live here, each
 with the specification it is transcribed from: ``doc/integrator/src/smu.adoc``
 and ``doc/integrator/src/smu-smc.adoc``, the SMU, SMC, SEP and DTP port
 tables, the SMC interrupt and fabric documents, the SEP security-disable
-document, or a generated register header. A value no specification in this
-tree states is not compared: the crossbar-side ID width of the two ID-width
-converters, the SEP inbound ID width, the packed layout of the crossbar's
-channel structs and the packed layout of the SMU build-configuration struct
-are read from the elaboration alone, and a compare against a recorded
+document, the SMU datasheet, or a generated register header. A value no
+specification in this tree states is not compared: the packed layout of the
+crossbar's channel structs and the packed layout of the SMU build-configuration
+struct are read from the elaboration alone, and a compare against a recorded
 elaboration proves no requirement.
 
 The sections the cites name: "SMU Default Parameters", "Cross Trigger
@@ -35,9 +34,14 @@ XTRIG_NUM_INT_CT = 8
 XTRIG_NUM_CLK_STOP_REQ = 8
 # doc/integrator/src/smu.adoc "Debug & Test Ports (DTP) Integration": the DTP
 # carries 10 internal CTs and 9 clock-stop requests, 8 and 8 of them exposed;
-# the lanes below the exposed ones are the SMC reservation, held in pulse-sync
-# mode with their mode bits at zero.
+# the lanes below the exposed ones are the SMC reservation, held in wire-OR
+# mode.
 XTRIG_SMC_INT_CT_LANES = 2
+# Each lane of XTRIG_INT_CT_MODE is a packed cross_trigger_port_pkg::ctp_int_cfg_t:
+# the 2-bit ctp_mode_e above a 16-bit stretch_mult.
+CTP_INT_CFG_BITS = 18
+CTP_STRETCH_MULT_BITS = 16
+CTP_MODE_POINT_TO_POINT = 1
 XTRIG_SMC_CLK_STOP_LANES = 1
 DTP_NUM_INT_CT = XTRIG_NUM_INT_CT + XTRIG_SMC_INT_CT_LANES
 DTP_NUM_CLK_STOP_REQ = XTRIG_NUM_CLK_STOP_REQ + XTRIG_SMC_CLK_STOP_LANES
@@ -65,6 +69,14 @@ SMC_SYS_IN_ID_WIDTH = 6
 SMU_AXI_IN_ID_WIDTH = 8
 SMU_AXI_OUT_ID_WIDTH = 10
 SMU_AXI_USER_WIDTH = 12
+# doc/integrator/src/smu-composition.adoc "SMU AXI Crossbar Address Map": the
+# crossbar presents 6-bit transaction IDs to the SEP and SMC inbound
+# subordinates; the subsystem-side width of the SEP ID-width converter.
+SEP_SYS_IN_ID_WIDTH = 6
+# doc/datasheets/src/smu.adoc "At a glance", AXI IDs: 8-bit input, 10-bit
+# crossbar output, 6-bit SMC/SEP target; the crossbar-side width of both
+# ID-width converters.
+XBAR_OUTPUT_ID_WIDTH = 10
 # hw/sys/sep/doc/security_disable.adoc: the security-disable token is a
 # 256-bit value.
 SEP_SEC_DISABLE_TOKEN_WIDTH = 256
@@ -156,6 +168,16 @@ class GenerateScope:
         if node is None:
             raise AssertionError(f"hierarchy element {self._name}.{child} not found")
         return node
+
+
+def int_ct_p2p_mask(cfg: int, lanes: int) -> int:
+    """One bit per lane of a ctp_int_cfg_t vector, set where the lane is point-to-point."""
+    mask = 0
+    for lane in range(lanes):
+        mode = (cfg >> (lane * CTP_INT_CFG_BITS + CTP_STRETCH_MULT_BITS)) & 0x3
+        if mode == CTP_MODE_POINT_TO_POINT:
+            mask |= 1 << lane
+    return mask
 
 
 def bit_width(handle: Any, name: str) -> int:

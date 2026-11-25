@@ -29,6 +29,12 @@ Two inter-chiplet signalling schemes are supported:
 * *Point-to-point* — faster, more reliable, and simpler to configure. Uses
   four-phase handshaking with CDC synchronisers at the die boundary.
 
+A third scheme, *toggle*, sends each trigger as one level change on
+_CT_Req_out_ and receives one on _CT_Req_in_, with no acknowledge and no
+back-pressure. The CSRs cannot select it; only the register-free core with a
+static mode can, as the internal CTPs of the Cross Trigger Network do. See
+<<ctp-toggle-mode>>.
+
 == Configuration
 
 The CTP has no build-time parameters. All operational settings are
@@ -48,7 +54,7 @@ endif::backend-html5[]
 .CTP configuration registers
 |===
 |Register |Description
-|`MODE` |Select wire-OR (0) or point-to-point (1) signalling.
+|`MODE` |Select wire-OR (0) or point-to-point (1) signalling. Toggle mode is not selectable.
 |`STRETCH_MULT` |16-bit pulse stretch multiplier for wire-OR mode.
 |`INVERT` |Signal polarity inversion for GPIO adaptation.
 |`RESET` |Handshake state machine reset.

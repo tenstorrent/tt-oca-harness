@@ -86,12 +86,15 @@ module i2c_core
                                                             // parity integrity errors, independent
                                                             // of INTR_ENABLE.
 
-  output logic [3:0]                       debug_o          // [0] SDA and [1] SCL, each sampled
+  output logic [3:0]                       debug_o,         // [0] SDA and [1] SCL, each sampled
                                                             // once by clk_i; [2] target_idle; [3]
                                                             // OR of the NACK, arbitration-lost,
                                                             // interference, timeout and
                                                             // SDA-unstable controller events, not
                                                             // stretched.
+  output logic [11:0]                      fsm_state_debug_o // [4:0] controller FSM state, [9:5]
+                                                             // target FSM state, [11:10] bus
+                                                             // monitor state.
 );
 
   `include "prim_assert.sv"
@@ -692,7 +695,8 @@ module i2c_core
     .stop_detect_o              (stop_detect),
 
     .event_bus_active_timeout_o (event_bus_active_timeout),
-    .event_host_timeout_o       (event_host_timeout)
+    .event_host_timeout_o       (event_host_timeout),
+    .state_debug_o              (fsm_state_debug_o[11:10])
   );
 
   // Target start/stop events: qualify global bus monitor events with target_enable
@@ -754,7 +758,8 @@ module i2c_core
     .event_scl_interference_o       (event_scl_interference),
     .event_stretch_timeout_o        (event_stretch_timeout),
     .event_sda_unstable_o           (event_sda_unstable),
-    .event_cmd_complete_o           (event_controller_cmd_complete)
+    .event_cmd_complete_o           (event_controller_cmd_complete),
+    .state_debug_o                  (fsm_state_debug_o[4:0])
   );
 
   i2c_target_fsm #(
@@ -813,7 +818,8 @@ module i2c_core
     .event_tx_stretch_o           (event_tx_stretch),
     .event_unexp_stop_o           (event_unexp_stop),
     .event_tx_arbitration_lost_o  (event_tx_arbitration_lost),
-    .event_tx_bus_timeout_o       (event_tx_bus_timeout)
+    .event_tx_bus_timeout_o       (event_tx_bus_timeout),
+    .state_debug_o                (fsm_state_debug_o[9:5])
   );
 
   assign reg_in_o.TARGET_ACK_CTRL.NBYTES.swwe = target_ack_ctrl_stretching;

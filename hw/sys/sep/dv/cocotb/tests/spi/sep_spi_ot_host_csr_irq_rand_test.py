@@ -26,9 +26,9 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-SPI-STATUS-RESET: STATUS reads TXSTALL, RXSTALL, TXWM and RXWM at their
                   RDL reset value 0x0 (spi_controller.rdl, STATUS). READY,
                   TXEMPTY, RXEMPTY and BYTEORDER are logged only
-                  (OBS-SPI-STATUS-RESET): the RDL gives reset 0x0, while the
+                  (INFO-SPI-STATUS-RESET): the RDL gives reset 0x0, while the
                   field text (an empty FIFO, the unmodified IP with ByteOrder
-                  1) gives 1; the open question is in SEP_VPLAN.
+                  1) gives 1; not graded; no open specification question.
   CHK-REG-RW    : each RW reg write->readback exact; bits outside the writable
                   mask (RO/reserved) read 0.
   CHK-INTR      : INTR_STATE.ERROR is an Event latch -- INTR_TEST sets it with
@@ -60,10 +60,11 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   (tap spi_alert_tx_probe_o) reads idle before the write and
                   fired inside the window (CTRL-SPI-ALERT-REACH, else
                   CTRL-MISSING); INTR_TEST.ERROR at the same enable raises the
-                  line inside the same window. The response code is logged
-                  (OBS-SPI-ALERT-RESP): no specification states the response
-                  code of a legal register write. The other vector bits are
-                  logged (OBS-SPI-ALERT-TEST).
+                  line inside the same window. The response code is logged,
+                  not graded (INFO-SPI-ALERT-RESP): no specification states
+                  the response code of a legal register write. The other
+                  vector bits of the same window are logged
+                  (INFO-SPI-ALERT-TEST).
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -131,7 +132,7 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       ERROR_STATUS clear and clears on its own W1C.
   L2 CHK-SPI-CSID-RANGE : a COMMAND at a drawn CSID from 2 to 0xFFFFFFFE sets
                       ERROR_STATUS to CSIDINVAL alone; CSID=1 is logged only
-                      (OBS-SPI-CSID1): at NumCS=1 the OpenTitan SPI_HOST theory
+                      (INFO-SPI-CSID1): at NumCS=1 the OpenTitan SPI_HOST theory
                       of operation says both "in this case the CSID value is
                       ignored" (theory_of_operation.md:205) and "Submitting a
                       command segment to an invalid CSID (one larger or equal
@@ -211,7 +212,7 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       write of the Tx COMMAND raises STATUS.CMDQD by 1 and
                       STATUS.TXQD reads at least 1 after it, or the window
                       shows sck edges. Logged only
-                      (OBS-SPI-CMDINVAL-SPIEN1): STATUS (CMDQD, ACTIVE, TXQD)
+                      (INFO-SPI-CMDINVAL-SPIEN1): STATUS (CMDQD, ACTIVE, TXQD)
                       and the chip select windows while CMDINVAL halts the
                       IP. SW_RST then empties both queues before the write of
                       1, because the core assumes a valid speed and no text
@@ -411,7 +412,7 @@ _FAM_SWRST = SPI_CSR_IRQ_FAM_SW | SPI_CSR_IRQ_FAM_DOM
 _FAM_SPIEN = SPI_CSR_IRQ_FAM_SZ | SPI_CSR_IRQ_FAM_QD
 _R = SPI_CONTROLLER
 ALERT_TEST = _R.addr("ALERT_TEST")
-# Write-only registers read, and read-only registers written, by _obs_wo_ro.
+# Write-only registers read, and read-only registers written, by _info_wo_ro.
 _WO_READS = (
     ("COMMAND", COMMAND),
     ("TXDATA", TXDATA),
@@ -570,7 +571,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
         await self._chk_reset()
         await self._chk_reg_rw()
-        await self._obs_wo_ro()
+        await self._info_wo_ro()
         await self._chk_alert_test()
         await self._chk_zero_strb()
         await self._chk_intr()
@@ -636,13 +637,13 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         self.logger.info("CHK-SPI-STATUS-RESET PASS: status=0x%08x %s expect=0", st, text)
         self.logger.info(
-            "OBS-SPI-STATUS-RESET status=0x%08x ready=%d txempty=%d rxempty=%d byteorder=%d",
+            "INFO-SPI-STATUS-RESET status=0x%08x ready=%d txempty=%d rxempty=%d byteorder=%d",
             st,
             *(field(f) for f in ("ready", "txempty", "rxempty", "byteorder")),
         )
 
-    # ---- OBS-SPI-WO-RO-ACCESS ---------------------------------------------
-    async def _obs_wo_ro(self) -> None:
+    # ---- INFO-SPI-WO-RO-ACCESS ---------------------------------------------
+    async def _info_wo_ro(self) -> None:
         """Log the response and data of a read of each write-only register and of a
         write to each read-only register, with ERROR_STATUS after each write."""
         rng = SepSeededRng(self.random_seed() ^ _WO_RO_SALT)
@@ -656,7 +657,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             )
             await self.start_seq(seq)
             self.logger.info(
-                "OBS-SPI-WO-RO-ACCESS reg=%s dir=R resp=%d data=0x%08x err_status=-",
+                "INFO-SPI-WO-RO-ACCESS reg=%s dir=R resp=%d data=0x%08x err_status=-",
                 name,
                 seq.resp_code,
                 seq.rdata & 0xFFFF_FFFF,
@@ -674,7 +675,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self.start_seq(seq)
             es = await self.spi.rd(ERROR_STATUS)
             self.logger.info(
-                "OBS-SPI-WO-RO-ACCESS reg=%s dir=W resp=%d data=0x%08x err_status=0x%08x",
+                "INFO-SPI-WO-RO-ACCESS reg=%s dir=W resp=%d data=0x%08x err_status=0x%08x",
                 name,
                 seq.resp_code,
                 word,
@@ -908,7 +909,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self.logger.info(
             "CTRL-SPI-ALERT-RESP seed=%d reg=ALERT_TEST data=0x1 write response received", seed
         )
-        self.logger.info("OBS-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
+        self.logger.info("INFO-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
         high, _first, diff, alert_clk = await self._line_window()
         if alert_clk < 0:
             msg = (
@@ -920,7 +921,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self.logger.info("CTRL-SPI-ALERT-REACH seed=%d alert seen at clk=%d", seed, alert_clk)
         st = await self.spi.rd(INTR_STATE)
         self.logger.info(
-            "OBS-SPI-ALERT-TEST vec_diff=0x%x (bit %d excluded)", diff & ~(1 << _SPI_AGG), _SPI_AGG
+            "INFO-SPI-ALERT-TEST vec_diff=0x%x (bit %d excluded) chk=CHK-SPI-ALERT-TEST",
+            diff & ~(1 << _SPI_AGG),
+            _SPI_AGG,
         )
         # Control: an interrupt source at the same enable raises the line in
         # the same window.
@@ -2065,7 +2068,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         st = await self.ops.read_status()
         ie = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
         self.logger.info(
-            "OBS-SPI-CSID1 LOG seed=%d csid=0x1 err_status=0x%02x intr_error=%d active=%d cmdqd=%d "
+            "INFO-SPI-CSID1 LOG seed=%d csid=0x1 err_status=0x%02x intr_error=%d active=%d cmdqd=%d "
             "reason=the OT spi_host theory of operation says CSID is ignored at NumCS=1 and "
             "also that a CSID >= NumCS is CSIDINVAL",
             self.seed,
@@ -2695,7 +2698,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         set_open_value_leg_pass(None, self.logger)
         self.logger.info(
-            "OBS-SPI-CMDINVAL-SPIEN1 LOG seed=%d tx_word=0x%08x tx_bytes=%d cs_windows_held=%d "
+            "INFO-SPI-CMDINVAL-SPIEN1 LOG seed=%d tx_word=0x%08x tx_bytes=%d cs_windows_held=%d "
             "cmdqd_held=%d active_held=%d txqd_held=%d",
             self.seed,
             word,

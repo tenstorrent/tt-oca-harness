@@ -52,6 +52,47 @@ async def wait_for_line(console: list[str], marker: str, every: int = 10) -> Non
         await ClockCycles(cocotb.top.clk_i, every)
 
 
+class RomConsoleDecoder:
+    """Turns successive cold_scratch[2] words into complete console lines."""
+
+    def __init__(self) -> None:
+        self._line = bytearray()
+        self._prev: int | None = None
+
+    def feed(self, word: int) -> list[str]:
+        """Decode one sampled word; returns the lines it completed."""
+        if word == self._prev:
+            return []
+        self._prev = word
+        op = (word >> _OP_SHIFT) & _OP_MASK
+        if op == _OP_HEX16:
+            # simputhex32 emits "0x" then high half then low half, so plain
+            # 4-digit concatenation reassembles the full 32-bit value.
+            self._line.extend(f"{(word >> 8) & 0xFFFF:04x}".encode("ascii"))
+            return []
+        if op == _OP_DEC24:
+            self._line.extend(str((word >> 8) & 0xFFFFFF).encode("ascii"))
+            return []
+        if op != _OP_ASCII:
+            return []
+        done: list[str] = []
+        for shift in _CHAR_SHIFTS:
+            char = (word >> shift) & 0xFF
+            if char == 0:
+                continue
+            if char == _ASCII_LF:
+                done.append(bytes(self._line).decode("ascii", "ignore"))
+                self._line = bytearray()
+            elif char in _ASCII_PRINTABLE:
+                self._line.append(char)
+        return done
+
+
+def console_word(probe: int) -> int:
+    """cold_scratch[2] out of a ``scratch_cold_probe_o`` sample."""
+    return (probe >> _SCRATCH2_SHIFT) & _WORD_MASK
+
+
 async def rom_console_task(
     logger: logging.Logger,
     sink: list[str] | None = None,
@@ -66,8 +107,7 @@ async def rom_console_task(
     its own.
     """
     dut = cocotb.top
-    line = bytearray()
-    prev = None
+    decoder = RomConsoleDecoder()
     try:
         while True:
             await RisingEdge(dut.clk_i)
@@ -75,33 +115,10 @@ async def rom_console_task(
                 packed = int(dut.scratch_cold_probe_o.value)
             except Exception:  # noqa: BLE001 - X/Z during reset is not decodable
                 continue
-            word = (packed >> _SCRATCH2_SHIFT) & _WORD_MASK
-            if word == prev:
-                continue
-            prev = word
-            op = (word >> _OP_SHIFT) & _OP_MASK
-            if op == _OP_HEX16:
-                # simputhex32 emits "0x" then high half then low half, so plain
-                # 4-digit concatenation reassembles the full 32-bit value.
-                line.extend(f"{(word >> 8) & 0xFFFF:04x}".encode("ascii"))
-                continue
-            if op == _OP_DEC24:
-                line.extend(str((word >> 8) & 0xFFFFFF).encode("ascii"))
-                continue
-            if op != _OP_ASCII:
-                continue
-            for shift in _CHAR_SHIFTS:
-                char = (word >> shift) & 0xFF
-                if char == 0:
-                    continue
-                if char == _ASCII_LF:
-                    text = bytes(line).decode("ascii", "ignore")
-                    logger.info("%s%s", prefix, text)
-                    if sink is not None:
-                        sink.append(text)
-                    line = bytearray()
-                elif char in _ASCII_PRINTABLE:
-                    line.append(char)
+            for text in decoder.feed(console_word(packed)):
+                logger.info("%s%s", prefix, text)
+                if sink is not None:
+                    sink.append(text)
     except Exception:  # noqa: BLE001 - end-of-sim kills the clock; stop cleanly
         return
 

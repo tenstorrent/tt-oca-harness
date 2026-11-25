@@ -309,6 +309,9 @@ package smc_pkg;
   localparam smc_axi_user_t MmodeSrcId = smc_axi_user_t'('hC);
   localparam smc_axi_user_t SepSrcId = smc_axi_user_t'('hF);
 
+  // AxPROT of every SMC-internal initiator: data, secure, privileged.
+  localparam axi_pkg::prot_t SmcInitiatorProt = 3'b001;
+
   // Address Remap Parameters
   // The remap starts are offsets into the SMC register window, since the fabric adds them to a
   // runtime window base. SMC_TOP_BASE_ADDR is the addrmap root (0), not the window base, so the

@@ -139,9 +139,17 @@ module smc_4core_cpu (
   output logic                                            init_mem_done_o,  // High once the scratch RAM
                                                                             // zero-fill has completed or been
                                                                             // skipped.
+  output logic [2:0]                                      mem_zero_state_debug_o,  // Scratch RAM zero-fill FSM
+                                                                                   // state: 001 idle, 010 busy,
+                                                                                   // 100 done.
 
-  input  logic                                            test_en_i  // Scan test mode enable for the
-                                                                     // debug clock gate.
+  input  logic                                            test_en_i,  // Scan test mode enable for the
+                                                                      // debug clock gate and the cluster
+                                                                      // reset synchronizer bypass.
+  input  logic                                            scan_rst_ni  // Scan reset, active-low, driven
+                                                                       // out of the cluster reset
+                                                                       // synchronizers while test_en_i
+                                                                       // is high.
 );
   // Mem Init signals
   chipyard_4core_mem_pkg::scratch_ram_req_t scratch_ram_intf_req_pre_init [chipyard_4core_mem_pkg::NumSramBanks-1:0];
@@ -336,6 +344,9 @@ module smc_4core_cpu (
   // ----------
   // Instantiate DigitalTop
   OCAH4CORECluster_DigitalTop u_digital_top (
+    .test_en_i   (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+
     // Memory interfaces (outputs from DigitalTop)
     .rom_intf_req(rom_intf_req_o),
     .rom_intf_rsp(rom_intf_rsp_i),
@@ -580,6 +591,7 @@ module smc_4core_cpu (
   end
 
   assign init_mem_done_o = init_mem_complete;
+  assign mem_zero_state_debug_o = state;
 
 `ifndef SYNTHESIS
 `ifndef EMULATION

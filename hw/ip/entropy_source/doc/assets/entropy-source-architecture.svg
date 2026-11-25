@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="652" viewBox="0 0 1040 652" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="696" viewBox="0 0 1040 696" role="img" aria-labelledby="title desc">
 <title id="title">Entropy source microarchitecture</title>
-<desc id="desc">Entropy source microarchitecture. The sample-clock block drives twelve generator lanes. Each lane has a noise source whose bits pass a 29-stage decorrelator; an 8-bit health test on the decorrelated byte drives an auto-tune FSM that can detune the noise source. The twelve bytes enter the BIW extractor of four gf_muladd instances, which produces a 32-bit stream. A 32-bit health test watches that stream and reports to the main state machine, which opens the boot gate once a boot health-test window passes. The gated stream passes the optional SHA-256 whitener and an output select, which can instead take the uncompressed decorrelator bytes, into a 64-entry main FIFO; each word written to the FIFO also leaves as entropy_stream_data_o towards the DRBG. Observe FIFOs capture raw noise bits from one selected lane and the post-BIW stream. The register block, reached over AXI4-Lite, configures every stage, reads the three FIFOs, drives irq_o and selects the signal that the debug monitor routes to signal_monitor_o.</desc>
+<desc id="desc">Entropy source microarchitecture. The ring oscillators sit beside entropy_source, in entropy_rosc_array, twelve noise rings and a shared ring: rosc_ctrl_o drives their enables and detunes, rosc_noise_i returns the twelve noise rings to the generator lanes and rosc_shared_clk_i the shared ring to the sample-clock block, which also takes rosc_sample_clk_i and drives twelve generator lanes. Each lane has a noise sampler whose bits pass a 29-stage decorrelator; an 8-bit health test on the decorrelated byte drives an auto-tune FSM that can detune the lane ring. The twelve bytes enter the BIW extractor of four gf_muladd instances, which produces a 32-bit stream. A 32-bit health test watches that stream and reports to the main state machine, which opens the boot gate once a boot health-test window passes. The gated stream passes the optional SHA-256 whitener and an output select, which can instead take the uncompressed decorrelator bytes, into a 64-entry main FIFO; each word written to the FIFO also leaves as entropy_stream_data_o towards the DRBG. Observe FIFOs capture raw noise bits from one selected lane and the post-BIW stream. The register block, reached over AXI4-Lite, configures every stage, reads the three FIFOs, drives irq_o and selects the signal that the debug monitor routes to signal_monitor_o.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -76,19 +76,29 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
 </style>
 </defs>
-<rect width="1040" height="652" fill="#ffffff"/>
+<rect width="1040" height="696" fill="#ffffff"/>
+<g transform="translate(0,44)">
 <rect class="smu" x="16" y="60" width="1008" height="510" rx="8"/>
 <text class="b" x="26" y="558" text-anchor="start">entropy_source</text>
 <rect class="core" x="32" y="130" width="90" height="80" rx="6"/>
 <text class="bs" x="77" y="166" text-anchor="middle">Sample</text>
 <text class="bs" x="77" y="184" text-anchor="middle">clocks</text>
-<path class="sigo" d="M77,34 L77,127"/>
-<text class="s" x="85" y="30" text-anchor="start">rosc_sample_clk_i</text>
+<path class="sigo" d="M54,-28 L54,127"/>
+<text class="s" x="60" y="-30" text-anchor="start">rosc_sample_clk_i</text>
+<rect class="external" x="196" y="-36" width="254" height="46" rx="6"/>
+<text class="bs" x="323" y="-16" text-anchor="middle">entropy_rosc_array</text>
+<text class="s" x="323" y="1" text-anchor="middle">12 noise rings and a shared ring</text>
+<path class="a-rosc" d="M196,-20 L100,-20 L100,127"/>
+<text class="s" x="106" y="56" text-anchor="start">rosc_shared_clk_i</text>
+<text class="s" x="242" y="56" text-anchor="start">rosc_noise_i</text>
+<path class="sigo" d="M420,104 L420,13"/>
+<text class="s" x="426" y="56" text-anchor="start">rosc_ctrl_o</text>
 <rect class="core" x="146" y="104" width="310" height="162" rx="6"/>
-<text class="bs" x="156" y="126" text-anchor="start">Generator lane ×12 (entropy_generator)</text>
+<text class="bs" x="446" y="126" text-anchor="end">entropy_generator ×12</text>
+<path class="a-rosc" d="M236,10 L236,143"/>
 <rect class="core" x="154" y="146" width="108" height="48" rx="6"/>
-<text class="s" x="208" y="167" text-anchor="middle">Noise source</text>
-<text class="s" x="208" y="183" text-anchor="middle">RO and sampler</text>
+<text class="s" x="208" y="167" text-anchor="middle">Noise sampler</text>
+<text class="s" x="208" y="183" text-anchor="middle">flop and sync</text>
 <rect class="core" x="280" y="146" width="90" height="48" rx="6"/>
 <text class="s" x="325" y="167" text-anchor="middle">Decorrelator</text>
 <text class="s" x="325" y="183" text-anchor="middle">29-stage</text>
@@ -98,8 +108,6 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M122,170 L151,170"/>
 <path class="sigo" d="M262,170 L277,170"/>
 <path class="sigo" d="M325,194 L325,209"/>
-<path class="sigo" d="M280,234 L236,234 L236,197"/>
-<text class="s" x="230" y="226" text-anchor="end">detune</text>
 <path class="sigo" d="M370,170 L471,170"/>
 <text class="s" x="413" y="164" text-anchor="middle">12 × 8-bit</text>
 <circle cx="464" cy="170" r="3.5" fill="#5b6670"/>
@@ -186,4 +194,5 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="pst" x="240" y="464.5" text-anchor="middle">S</text>
 <rect class="ps" x="14.0" y="623.0" width="22" height="18" rx="4"/>
 <text class="pst" x="25" y="636.5" text-anchor="middle">S</text>
+</g>
 </svg>

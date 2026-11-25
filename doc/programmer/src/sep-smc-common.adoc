@@ -13,7 +13,8 @@ the global apertures to match the chiplet's assigned system address map: SEP
 `REGION_SIZE`. Both region sizes reset to 16 MiB. The apertures of different
 chiplets must not overlap, and the hardware does not derive them from the
 chiplet ID: any chiplet-ID-based assignment is platform policy that firmware
-implements. The chiplet ID and chiplet BAR are available in SMC registers.
+implements. <<smc-address-map>> lists the values firmware can use to identify
+the chiplet.
 Issue a fence between programming these routing registers and later MMIO
 accesses that depend on them. The surrounding system must use the same
 assignments when it accesses the subsystems.
@@ -137,11 +138,12 @@ void smc_post_status(uint32_t status) {
 }
 ----
 
-The write keeps the AxPROT the SMC hart issued, NS included; only the address
-and the source ID change. The SMC outbound filter passes it unless an entry
-denies `OTHERS` traffic to the target. The M-mode window works the same way,
-with its regions at `0xC0013000`, its window at `0xC100_0000` and source ID
-`MMODE`.
+The write leaves non-secure, with NS 1 as every request through the Xvisor
+window does; only the address, the source ID and NS change. The SMC outbound
+filter passes it unless an entry denies `OTHERS` traffic to the target. The
+M-mode window works the same way, with its regions at `0xC0013000`, its window
+at `0xC100_0000` and source ID `MMODE`, except that NS is the inverse of bit 55
+of the remapped address.
 
 [WARNING]
 ====
@@ -347,7 +349,8 @@ AxPROT instead: with `awprot_requirement` and `arprot_requirement` at `0x1`
 (data, secure, privileged) and both `write_filter_enable` and
 `read_filter_enable` set, only transactions whose three PROT bits equal `0x1`
 are allowed. The SEP load/store, debug and DMA masters all drive `0x1`, which
-reaches the SMC unchanged on SEP's SMC path. SEP traffic on the direct SMN path
+reaches the SMC unchanged on SEP's SMC path, and every SMC initiator issues
+`0x1` as well. SEP traffic on the direct SMN path
 carries NS 1 unless its address has bit 55 set.
 
 [NOTE]

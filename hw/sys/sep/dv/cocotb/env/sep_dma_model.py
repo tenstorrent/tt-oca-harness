@@ -18,7 +18,9 @@ side with base address ``base`` is:
 
 * INCREMENT=1, WRAP=1: base + p*w (each chunk starts again at base),
 * INCREMENT=1, WRAP=0: base + k*w,
-* INCREMENT=0: base.
+* INCREMENT=0: base, within one chunk, and on every chunk when WRAP=1. The
+  model does not cover INCREMENT=0 with WRAP=0 over two or more chunks, where
+  each chunk starts at the next chunk address.
 
 TRANSFER_WIDTH encodings 0, 1 and 2 select 1, 2 and 4 bytes per transaction
 (``dma.hjson``, TRANSFER_WIDTH). Transaction k reads w bytes at its source

@@ -7,7 +7,7 @@ key is compared word-for-word against the NIST ACVP vector in
 ``env/sep_abr_nist.py``. ZEROIZE must drop VALID, and the pubkey window must
 then read zero. A second keyGen on the ACVP seed with one bit flipped runs
 after ZEROIZE; its public key has no golden in the tree, so it is logged as
-``OBS-ABR-KEYGEN-SENSITIVITY`` and not graded. ML-KEM, sign/verify, and the
+``INFO-ABR-KEYGEN-SENSITIVITY`` and not graded. ML-KEM, sign/verify, and the
 key-vault seed path are not claimed, and neither is the ABR_ZEROIZE memory walk
 itself -- see CHK-ZEROIZE below.
 
@@ -18,7 +18,7 @@ notification, vector bit 35) rises once after the keyGen command and falls
 after the ``notif_internal_intr_r`` write-one-to-clear. A per-clock watcher of
 the whole vector grades that bit 34 and bit 35 each rise exactly once in the
 window (CHK-SRC35-RISE, CHK-SRC36-RISE) and logs the other bits that moved in
-the clock of each rise (OBS-SRC35-COINCIDENT, OBS-SRC36-COINCIDENT); no
+the clock of each rise (INFO-SRC35-COINCIDENT, INFO-SRC36-COINCIDENT); no
 document states that no other source moves. The ``cp_src_exclusive_other``
 rise of each source is held and samples only after its CHK-SRC35-RISE or
 CHK-SRC36-RISE passed (``exo_pass``, ``env/sep_fcov_gate.set_exo_pass``).
@@ -107,7 +107,7 @@ _LABEL_CLK = 3
 _SRC_CRYPTO_ALERT = pic("Crypto alert")
 _SRC_ABR_ERROR = pic("Adams Bridge error")
 _SRC_ABR_NOTIF = pic("Adams Bridge notification")
-# Vector bits left out of the ``moved`` field of OBS-SRC35/36-COINCIDENT: the
+# Vector bits left out of the ``moved`` field of INFO-SRC35/36-COINCIDENT: the
 # crypto alert and the other Adams Bridge line. The cp_src_exclusive_other
 # sampler exempts the same bits (cov/sv/sep_fcov.sv, exo_same), so a rise with
 # coincident=0 is a rise the sampler counts as exclusive. The before and after
@@ -185,7 +185,7 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
     ) -> None:
         """CHK-SRC<src>-RISE: ``key`` rises ``want`` times since ``mark``.
 
-        OBS-SRC<src>-COINCIDENT logs the other vector bits that moved in the
+        INFO-SRC<src>-COINCIDENT logs the other vector bits that moved in the
         clock of each rise, ``same_clock`` bits left out of ``moved``; it
         grades nothing.
         """
@@ -196,7 +196,7 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         if rises:
             moved = vec.smears_since(mark, key, same_clock=same_clock)
             self.logger.info(
-                "OBS-SRC%d-COINCIDENT: bit=%d rises=%d coincident=%d same_clock=0x%011x "
+                "INFO-SRC%d-COINCIDENT: bit=%d rises=%d coincident=%d same_clock=0x%011x "
                 "ignored=0x%011x before=%s after=%s moved=%s",
                 src,
                 bit,
@@ -254,7 +254,7 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
             "(want 0)",
         )
         self.logger.info(
-            "OBS-ABR-ERROR-INTR-RSVD: error_internal_intr_r bits outside error_internal_sts "
+            "INFO-ABR-ERROR-INTR-RSVD: error_internal_intr_r bits outside error_internal_sts "
             "0x%08x after trigger, 0x%08x after W1C",
             err_set & _ERR_RSVD,
             err_clr & _ERR_RSVD,
@@ -284,7 +284,7 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
             "(want 0)",
         )
         self.logger.info(
-            "OBS-ABR-NOTIF-INTR-RSVD: notif_internal_intr_r bits outside notif_cmd_done_sts "
+            "INFO-ABR-NOTIF-INTR-RSVD: notif_internal_intr_r bits outside notif_cmd_done_sts "
             "0x%08x after keyGen, 0x%08x after W1C",
             notif_set & _NOTIF_RSVD,
             notif_clr & _NOTIF_RSVD,
@@ -371,7 +371,7 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         ver0 = await abr.rd32(ABR_VERSION0)
         ver1 = await abr.rd32(ABR_VERSION1)
         self.logger.info(
-            "OBS-ABR-MLDSA-ID: NAME0=0x%08x NAME1=0x%08x VERSION0=0x%08x VERSION1=0x%08x",
+            "INFO-ABR-MLDSA-ID: NAME0=0x%08x NAME1=0x%08x VERSION0=0x%08x VERSION1=0x%08x",
             name0,
             name1,
             ver0,
@@ -457,7 +457,7 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         same = sum(1 for a, b in zip(pk2, NIST_KG_PK, strict=True) if a == b)
         nonzero = sum(1 for w in pk2 if w != 0)
         self.logger.info(
-            "OBS-ABR-KEYGEN-SENSITIVITY: seed word %d bit %d flipped; public key "
+            "INFO-ABR-KEYGEN-SENSITIVITY: seed word %d bit %d flipped; public key "
             "word 0=0x%08x, %d of %d words equal the NIST vector, %d non-zero",
             cfg.flip_word,
             cfg.flip_bit,

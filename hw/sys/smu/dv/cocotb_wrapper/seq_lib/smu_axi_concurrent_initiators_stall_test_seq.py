@@ -124,6 +124,11 @@ from seq_lib.smu_tb_pins import smc_primary_reset
 from seq_lib.smu_xbar_decerr_burst_response_test_seq import _hx, _rn, _val
 from seq_lib.smu_xbar_reset_held_target_test_seq import smu_xbar_reset_held_target_test_seq
 
+ATOP_NOTE = (
+    "AWATOP is 0 by the smu_axi_in boundary contract (integrator guide, AXI boundary "
+    "contract: the SMU neither refuses nor answers an atomic); measured, never compared"
+)
+
 # --- registers and reset values (generated headers) ---
 _SEP_ADDR_H = Path(__file__).resolve().parents[6] / "hw/sys/sep/regs/gen/c/sep_addr.h"
 SRAM_LOCAL = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_SRAM_BASE_ADDR")
@@ -914,9 +919,7 @@ class smu_axi_concurrent_initiators_stall_test_seq(smu_xbar_reset_held_target_te
         self._raw(
             f"OBS-G4-ATOP-SMC: smc_out AWs at the crossbar port in S2={len(x_aw)} with "
             f"AWATOP={sorted({_hx(e['awatop']) for e in x_aw})} "
-            f"AWBURST={sorted({_hx(e['awburst']) for e in x_aw})}; waits on an open spec question "
-            f"(whether the fabric carries ATOP and how an atomic request is answered), never "
-            f"compared"
+            f"AWBURST={sorted({_hx(e['awburst']) for e in x_aw})}; {ATOP_NOTE}"
         )
         self.s2_ext_out = (len(dma_aw), len(dma_ar))
         self._mark("STALLED_EXT_OUT", len(dma_aw) + len(dma_ar) + 2 + len(reqs), 2 + 2 + len(reqs))
