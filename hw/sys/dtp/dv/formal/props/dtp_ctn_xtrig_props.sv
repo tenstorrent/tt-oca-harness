@@ -22,7 +22,7 @@ module dtp_ctn_xtrig_props #(
   input logic                  clk_i,
   input logic                  rst_ni,
   // External port 0: configuration
-  input logic                  mode_wire_or_i,    // u_core.mode_wire_or_i
+  input logic                  mode_wire_or_i,    // u_core.mode_wire_or
   input logic                  invert_i,          // u_core.invert_i
   input logic                  hs_reset_i,        // u_core.handshake_reset_i
   input logic [15:0]           stretch_mult_i,    // u_core.stretch_mult_i
@@ -40,7 +40,7 @@ module dtp_ctn_xtrig_props #(
   input logic                  hs_busy_i,         // u_handshake_ctrl.busy_q
   input logic                  req_in_sync_i,     // u_core.ct_req_in_din_sync_inv
   input logic                  ack_in_sync_i,     // u_core.ct_ack_in_din_sync_inv
-  input logic [1:0]            p2p_din_valid_q_i, // u_core.p2p_din_valid_q
+  input logic [1:0]            p2p_din_valid_q_i, // u_core.din_valid_q
   // External port 0: wire-OR receive path and pad control
   input logic                  req_out_din_raw_sync_i,  // u_core.ct_req_out_din_sync
   input logic                  req_out_din_sync_i,  // u_core.ct_req_out_din_sync_inv
@@ -67,7 +67,7 @@ module dtp_ctn_xtrig_props #(
   input logic [NUM_CT_DST-1:0] ctm_select_i,      // u_ctm.gen_src_selectors[0].select_mask
   input logic                  ctm_ct_src_i,      // ctm_ct_src[0]
   // Internal ports, one bit per port
-  input logic [NUM_INT_CT-1:0] int_mode_wire_or_i,   // u_int_ctp_core.mode_wire_or_i
+  input logic [NUM_INT_CT-1:0] int_mode_wire_or_i,   // u_int_ctp_core.mode_wire_or
   input logic [NUM_INT_CT-1:0] int_req_out_dout_en_i,// int_ct_req_out_dout_en
   input logic [NUM_INT_CT-1:0] ctm_src_req_i         // ctm_src_req_o
 );

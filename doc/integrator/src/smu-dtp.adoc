@@ -51,7 +51,7 @@ dtp #(
     .XTRIG_NUM_CTP            (16),
     .XTRIG_NUM_INT_CT         (10),
     .XTRIG_NUM_CLK_STOP_REQ   (9),
-    .XTRIG_INT_CT_MODE        (10'b0000000000)
+    .XTRIG_INT_CT_MODE        ({10{cross_trigger_port_pkg::CtpIntCfgDefault}})
 ) u_dtp (
     .clk_i                    (clk),
     .rst_n_i                  (rst_n),
