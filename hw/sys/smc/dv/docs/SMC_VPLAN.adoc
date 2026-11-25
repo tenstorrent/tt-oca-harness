@@ -54196,6 +54196,14 @@ ordered by area.
 |A write past the decoded extent of a register island answers the response `hw/sys/smc/regs/smc.rdl` declares for that island (`ocah_past_extent_resp`).
 |Which code a past-extent write inside an island's aperture answers: `hw/sys/smc/regs/smc.rdl` declares `SLVERR` per island for the reset unit, the misc wrap, the GPIO interface, the base configuration, the alias remap, the eFuse map and the peripheral windows, and `hw/sys/smc/doc/memmap.adoc` (Address Space Organization) gives the decode responses of the fabric; the documents do not state which rule wins for a write. Source: `hw/sys/smc/regs/smc.rdl` (`ocah_past_extent_resp`); `hw/sys/smc/doc/memmap.adoc` (Address Space Organization); `hw/ip/i2c/regs/i2c_wrap.rdl` (`ocah_gap_resp`).
 |`smc_reg_island_boundary_sweep_test` grades the read response and data on all 48 words and the write response on the nine `DECERR`-declared islands; on the fifteen `SLVERR`-declared islands it accepts `SLVERR` or `DECERR`, counts the answers per island and logs the count without grading the code. `smc_past_extent_slverr_units_test` compares each past-extent write response with the `DECERR` the RDL declares, the UART aperture-end read pair and write code with the gap pair the RDL declares, and the I3C aperture-end read code with the `OKAY` the component map gives the window, logging the I3C read data and write response; `smc_gap_decode_response_test` and `smc_i2c_window_decode_test` log the write response the same way as the sweep.
+|<<smc-vplan-area-misc,MISC>>
+|The Zeroer busy output, the responses and read data, the fuse-sense taps and the AXI X-hygiene assertions in the register-block sparse-strobe pass read as known values.
+|The X/Z legs: the X/Z part of the `===` and `!==` tap compares, the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors, the `!any_resp_xz()` and X-mask terms of checks and the `*_KNOWN` X-hygiene rules of the AXI protocol assertions are observable only on a four-state simulator, and no four-state simulator is in the scheduled runs. In this leaf: an unknown `zeroer_busy` output can occur only on a four-state simulator, where the TB tap counts it as busy, and `CHK-REGBLOCK-WIDE-NO-ZEROER-START`, the `=== 1'b0` busy-tap leg of `CHK-REGBLOCK-WIDE-BASELINE` and the memory read helper's `SMC-MEM-READ-XZ` on a `CTRL_STATUS` read catch it there; `CHK-SB-REGBLOCK-WIDE` (an unknown response bit through the scoreboard's `!==` response compare), the memory read helper's `SMC-MEM-READ-XZ` (an unknown read-data bit) on every other register read, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN` are the other legs. Source: `hw/ip/zeroer/regs/zeroer_ctrl.rdl` (`CTRL_STATUS`).
+|`smc_regblock_sparse_strobe_test` runs on Verilator or VCS; on Verilator `CHK-REGBLOCK-WIDE-NO-ZEROER-START` grades the unchanged busy sample count, the idle busy tap and the final `CTRL_STATUS.STATUS`, `CHK-REGBLOCK-WIDE-BASELINE` grades the busy `=== 1'b0` leg and `CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` grades the sample-count increase, and the X/Z legs cannot fail; on a four-state simulator `CHK-REGBLOCK-WIDE-NO-ZEROER-START`, the `=== 1'b0` busy-tap leg of `CHK-REGBLOCK-WIDE-BASELINE` and the read helper's `SMC-MEM-READ-XZ` on a `CTRL_STATUS` read catch an X busy, because the TB tap counts X as busy; `CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` passes on an X busy, since the X raises the sample count. The `!$isunknown` guard on the sample count covers the TB counter, which cannot be X on any simulator.
+|<<smc-vplan-area-misc,MISC>>
+|The Zeroer busy output during the upper `CTRL_STATUS` polls of an armed, unstarted command, the responses and read data of the pass's accesses, the fuse-sense taps and the AXI X-hygiene assertions read as known values.
+|The X/Z legs: the X/Z part of the `===` and `!==` tap compares, the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors, the `!any_resp_xz()` and X-mask terms of checks and the `*_KNOWN` X-hygiene rules of the AXI protocol assertions are observable only on a four-state simulator, and no four-state simulator is in the scheduled runs. In this leaf: an unknown Zeroer busy output can occur only on a four-state simulator, where the TB tap counts it as busy, and `CHK-NARROW-ZEROER-POLL` and the CSR read helper's `SMC-CSR-READ-XZ` on an upper `CTRL_STATUS` poll catch it there; the `!any_resp_xz()` legs of `CHK-NARROW-MBX-EMPTY` and `CHK-NARROW-MBX-ERROR-CONTROL`, the read helpers' errors on the other reads, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN` are the other legs. Source: `hw/ip/zeroer/regs/zeroer_ctrl.rdl` (`CTRL_STATUS`); `hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`.
+|`smc_narrow_access_side_effect_test` runs on Verilator or VCS; on Verilator `CHK-NARROW-ZEROER-CONTROL` grades the busy-sample increase and `CHK-NARROW-ZEROER-POLL` grades the idle and unchanged window, and the X/Z legs cannot fail; on a four-state simulator `CHK-NARROW-ZEROER-POLL` and the CSR read helper's `SMC-CSR-READ-XZ` on an upper `CTRL_STATUS` poll catch an X busy, because the TB tap counts X as busy; `CHK-NARROW-ZEROER-CONTROL` passes on an X busy, since the X raises the sample count. The `!$isunknown` guards cover the TB counter `zeroer_busy_sample_count`, which cannot be X on any simulator.
 |<<smc-vplan-area-power,POWER>>
 |`DMA STATUS_0` bit 8 reports midend activity.
 |When bit 8 reads 1, and for how long: during the copy, until retirement, or never once the midend has handed the transfer to the backend. Source: `hw/sys/smc/doc/dma.adoc` (Submission and Completion; "bit 8 indicates midend activity").
@@ -54266,6 +54274,18 @@ Architecture); `hw/sys/smc/regs/blocks/wdt/wdt.rdl` (`CTRL`, `COUNT`, `CMP`);
 |`smc_wdt_warm_reset_rand_test` runs on Verilator, compares each value against a value the pass
 changed before the reset, and prints the X-resolution leg of `CHK-WWR-STATE-XFREE` as not graded;
 the leg is graded only on a four-state simulator.
+|<<smc-vplan-area-power,POWER>>
+|The response bits, the AW/W/B channel payload, BID, the CSR read data, the fuse-sense taps and the AXI X-hygiene assertions (BVALID among them) during pipelined watchdog and `SS_CONFIG` lock writes read as known values.
+|The X/Z legs: the X/Z part of the `===` and `!==` tap compares, the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors, the `!any_resp_xz()` and X-mask terms of checks and the `*_KNOWN` X-hygiene rules of the AXI protocol assertions are observable only on a four-state simulator, and no four-state simulator is in the scheduled runs. In this leaf: `CHK-PLOCK-RESP` (an unknown response bit through its `!any_resp_xz()` term, and an unknown AW, W or BID bit through the AW/W/B watcher's `===` channel match, including `bid === 0`), `CHK-NONVAC` (the same unknown bit leaves the pass incomplete, so no decisive-pair overlap is recorded and the overlap record fails), the CSR read helper's `SMC-CSR-READ-XZ`, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. `CHK-PLOCK-BHOLD` measures from the first known BVALID, as the driver's BREADY hold does; an X BVALID before it is caught only by `OCAH_AXI_B_VALID_KNOWN`. Source: `hw/sys/smc/regs/blocks/wdt/wdt.rdl`; `hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl`.
+|`smc_lock_pipelined_write_test` runs on Verilator or VCS; on Verilator `CHK-PLOCK-RESP` grades the AW/W match, the OKAY response and the echoed ID 0, and the pass completes without a timeout or a failing two-state `OCAH_SVA_RULE` assertion; the X/Z legs cannot fail and are graded only on a four-state simulator.
+|<<smc-vplan-area-power,POWER>>
+|The response bits, the read data, the fuse-sense taps and the AXI X-hygiene assertions during the watchdog feed and compare-rollover accesses read as known values.
+|The X/Z legs: the X/Z part of the `===` and `!==` tap compares, the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors, the `!any_resp_xz()` and X-mask terms of checks and the `*_KNOWN` X-hygiene rules of the AXI protocol assertions are observable only on a four-state simulator, and no four-state simulator is in the scheduled runs. In this leaf: `CHK-SB-WDT-CSR` (an unknown response bit, through the scoreboard's `==` response compare, where a response with an X or Z bit can pass `is_ok()`), the CSR read helper's `SMC-CSR-READ-XZ` (an unknown read-data bit), the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. Source: `hw/sys/smc/regs/blocks/wdt/wdt.rdl`; `hw/sys/smc/doc/watchdog.adoc` (Register Access).
+|`smc_wdt_feed_zerocmp_test` runs on Verilator or VCS; on Verilator `CHK-CSR-RESP` grades the OKAY responses and the CSR read helper grades the read-data beat count, and the X/Z legs cannot fail; on a four-state simulator `CHK-SB-WDT-CSR` (the scoreboard's `==` response compare; a response with an X or Z bit can pass `is_ok()`) is a four-state check of the unknown-response leg and the CSR read helper's `SMC-CSR-READ-XZ` that of the read-data leg, and the other legs are graded only there.
+|<<smc-vplan-area-power,POWER>>
+|The core-reset and cluster-isolate taps, the response bits, the read data, the fuse-sense taps and the AXI X-hygiene assertions around a software core reset of a watchdog core read as known values.
+|The X/Z legs: the X/Z part of the `===` and `!==` tap compares, the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors, the `!any_resp_xz()` and X-mask terms of checks and the `*_KNOWN` X-hygiene rules of the AXI protocol assertions are observable only on a four-state simulator, and no four-state simulator is in the scheduled runs. In this leaf: the `===` compares of the selected core-reset tap and of the cluster-isolate tap in `CHK-WDT-AWAKE-CORE-RESET`, `CHK-SB-WDT-CSR` (an unknown response bit, through the scoreboard's `==` response compare, where a response with an X or Z bit can pass `is_ok()`), the CSR read helper's `SMC-CSR-READ-XZ` (an unknown read-data bit), the memory read helper's `SMC-MEM-READ-XZ` (an unknown bit in the RESET_CTRL and RESET_TIMEOUT readbacks), the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. Source: `hw/sys/smc/doc/clk_rst.adoc` (Reset Architecture); `hw/sys/smc/regs/blocks/wdt/wdt.rdl`.
+|`smc_wdt_core_awake_gate_test` runs on Verilator or VCS; on Verilator `CHK-WDT-AWAKE-CORE-RESET` grades the two-state levels of the core-reset tap and the open cluster boundary, `CHK-CSR-RESP` and `CHK-MEM-RESP` grade the OKAY responses (the latter for the `RESET_CTRL` and `RESET_TIMEOUT` accesses) and the CSR read helper grades the read-data beat count, and the X/Z legs cannot fail; on a four-state simulator `CHK-SB-WDT-CSR` (the scoreboard's `==` response compare; a response with an X or Z bit can pass `is_ok()`) is a four-state check of the unknown-response leg of the watchdog accesses, the `*_KNOWN` rules that of the `RESET_CTRL` and `RESET_TIMEOUT` accesses and the CSR read helper's `SMC-CSR-READ-XZ` that of the read-data leg, and the other legs, including the X/Z-mask term of `SMC-MEM-READ-XZ` of the memory read helper for the RESET_CTRL and RESET_TIMEOUT readbacks, are graded only there.
 |<<smc-vplan-area-fabric,FABRIC>>
 |A lock write to a filter entry that sets other fields together with `locked`.
 |Whether the fields written together with the lock bit are applied. Source: `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`); `hw/ip/axi_filter/doc/index.adoc` (Locking a Filter Entry).
@@ -54307,6 +54327,14 @@ at the draw and in `CHK-NONVAC`); it grades the watchdog reset under the DMA and
 and the SPM operations under the cool-pin, FLR and cold resets. Recorded as a candidate, not graded;
 `smc_spm_write_cut_by_warm_reset_test` (`rtl_issue`, `testlists/holdout.toml`) cuts one SPM write
 burst with the watchdog warm reset and asserts the drain reading under `expect_fail` against #3510.
+|<<smc-vplan-area-reset,RESET>>
+|The read data, B response, AW and W payload, AW and B IDs, isolation outputs, fuse-sense taps and AXI X-hygiene assertions of the six external reset-unit words read as known values.
+|The X/Z legs: the X/Z part of the `===` and `!==` tap compares, the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors, the `!any_resp_xz()` and X-mask terms of checks and the `*_KNOWN` X-hygiene rules of the AXI protocol assertions are observable only on a four-state simulator, and no four-state simulator is in the scheduled runs. In this leaf: the X leg of `CHK-EXTREG-IDLE` (an unknown isolation output), the `===` AW and W payload compares and the B-response and AW/B ID legs of `CHK-EXTREG-STIMULUS` (its per-write `!$isunknown` term on AWID, BID and BRESP and its `!any_resp_xz()` term), the `===` isolation-output legs of `CHK-EXTREG-EFFECT`, the `===` isolation-output baseline and restore legs and the known-data gate (every inspected lane) of `CHK-EXTREG-SETUP`, the X/Z-mask terms of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` on the readbacks, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. Source: `hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl`; `hw/sys/smc/doc/clk_rst.adoc` (Isolation Controls).
+|`smc_external_reg_lane_test` runs on Verilator or VCS; on Verilator `CHK-EXTREG-IDLE` grades that no isolation request appears and `CHK-EXTREG-STIMULUS` grades the AW/W/B geometry and payload, and the X leg of `CHK-EXTREG-IDLE`, the `===` AW and W payload compares, the B-response leg and the AW and B ID legs of `CHK-EXTREG-STIMULUS`, the `===` isolation-output legs of `CHK-EXTREG-EFFECT`, the `===` isolation-output baseline and restore legs and the known-data gate of `CHK-EXTREG-SETUP`, the X/Z-mask terms of `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` on the readbacks, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN` cannot fail on an X; the legs are graded only on a four-state simulator, where an unknown read-response bit that `is_ok()` accepts is caught only by `OCAH_AXI_R_PAYLOAD_KNOWN`.
+|<<smc-vplan-area-reset,RESET>>
+|The response and ID, the read data, the reset-level, fuse, request-idle, READY, held B/R VALID and channel-handshake taps, the RLAST, WLAST and AxLEN shape taps, the response VALID under the AXI reset rules and the AXI X-hygiene assertions around a cool reset with held SEP_IN responses read as known values.
+|The X/Z legs: the X/Z part of the `===` and `!==` tap compares, the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors, the `!any_resp_xz()` and X-mask terms of checks and the `*_KNOWN` X-hygiene rules of the AXI protocol assertions are observable only on a four-state simulator, and no four-state simulator is in the scheduled runs. In this leaf: `CHK-RIF-RECOVERY` (an unknown response or read-data bit through its `!any_resp_xz()` and data X-mask terms), the `===` primary and warm reset-level taps of `CHK-RIF-ASSERTED` and `CHK-RIF-RELEASED`, the `===` request-idle, READY and held B/R VALID taps of `CHK-RIF-PHASE`, the `===` handshake taps behind the five-channel positive control of `CHK-RIF-BASELINE`, the X/Z-mask term of `SMC-MEM-READ-XZ` on the baseline readbacks, the X part of `OCAH_AXI_B_VALID_RESET_LOW` and `OCAH_AXI_R_VALID_RESET_LOW`, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. An X primary-reset tap drops an edge from the `CHK-RIF-SVA` rule-cycle count without failing; the primary-reset X legs that fail are those of `CHK-RIF-ASSERTED` and `CHK-RIF-RELEASED` and, through the reset monitor's edge count, `CHK-RIF-EPOCH` and `CHK-RIF-PHASE`. The stale-VALID taps of `CHK-RIF-NO-STALE` count only a known 1, so an X VALID passes that check on any simulator; on a four-state simulator the X part of `OCAH_AXI_B_VALID_RESET_LOW` and `OCAH_AXI_R_VALID_RESET_LOW` (`!bvalid` and `!rvalid` evaluate X) catches it inside the reset epoch, where `OCAH_AXI_B_VALID_KNOWN` and `OCAH_AXI_R_VALID_KNOWN` are disabled while `aresetn` is low, and those `*_VALID_KNOWN` rules catch it after release. The reset monitor's `!==` RLAST, WLAST and AxLEN shape compares feed `clean_epoch()` behind `CHK-RIF-BASELINE`, `CHK-RIF-NO-STALE` and `CHK-RIF-RECOVERY`. Source: `hw/sys/smc/doc/clk_rst.adoc` (Primary and Warm Reset).
+|`smc_ingress_reset_inflight_test` runs on Verilator or VCS; on Verilator `CHK-RIF-RECOVERY` grades the OKAY responses, the issued ID, the fresh data and the accounting, and the X/Z legs, among them the X/Z-mask term of `SMC-MEM-READ-XZ` on the baseline readbacks, cannot fail; the legs are graded only on a four-state simulator.
 |<<smc-vplan-area-clock,CLOCK>>
 |A write refused by a gated peripheral window.
 |Whether a write that a gated window refuses with `SLVERR` may change peripheral state, and whether a write made under the gate lands or is dropped. Source: `hw/sys/smc/doc/clk_rst.adoc` (Subsystem Controls and Clock Gating); `hw/sys/smc/regs/blocks/smc_base_config/smc_base_config.rdl` (`CLOCK_GATE_CONTROL`).
@@ -54391,6 +54419,10 @@ burst with the watchdog warm reset and asserts the drain reading under `expect_f
 |A `WIRQT` value above one byte.
 |How 0x100 and 0x10000 are held, and what `STATUS[2]` reads with one queued word under them. Source: `hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc` (Interrupts); `hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl` (`WIRQT`).
 |`smc_mailbox_threshold_irqs_test` logs the read-back and `STATUS[2]` (`CHK-THRESHOLD-WIDE-VALUE-OBSERVED`) without grading them.
+|<<smc-vplan-area-mailbox,MAILBOX>>
+|The response, the read data, the reset-level taps, the fuse taps and the AXI X-hygiene assertions around a cool reset of formerly occupied mailbox queues read as known values.
+|The X/Z legs: the X/Z part of the `===` and `!==` tap compares, the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors, the `!any_resp_xz()` and X-mask terms of checks and the `*_KNOWN` X-hygiene rules of the AXI protocol assertions are observable only on a four-state simulator, and no four-state simulator is in the scheduled runs. In this leaf: `CHK-MBX-RST-EMPTY` and `CHK-MEM-RESP` (an unknown response bit through their `!any_resp_xz()` term), `CHK-SB-MAILBOX-FIFO` and `CHK-MBX-RST-SCOREBOARD` (an unknown response bit through the scoreboard's `==` response compare), the memory read helper's `SMC-MEM-READ-XZ` (an unknown read-data bit, with one data beat required per read), the CSR read helper's `SMC-CSR-READ-XZ` (an unknown bit in the clock-gate readback), the `===` primary and warm reset-level taps of `CHK-MBX-RST-ASSERTED` and `CHK-MBX-RST-RELEASED`, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. Source: `hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc` (Clock and Reset).
+|`smc_mailbox_cool_reset_recovery_test` runs on Verilator or VCS; on Verilator `CHK-MBX-RST-EMPTY` grades the SLVERR response of the three emptied queues and `CHK-MEM-RESP` grades the expected OKAY or SLVERR response of each checked access, the active read helper (`smc_axi_mem_read_seq`) requires one data beat per read, and the X/Z legs cannot fail; the legs are graded only on a four-state simulator.
 |<<smc-vplan-area-uart,UART>>
 |The 32-entry receive FIFO and the overrun indication `LSR.OE`.
 |How many characters the receive side holds before `LSR.OE` sets: the 32-entry FIFO plus the receive holding register may hold 33. Source: `hw/ip/uart/uart_16550/doc/index.adoc` (32-entry RX FIFO); `hw/ip/uart/uart_16550/doc/architecture.adoc` (FIFO Protection and Line Errors).
@@ -56510,8 +56542,24 @@ feature testlist.
 ===== SV-UVM held-out scenarios
 
 UVM-only leaves are enrolled in scope-named groups of `testlists/holdout.toml`
-and run on demand with `--framework uvm --tool vcs`. They have no cocotb
-realization.
+and run on demand with `--framework uvm`. They have no cocotb realization. The
+leaves in `uvm_extended` run with `--framework uvm --tool verilator` or on VCS;
+`smc_wdt_second_stage_reset_test` and `smc_fabric_reg_clock_gate_test` are kept on VCS, a four-state
+simulator, because each samples DUT taps on every clock of its watch window and grades `$isunknown`
+of those taps as a check term of its own, not as a guard on a compared value, and that term cannot
+fail on a two-state simulator.
+
+On Verilator, a two-state simulator, these parts of the checks of the eight `uvm_extended` leaves
+cannot fail and are graded only on a four-state simulator: the X/Z part of every `===` and `!==`
+tap compare and of the scoreboard's `==` and `!==` response compares (the passive monitor holds read
+data two-state, so a scoreboard data compare sees no X), the X/Z-mask term of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` errors (their beat-count term grades on Verilator),
+every `!any_resp_xz()` and X-mask term of a check, every `!$isunknown` term on a DUT tap or bus field (a `!$isunknown` guard on the TB counter
+`zeroer_busy_sample_count` cannot fail on any simulator), the `OCAH_RULE`
+`*_KNOWN` X-hygiene rules of the AXI assertions and the `OCAH_ASSERT` rule `SMC_AXI_R_DATA_KNOWN`
+of `smc_axi_data_known_sva` on SEP_IN read data (and the same module's rules on the internal links), which are compiled out on Verilator, where
+the two-state `OCAH_SVA_RULE` rules and the `OCAH_SVA_ASSERT_I` tracking checks run; and the X part of the two-state `OCAH_SVA_RULE` rules that do run there (an X VALID under `OCAH_AXI_B_VALID_RESET_LOW` or `OCAH_AXI_R_VALID_RESET_LOW`), which a two-state simulator cannot produce. The rest of each check grades on Verilator. Each leaf's
+card names its checks that carry such parts, and each leaf has one row in
+<<smc-vplan-phase3-blocked-legs>>.
 
 [[sec-smc_regblock_sparse_strobe_test]]
 ====== `smc_regblock_sparse_strobe_test`
@@ -56542,10 +56590,16 @@ the strobed RW bytes of selected 64-bit register-block words.
   status read.
 
 *Expectation Sources*: The catalogued words use the generated field masks and
-defaults. The generated implementations of Zeroer, SMC base-config and
-alias-remap drive `cpuif_wr_err = '0`, so writes reaching these register blocks
-do not produce a register-block write error. This does not define the response
-of an access rejected earlier in the fabric.
+defaults. `hw/sys/smc/doc/memmap.adoc` (Generated Register Blocks) gives the response
+rules of the generated register blocks: a write to a read-only register, an offset
+inside the block that no register occupies and an exclusive access answer `OKAY`,
+and an offset past the end of the block's last register answers `SLVERR` (`OKAY` for
+the remap tables and filter controls). It states no response for an ordinary access, so
+the `OKAY` expectation for the base configuration and alias remap words rests on a
+catalogued word being a mapped read-write register, to which the `SLVERR` rule (an offset past the block's last register) does not apply. That section does not name the Zeroer register block and no Zeroer document states its response, so the `OKAY`
+expectation for the Zeroer words rests on the generated implementation, which
+drives `cpuif_wr_err = decoded_err`, which is 0 for a mapped offset. This does not define the response of an access
+rejected earlier in the fabric.
 `zeroer_ctrl.rdl` defines DEST_ADDR and SIZE as the command address and byte count;
 writing CTRL_STATUS triggers the command. The passive busy tap observes execution;
 it is not a software-visible register interface.
@@ -56556,10 +56610,10 @@ Drive `smc_regblock_sparse_strobe_test_seq`. The safe-state reads run before
 the first write. The sequence applies the full, single-byte, sparse, null and
 restore operations to each catalogued word, requires no Zeroer busy or unknown
 value sampled on a rising SMC clock edge from before the first catalogued
-operation through the final status read, checks Zeroer state and lane
-coverage, runs a real one-word Zeroer command to SPM after the no-start check
-and requires the busy sample count to increase. It reads back DEST_ADDR and
-SIZE after their control restore writes in every pass, waits with a bound
+operation through the final status read, checks Zeroer state, writes DEST_ADDR and SIZE for a real one-word Zeroer
+command to SPM after the no-start check and reads both back before START, then
+requires the busy sample count to increase. It reads back DEST_ADDR and
+SIZE after their control restore writes in every pass, checks lane coverage, waits with a bound
 for all predicted comparisons, then checks scoreboard results and access
 counts.
 
@@ -56568,7 +56622,7 @@ counts.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-REGBLOCK-WIDE-BASELINE` |Each word reads its reset value before the first write
+|`CHK-REGBLOCK-WIDE-BASELINE` |Each of the five safe-state prerequisite reads returns its register default, the Zeroer busy tap is idle (`=== 1'b0`) and each word reads its reset value before the first write
 |`CHK-REGBLOCK-WIDE-FULL-RW` |A full-strobe write updates exactly the RW bits
 |`CHK-REGBLOCK-WIDE-SINGLE-BYTE` |A single-byte write changes only the RW bits of that lane
 |`CHK-REGBLOCK-WIDE-SPARSE` |A non-contiguous strobe changes only the RW bits of the strobed lanes
@@ -56576,7 +56630,7 @@ counts.
 |`CHK-REGBLOCK-WIDE-RESTORE` |Each word reads its reset value after the restore write
 |`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
 |`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |No rising SMC clock edge samples busy or X/Z during the catalogued operations; the busy tap and final `CTRL_STATUS.STATUS` are idle
-|`CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` |A real one-word Zeroer START changes the known busy sample count in the same pass
+|`CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` |DEST_ADDR and SIZE read back as written before START, and a real one-word Zeroer START changes the known busy sample count in the same pass
 |`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
 |`CHK-SB-REGBLOCK-WIDE` |Each catalogued read and write returns OKAY; each read also matches the passive model's predicted 64-bit value
 |`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read and write was compared with no new mismatch
@@ -56605,9 +56659,10 @@ handles a real error response; the error-read path has no directed run here.
 
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
-read comparisons: 59 read mismatches per pass, with writes unaffected.
+read comparisons: 61 read mismatches per pass, with writes unaffected.
 `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
-full-write, no-start and busy-control expectations and must fail seven
+full-write, no-start and busy-control expectations (not the DEST_ADDR and SIZE
+readbacks) and must fail seven
 `CHK-REGBLOCK-WIDE-FULL-RW` records and one
 `CHK-REGBLOCK-WIDE-NO-ZEROER-START` record and one
 `CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` record per pass (nine failures per pass),
@@ -56616,16 +56671,23 @@ while the scoreboard records no mismatch.
 write responses to SLVERR and must fail every catalogued write comparison and
 no read comparison: 54 write mismatches per pass (35 base writes, 15 fixed
 sparse writes and four positive-control writes).
-The positive run requires 113 comparisons per pass (59 reads and 54 writes).
+The positive run requires 115 comparisons per pass (61 reads and 54 writes).
 With 16 passes, the sequence negative requires 144 checker failures and the
 response negative requires 864 write mismatches; the scoreboard negative
-requires 944 read mismatches. A separate local mutation
+requires 976 read mismatches. A separate local mutation
 holding the busy tap or sample counter at zero must fail the busy-control
 check even with the sequence negative disabled. Control completion and
 safe-state prerequisites are outside the expectation-inverting negative.
 The sequence and end-of-run scoreboard summary also report those mismatches.
-Enrolled only in `csr_uvm_extended`, outside `all`, `hosted` and `ci`;
-run on demand. This card records what a run must show, not a pass.
+The TB tap counts an unknown `zeroer_busy` output as busy through its `!== 1'b0` compare, so on a
+four-state simulator an X busy raises the sample count and `CHK-REGBLOCK-WIDE-ZEROER-BUSY-CONTROL` passes on it;
+its `!$isunknown` guard on the busy sample count covers the TB counter, which cannot be X
+on any simulator. The checks of this leaf that carry the X/Z parts named in the lead-in are `CHK-REGBLOCK-WIDE-NO-ZEROER-START`, the `=== 1'b0` busy-tap leg of `CHK-REGBLOCK-WIDE-BASELINE` and the memory read helper's `SMC-MEM-READ-XZ` on a `CTRL_STATUS` read, which catch an unknown `zeroer_busy` output (the TB tap counts it as busy) on a four-state simulator, and `CHK-SB-REGBLOCK-WIDE` (an unknown response bit through the scoreboard's `!==`
+response compare), the memory read helper's `SMC-MEM-READ-XZ` (an unknown read-data bit) on every other register read, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. On
+Verilator the rest of each check grades and the legs are a row of <<smc-vplan-phase3-blocked-legs>>.
+Enrolled in `csr_uvm_extended` and `uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag;
+runs on Verilator or VCS.
+This card records what a run must show, not a pass.
 
 '''''
 
@@ -56650,6 +56712,7 @@ clearing of the pending interrupt.
 * Correct and one-bit-invalid FEED writes from a known COUNT, with KEY readbacks.
 * SCALED_COUNT bracketed by COUNT readings with scale four and no 16-bit wrap.
 * Eight COUNT samples spanning at least two compare periods with zerocmp enabled.
+* A FEED from a COUNT seeded to half of CMP with zerocmp enabled, followed by a COUNT read.
 * Pending interrupt below CMP, above CMP, after clearing while elapsed remains
   asserted, preserved across FEED before software clearing, and cleared while
   elapsed is low.
@@ -56664,14 +56727,22 @@ comparison value. The passive model predicts CTRL, KEY and CMP under these rules
 register offsets, field masks and reset values come from generated collateral.
 `hw/sys/smc/doc/watchdog.adoc` describes the KEY/relock and byte-enable rules,
 interrupt setting at or above CMP, and preservation of pending IP across FEED.
+The `wdt.rdl` addrmap description states that an effective write to a register other
+than KEY relocks the watchdog (the Register Access section of
+`hw/sys/smc/doc/watchdog.adoc` states the relock for any such write), which
+`CHK-WDT-FEED-CTRL-LANDED` reads back through KEY.
 
 *Test Procedure*: Measure a positive running count rate. Exercise valid and invalid
 FEED writes and their unlock consumption, bracket SCALED_COUNT, then sample COUNT
-with zerocmp enabled. Disable zerocmp and bracket every interrupt observation with
-COUNT readings on the intended side of CMP and below the 16-bit wrap limit.
+with zerocmp enabled. Seed COUNT to half of CMP, read COUNT back to require the seed landed
+(at or above the seed and within the count the elapsed time allows), FEED with zerocmp still enabled
+and read COUNT to require a restart below the seed within the measured time
+bound, then read CTRL to require the pending interrupt, a read without a COUNT
+bracket. Disable zerocmp and bracket each later interrupt observation with COUNT
+readings on the intended side of CMP and below the 16-bit wrap limit.
 Read CTRL after FEED and before each interrupt-clear phase to require that FEED
 preserves pending IP, independently of the subsequent software clear.
-Read CMP after each CMP write. Finally feed the watchdog, disable counting and
+Read CMP after each CMP write. In the clear-while-elapsed leg write KEY, read KEY to require 1, write CTRL and read KEY to require 0. Finally feed the watchdog, disable counting and
 restore CMP. Wait with a bound for all predicted comparisons, then check exact
 access and comparison counts with no new mismatch.
 
@@ -56686,11 +56757,13 @@ access and comparison counts with no new mismatch.
 |`CHK-WDT-FEED-SCALED` |Scaled count lies between shifted surrounding COUNT readings
 |`CHK-WDT-FEED-ZEROCMP` |All samples are at or below CMP and an observed sample decreases
 |`CHK-WDT-FEED-IP` |Interrupt observations match the compare condition, remain set after FEED and match the software-clear phases
-|`CHK-WDT-FEED-WINDOW` |Scaling, sample span, deadline and eight COUNT brackets are valid
+|`CHK-WDT-FEED-LANDED` |With zerocmp enabled and COUNT seeded to half of CMP, a COUNT readback after the seed is at or above the seed and within the count the elapsed time allows, and a FEED restarts COUNT below the seed and within the measured time bound, so a dropped FEED write fails (`CHK-WDT-FEED-WINDOW` stops the run unless the seed plus the count the time since the seed allows stays below CMP, so no zerocmp rollover can stand in for the FEED), and a dropped seed fails unless the running count already lies inside that window
+|`CHK-WDT-FEED-CTRL-LANDED` |In the clear-while-elapsed leg, after an unlock write whose KEY readback of 1 is a prerequisite that stops the run, KEY reads 0 after the CTRL write that rewrites the configuration CTRL already holds: an effective write to a register other than KEY relocks the watchdog, so a dropped write (OKAY, no effect) fails. Only the relock is graded: the written CTRL data equals the value already held and the elapsed condition sets IP again at once, so neither the CTRL data nor the IP clear of this write is observed, and a DUT that relocks but drops the CTRL data passes
+|`CHK-WDT-FEED-WINDOW` |Scaling, sample span, deadline and eight COUNT brackets are valid, and no zerocmp rollover fits between the COUNT seed and the FEED readback
 |`CHK-SB-WDT-CSR` |In-scope watchdog accesses return OKAY; CTRL (IP masked), KEY and CMP reads match the passive model
 |`CHK-WDT-CSR-SCOREBOARD` |Each pass completes exactly the predicted comparisons with no new mismatch
 |`CHK-SB-MIN-ACTIVITY` |Completed passes reach the minimum feature comparison count
-|`CHK-NONVAC` |The sequence completes 85 fixed SEP_IN CSR accesses plus every compare-poll read; this checks stimulus accounting, not passive bus activity
+|`CHK-NONVAC` |The sequence completes 91 fixed SEP_IN CSR accesses plus every compare-poll read; this checks stimulus accounting, not passive bus activity
 |`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP` |Bring-up and frontdoor responses complete
 |===
 
@@ -56714,17 +56787,24 @@ record each of `CHK-WDT-FEED-CLEAR`,
 `CHK-WDT-FEED-ZEROCMP`, and three records of `CHK-WDT-FEED-IP` per pass:
 seven failed records per pass in total.
 The scoreboard records no mismatch in the sequence negative.
+`CHK-WDT-FEED-LANDED` and `CHK-WDT-FEED-CTRL-LANDED` are not reversed by the sequence negative.
 Used alone, `+SMC_WDT_CSR_SCOREBOARD_NEGATIVE` corrupts predicted CTRL/KEY/CMP
-read bit 0 and predicts SLVERR for writes: 61 feature mismatches per pass
-(19 reads and 42 writes), plus one CHK-WDT-CSR-SCOREBOARD failure per pass.
-The 24 fixed response-only reads and compare-poll reads still pass.
-Positive runs complete 85 fixed comparisons plus poll reads per pass.
+read bit 0 and predicts SLVERR for writes: 65 feature mismatches per pass
+(21 reads and 44 writes), plus one CHK-WDT-CSR-SCOREBOARD failure per pass.
+The 26 fixed response-only reads and compare-poll reads still pass.
+Positive runs complete 91 fixed comparisons plus poll reads per pass.
 No directed run produces a real WDT error response; the negative validates
 comparison sensitivity, not real error-response handling.
 RATE and WINDOW remain unmodified in the negative run: they establish valid
 measurement conditions, and a failed condition records FAIL then terminates
 the pass with a fatal error.
-The leaf runs on demand in `wdt_uvm_extended`, outside `all`, `hosted` and `ci`.
+The checks of this leaf that carry the X/Z parts named in the lead-in are: `CHK-SB-WDT-CSR` (an
+unknown response bit, through the scoreboard's `==` response compare, where a response with an X or
+Z bit can pass `is_ok()`), the CSR read helper's `SMC-CSR-READ-XZ` (an unknown read-data bit), the fuse `===` taps
+of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. On Verilator the
+rest of each check grades and the legs are a row of <<smc-vplan-phase3-blocked-legs>>.
+Enrolled in `wdt_uvm_extended` and `uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag;
+runs on Verilator or VCS.
 
 '''''
 
@@ -56752,12 +56832,13 @@ are consistency checks, not discriminating reset evidence.
 *Expectation Sources*: `axil_mailbox.rdl` supplies field masks, defaults,
 read-clear ERROR, threshold clamping and write-one-clear IRQS.
 `hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc` defines paired FIFO
-semantics, SLVERR on full writes/empty reads, and reset clearing queues,
-thresholds, errors and interrupt state/enables. `clk_rst.adoc` defines
+semantics and reset clearing queues, thresholds, errors and interrupt
+state/enables; `hw/ip/axi_lite_mailbox_unit/doc/interface.adoc` defines
+SLVERR on full writes and empty reads. `clk_rst.adoc` defines
 cool reset as a primary-reset source. Integration evidence for mailbox
 primary reset is `smc_internal_regs.sv`, `u_smc_axil_mailbox.rst_ni`;
 this reset-domain connection is taken from RTL, not independently specified
-for the mailbox by name. Geometry comes from `smc_pkg` and generated addresses.
+for the mailbox by name. Geometry comes from the SMC Peripheral Parameter Overrides table of `hw/sys/smc/doc/periphs.adoc` and generated addresses.
 
 *Test Procedure*: Require the mailbox gate disabled and six-register default
 baselines on both ports of both pairs. Fill A's forward queue, provoke the
@@ -56817,7 +56898,16 @@ mismatches/pass, one scenario scoreboard failure/pass and one final
 `CHK-SB-MAILBOX-FIFO` failure: 2273 errors for sixteen passes. The two
 negative controls are mutually exclusive. Reset-shadow mutation is a local,
 uncommitted validation experiment, not an enrolled test or persistent knob.
-The leaf runs only on demand in `mailbox_uvm_extended`.
+The checks of this leaf that carry the X/Z parts named in the lead-in are: `CHK-MBX-RST-EMPTY` and
+`CHK-MEM-RESP` (an unknown response bit through their `!any_resp_xz()` term), `CHK-SB-MAILBOX-FIFO` and `CHK-MBX-RST-SCOREBOARD` (an
+unknown response bit through the scoreboard's `==` response compare), the memory read helper's `SMC-MEM-READ-XZ` (an unknown read-data
+bit, with one data beat required per read), the
+`===` primary and warm reset-level taps of `CHK-MBX-RST-ASSERTED` and `CHK-MBX-RST-RELEASED`, the
+CSR read helper's `SMC-CSR-READ-XZ` (an unknown bit in the clock-gate readback), the
+fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. On
+Verilator the rest of each check grades and the legs are a row of <<smc-vplan-phase3-blocked-legs>>.
+Enrolled in `mailbox_uvm_extended` and `uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag;
+runs on Verilator or VCS.
 
 '''''
 
@@ -56876,7 +56966,7 @@ Drain passive comparisons before checking exact per-pass accounting.
 |`CHK-REG-CG-CLOSE` |Bounded idle closure; no sampled busy domain has an inactive clock enable
 |`CHK-REG-CG-WAKE` |Each cold pattern request produces observed busy and active samples
 |`CHK-REG-CG-DATA` |Pattern and reset restore readbacks match defined register fields
-|`CHK-REG-CG-SCOPE` |Resolved taps and bounded idle
+|`CHK-REG-CG-SCOPE` |Every `cg_clk_active` and `cg_bus_active` sample from watcher start to stop is known (`resolved activity taps`); each awaited domain reaches idle within the bound
 |`CHK-REG-CG-SCOREBOARD` |27 new comparisons per pass with no new mismatch
 |`CHK-SB-FABRIC-REG` |Catalogued accesses return OKAY; reads also match model data under RDL masks
 |`CHK-NONVAC` |Eight domains observed closed, five observed waking, ten cold epochs; 39 CSR and 40 memory accesses
@@ -56916,7 +57006,15 @@ read prediction after its first write per pass: one mismatch and one scenario
 scoreboard failure per pass plus the final feature failure, 33 for sixteen
 passes. Neither control changes DUT stimulus. Prerequisites, response checks,
 NONVAC and watcher startup/stop are outside the negatives.
-Enrolled only in `cg_uvm_extended`, outside `all`, `hosted` and scheduled tiers.
+Enrolled only in `cg_uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag; kept on a
+four-state simulator (VCS) because the X/Z leg of `CHK-REG-CG-SCOPE` (a `cg_clk_active` or `cg_bus_active`
+sample reading X or Z) is a check term of its own (the `resolved activity taps` record), not a guard on a compared value, and cannot fail on a two-state simulator. Its
+bounded-idle leg and the leaf's other checks would also grade on a two-state simulator, where they lose only their
+X/Z parts: the X/Z part of their tap and response compares, the read helpers' X/Z-mask term, the `*_KNOWN` AXI rules and `SMC_AXI_R_DATA_KNOWN`. Those tap compares are: in `CHK-REG-CG-OFF` the `clocks !== AllDomains` compare of the disabled-domain window and
+the `===` compare of `wait_open`, in `CHK-REG-CG-MAP` the `===` compare of the closed-domain map, and
+the watcher's `===` idle detection that feeds the bounded-idle leg of `CHK-REG-CG-SCOPE`, and its
+`===` closure, busy and wake detections that feed `CHK-REG-CG-MAP` (`epoch_low`), `CHK-REG-CG-CLOSE`, `CHK-REG-CG-WAKE` and `CHK-NONVAC` (domains closed, domains waking, cold epochs), and the
+`initial_clocks === 1'b0` compares of `CHK-REG-CG-CONFIG` and `CHK-REG-CG-WAKE`.
 
 '''''
 
@@ -56985,13 +57083,13 @@ accounting.
 |===
 |Checker |Description
 |`CHK-WDT-STAGE2-CONFIG` |Explicitly programmed, rebaselined and restored CSR states match
-|`CHK-WDT-STAGE2-FIRST` |The selected first timeout precedes second timeout and stays asserted until it
+|`CHK-WDT-STAGE2-FIRST` |The selected first timeout precedes second timeout, warm reset and primary reset with no unknown observable sampled, and stays asserted until second timeout, and no other core's first timeout is sampled meanwhile
 |`CHK-WDT-STAGE2-SERVICE` |Service duration, gaps and wrong-core pulse completion meet the stimulus bounds
-|`CHK-WDT-STAGE2-HELD` |No second timeout or reset occurs during correct-core service
+|`CHK-WDT-STAGE2-HELD` |No second timeout, WDT, warm or primary reset and no unknown observable is sampled from the watcher start through the service window
 |`CHK-WDT-STAGE2-EXPIRES` |Second timeout falls within the configured interval and sampling allowance
 |`CHK-WDT-STAGE2-WRONG-CORE` |A different core is serviced and cannot defer selected-core expiry
 |`CHK-WDT-STAGE2-RECOVERY` |WDT/warm reset assert and release within bounds; all core resets are observed asserted together during each warm reset; fuse/warm readiness precedes further CSR access
-|`CHK-WDT-STAGE2-SCOPE` |No primary reset or unknown observable; core resets are released and the boundary is open at baseline; all core resets released after warm reset before rebaseline; timeout taps idle and resets released after explicit rebaseline
+|`CHK-WDT-STAGE2-SCOPE` |No primary reset and no unknown observable in the per-clock unknown watch; core resets are released and the boundary is open at baseline; all core resets released after warm reset before rebaseline; timeout taps idle and resets released at the baseline check (`clean_watchdogs`) and after explicit rebaseline
 |`CHK-WDT-STAGE2-WDT-RESET` |CTRL, COUNT and CMP match RDL defaults on every core after each warm reset, before reconfiguration
 |`CHK-WDT-STAGE2-TIMEOUT-RETAINED` |WDT_TIMEOUT reads the programmed 0x1800 after each warm reset, before reprogramming
 |`CHK-WDT-STAGE2-SCOREBOARD` |The pass adds no watchdog model mismatch
@@ -57028,8 +57126,18 @@ mismatches per pass (46 reads and 88 writes), one scenario scoreboard failure
 per pass and one final `CHK-SB-WDT-CSR` failure: 2161 errors for sixteen passes.
 The 22 COUNT comparisons per pass grade responses only and remain passing. Other
 checks establish stimulus/observation validity and remain unchanged; invalid
-conditions record failure and stop the run. Enrolled on demand in
-`wdt_uvm_extended`, not the scheduled hosted tiers.
+conditions record failure and stop the run. Enrolled only in `wdt_uvm_extended`, outside
+the `all` and `hosted` groups, without the `ci` tag; kept on a four-state simulator (VCS) because a per-cycle `$isunknown` watch of the
+first-stage, second-stage and per-core timeout taps and the primary, watchdog, warm and core reset
+taps is a term of its own in `CHK-WDT-STAGE2-SCOPE`, `-FIRST` and `-HELD`, not a guard on a compared
+value, and cannot fail on a two-state simulator. The other legs of those checks and the leaf's other checks would also grade on a two-state simulator, where they lose only their
+X/Z parts: the X/Z part of their tap and response compares, the read helpers' X/Z-mask term, the `*_KNOWN` AXI rules and `SMC_AXI_R_DATA_KNOWN`. Those tap compares are: in `CHK-WDT-STAGE2-SCOPE` the timeout-tap and
+reset-tap compares at baseline and after rebaseline, the core-reset vector compares and the
+cluster-isolate compare; in `CHK-WDT-STAGE2-FIRST` and `CHK-WDT-STAGE2-SERVICE` the `!==` hold compares behind `first_broken`;
+in `CHK-WDT-STAGE2-FIRST`, `-HELD` and `-SCOPE` the `primary_seen` compare
+(`rst_primary_smc_clk_n !== 1'b1`); and the watcher's `===` edge detections, which feed
+`CHK-WDT-STAGE2-FIRST`, `-SERVICE` (the first service gap, from `first_at`), `-HELD`, `-EXPIRES`, `-WRONG-CORE`, `-RECOVERY` and the warm-reset count of `CHK-NONVAC`; and in
+`CHK-WDT-STAGE2-RECOVERY` its all-cores-held detection, its fuse taps and its warm-reset `===` tap. The `!=` other-core compare behind `wrong_source` ignores an X, so `CHK-WDT-STAGE2-FIRST` and `-SERVICE` pass on one; the `$isunknown` term of `CHK-WDT-STAGE2-SCOPE` (and, in the serviced leg, of `-HELD`) covers that tap.
 
 '''''
 
@@ -57069,11 +57177,14 @@ and KEY unlocked before a full write uses that unlock. P2B checks the full
 write queued after the partial write. P3 checks a write preceding KEY is
 refused. P4 requires FEED to clear COUNT to zero, the queued COUNT write to
 be rejected and KEY to remain locked. P5 holds BREADY for sixteen cycles
-after BVALID.
+after BVALID, and `CHK-PLOCK-BHOLD` requires the first B handshake of P5 to come at
+least sixteen cycles after BVALID rose and that of P1 to come sooner.
 Restore each WDT. Require SS_CONFIG_LOCK clear before the final L1 pipeline.
 L1 uses AxSIZE=2 at the LOCK and CONFIG CSR addresses, with WSTRB on their
 respective byte lanes; WDT pipelines retain AxSIZE=3. Check the final
-partially restored configuration and retained lock. Require six passive
+partially restored configuration, then write one unlocked bit to the lock
+register with zeros on the locked bits and require the lock to read back as
+the earlier mask plus that bit. Require six passive
 lock-CSR comparisons with no new mismatch within a bounded wait.
 
 *Known Limitations*: SEP_IN overlap does not prove concurrency inside WDT.
@@ -57096,8 +57207,9 @@ cross-coverage closure is claimed.
 |`CHK-PLOCK-WDT-PREKEY` |P3 rejects COUNT written before KEY
 |`CHK-PLOCK-WDT-FEEDKEY` |FEED clears COUNT and the queued COUNT write is rejected
 |`CHK-PLOCK-WDT-STATE` |KEY reflects the expected lock state after each leg and cleanup
+|`CHK-PLOCK-BHOLD` |Per core, the first B handshake of P5 (BREADY held) comes at least 16 cycles after BVALID rose and that of P1 (no hold) comes sooner; the measured gap is logged
 |`CHK-PLOCK-SSCFG` |L1 lock filters the queued write and reads back its mask
-|`CHK-PLOCK-SSCFG-FINAL` |Partially restored SS_CONFIG and retained woset lock are correct
+|`CHK-PLOCK-SSCFG-FINAL` |Partially restored SS_CONFIG is correct, and a final lock-register write of one free bit with zeros on the locked bits leaves the lock reading the earlier mask plus that bit (`reset_unit.rdl` woset: a written 1 sets a bit, a written 0 changes none), so a dropped write fails
 |`CHK-PLOCK-WDT-RESTORE` |COUNT, KEY and CTRL return to the prerequisite state
 |`CHK-PLOCK-RESP` |Observed AW/W match issued ops and known OKAY responses echo ID 0
 |`CHK-PLOCK-SCOREBOARD` |Six L1 reads are compared by the passive lock model without new mismatch
@@ -57118,10 +57230,18 @@ eight failures in total. These are expected signatures, not run results.
 The CTRL/CMP reset-state and SS_CONFIG_LOCK-clear prerequisites under
 `CHK-PLOCK-SEED` stop the run on failure and are outside both negative
 controls. The sequence negative does not alter `CHK-PLOCK-WDT-STATE`,
-`CHK-PLOCK-WDT-RESTORE`, `CHK-PLOCK-SSCFG-FINAL`, `CHK-PLOCK-RESP` or
-`CHK-NONVAC` expectations.
-Enrolled only in
-`csr_uvm_extended`, outside `all`, `hosted` and `ci`.
+`CHK-PLOCK-WDT-RESTORE`, `CHK-PLOCK-BHOLD`, `CHK-PLOCK-SSCFG-FINAL`,
+`CHK-PLOCK-RESP` or `CHK-NONVAC` expectations. A positive run records two
+`CHK-PLOCK-BHOLD` results per core and pass, eight per pass.
+The checks of this leaf that carry the X/Z parts named in the lead-in are: `CHK-PLOCK-RESP` (an
+unknown response bit through its `!any_resp_xz()` term, and an unknown AW, W or BID bit through the
+AW/W/B watcher's `===` channel match, including `bid === 0`), `CHK-NONVAC` (the same unknown bit
+leaves the pass incomplete, so no decisive-pair overlap is recorded and the overlap record fails),
+the CSR read helper's `SMC-CSR-READ-XZ`, the fuse `===` taps of
+`CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. `CHK-PLOCK-BHOLD` measures from the first known BVALID, as the driver's BREADY hold does; an X BVALID before it is caught only by `OCAH_AXI_B_VALID_KNOWN`. On Verilator the rest
+of each check grades and the legs are a row of <<smc-vplan-phase3-blocked-legs>>.
+Enrolled in `csr_uvm_extended` and `uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag;
+runs on Verilator or VCS.
 
 '''''
 
@@ -57226,7 +57346,16 @@ the expected signature is 27 feature mismatches per pass: nine CTRL/CMP
 read mismatches and 18 write-response mismatches. Eight COUNT read comparisons
 still pass. CHK-WDT-AWAKE-SCOREBOARD fails once per pass; comparison-count
 NONVAC records still pass.
-The leaf runs on demand in `wdt_uvm_extended`, not in `all`, `hosted` or `ci`.
+The checks of this leaf that carry the X/Z parts named in the lead-in are: the `===` compares of the
+selected core-reset tap and of the cluster-isolate tap in `CHK-WDT-AWAKE-CORE-RESET`,
+`CHK-SB-WDT-CSR` (an unknown response bit, through the scoreboard's `==` response compare, where a
+response with an X or Z bit can pass `is_ok()`), the CSR read helper's `SMC-CSR-READ-XZ` (an unknown read-data
+bit), the memory read helper's `SMC-MEM-READ-XZ` (an unknown bit in the RESET_CTRL and
+RESET_TIMEOUT readbacks), the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of
+the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. On Verilator the rest of each check grades and the legs are a row of
+<<smc-vplan-phase3-blocked-legs>>.
+Enrolled in `wdt_uvm_extended` and `uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag;
+runs on Verilator or VCS.
 
 '''''
 
@@ -57258,8 +57387,8 @@ isolation pin low, explicitly initialize PINEN to zero and read it back,
 then check the other reset baselines. Catalog readbacks must have known
 data on every inspected lane before value grading. For each word, issue eight
 writes, independently confirm AW/W/B geometry and payload, then compare
-readback with the byte-merge shadow. Check RW or lock neighbors and defined
-VIS fields. With REG or PINEN active, require the isolation output to reach
+readback with the byte-merge shadow. Check the neighbor word of REG, PINEN and
+SS_CONFIG and the defined VIS fields; the SMCEN neighbor word (`ISOLATE_REQ_SMC_REG`) is not graded after each SMCEN write; `CHK-EXTREG-SETUP` grades it against its zero reset value at the SMCEN baseline and, as the FLR latch, before the first and after the last word. With REG or PINEN active, require the isolation output to reach
 the shadow and remain there for eight samples; PINEN uses the pin high,
 confirmed through VIS. For the other words, watch for any nonzero or unknown
 isolation output throughout the write/restore leg. Restore and read back each
@@ -57273,7 +57402,7 @@ Release the externally driven pad and stop the sampler with a bound.
 |Checker |Claim
 |`CHK-EXTREG-LANE` |Partial-write readback equals the byte-merge shadow
 |`CHK-EXTREG-NULL` |Null write leaves the target unchanged
-|`CHK-EXTREG-NEIGHBOR` |The RW or lock word on nonstrobed neighbor lanes remains unchanged
+|`CHK-EXTREG-NEIGHBOR` |The neighbor word of REG, PINEN and SS_CONFIG on nonstrobed neighbor lanes remains unchanged
 |`CHK-EXTREG-VIS` |Defined VIS fields remain at idle while the FLR counter word is written
 |`CHK-EXTREG-EFFECT` |REG/PINEN isolation reaches the expected output within 32 SMC cycles and remains there for eight samples
 |`CHK-EXTREG-IDLE` |SS_CONFIG, SMCEN and FLR counter legs produce no isolation request, including transient or unknown values
@@ -57300,8 +57429,15 @@ or SYS_IN traffic. Wait and stability windows are bench measurement limits.
 `+SMC_EXTREG_LANE_SEQUENCE_NEGATIVE` changes one expectation each for LANE,
 NULL, NEIGHBOR, VIS, EFFECT and IDLE per pass: six failures per pass, 96 for
 sixteen passes. STIMULUS, SETUP, NONVAC and response checks are unchanged.
-Enrolled on demand in
-`csr_uvm_extended`, not scheduled hosted tiers.
+Read responses are checked by `CHK-CSR-RESP` and `CHK-MEM-RESP` through `is_ok()`, which passes any response whose high bit is 0 or unknown; no `CHK-*` record of this leaf
+tests a read response for an unknown bit, and on a four-state simulator the
+`OCAH_AXI_R_PAYLOAD_KNOWN` rule does. The checks of this
+leaf that carry the X/Z parts named in the lead-in are: the X leg of `CHK-EXTREG-IDLE` (an unknown
+isolation output), the `===` AW and W payload compares and the B-response and AW/B ID legs of `CHK-EXTREG-STIMULUS` (its per-write `!$isunknown` term on AWID, BID and BRESP and its `!any_resp_xz()` term), the `===` isolation-output legs of `CHK-EXTREG-EFFECT`, the `===` isolation-output baseline and restore legs and the known-data gate (every inspected lane) of `CHK-EXTREG-SETUP`, the X/Z-mask terms of the CSR and memory read helpers' `SMC-CSR-READ-XZ` and `SMC-MEM-READ-XZ` on the readbacks, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI
+protocol assertions and `SMC_AXI_R_DATA_KNOWN`. On Verilator the rest of each check grades and the legs are a row of
+<<smc-vplan-phase3-blocked-legs>>.
+Enrolled in `csr_uvm_extended` and `uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag;
+runs on Verilator or VCS.
 
 '''''
 
@@ -57310,7 +57446,7 @@ Enrolled on demand in
 
 *Source Module*: `smc_narrow_access_side_effect_test` (SV-UVM)
 
-*BFM / Model*: SEP_IN AXI VIP and passive `mutex_sema` prediction for three
+*BFM / Model*: SEP_IN AXI VIP and passive `mutex_sema` prediction for five
 MUTEX reads per pass. Upper-word reads acquire and return a complete zero
 word. Mailbox checks remain in the sequence; `mailbox_fifo` is not required.
 Zeroer data and guards use SYS_OUT responder `write_bytes`/`read_bytes`.
@@ -57333,7 +57469,8 @@ defines the address granule and write-back rules; filter masks are generated
 symbols.
 
 *Test Coverage*: The default sixteen passes exercise mailboxes 0-15 and
-rotate all four mutexes. Four distinct 32-bit payload halves distinguish
+rotate all four mutexes; the first four passes each use a mutex that no read has acquired since
+reset, and later passes reuse a mutex that an earlier pass released. Four distinct 32-bit payload halves distinguish
 pop order and lane selection.
 The null mailbox write carries all ones, distinguishing zero-fill from raw
 write data. Each pass has a valid Zeroer job and read- and write-error flags as
@@ -57344,9 +57481,11 @@ back a pass-all 4-KiB page containing a 64-byte payload and one guard word on
 each side. Poison and run a valid Zeroer job; require zero payload and intact
 guards and an increase in known busy samples. Clear and read back SIZE/DEST
 before the counted window. Require idle Zeroer, empty mailbox queues and clear
-ERROR. Release a mutex and require a free read as a control; release again,
-read its upper word, then require the lower read taken before cleanup. Poison
-the window, configure SIZE/DEST and poll CTRL_STATUS's upper word eight times;
+ERROR. Release the pass's mutex, read its upper word, then its lower word: on every pass require
+the upper read zero and the lower read taken. Release it, acquire it with a lower read and require the
+next lower read taken; release it and require a free read as a control, then release it in
+cleanup. Poison
+the window, configure SIZE/DEST and read both back to require the armed values, then poll CTRL_STATUS's upper word eight times;
 require idle and poison unchanged, then clear SIZE/DEST with readback before
 checking that no busy samples accumulated across the polls and cleanup. Push
 two distinct mailbox words and pop their upper and lower halves as two
@@ -57354,7 +57493,8 @@ separate entries. Push 32-bit upper and lower words and check both placements.
 Push a 64-bit word with upper-only strobes and nonzero data on disabled lanes;
 require those lanes zero in the popped word. Empty-read on the inbound port
 and observe read_error. Fill that port's write FIFO, require FULL, attempt a
-write and require SLVERR and write_error. Clear/read EIRQ, repeat the full
+write and require SLVERR. Clear/read EIRQ, then read ERROR and require write_error
+set after that acknowledge. Repeat the full
 write with SLVERR and require EIRQ set, then clear/read EIRQ again. Empty-read
 that same port and require EIRQ set. Read upper ERROR and require zero, then
 read the full ERROR word and require both flags clear. Drain the reverse FIFO
@@ -57370,8 +57510,8 @@ filter outside the counted window.
 [cols="1,2",options="header"]
 |===
 |Checker |Claim
-|`CHK-NARROW-MUTEX-ACQUIRE` |Upper read returns zero and acquires the mutex
-|`CHK-NARROW-MUTEX-RELEASE` |Release permits the next lower read to acquire
+|`CHK-NARROW-MUTEX-ACQUIRE` |After a release, the upper read returns zero and the lower readback is taken, so the upper read acquired the mutex (discriminating while the release works, which `CHK-NARROW-MUTEX-RELEASE` grades); a lower read after an acquiring read returns taken
+|`CHK-NARROW-MUTEX-RELEASE` |Release of a held mutex permits the next lower read to acquire
 |`CHK-NARROW-ZEROER-POLL` |Upper reads preserve idle and the poisoned window without accumulating busy samples
 |`CHK-NARROW-MBX-POP` |Two narrow reads pop separate whole entries on the requested lanes
 |`CHK-NARROW-MBX-PUSH` |32-bit upper and lower writes place their payload in the addressed half
@@ -57380,12 +57520,12 @@ filter outside the counted window.
 |`CHK-NARROW-MBX-ERROR` |Upper ERROR read returns zero and clears both read_error and write_error
 |`CHK-NARROW-NULL-ZEROER` |Null START zeros exactly the configured window
 |`CHK-NARROW-NULL-MAILBOX` |Null write pushes exactly one zero entry
-|`CHK-NARROW-ZEROER-CONTROL`, `CHK-NARROW-MBX-ERROR-CONTROL` |A valid job reaches memory and advances busy samples; read_error and write_error have controls; full writes return SLVERR; EIRQ is read clear before each repeated fault and set after it; prerequisite failures terminate
-|`CHK-NARROW-SETUP` |Geometry, filter readback and initial state are valid; failures terminate
+|`CHK-NARROW-ZEROER-CONTROL`, `CHK-NARROW-MBX-ERROR-CONTROL` |A valid job reaches memory and advances busy samples; read_error has a control; write_error is read after the IRQS acknowledge as its control; full writes return SLVERR; EIRQ is read clear before each repeated fault and set after it; prerequisite failures terminate
+|`CHK-NARROW-SETUP` |Geometry, filter readback and initial state are valid; SIZE and DEST read back as written after the arm writes of the upper-poll leg; failures terminate
 |`CHK-NARROW-CLEANUP` |SIZE/DEST and EIRQ cleanup readbacks match and mailbox drain completes within its bound; full writes preserve reverse FIFO data and the reverse FIFO drains empty; failures terminate
 |`CHK-NARROW-RESTORE` |Saved filter START/END/CONFIG are restored under RDL masks
 |`CHK-NARROW-SCOREBOARD`, `CHK-SB-MUTEX-SEMA` |No new mutex mismatch and no unpaired prediction remain
-|`CHK-NONVAC` |25 writes, 40+k+2m reads (for mailbox depth 2) and three mutex comparisons per pass in the counted window; k is observed completion polls and m is drained null-write entries
+|`CHK-NONVAC` |26 writes, 44+k+2m reads (for mailbox depth 2) and five mutex comparisons per pass in the counted window; k is observed completion polls and m is drained null-write entries
 |`CHK-SB-MIN-ACTIVITY` |Prior passes meet the passive comparison floor
 |`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP`, `CHK-MEM-RESP` |Bring-up and checked accesses complete with OKAY; empty reads and full writes have their own SLVERR checks
 |===
@@ -57393,15 +57533,24 @@ filter outside the counted window.
 *Known Limitations*: Sequential single-beat SEP_IN accesses only; no reset in
 flight, byte accesses, unaligned accesses or narrow SEMA traffic. The
 `mutex_sema` model accepts only OKAY 32-bit upper reads and does not grade
-error reads or upper writes. ERROR_FLAGS clearing is graded for an upper-half
+error reads or upper writes. Every pass shows that an IRQS acknowledge leaves
+`write_error` set: the write-error control read of `ERROR` follows the `IRQS` acknowledge and
+requires the flag. `axil_mailbox.rdl` defines the `ERROR` flags as `rclr`, which software clears by
+reading `ERROR`, and `IRQS.eirq` as `woclr`, which software clears by writing one to `IRQS`; they
+are separate registers.
+ERROR_FLAGS clearing is graded for an upper-half
 32-bit read with both flags set. The 64-bit ERROR_FLAGS reads serve as
 controls; their own clearing is not graded independently. Lower-half 32-bit
 and byte ERROR_FLAGS reads, and an error arriving in the same cycle as the
 clearing read, are not exercised. The SYS_OUT backing store is not checked for
 retention across passes. Poll and compare bounds are bench limits, not DUT
-latency promises. The initial MUTEX release has a same-pass free-read control.
-ACQUIRE assumes the release before the upper read rather than checking it. The
-final release has no passive readback because every read acquires. Restore values
+latency promises. The release before the free-control read has a same-pass free-read control.
+The upper-read acquire is graded on every pass after a release that has no readback of its own.
+The upper word reads zero in every state, so the lower readback carries the grade: a broken upper
+acquire fails it whenever the release works, and on the first four passes the mutex is also free by
+its reset value. A broken release fails `CHK-NARROW-MUTEX-RELEASE` and leaves the upper-read grade
+nondiscriminating on a pass whose mutex an earlier pass left taken. The releases that end the upper-read leg and the pass have no
+passive readback because every read acquires. Restore values
 equal to the programmed filter values are logged as nondiscriminating. Neither
 the Zeroer completion polling nor a completed control job proves an exact
 START cycle. Mailbox interrupts beyond the EIRQ error controls and cleanup are
@@ -57411,14 +57560,22 @@ push checks grade lane placement. NULL-MAILBOX checks all-ones data with no
 strobes.
 
 *Pass Criteria*: All checks pass. Used alone,
-`+SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE` reverses eleven records per pass:
-ACQUIRE, RELEASE, POLL, POP, PUSH, ZERO-FILL, EMPTY twice, ERROR, NULL-ZEROER and
-NULL-MAILBOX; 176 failures for sixteen passes, no fatal or mutex mismatch.
-`+SMC_MUTEX_SCOREBOARD_NEGATIVE` corrupts all three predictions per pass:
-48 mismatches, 16 scenario scoreboard failures and one final feature
-failure, 65 errors total. Setup, controls, cleanup, restore and NONVAC
+`+SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE` reverses twelve records per pass:
+ACQUIRE twice, RELEASE, POLL, POP, PUSH, ZERO-FILL, EMPTY twice, ERROR, NULL-ZEROER and
+NULL-MAILBOX; 192 failures
+for sixteen passes, no fatal or mutex mismatch.
+`+SMC_MUTEX_SCOREBOARD_NEGATIVE` corrupts all five predictions per pass:
+80 mismatches, 16 scenario scoreboard failures and one final feature
+failure, 97 errors total. Setup, controls, cleanup, restore and NONVAC
 are not reversed.
-The leaf runs on demand in `csr_uvm_extended`, outside scheduled hosted tiers.
+The TB tap counts an unknown Zeroer busy output as busy through its `!== 1'b0` compare, so on a four-state
+simulator an X busy raises the sample count and `CHK-NARROW-ZEROER-CONTROL` passes on it; the
+`!$isunknown` guards in `CHK-NARROW-ZEROER-CONTROL` and `CHK-NARROW-ZEROER-POLL` cover the TB counter `zeroer_busy_sample_count`, which cannot
+be X on any simulator. The checks of this leaf that carry the X/Z parts named in the lead-in are `CHK-NARROW-ZEROER-POLL` and the CSR read helper's `SMC-CSR-READ-XZ` on an upper `CTRL_STATUS` poll, which catch an unknown Zeroer busy output (the TB tap counts it as busy) on a four-state simulator, the `!any_resp_xz()` legs of `CHK-NARROW-MBX-EMPTY` and
+`CHK-NARROW-MBX-ERROR-CONTROL`, the read helpers' errors on the other reads, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. On
+Verilator the rest of each check grades and the legs are a row of <<smc-vplan-phase3-blocked-legs>>.
+Enrolled in `csr_uvm_extended` and `uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag;
+runs on Verilator or VCS.
 
 '''''
 
@@ -57450,7 +57607,8 @@ read two SPM words. Clear monitor counters and issue two same-ID operations
 while holding response READY low for 128 reference-clock periods converted to
 SMC cycles. Require all requests accepted, request VALID low, no response
 received and a response presented. Wait the drawn delay, check its elapsed
-monitor samples before asserting cool reset, and require the response still
+monitor samples before asserting cool reset, count the SEP_IN assertion clock edges with the primary reset
+tap low and the assertions enabled until reset is released, and require the response still
 held at effective reset. Release reset, wait for fuse sensing and require
 the old pipeline to finish within its bound. Grade each old operation as
 timed out without a response.
@@ -57469,7 +57627,8 @@ the monitor.
 |`CHK-RIF-PHASE` |Both requests are accepted with request VALID low and response held at effective reset; the drawn delay elapses before reset assertion and the old pipeline ends within its bound; request idle and both response READY low are reached within a bound before recovery; failures terminate
 |`CHK-RIF-ASSERTED`, `CHK-RIF-RELEASED` |Primary and warm reset reach each requested level within bounds; failures terminate
 |`CHK-RIF-EPOCH` |One cool and no cold reset occurs, and the monitor sees no further reset edge through the end of the pass; failures terminate
-|`CHK-RIF-SVA` |Assertions remain enabled, so `OCAH_AXI_B_VALID_RESET_LOW` and `OCAH_AXI_R_VALID_RESET_LOW` grade response VALID while primary reset is low (A3.1.2); failures terminate
+|`CHK-RIF-SVA` |Assertions remain enabled, so `OCAH_AXI_B_VALID_RESET_LOW` and `OCAH_AXI_R_VALID_RESET_LOW` grade response VALID while primary reset is low (A3.1.2); the pass counts the SEP_IN assertion clock edges of the reset epoch on which the primary reset tap is low with `axi_sva_en` set, the rules' enable and reset condition (the arming term
+`sep_in_axi_sva_armed`, set from the first known cycle, is not sampled), and requires the count above zero in a record that does not stop the run; the two enable prerequisites (`SEP_IN assertions enabled`, `assertions remained enabled`) terminate on failure
 |`CHK-RIF-NO-STALE` |Each old operation times out without a response, and no stale VALID or response handshake appears before recovery
 |`CHK-RIF-RECOVERY` |Two writes and two reads return OKAY and the issued ID, reads have fresh data without X/Z, and accounting has no stale, orphan or malformed traffic
 |`CHK-NONVAC` |Four helper accesses and four passive SPM comparisons per pass
@@ -57495,8 +57654,14 @@ five RECOVERY records: eight failures per pass, 128 for sixteen, without SPM
 mismatch. `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` corrupts four read predictions
 per pass: 64 mismatches for sixteen, plus one `CHK-SB-SPM-MEM` failure
 (65 UVM errors total), while sequence checks pass.
-Prerequisites and NONVAC are outside the sequence negative.
-Enrolled only in `reset_uvm_extended`, on demand.
+Prerequisites, NONVAC and the rule-cycle count of `CHK-RIF-SVA` are outside the sequence negative.
+The checks of this leaf that carry the X/Z parts named in the lead-in are: `CHK-RIF-RECOVERY` (an
+unknown response or read-data bit through its `!any_resp_xz()` and data X-mask terms), the `===`
+primary and warm reset-level taps of `CHK-RIF-ASSERTED` and `CHK-RIF-RELEASED`, the `===`
+request-idle, READY and held B/R VALID taps of `CHK-RIF-PHASE`, the `===` handshake taps behind the five-channel positive control of `CHK-RIF-BASELINE`, the X/Z-mask term of `SMC-MEM-READ-XZ` on the baseline readbacks, the X part of `OCAH_AXI_B_VALID_RESET_LOW` and `OCAH_AXI_R_VALID_RESET_LOW`, the fuse `===` taps of `CHK-FUSE-SENSE-DONE` and the `*_KNOWN` rules of the AXI protocol assertions and `SMC_AXI_R_DATA_KNOWN`. An X primary-reset tap drops an edge from the `CHK-RIF-SVA` rule-cycle count without failing; the primary-reset X legs that fail are those of `CHK-RIF-ASSERTED` and `CHK-RIF-RELEASED` and, through the reset monitor's edge count, `CHK-RIF-EPOCH` and `CHK-RIF-PHASE`. The stale-VALID taps of `CHK-RIF-NO-STALE` count only a known 1, so an X VALID passes that check on any simulator; on a four-state simulator the X part of `OCAH_AXI_B_VALID_RESET_LOW` and `OCAH_AXI_R_VALID_RESET_LOW` (`!bvalid` and `!rvalid` evaluate X) catches it inside the reset epoch, where `OCAH_AXI_B_VALID_KNOWN` and `OCAH_AXI_R_VALID_KNOWN` are disabled while `aresetn` is low, and those `*_VALID_KNOWN` rules catch it after release. The reset monitor's `!==` RLAST, WLAST and AxLEN shape compares feed `clean_epoch()` behind `CHK-RIF-BASELINE`, `CHK-RIF-NO-STALE` and `CHK-RIF-RECOVERY`. On Verilator the rest of each check grades and the legs are a row of
+<<smc-vplan-phase3-blocked-legs>>.
+Enrolled in `reset_uvm_extended` and `uvm_extended`, outside the `all` and `hosted` groups, without the `ci` tag;
+runs on Verilator or VCS.
 
 '''''
 
@@ -58445,16 +58610,16 @@ which runs a `c_compile` stage, is run on demand with the toolchain image
 [cols="2,1,3,3",options="header"]
 |===
 |Leaf |Groups |Why CI cannot run it |Closes when
-|`smc_mailbox_cool_reset_recovery_test` |`mailbox_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_external_reg_lane_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_narrow_access_side_effect_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_ingress_reset_inflight_test` |`reset_uvm_extended` |SV-UVM only, VCS, on demand |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_wdt_core_awake_gate_test` |`wdt_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_regblock_sparse_strobe_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
-|`smc_lock_pipelined_write_test` |`csr_uvm_extended` |SV-UVM only, VCS, on demand; scheduled hosted tiers use cocotb and Verilator |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_mailbox_cool_reset_recovery_test` |`mailbox_uvm_extended`, `uvm_extended` |SV-UVM only; runs on Verilator or VCS; no scheduled tier selects `uvm_extended` |A scheduled SV-UVM Verilator tier selects this leaf
+|`smc_external_reg_lane_test` |`csr_uvm_extended`, `uvm_extended` |SV-UVM only; runs on Verilator or VCS; no scheduled tier selects `uvm_extended` |A scheduled SV-UVM Verilator tier selects this leaf
+|`smc_narrow_access_side_effect_test` |`csr_uvm_extended`, `uvm_extended` |SV-UVM only; runs on Verilator or VCS; no scheduled tier selects `uvm_extended` |A scheduled SV-UVM Verilator tier selects this leaf
+|`smc_ingress_reset_inflight_test` |`reset_uvm_extended`, `uvm_extended` |SV-UVM only; runs on Verilator or VCS; no scheduled tier selects `uvm_extended` |A scheduled SV-UVM Verilator tier selects this leaf
+|`smc_fabric_reg_clock_gate_test` |`cg_uvm_extended` |SV-UVM only; its per-cycle `$isunknown` term in `CHK-REG-CG-SCOPE` needs a four-state simulator; no VCS in CI |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_wdt_second_stage_reset_test` |`wdt_uvm_extended` |SV-UVM only; its per-cycle `$isunknown` terms in `CHK-WDT-STAGE2-SCOPE`, `-FIRST` and `-HELD` need a four-state simulator; no VCS in CI |A scheduled licensed SV-UVM tier selects this leaf
+|`smc_wdt_feed_zerocmp_test` |`wdt_uvm_extended`, `uvm_extended` |SV-UVM only; runs on Verilator or VCS; no scheduled tier selects `uvm_extended` |A scheduled SV-UVM Verilator tier selects this leaf
+|`smc_wdt_core_awake_gate_test` |`wdt_uvm_extended`, `uvm_extended` |SV-UVM only; runs on Verilator or VCS; no scheduled tier selects `uvm_extended` |A scheduled SV-UVM Verilator tier selects this leaf
+|`smc_regblock_sparse_strobe_test` |`csr_uvm_extended`, `uvm_extended` |SV-UVM only; runs on Verilator or VCS; no scheduled tier selects `uvm_extended` |A scheduled SV-UVM Verilator tier selects this leaf
+|`smc_lock_pipelined_write_test` |`csr_uvm_extended`, `uvm_extended` |SV-UVM only; runs on Verilator or VCS; no scheduled tier selects `uvm_extended` |A scheduled SV-UVM Verilator tier selects this leaf
 |`smc_fw_hello_world_test` |`fw`, `all` |`firmware = "hello_world"`: `[c_build.default]` builds the DV C image with RISC-V GCC and picolibc |A toolchain image CI can pull is published to a registry, or `.github/actions/dv-run` installs `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` on the runner and exports `RISCV_TOOLCHAIN`; the weekly tier then gains a `dut: smc, items: all` row (one seed, ~240 min budget) and this row closes
 |`smc_fw_plic_claim_test` |`fw`, `all` |`firmware = "plic_sanity"`, same build path |As above
 |`smc_fw_hello_world_multicore_test` |`fw`, `all` |`firmware = "hello_world_multicore"`, same build path |As above

@@ -308,7 +308,8 @@ class smc_external_reg_lane_test_seq extends smc_base_test_seq;
     require_value(ChkSetup, saved_drive_en[IsolatePad] === 1'b0, "isolation pad unowned");
     cool_before = tb_vif.cool_rst_assert_count;
     csr_read(FlrAddr, value, "FLR idle baseline");
-    require_value(ChkSetup, value == 0, "FLR latch idle");
+    require_value(ChkSetup, value == 32'(RESET_UNIT_ISOLATE_REQ_SMC_REG_REG_DEFAULT),
+                  "FLR latch idle");
     csr_read(LockAddr, value, "SS_CONFIG lock baseline");
     require_value(ChkSetup, value == RESET_UNIT_SS_CONFIG_LOCK_REG_DEFAULT, "SS_CONFIG unlocked");
     set_pin(0);
@@ -325,10 +326,17 @@ class smc_external_reg_lane_test_seq extends smc_base_test_seq;
     require_value(ChkSetup, watch_ready, "sampler ready");
     foreach (entries[i]) begin
       bit [3:0] strobes[WritesPerWord] = '{4'h1, 4'h2, 4'h4, 4'h8, 4'h5, 4'hA, 0, 0};
+      bit [31:0] neighbor_reset[4] = '{
+          32'(RESET_UNIT_ISOLATE_REQ_PINEN_REG_REG_DEFAULT),
+          32'(RESET_UNIT_ISOLATE_REQ_REG_REG_DEFAULT),
+          32'(RESET_UNIT_SS_CONFIG_LOCK_REG_DEFAULT),
+          32'(RESET_UNIT_ISOLATE_REQ_SMC_REG_REG_DEFAULT)
+      };
       strobes[6] = partials[random_pattern(3)];
       read_entry(entries[i], i == Words - 1, shadow, baseline_neighbor);
       require_value(ChkSetup, shadow == entries[i].reset_value, {entries[i].name, " baseline"});
-      if (i < 4) require_value(ChkSetup, baseline_neighbor == 0, "neighbor baseline");
+      if (i < 4)
+        require_value(ChkSetup, baseline_neighbor == neighbor_reset[i], "neighbor baseline");
       if (i == 4) require_value(ChkSetup, (baseline_neighbor & VisMask) == VisIdle, "VIS baseline");
       if (i == 1) set_pin(1);
       if (i >= 2) begin
@@ -377,7 +385,8 @@ class smc_external_reg_lane_test_seq extends smc_base_test_seq;
       end
     end
     csr_read(FlrAddr, value, "FLR idle final");
-    require_value(ChkSetup, value == 0, "FLR latch stays idle");
+    require_value(ChkSetup, value == 32'(RESET_UNIT_ISOLATE_REQ_SMC_REG_REG_DEFAULT),
+                  "FLR latch stays idle");
     csr_read(VisAddr, vis, "cool reset released final");
     require_value(ChkSetup,
                   (vis & VisMask) == VisIdle && tb_vif.cool_rst_assert_count == cool_before,
