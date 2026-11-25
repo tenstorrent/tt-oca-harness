@@ -602,8 +602,7 @@ module smc_cool_reset_wrap (
 
   always_ff @(posedge clk_ref_i or negedge rst_cold_ref_ni) begin
     if (!rst_cold_ref_ni) begin
-      cool_reset_record_ref <= '{cause: reset_unit_reg_pkg::reset_unit__cool_reset_cause_enum__none,
-                                 ack_capture: '0};
+      cool_reset_record_ref <= '0;
     end else if (flr_counter_expire_nxt) begin
       cool_reset_record_ref.cause       <= isolate_req_acks_done ?
           reset_unit_reg_pkg::reset_unit__cool_reset_cause_enum__seq_ack :
