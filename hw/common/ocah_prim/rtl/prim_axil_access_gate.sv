@@ -11,11 +11,9 @@
 // clk_i must keep running while block_i is high: the gate sits in front of a subordinate
 // whose own clock may be stopped.
 //
-// pass_idle_o is high while no access accepted with block_i low is awaiting its response
-// from the subordinate. While block_i is high it cannot fall, so a subordinate clock that
-// stops on block_i & pass_idle_o stops with no access in flight.
-
-`include "ocah_assert.svh"
+// pass_idle_o is high while the subordinate port has no request presented and none awaiting
+// its response. A subordinate clock that stops on block_i & pass_idle_o therefore stops with
+// no access in flight, since while block_i is high no new access reaches that port.
 
 module prim_axil_access_gate #(
   parameter int unsigned           ADDR_WIDTH = 32,  // AXI-Lite address width.
@@ -108,32 +106,29 @@ module prim_axil_access_gate #(
   assign axil_req_o            = axil_reqs[PassPort];
   assign axil_resps[PassPort]  = axil_resp_i;
 
-  // Counted from the demux input, where block_i is latched with the request, so an access
-  // still held in the AW or AR spill register counts. The spill register holds two beyond
-  // the MAX_TRANS the demux admits.
-  localparam int unsigned PassCntWidth = $clog2(MAX_TRANS + 3);
+  logic pass_active;
 
-  logic [PassCntWidth-1:0] pass_wr_cnt_q, pass_rd_cnt_q;
-  logic pass_aw_acc, pass_ar_acc, pass_b_done, pass_r_done;
+  prim_axi_snoop #(
+    .OUTSTANDING_TX (MAX_TRANS)
+  ) u_pass_snoop (
+    .clk_i            (clk_i),
+    .rst_ni           (rst_ni),
+    .snoop_aw_valid_i (axil_req_o.aw_valid),
+    .snoop_aw_ready_i (axil_resp_i.aw_ready),
+    .snoop_w_valid_i  (axil_req_o.w_valid),
+    .snoop_b_valid_i  (axil_resp_i.b_valid),
+    .snoop_b_ready_i  (axil_req_o.b_ready),
+    .snoop_ar_valid_i (axil_req_o.ar_valid),
+    .snoop_ar_ready_i (axil_resp_i.ar_ready),
+    .snoop_r_valid_i  (axil_resp_i.r_valid),
+    .snoop_r_ready_i  (axil_req_o.r_ready),
+    .snoop_r_last_i   (1'b1),
+    .bus_active_o     (pass_active),
+    .complete_aw_o    (),
+    .complete_ar_o    (),
+    .req_count_q_o    ()
+  );
 
-  assign pass_aw_acc = axil_req_i.aw_valid & axil_resp_o.aw_ready & ~block_i;
-  assign pass_ar_acc = axil_req_i.ar_valid & axil_resp_o.ar_ready & ~block_i;
-  assign pass_b_done = axil_resp_i.b_valid & axil_req_o.b_ready;
-  assign pass_r_done = axil_resp_i.r_valid & axil_req_o.r_ready;
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      pass_wr_cnt_q <= '0;
-      pass_rd_cnt_q <= '0;
-    end else begin
-      pass_wr_cnt_q <= pass_wr_cnt_q + PassCntWidth'(pass_aw_acc) - PassCntWidth'(pass_b_done);
-      pass_rd_cnt_q <= pass_rd_cnt_q + PassCntWidth'(pass_ar_acc) - PassCntWidth'(pass_r_done);
-    end
-  end
-
-  assign pass_idle_o = (pass_wr_cnt_q == '0) & (pass_rd_cnt_q == '0);
-
-  `OCAH_ASSERT(PassWrCntNoUnderflow_A, pass_b_done |-> (pass_wr_cnt_q != '0), clk_i, !rst_ni)
-  `OCAH_ASSERT(PassRdCntNoUnderflow_A, pass_r_done |-> (pass_rd_cnt_q != '0), clk_i, !rst_ni)
+  assign pass_idle_o = ~pass_active;
 
 endmodule
