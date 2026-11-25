@@ -550,8 +550,8 @@ during manufacturing test.
 Memory repair executes automatically during boot after eFuse sensing completes
 and before MBIST operations. The process must complete successfully before the
 CPU cluster can safely access SRAM arrays. Repair is required on every cold
-reset but can be bypassed during Function Level Reset (FLR) operations for
-faster recovery.
+reset but can be bypassed during subsystem isolation, such as an isolation
+sequence, for faster recovery.
 
 === Control Signals
 
@@ -617,8 +617,9 @@ For direct access to the eFuse not through the SHIM, i.e. from a DFT fuse
 controller, adopters must ensure the integrated logic will not interfere with
 accesses from the OCAH's efuse interface.
 
-The isolation request path asserts `skip_mem_repair_o` during Function Level
-Reset (FLR) operations to bypass repair for rapid reset sequences. Normal cold
+The isolation request path asserts `skip_mem_repair_o` while the isolation pin
+or the isolation sequence latch is set, to bypass repair for rapid reset
+sequences. Normal cold
 reset sequences always execute repair unless isolation is already asserted.
 
 == Interrupt Integration
@@ -692,10 +693,10 @@ full timeout.
 
 The
 ifdef::backend-html5[]
-xref:ocah-docs:smc:clk_rst.adoc#smc-cool-reset-scope[Function Level Reset and Isolation]
+xref:ocah-docs:smc:clk_rst.adoc#smc-cool-reset-scope[Isolation Sequence and Cool Reset]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-_Function Level Reset and Isolation_
+_Isolation Sequence and Cool Reset_
 endif::backend-pdf[]
 section of the Technical Reference Manual describes the sequence and the cool
 reset.

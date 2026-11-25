@@ -255,11 +255,11 @@ module smc_peripherals #(
                                                    // rising edge starts the reset unit's isolation
                                                    // and reset sequence.
   input  logic [31:0] isolate_req_ack_i,  // Per-subsystem isolation acknowledges to the reset
-                                          // unit; end its FLR wait early.
+                                          // unit; end its isolation wait early.
   output logic [31:0] isolate_req_o,    // Per-subsystem isolation requests from the reset
                                         // unit, raised by its registers, the isolate pin or
-                                        // the function-level reset sequence.
-  output logic        skip_mem_repair_o,  // Asserted during a function-level reset to
+                                        // the isolation sequence.
+  output logic        skip_mem_repair_o,  // Asserted during subsystem isolation to
                                           // skip memory repair and MBIST.
 
   input  logic [31:0]                     ss_reset_complete_i,  // Per-subsystem reset
@@ -277,7 +277,7 @@ module smc_peripherals #(
                                                                    // synchronized to the
                                                                    // subsystem clock.
 
-  output logic rst_primary_ref_clk_no,  // Primary reset (cold, cool and function-level
+  output logic rst_primary_ref_clk_no,  // Primary reset (cold, cool and isolation sequence
                                         // reset combined), active-low, synchronized to the
                                         // reference clock.
   output logic rst_primary_smc_clk_no,  // Primary reset, active-low, synchronized to the

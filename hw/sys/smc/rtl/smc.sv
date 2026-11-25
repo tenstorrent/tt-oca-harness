@@ -114,7 +114,7 @@ module smc #(
                                             // active-low, synchronized to the reference
                                             // clock.
 
-  output logic rst_primary_ref_clk_no,  // Primary reset (cold, cool and function-level reset
+  output logic rst_primary_ref_clk_no,  // Primary reset (cold, cool and isolation sequence reset
                                         // combined), active-low, synchronized to the
                                         // reference clock.
   output logic rst_primary_smc_clk_no,  // Primary reset, active-low, synchronized to the SMC
@@ -301,7 +301,7 @@ module smc #(
                                             // by 16 SMC clock pipeline stages; held low
                                             // while boot stall is asserted.
 
-  output logic skip_mem_repair_o,       // Asserted during a function-level reset to skip
+  output logic skip_mem_repair_o,       // Asserted during subsystem isolation to skip
                                         // memory repair and MBIST.
   input  logic ext_boot_seq_done_i,     // External boot sequence done, active-high; the
                                         // fuse-released reset stays low until it is set.
@@ -338,7 +338,7 @@ module smc #(
                                                    // rising edge starts the reset unit's isolation
                                                    // and reset sequence.
   input  logic [31:0] isolate_req_ack_i,  // Per-subsystem isolation acknowledges to the reset
-                                          // unit; end its FLR wait early.
+                                          // unit; end its isolation wait early.
   output logic [31:0] isolate_req_o,    // Per-subsystem isolation requests from the reset
                                         // unit.
 

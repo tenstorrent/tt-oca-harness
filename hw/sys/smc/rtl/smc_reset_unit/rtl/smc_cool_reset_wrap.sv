@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Generate the FLR cool reset and the subsystem isolation requests.
+// Generate the isolation sequence cool reset and the subsystem isolation requests.
 //
 // On a rising edge of isolate_sequence_trigger_i, counts down ISOLATE_REQ_FLR_COUNTER_VALUE
 // reference clock cycles, then holds rst_cool_no low while counting down
@@ -79,10 +79,10 @@ module smc_cool_reset_wrap (
                                                                  // ISOLATE_REQ_SMC is set.
   output logic                                   skip_mem_repair_o,  // Signal to skip
                                                                      // memory repair &
-                                                                     // MBIST during FLR; high
+                                                                     // MBIST during isolation; high
                                                                      // while the pin or
                                                                      // ISOLATE_REQ_SMC is set.
-  output logic                                   rst_cool_no  // FLR cool reset, active-low, on
+  output logic                                   rst_cool_no  // Sequence cool reset, active-low, on
                                                               // clk_ref_i.
 );
 
@@ -137,7 +137,7 @@ module smc_cool_reset_wrap (
   logic [31:0]                 flr_reset_set_cnt;
   logic [31:0]                 flr_reset_set_cnt_ref_clk;
 
-  // FLR Logic Signals
+  // Isolation Sequence Trigger Signals
   logic isolate_sequence_trigger_sync_ref_q, isolate_sequence_trigger_sync_ref_posedge;
   logic isolate_sequence_trigger_sync_smc_q, isolate_sequence_trigger_sync_smc_posedge;
 
@@ -315,9 +315,9 @@ module smc_cool_reset_wrap (
 
   assign isolate_sequence_trigger_sync_smc_posedge = isolate_sequence_trigger_sync_smc && !isolate_sequence_trigger_sync_smc_q;
 
-  /////////////////////////////////
-  // FLR Isolate request control //
-  /////////////////////////////////
+  ///////////////////////////////
+  // Isolate request control //
+  ///////////////////////////////
 
   // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems.
   `OCAH_FFL(
@@ -356,14 +356,14 @@ module smc_cool_reset_wrap (
       (isolate_req_smcen_reg & ~isolate_req_smcen_reg_wr_mask) | (isolate_req_smcen_reg_wr_data & isolate_req_smcen_reg_wr_mask),
       isolate_req_smcen_wr_en, '0, clk_smc_i, rst_cold_smc_ni)
 
-  // Isolate request control logic (OR of SW request, pin request, and FLR request)
+  // Isolate request control logic (OR of SW request, pin request, and isolation sequence request)
   always_comb begin
     for (int i = 0; i < 32; i++) begin
       isolate_req_o[i] = isolate_req_reg[i] | (isolate_req_pinen_reg[i] & isolate_req_pin_sync_smc) | (isolate_req_smcen_reg[i] & isolate_req_smc_reg);
     end
   end
 
-  // Skip memory repair & MBIST during FLR if isolate request is asserted
+  // Skip memory repair & MBIST while the pin or the isolation sequence latch is set
   assign skip_mem_repair_o = isolate_req_pin_sync_smc | isolate_req_smc_reg;
 
   ////////////////////////////

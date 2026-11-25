@@ -1921,7 +1921,7 @@ ports through <<dtp-ic-reset-overrides>>.
 |SMC firmware
 |<<smc-subsystem-resets>>
 
-|Function-level cool reset and isolation
+|Isolation sequence and cool reset
 |Reset unit `ISOLATE_REQ_*` registers
 |SMC firmware prepares and recovers; `isolate_sequence_trigger_i` triggers it, for example on a PCIe FLR
 |<<smc-flr-isolation>>
@@ -2015,38 +2015,39 @@ void ss_cold_release(unsigned i) {
 ----
 
 [[smc-flr-isolation]]
-==== Function-Level Reset and Isolation
+==== Isolation Sequence and Cool Reset
 
 The hardware behavior is described in the
 ifdef::backend-html5[]
-xref:ocah-docs:smc:clk_rst.adoc#smc-function-level-reset[Function Level Reset and Isolation]
+xref:ocah-docs:smc:clk_rst.adoc#smc-function-level-reset[Isolation Sequence and Cool Reset]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/clk_rst.html#smc-function-level-reset[Function Level Reset and Isolation]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/clk_rst.html#smc-function-level-reset[Isolation Sequence and Cool Reset]
 endif::backend-pdf[]
-section of the Technical Reference Manual. To prepare and recover from an FLR:
+section of the Technical Reference Manual. To prepare for an isolation sequence and recover from
+its cool reset:
 
 . Program the isolation masks (`ISOLATE_REQ_PINEN_REG`, `ISOLATE_REQ_SMCEN_REG`)
-  and both FLR timing registers before enabling requests. The masks and counts
+  and both reset timeout registers before enabling requests. The masks and counts
   cross to the reference clock domain through handshaked synchronizers, and
   reading them back in the SMC domain does not confirm their arrival.
 . Choose `ISOLATE_REQ_FLR_COUNTER_VALUE` as the pre-reset timeout, or zero
   for none, and a nonzero `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` for the
-  cool-reset hold. A zero hold count disables the timed reset, but an FLR edge
+  cool-reset hold. A zero hold count disables the timed reset, but a trigger edge
   still sets the isolation latch. The cool reset asserts before the timeout once
   every subsystem enabled in `ISOLATE_REQ_SMCEN_REG` raises its isolation
   acknowledge, `isolate_req_ack_i`. With no bit enabled, or with the
   acknowledges tied low, the full timeout runs. A subsystem enabled in
-  `ISOLATE_REQ_SMCEN_REG` without an acknowledge holds every FLR to the
-  timeout.
-. Coordinate FLR requests in the integration: the sequencer does not queue
+  `ISOLATE_REQ_SMCEN_REG` without an acknowledge holds every isolation
+  sequence to the timeout.
+. Coordinate `isolate_sequence_trigger_i` sources in the integration: the sequencer does not queue
   overlapping requests.
 . After the cool reset, read the cause of the reset as <<smc-reset-cause>>
   describes. `SS_COLD_RESET_N` again holds every managed subsystem in cold
   reset. Release the subsystems as <<smc-subsystem-resets>> describes,
   re-establish the affected subsystem's state and satisfy its isolation-release
   requirements.
-. Write 1 to `ISOLATE_REQ_SMC_REG` bit 0 to clear the FLR isolation latch. A
+. Write 1 to `ISOLATE_REQ_SMC_REG` bit 0 to clear the isolation sequence latch. A
   write of 0, or one that does not strobe byte 0, leaves it set. The end of the
   cool reset does not clear it, and clearing it does not cancel a request held
   by `ISOLATE_REQ_REG` or by the isolation pin. Each subsystem lowers its
@@ -2055,13 +2056,13 @@ section of the Technical Reference Manual. To prepare and recover from an FLR:
 To isolate subsystems without a cool reset, set their bits in `ISOLATE_REQ_REG`
 and clear them to release. Software cannot start the reset timeout counters, and this
 request does not assert the memory-repair skip. No register confirms that
-isolation has completed outside an FLR.
+isolation has completed outside an isolation sequence.
 
 [[smc-reset-cause]]
 ===== Identifying the Reset at Boot
 
 `ISOLATE_REQ_VIS.cool_reset_cause` records the cause of the most recent cool
-reset, and `ISOLATE_REQ_ACK_CAPTURE` the acknowledges an FLR sequence saw when
+reset, and `ISOLATE_REQ_ACK_CAPTURE` the acknowledges an isolation sequence saw when
 it asserted the cool reset. Both are reset only by the cold reset, so they
 survive the cool reset that the SMC boots from. Read them with
 `ISOLATE_REQ_VIS.isolate_req_pin` before clearing any isolation request:
@@ -2082,12 +2083,12 @@ asserts `BP_RESET_N`
 |The subsystems enabled in `ISOLATE_REQ_PINEN_REG` stayed isolated through
 the reset. Skip their bring-up until the board releases the pin.
 
-|FLR, every enabled subsystem acknowledged
+|Isolation sequence, every enabled subsystem acknowledged
 |`seq_ack`
 |—
-|Release the isolated subsystems as the FLR steps above describe.
+|Release the isolated subsystems as the steps above describe.
 
-|FLR, timeout expired
+|Isolation sequence, timeout expired
 |`seq_timeout`
 |—
 |Each subsystem set in `ISOLATE_REQ_SMCEN_REG` and clear in
@@ -2095,16 +2096,18 @@ the reset. Skip their bring-up until the board releases the pin.
 cut. Reset it before use. With `ISOLATE_REQ_SMCEN_REG` zero no subsystem is
 affected.
 
-|Cool reset on `BP_COOL_RESET_N_I`, driven by the primary chiplet's FLR
+|Cool reset on `BP_COOL_RESET_N_I`, driven by the primary chiplet's isolation
+sequence
 |`pin`
 |—
-|Secondary chiplet only: the primary chiplet's FLR cool-reset this chiplet.
+|Secondary chiplet only: the primary chiplet's isolation sequence cool-reset
+this chiplet.
 |===
 
 `cool_reset_cause` reads 0 for `none`, 1 for `pin`, 2 for `seq_ack` and 3 for
 `seq_timeout`. A dash means the pin level does not change the action. A cold reset returns
 `cool_reset_cause` to `none` and clears `ISOLATE_REQ_ACK_CAPTURE`; the next
-cool reset overwrites both. On a secondary chiplet, the FLR rows do not occur
+cool reset overwrites both. On a secondary chiplet, the isolation sequence rows do not occur
 and `ISOLATE_REQ_ACK_CAPTURE` stays zero.
 
 Before reset, isolation or a clock change, quiesce the affected block following

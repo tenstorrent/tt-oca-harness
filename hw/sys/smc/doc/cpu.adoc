@@ -185,8 +185,8 @@ Reports completion of the external boot sequence. Its qualified value gates
 fuse-reset release together with fuse sensing; the repair and MBIST status
 bits themselves are not this handshake.
 `skip_mem_repair_o`::
-Asserted by the synchronized isolation pin or the FLR-set
-`ISOLATE_REQ_SMC_REG` latch. Software writes can clear this latch but cannot
+Asserted by the synchronized isolation pin or the
+`ISOLATE_REQ_SMC_REG` latch that the isolation sequence trigger sets. Software writes can clear this latch but cannot
 set it. A request through the separate `ISOLATE_REQ_REG` register does not
 assert this output. External logic determines how it bypasses repair/MBIST.
 `BYPASS_SRAM_REPAIR` (`STRAPS_LO[13]`)::

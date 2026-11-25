@@ -58,16 +58,16 @@ The reset hierarchy within the SMU proceeds as follows:
   through `isolate_req_o[31:0]`. Subsystems report completion via
   `ss_reset_complete_i[31:0]`.
 
-. *Isolation sequence.* A rising edge on `isolate_sequence_trigger_i`, for
-  example on a PCIe Function Level Reset (FLR), isolates subsystems through
+. *Isolation sequence.* A rising edge on `isolate_sequence_trigger_i`, raised
+  by any event that must isolate the subsystems, isolates subsystems through
   `isolate_req_o`, waits for their `isolate_req_ack_i` acknowledges or a
   timeout, then asserts a cool reset. Subsystems see it as a cold reset and
   survive only by gating their reset with their `isolate_req_o` bit; see
 ifdef::backend-html5[]
-  xref:smc:clk_rst.adoc#smc-cool-reset-scope[Function Level Reset and Isolation].
+  xref:smc:clk_rst.adoc#smc-cool-reset-scope[Isolation Sequence and Cool Reset].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-  <<smc-cool-reset-scope,Function Level Reset and Isolation>>.
+  <<smc-cool-reset-scope,Isolation Sequence and Cool Reset>>.
 endif::backend-pdf[]
 
 . *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can

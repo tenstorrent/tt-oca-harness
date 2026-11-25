@@ -74,7 +74,7 @@ endif::backend-html5[]
 |`isolate_sequence_trigger_i` |`logic` |Input |1 |Rising edge raises the isolate flag to the subsystems enabled in `ISOLATE_REQ_SMCEN_REG` and starts the isolation sequence. |System → Reset Unit |N/A, tie to '0 if unused
 |`smc_ndmreset_request_i` |`logic` |Input |`[CpuClusterCount-1:0]` |NDM reset request from external CPU cluster `i` on bit `i`. Synchronized onto `clk_smc`. |External CPU clusters → SMC |Tie to '0 if unused
 |`smc_ndmreset_process_o` |`logic` |Output |`[CpuClusterCount-1:0]` |Firmware response to external CPU cluster `i` on bit `i`. |SMC → external CPU clusters |N/A
-|`isolate_req_ack_i` |`logic` |Input |`[31:0]` |Isolation acknowledge from 32 subsystems; bit i high ends the FLR wait for subsystem i. Lower it before `isolate_req_o[i]` falls. |32 subsystems → Reset Unit |Tie to '0 if unused
+|`isolate_req_ack_i` |`logic` |Input |`[31:0]` |Isolation acknowledge from 32 subsystems; bit i high ends the isolation sequence's wait for subsystem i. Lower it before `isolate_req_o[i]` falls. |32 subsystems → Reset Unit |Tie to '0 if unused
 |`isolate_req_o` |`logic` |Output |`[31:0]` |Isolation request output for 32 subsystems. |Reset Unit → 32 subsystems |N/A
 |`ss_reset_complete_i` |`logic` |Input |`[31:0]` |Subsystem reset completion status. |32 subsystems → Reset Unit |32'hFFFFFFFF
 |`ss_config_o` |`logic` |Output |`[31:0]` |Subsystem configuration output. |Reset Unit → 32 subsystems |N/A

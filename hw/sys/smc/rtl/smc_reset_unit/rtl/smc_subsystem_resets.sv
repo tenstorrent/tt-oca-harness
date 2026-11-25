@@ -13,11 +13,12 @@ module smc_subsystem_resets (
   input  logic                                   clk_i,  // SMC core clock.
   input  logic                                   rst_primary_ni,  // Primary reset, active-low,
                                                                   // synchronized to clk_i: the
-                                                                  // stable cold, cool-pin and FLR
-                                                                  // cool resets combined. Clears
-                                                                  // SS_CONFIG and SS_COLD_RESET_N,
-                                                                  // which holds every subsystem
-                                                                  // cold reset asserted.
+                                                                  // stable cold, cool-pin and
+                                                                  // sequence cool resets combined.
+                                                                  // Clears SS_CONFIG and
+                                                                  // SS_COLD_RESET_N, which holds
+                                                                  // every subsystem cold reset
+                                                                  // asserted.
 
   input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out_i,  // Reset-unit register outputs: the
                                                               // SS_* register values and the
