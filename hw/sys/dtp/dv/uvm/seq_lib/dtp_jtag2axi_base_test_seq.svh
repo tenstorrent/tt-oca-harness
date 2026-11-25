@@ -400,6 +400,17 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     expect_bus_request(t, 1'b1, addr, size, '0, '0, context_s);
   endtask
 
+  // sbaddress over the bridge's address width.
+  task read_sbaddress(input dtp_j2a_target_t t, input string context_s, output bit [63:0] value);
+    bit [31:0] word;
+    dmi_read(t, DTP_DM_SBADDRESS0, {context_s, ".sbaddress0"}, word);
+    value = 64'(word);
+    if (t.addr_width > 32) begin
+      dmi_read(t, DTP_DM_SBADDRESS1, {context_s, ".sbaddress1"}, word);
+      value[63:32] = word;
+    end
+  endtask
+
   // The responder answers the next read (`is_read`) or write of the beat at
   // `addr` with `resp`, and the AXI scoreboard expects that response.
   function void inject_bus_error(dtp_j2a_target_t t, bit [63:0] addr, ocah_axi_resp_e resp,

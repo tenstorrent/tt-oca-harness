@@ -61,7 +61,9 @@ class dtp_jtag2axi_status_ref_model
   endfunction
 
   function void write_dtp_j2a_status_axi(ocah_axi_item t);
-    m_tracker.on_axi(t);
+    string        target;
+    ocah_axi_item predicted;
+    void'(m_tracker.on_axi(t, target, predicted));
   endfunction
 
 endclass : dtp_jtag2axi_status_ref_model

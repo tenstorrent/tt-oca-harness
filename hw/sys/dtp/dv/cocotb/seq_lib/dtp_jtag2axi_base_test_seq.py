@@ -387,7 +387,8 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         sbaddress holds, and judge the bus request; the write ends with ``sberror``."""
         offset = addr % self.target_cfg(target).beat_bytes
         wstrb = self.full_wstrb(size) << offset
-        self.scoreboard_arm_strobes(target, wstrb, addr, context=context)
+        if self.target_enabled(target):
+            self.scoreboard_arm_strobes(target, wstrb, addr, context=context)
         data &= self.data_mask(size)
         if size == 3:
             await self.dmi_write(target, DtpDmReg.SBDATA1, data >> 32, context=f"{context}.sbdata1")
@@ -434,6 +435,15 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
         await self.wait_sba_idle(target, context=context, sberror=sberror)
         await self.expect_bus_request(target, read=True, addr=addr, size=size, context=context)
+
+    async def read_sbaddress(self, target: str, *, context: str) -> int:
+        """sbaddress over the bridge's address width."""
+        value = await self.dmi_read(target, DtpDmReg.SBADDRESS0, context=f"{context}.sbaddress0")
+        if self.target_cfg(target).addr_width > 32:
+            value |= (
+                await self.dmi_read(target, DtpDmReg.SBADDRESS1, context=f"{context}.sbaddress1")
+            ) << 32
+        return value
 
     def inject_bus_error(
         self, target: str, addr: int, resp: int, *, read: bool, context: str
@@ -494,6 +504,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     @staticmethod
     def target_cfg(target: str) -> DtpJtag2AxiTargetCfg:
         return get_jtag2axi_target(target)
+
+    def target_enabled(self, target: str) -> bool:
+        """Whether ``target``'s debug disable is clear, so its accesses reach the port."""
+        return not self.cfg.tb_if.dbg_field(self.target_cfg(target).dbg_disable_bit)
 
     def target_memory(self, target: str) -> OcahAxiSlaveSequence | OcahAxiLiteSlaveSequence:
         cfg = self.target_cfg(target)

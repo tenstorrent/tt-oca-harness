@@ -9,7 +9,8 @@ asserted. Consumes the reconstructed scan stream (``write``), the per-TCK
 event stream (``event_export``) and the transactions observed on the three
 bridge ports (``axi_export``) through a ``DtpJtag2AxiTracker``, and publishes
 one expected ``OcahAxiItem`` (direction, address, size, strobes, data) per
-launched access on the lane of the port that will carry it. The scoreboard
+launched access on the lane of the port that will carry it; an access that may
+take either path is published once its port completes it in time. The scoreboard
 pairs those in order with the observed transactions of the same port.
 ``DTP_J2A_REF_MODEL_NEGATIVE`` corrupts every predicted address so the pairing
 must fail. No comparison, no reporting. The SV-UVM twin is
@@ -59,13 +60,18 @@ class DtpJtag2AxiReqRefModel(OcahRefModel):
         self._tracker.on_scan(item)
 
     def write_event(self, item: OcahJtagEvent) -> None:
-        launched = self._tracker.on_event(item)
+        self._publish(self._tracker.on_event(item), int(item.time_ns or 0))
+
+    def write_axi(self, item: OcahAxiItem) -> None:
+        self._publish(self._tracker.on_axi(item), int(item.start_time_ns or 0))
+
+    def _publish(self, launched: tuple[str, OcahAxiItem] | None, when: int) -> None:
+        """Publish a predicted bridge transaction on its port's lane."""
         if launched is None:
             return
         target, access = launched
         if target not in self._source:
             raise RuntimeError(f"bridge `{target}` has no bound port")
-        when = int(item.time_ns or 0)
         self.expected_ap.write(
             replace(
                 access,
@@ -75,6 +81,3 @@ class DtpJtag2AxiReqRefModel(OcahRefModel):
                 address=access.address ^ 0x4 if self.negative else access.address,
             )
         )
-
-    def write_axi(self, item: OcahAxiItem) -> None:
-        self._tracker.on_axi(item)

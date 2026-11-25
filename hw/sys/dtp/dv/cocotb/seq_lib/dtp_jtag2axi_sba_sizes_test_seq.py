@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import random
 
-from env.dtp_types import JTAG2AXI_TARGETS, DtpDmReg
+from env.dtp_types import JTAG2AXI_TARGETS
 from ocah_lib import OcahKnobs
 
 from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
@@ -159,11 +159,7 @@ class dtp_jtag2axi_sba_sizes_test_seq(dtp_jtag2axi_base_test_seq):
         ``DTP_J2A_AUTOINC_NEGATIVE=1`` flips the expected bit 0, so the run
         must fail.
         """
-        observed = await self.dmi_read(target, DtpDmReg.SBADDRESS0, context=f"{context}.sbaddress0")
-        if self.target_cfg(target).addr_width > 32:
-            observed |= (
-                await self.dmi_read(target, DtpDmReg.SBADDRESS1, context=f"{context}.sbaddress1")
-            ) << 32
+        observed = await self.read_sbaddress(target, context=context)
         expected = self.masked_addr(target, expected)
         if OcahKnobs.is_set(AUTOINC_NEGATIVE_KNOB):
             expected ^= 0x1

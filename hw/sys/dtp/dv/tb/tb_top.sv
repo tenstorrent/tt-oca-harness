@@ -1216,9 +1216,11 @@ module tb_top
 
   // JTAG2AXI coverage: each bridge's DMI strobes, captured status, update
   // value, dmireset, Debug Module dmactive, System Bus Access request and
-  // errors, and the DMI requests its Debug Module accepts, through
-  // hierarchical references into its jtag_dmi2axi, and its port's handshake
-  // signals, in the bit order of dtp_tb_if.j2a_b_hold.
+  // errors, the DMI requests its Debug Module accepts, and its security
+  // select, synchronized disable and the handshakes between the bridge and
+  // its demultiplexer, through hierarchical references into its
+  // jtag_dmi2axi, and its port's handshake signals, in the bit order of
+  // dtp_tb_if.j2a_b_hold.
   dtp_j2a_fcov u_dtp_j2a_fcov (
     .tck_i           (jtag_tck),
     .tap_rst_ni      (jtag_tap_rst_n),
@@ -1339,7 +1341,37 @@ module tb_top
     .port_arready_i  ({sep_otp_axil_arready, smc_otp_axil_arready, m_axi_arready}),
     .port_rvalid_i   ({sep_otp_axil_rvalid, smc_otp_axil_rvalid, m_axi_rvalid}),
     .port_rready_i   ({sep_otp_axil_rready, smc_otp_axil_rready, m_axi_rready}),
-    .port_rlast_i    ({1'b1, 1'b1, m_axi_rlast})
+    .port_rlast_i    ({1'b1, 1'b1, m_axi_rlast}),
+    .sec_select_i    ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.security_select_q,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.security_select_q,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.security_select_q
+    }),
+    .sec_disable_i   ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.security_disable_i,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.security_disable_i,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.security_disable_i
+    }),
+    .bridge_requesting_i ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.bridge_requesting,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.bridge_requesting,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.bridge_requesting
+    }),
+    .bridge_aw_hs_i  ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_req.aw_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_resp.aw_ready,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_req.aw_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_resp.aw_ready,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_req.aw_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_resp.aw_ready
+    }),
+    .bridge_ar_hs_i  ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_req.ar_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_resp.ar_ready,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_req.ar_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_resp.ar_ready,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_req.ar_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_resp.ar_ready
+    }),
+    .bridge_done_i   ({
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_resp.b_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_req.b_ready) || (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_resp.r_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_req.r_ready),
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_resp.b_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_req.b_ready) || (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_resp.r_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_req.r_ready),
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_resp.b_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_req.b_ready) || (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_resp.r_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_req.r_ready && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_resp.r.last)
+    })
   );
 
   // Scan-network coverage (iJTAG SIBs / STAP 3DCR / scan-side debug

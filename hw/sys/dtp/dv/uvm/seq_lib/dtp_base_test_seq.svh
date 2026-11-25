@@ -35,8 +35,8 @@ class dtp_base_test_seq extends ocah_sequence;
   localparam int unsigned SysResetHoldCycles = 5;
   localparam int unsigned PostResetCycles = 10;
   // dbg_disable settle: the DUT synchronizes dbg_disable through 2-stage
-  // TCK-domain flops; four toggling idle TCK cycles plus four system
-  // cycles are the TB margin.
+  // flops, the JTAG2AXI bridge fields on clk_i and the other fields on TCK;
+  // four toggling idle TCK cycles plus four system cycles are the TB margin.
   localparam int unsigned DbgDisableTckCycles = 4;
   localparam int unsigned DbgDisableSysCycles = 4;
 
@@ -499,7 +499,7 @@ class dtp_base_test_seq extends ocah_sequence;
   endtask
 
   // Drive the lifecycle disable vector, then settle through the DUT's
-  // 2-stage TCK-domain synchronizers.
+  // synchronizers.
   task set_dbg_disable(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
     tb_vif.drive_dbg_disable(d);
     for (int unsigned i = 0; i < DbgDisableTckCycles; i++) step(1'b0);
