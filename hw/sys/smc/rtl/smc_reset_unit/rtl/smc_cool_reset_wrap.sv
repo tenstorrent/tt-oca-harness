@@ -22,12 +22,7 @@ module smc_cool_reset_wrap (
                                                                    // resets the reset timeout counters and
                                                                    // releases rst_cool_no.
   input  logic                                   rst_primary_ref_ni,  // Primary reset, active-low,
-                                                                      // synchronized to clk_ref_i;
-                                                                      // clears the isolate_req_ack_i
-                                                                      // synchronizer, so the cool
-                                                                      // reset discards acknowledges
-                                                                      // from the sequence that caused
-                                                                      // it.
+                                                                      // synchronized to clk_ref_i.
 
   input  logic                                   clk_smc_i,  // SMC core clock for the ISOLATE_REQ_*
                                                              // registers and input synchronizers.
@@ -407,6 +402,8 @@ module smc_cool_reset_wrap (
 
   logic isolate_req_acks_done;
 
+  // Every subsystem enabled in ISOLATE_REQ_SMCEN_REG has acknowledged. With none enabled the
+  // sequence never ends early and waits for the full timeout.
   assign isolate_req_acks_done =
       (isolate_req_smcen_ref_clk != '0) &&
       ((isolate_req_ack_sync_ref & isolate_req_smcen_ref_clk) == isolate_req_smcen_ref_clk);
@@ -599,7 +596,8 @@ module smc_cool_reset_wrap (
   // Resetting to 0 keeps a pin still low at cold-reset release from reading as a fall.
   `OCAH_FF(rst_cool_pin_stable_q, rst_cool_pin_stable_ni, 1'b0, clk_ref_i, rst_cold_ref_ni)
 
-  // A chiplet whose own cool reset reaches its pin sees the pin fall while rst_cool_no is low.
+  // A pin fall while this chiplet's own sequence cool reset is asserted is that reset looping
+  // back through the board, not a separate pin reset, so it is not recorded.
   assign rst_cool_pin_negedge = rst_cool_pin_stable_q && !rst_cool_pin_stable_ni && rst_cool_no;
 
   always_ff @(posedge clk_ref_i or negedge rst_cold_ref_ni) begin
