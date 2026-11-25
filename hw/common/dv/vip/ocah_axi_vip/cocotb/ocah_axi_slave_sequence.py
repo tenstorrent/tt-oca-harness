@@ -102,6 +102,10 @@ class OcahAxiSlaveSequence:
         """Apply bounded READY stalls on selected channels."""
         self.driver.enable_backpressure(channels=channels, stall_cycles=stall_cycles)
 
+    def enable_random_backpressure(self, *, channels: Iterable[str], stalls: Iterable[int]) -> None:
+        """Hold READY low for each count drawn from ``stalls``, then high for one cycle."""
+        self.driver.enable_random_backpressure(channels=channels, stalls=stalls)
+
     def disable_backpressure(self) -> None:
         """Clear all READY stall generators."""
         self.driver.disable_backpressure()

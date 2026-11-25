@@ -286,6 +286,8 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       cfg.vif.awlen   <= 8'(beats - 1);
       cfg.vif.awsize  <= 3'(it.size);
       cfg.vif.awburst <= 2'(it.burst);
+      cfg.vif.awcache <= it.cache;
+      cfg.vif.awuser  <= 16'(it.user);
     end
     cfg.vif.awvalid <= 1'b1;
   endtask
@@ -303,6 +305,8 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       cfg.vif.arlen   <= 8'(beats - 1);
       cfg.vif.arsize  <= 3'(it.size);
       cfg.vif.arburst <= 2'(it.burst);
+      cfg.vif.arcache <= it.cache;
+      cfg.vif.aruser  <= 16'(it.user);
     end
     cfg.vif.arvalid <= 1'b1;
   endtask
@@ -311,6 +315,8 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
     cfg.vif.wdata  <= it.data_words[beat];
     cfg.vif.wstrb  <= 8'((beat < it.strobes.size()) ? it.strobes[beat] : cfg.full_strb());
     cfg.vif.wlast  <= (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) ? 1'b1 : (beat == beats - 1);
+    if (cfg.protocol == OCAH_AXI_PROTO_AXI4)
+      cfg.vif.wuser <= 16'((beat < it.wusers.size()) ? it.wusers[beat] : '0);
     cfg.vif.wvalid <= 1'b1;
   endtask
 

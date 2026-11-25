@@ -95,9 +95,23 @@ class OcahAxiLiteSlaveSequence:
         """Apply bounded READY stalls on selected channels."""
         self.driver.enable_backpressure(channels=channels, stall_cycles=stall_cycles)
 
+    def enable_random_backpressure(self, *, channels: Iterable[str], stalls: Iterable[int]) -> None:
+        """Hold READY low for each count drawn from ``stalls``, then high for one cycle."""
+        self.driver.enable_random_backpressure(channels=channels, stalls=stalls)
+
     def disable_backpressure(self) -> None:
         """Clear all READY stall generators."""
         self.driver.disable_backpressure()
+
+    def set_response_delay(
+        self, delays: int | Iterable[int], *, read: bool = True, write: bool = True
+    ) -> None:
+        """Delay each B or R response by the next value of ``delays`` cycles."""
+        self.driver.set_response_delay(delays, read=read, write=write)
+
+    def clear_response_delay(self) -> None:
+        """Send every response as soon as it is ready."""
+        self.driver.clear_response_delay()
 
     def arm_w_before_aw(self) -> None:
         """Arm a one-shot W-before-AW order: the next write's first W beat is accepted while its AW waits."""

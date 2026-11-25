@@ -6,10 +6,10 @@
 // A sparse zero-default
 // byte memory answering FIXED/INCR/WRAP single- and multi-beat bursts with
 // ID echo, per-beat one-shot error matching and a one-shot missing RLAST
-// per read address (via ocah_axi_slave_config), per-channel bounded READY
-// backpressure, a one-shot W-before-AW write order, the response USER
-// policy, and single-outstanding registered handshakes per
-// direction. cfg.protocol
+// per read address (via ocah_axi_slave_config), per-channel bounded or
+// seeded random READY backpressure, seeded B and R response delays, one-shot
+// and persistent W-before-AW write orders, the response USER policy, and
+// single-outstanding registered handshakes per direction. cfg.protocol
 // selects AXI4-Lite (single-beat, no IDs/bursts; the AXI4-only vif fields
 // are never sampled).
 //
@@ -149,18 +149,43 @@ class ocah_axi_slave_driver extends uvm_component;
   // honoring the per-channel bounded READY-stall pattern (cfg.*_stall_cycles
   // nonzero = READY low for N sampled edges, high for one, repeating until
   // the handshake lands — so a pending VALID completes within N+1 cycles).
-  // Stall 0 keeps the assert-and-hold behavior. The knob is re-evaluated
-  // every sampled edge, so a stall enabled while the responder is already
-  // parked waiting for VALID still takes effect before the next handshake,
-  // and a stall disabled mid-pattern releases READY on the next edge (the
-  // cocotb pause generators likewise apply immediately).
+  // With a seeded source (cfg.*_stalls) set, each window draws its own N
+  // from it instead. Stall 0 with no source keeps the assert-and-hold
+  // behavior. The knobs are re-evaluated every sampled edge, so a stall
+  // enabled while the responder is already parked waiting for VALID still
+  // takes effect before the next handshake, and a stall disabled or a seeded
+  // source replaced mid-pattern releases READY on the next edge (the cocotb
+  // pause generators likewise apply immediately).
   // All three return at the handshake edge (mon_cb holds that beat's
   // sampled values) or at the first sampled edge after a reset asserted
   // since the pump read `resets`; callers re-check reset_since(resets).
 
+  // The low part of the current READY window: the draw while `stalls` is
+  // the source it came from (`drawn_from`), 0 once another source replaces
+  // it, otherwise the fixed stall read on each call.
+  protected function int unsigned window_stall(ocah_axi_delays stalls, ocah_axi_delays drawn_from,
+                                               int unsigned drawn, int unsigned fixed);
+    if (stalls == null) return fixed;
+    return (stalls == drawn_from) ? drawn : 0;
+  endfunction
+
+  // Wait the next draw of `delays` in sampled edges before a response; no
+  // wait without a source. Returns early on a reset since `resets`.
+  protected task response_delay(ocah_axi_delays delays, int unsigned resets);
+    int unsigned cycles;
+    if (delays == null) return;
+    cycles = delays.next();
+    for (int unsigned n = 0; n < cycles; n++) begin
+      @(cfg.vif.mon_cb);
+      if (reset_since(resets)) return;
+    end
+  endtask
+
   protected task accept_aw(int unsigned resets);
+    int unsigned    stall;
+    ocah_axi_delays drawn_from;
     forever begin
-      if (cfg.aw_stall_cycles == 0) begin
+      if (cfg.aw_stalls == null && cfg.aw_stall_cycles == 0) begin
         cfg.vif.awready <= 1'b1;
         @(cfg.vif.mon_cb);
         if (reset_since(resets)) begin
@@ -172,8 +197,14 @@ class ocah_axi_slave_driver extends uvm_component;
           return;
         end
       end else begin
+        drawn_from = cfg.aw_stalls;
+        if (drawn_from != null) stall = drawn_from.next();
         cfg.vif.awready <= 1'b0;
-        for (int unsigned n = 0; n < cfg.aw_stall_cycles; n++) begin
+        for (
+            int unsigned n = 0;
+            n < window_stall(cfg.aw_stalls, drawn_from, stall, cfg.aw_stall_cycles);
+            n++
+        ) begin
           @(cfg.vif.mon_cb);
           if (reset_since(resets)) return;
         end
@@ -187,8 +218,10 @@ class ocah_axi_slave_driver extends uvm_component;
   endtask
 
   protected task accept_ar(int unsigned resets);
+    int unsigned    stall;
+    ocah_axi_delays drawn_from;
     forever begin
-      if (cfg.ar_stall_cycles == 0) begin
+      if (cfg.ar_stalls == null && cfg.ar_stall_cycles == 0) begin
         cfg.vif.arready <= 1'b1;
         @(cfg.vif.mon_cb);
         if (reset_since(resets)) begin
@@ -200,8 +233,14 @@ class ocah_axi_slave_driver extends uvm_component;
           return;
         end
       end else begin
+        drawn_from = cfg.ar_stalls;
+        if (drawn_from != null) stall = drawn_from.next();
         cfg.vif.arready <= 1'b0;
-        for (int unsigned n = 0; n < cfg.ar_stall_cycles; n++) begin
+        for (
+            int unsigned n = 0;
+            n < window_stall(cfg.ar_stalls, drawn_from, stall, cfg.ar_stall_cycles);
+            n++
+        ) begin
           @(cfg.vif.mon_cb);
           if (reset_since(resets)) return;
         end
@@ -218,15 +257,23 @@ class ocah_axi_slave_driver extends uvm_component;
   // caller lowers it after the last beat); with a stall pattern, each
   // beat gets its own low-for-N / high-for-one window.
   protected task accept_w(int unsigned resets);
+    int unsigned    stall;
+    ocah_axi_delays drawn_from;
     forever begin
-      if (cfg.w_stall_cycles == 0) begin
+      if (cfg.w_stalls == null && cfg.w_stall_cycles == 0) begin
         cfg.vif.wready <= 1'b1;
         @(cfg.vif.mon_cb);
         if (reset_since(resets)) return;
         if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
       end else begin
+        drawn_from = cfg.w_stalls;
+        if (drawn_from != null) stall = drawn_from.next();
         cfg.vif.wready <= 1'b0;
-        for (int unsigned n = 0; n < cfg.w_stall_cycles; n++) begin
+        for (
+            int unsigned n = 0;
+            n < window_stall(cfg.w_stalls, drawn_from, stall, cfg.w_stall_cycles);
+            n++
+        ) begin
           @(cfg.vif.mon_cb);
           if (reset_since(resets)) return;
         end
@@ -245,7 +292,7 @@ class ocah_axi_slave_driver extends uvm_component;
     bit [2:0] size;
     bit [1:0] burst;
     ocah_axi_resp_e resp, beat_resp;
-    bit armed, w_early, aw_taken, wlast;
+    bit armed, w_early, persistent, aw_taken, w_taken, wlast;
     int unsigned beats, lanes, resets, user_epoch;
     forever begin
       @(cfg.vif.mon_cb);
@@ -256,10 +303,14 @@ class ocah_axi_slave_driver extends uvm_component;
         continue;
       end
       resets = m_resets;
-      // Address phase. With cfg.w_before_aw armed before or during the AW
-      // wait, the first data beat is taken alongside it, its fields held
-      // from its own handshake edge.
-      w_early = cfg.w_before_aw;
+      // Address phase. While cfg.w_before_aw_always holds, the address and
+      // the first data beat each run their own READY window, so either
+      // handshake can come first or both on one edge; clearing it at an edge
+      // that samples neither AWVALID nor WVALID, before either handshake,
+      // returns the write to AW first. With cfg.w_before_aw armed before or
+      // during the AW wait, the first data beat is taken alongside the
+      // address. The early beat's fields are held from its own handshake edge.
+      w_early = cfg.w_before_aw || cfg.w_before_aw_always;
       if (!w_early) begin
         aw_taken = 1'b0;
         fork
@@ -268,27 +319,47 @@ class ocah_axi_slave_driver extends uvm_component;
             take_aw(id, size, len, burst, start_addr);
             aw_taken = 1'b1;
           end
-          wait (cfg.w_before_aw);
+          wait (cfg.w_before_aw || cfg.w_before_aw_always);
         join_any
         disable fork;
-        w_early = !aw_taken;
         // accept_aw lowers AWREADY at the handshake, but Verilator discards the
         // pending nonblocking writes of a finished branch under `disable fork`.
         cfg.vif.awready <= 1'b0;
+        if (!aw_taken && !cfg.w_before_aw) continue;
+        w_early = !aw_taken;
       end
       if (w_early) begin
+        persistent = !cfg.w_before_aw;
         cfg.w_before_aw = 1'b0;
+        aw_taken = 1'b0;
+        w_taken = 1'b0;
         fork
           begin
-            accept_aw(resets);
-            take_aw(id, size, len, burst, start_addr);
+            fork
+              begin
+                accept_aw(resets);
+                take_aw(id, size, len, burst, start_addr);
+                aw_taken = 1'b1;
+              end
+              begin
+                accept_w(resets);
+                cfg.vif.wready <= 1'b0;
+                take_w(wdata, wstrb, wlast);
+                w_taken = 1'b1;
+              end
+            join
           end
-          begin
-            accept_w(resets);
-            cfg.vif.wready <= 1'b0;
-            take_w(wdata, wstrb, wlast);
+          forever begin
+            @(cfg.vif.mon_cb);
+            if (persistent && !cfg.w_before_aw_always && !aw_taken && !w_taken &&
+                !cfg.vif.mon_cb.awvalid && !cfg.vif.mon_cb.wvalid)
+              break;
           end
-        join
+        join_any
+        disable fork;
+        cfg.vif.awready <= 1'b0;
+        cfg.vif.wready  <= 1'b0;
+        if (!aw_taken || !w_taken) continue;
       end
       if (reset_since(resets)) continue;
       addr  = (start_addr >> size) << size;
@@ -316,6 +387,8 @@ class ocah_axi_slave_driver extends uvm_component;
         addr = next_beat_addr(addr, start_addr, size, len, burst);
       end
       cfg.vif.wready <= 1'b0;
+      if (reset_since(resets)) continue;
+      response_delay(cfg.b_delays, resets);
       if (reset_since(resets)) continue;
       // Response phase. One-shot armed BID corruption answers a wrong
       // response ID (data path and BRESP stay untouched).
@@ -401,6 +474,8 @@ class ocah_axi_slave_driver extends uvm_component;
       // An armed missing RLAST keeps the final beat's RLAST low; the pump
       // then idles, so the master waits for a beat that never comes.
       drop_last = cfg.consume_missing_rlast(start_addr);
+      response_delay(cfg.r_delays, resets);
+      if (reset_since(resets)) continue;
       // Data phase: one beat per accepted cycle.
       for (int unsigned beat = 0; beat < beats; beat++) begin
         ruser = next_resp_user(1, user_epoch);

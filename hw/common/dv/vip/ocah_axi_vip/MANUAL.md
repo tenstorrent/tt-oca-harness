@@ -308,18 +308,43 @@ Responder methods:
 | `inject_id_corruption(mask=0x1, read=True, write=True)` | Arm one-shot response-ID corruption: the next selected transaction answers with `request_id ^ mask` (ID-width truncated); data path and response code stay untouched (AXI4 responder only) |
 | `clear_errors()` | Clear all programmed errors and armed ID corruption |
 | `enable_backpressure(channels, stall_cycles)` | Repeating bounded READY stalls |
-| `disable_backpressure()` | Clear READY stalls |
-| `set_response_delay(delays, read=True, write=True)` | Delay each B or R response by `delays` cycles (an integer), or by the next value of an iterable drawn once per response in request order (AXI4 responder only) |
+| `enable_random_backpressure(channels, stalls)` | On each selected channel, READY low for the next count drawn from `stalls`, then high for one cycle; channels given one iterable share its stream |
+| `disable_backpressure()` | Clear READY stalls, fixed and drawn |
+| `set_response_delay(delays, read=True, write=True)` | Delay each B or R response by `delays` cycles (an integer), or by the next value of an iterable drawn once per response in request order; a delayed AXI4-Lite read takes its memory data after the delay |
 | `clear_response_delay()` | Send every response as soon as it is ready |
 | `max_outstanding` | The configured outstanding depth, or `None` |
 | `outstanding_peak()` | Most writes and reads outstanding at once since construction; needs `max_outstanding` |
 | `arm_w_before_aw()` | One-shot W-before-AW order for the next write; this responder accepts W beats independently of AW, so the call changes nothing on the wires |
 | `randomize_resp_user(seed)` | Answer every later B and R beat with BUSER and RUSER drawn per beat, B from `random.Random(seed)` and R from `random.Random(seed + 1)`; zero until called (AXI4 responder only) |
 
+`OcahAxiDelays(seed, *, short_min=0, short_max=0, long_percent=0,
+long_min=0, long_max=0)` is an endless seeded stream of cycle counts for
+`enable_random_backpressure` and `set_response_delay`. Each count comes from
+`[long_min, long_max]` with probability `long_percent` percent and from
+`[short_min, short_max]` otherwise, and `max_value` is the largest it can
+return. The stream runs its own 32-bit xorshift generator, so a seed gives the
+same counts as the SV-UVM `ocah_axi_delays`. A stall window runs on every clock
+whether or not VALID is high, so a handshake waits no more than the count of
+the window it lands in.
+
+```python
+rng = random.Random(seed)
+ram.enable_random_backpressure(
+    channels=("aw",), stalls=OcahAxiDelays(rng.getrandbits(32), short_max=8)
+)
+ram.set_response_delay(
+    OcahAxiDelays(rng.getrandbits(32), long_percent=25, long_min=64, long_max=256),
+    read=True,
+    write=False,
+)
+```
+
 Both responders drive BVALID and RVALID low as their reset input asserts
 (IHI 0022 A3.1.2), not at the next clock edge. `ocah_axi_responder_ops_test`
-proves the errored-beat word, the W-before-AW order, the USER streams, and
-the reset drop on the wires of `OcahAxiSlaveAgent`.
+proves the errored-beat word, the W-before-AW order, the USER streams, the
+reset drop, the seeded READY stalls, the response delays of both responders,
+and the AxCACHE, AxUSER, and WUSER the monitor records on the wires of
+`OcahAxiSlaveAgent` and `OcahAxiLiteSlaveAgent`.
 
 ### Outstanding depth
 
@@ -439,8 +464,9 @@ checker.assert_clean()
 ```
 
 Item fields include `protocol`, `direction`, `address`, `data_words`,
-`strobes`, `size`, `burst`, `transaction_id`, `prot`, `resp_list`, `ok`, and
-`timed_out`. Monitors pair outstanding transactions by ID (per-ARID address
+`strobes`, `size`, `burst`, `transaction_id`, `prot`, `cache`, `user`,
+`wusers` (one WUSER per write beat), `resp_list`, `ok`, and `timed_out`. The
+AXI4-Lite monitor leaves `cache`, `user`, and `wusers` at their defaults. Monitors pair outstanding transactions by ID (per-ARID address
 queues, per-RID beat accumulation; write bursts matched to BID), stamp
 `start_time_ns`/`end_time_ns`, and expose:
 
@@ -682,18 +708,34 @@ disarms it and `pending_errors()` counts it (SV-UVM responder only).
 responder does. `arm_w_before_aw()` arms a one-shot write order: the next
 write raises WREADY with its first AWREADY window, so its first W beat is
 accepted while its AW waits (IHI 0022 A3.3.1); later writes take AW first.
-The cocotb responder accepts W independently of AW, which gives the same
-order on every write. `randomize_resp_user(seed)` answers every later B and
-R beat with BUSER and RUSER drawn per beat, the write pump's process RNG
-seeded from `seed` and the read pump's from `seed + 1` (AXI4 only; zero
-until called). The responder drives BVALID, RVALID and its READYs low as
+`set_w_before_aw(1)` runs the AW and first W READY windows of every later
+write side by side until `set_w_before_aw(0)`, so the AW and W READY
+patterns decide which handshake lands first, or both on one edge; set or
+clear it while the write channels are idle. The cocotb responder accepts W
+independently of AW, which gives the same order on every write.
+`randomize_resp_user(seed)` answers every later B and R beat with BUSER and
+RUSER drawn per beat, the write pump's process RNG seeded from `seed` and the
+read pump's from `seed + 1` (AXI4 only; zero until called). The responder drives BVALID, RVALID and its READYs low as
 `aresetn` asserts and abandons the transfer in flight, including after a
 reset that ends between two clock edges. The SV-UVM
 `ocah_axi_responder_ops_test` proves the errored-beat word, the W-before-AW
-order and the USER streams on the harness bus; the SV-UVM master holds
-`aresetn` high across an item, so only the cocotb realization drops a reset.
-The SV-UVM responder serves one write and one read at a time, so it has no
-outstanding depth and no response delay (see "Outstanding depth" above).
+orders, the USER streams, the seeded READY stalls, the response delays and
+the AxCACHE, AxUSER and WUSER the monitor records on the harness bus; the
+SV-UVM master holds `aresetn` high across an item, so only the cocotb
+realization drops a reset. The SV-UVM responder serves one write and one
+read at a time, so it has no outstanding depth (see "Outstanding depth"
+above). `enable_random_backpressure(channels, stalls)` holds each READY
+window on the named channels (`"aw"`, `"w"`, `"ar"`) low for
+`stalls.next()` cycles, then high for one; replacing the stream ends the
+window drawn from the old one, and `disable_backpressure()`
+clears these stalls with the fixed ones. `set_response_delay(delays, read,
+write)` holds each BVALID `delays.next()` cycles after the last W beat, and
+each read's first RVALID after its AR handshake, on AXI4 and AXI4-Lite,
+until `clear_response_delay()`. `ocah_axi_delays` is the SV twin of
+`OcahAxiDelays`: the same seed and ranges give the same counts, from a
+generator of its own rather than the process RNG. The master drives AxCACHE,
+AxUSER and each beat's WUSER from the item's `cache`, `user` and `wusers`,
+zero by default, and the AXI4 monitor records them in its items.
 `check_response=1` (default) escalates a non-OKAY response to `uvm_error`;
 `allow_timeout=1` downgrades a watchdog expiry to a returned result with
 `timed_out` set.

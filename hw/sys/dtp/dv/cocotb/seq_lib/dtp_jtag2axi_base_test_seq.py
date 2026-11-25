@@ -33,7 +33,13 @@ from env.dtp_types import (
     unpack_dtmcs,
     unpack_sbcs,
 )
-from ocah_axi_vip import OcahAxiLiteSlaveSequence, OcahAxiScoreboard, OcahAxiSlaveSequence
+from ocah_axi_vip import (
+    OcahAxiDelays,
+    OcahAxiItem,
+    OcahAxiLiteSlaveSequence,
+    OcahAxiScoreboard,
+    OcahAxiSlaveSequence,
+)
 from ocah_checker import OcahChecker
 from ocah_jtag_vip import OcahJtagChecker
 from ocah_lib import OcahKnobs
@@ -44,11 +50,19 @@ GEOMETRY_CHECK_ID = "CHK-J2A-GEOMETRY"
 FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
 DTM_CAPTURE_CHECK_ID = "CHK-J2A-DTM-CAPTURE"
 BUS_REQ_CHECK_ID = "CHK-J2A-BUS-REQ"
+AXI_ATTR_CHECK_ID = "CHK-J2A-AXI-ATTR"
+ONE_XFER_CHECK_ID = "CHK-J2A-ONE-XFER"
 RDATA_CHECK_ID = "CHK-AXI-RDATA"
 WMEM_CHECK_ID = "CHK-AXI-WMEM"
 COMPLETION_CHECK_ID = "CHK-AXI-COMPLETION"
 GEOMETRY_NEGATIVE_KNOB = "DTP_J2A_GEOMETRY_NEGATIVE"
 BUS_REQ_NEGATIVE_KNOB = "DTP_J2A_BUS_REQ_NEGATIVE"
+AXI_ATTR_NEGATIVE_KNOB = "DTP_J2A_AXI_ATTR_NEGATIVE"
+ONE_XFER_NEGATIVE_KNOB = "DTP_J2A_ONE_XFER_NEGATIVE"
+# The AxCACHE of every request the AXI4 bridge drives.
+J2A_AXI_CACHE = 0b0010
+# AxBURST INCR.
+_AXI_BURST_INCR = 1
 FAULT_STATUS_NEGATIVE_KNOB = "DTP_J2A_FAULT_STATUS_NEGATIVE"
 DTM_CAPTURE_NEGATIVE_KNOB = "DTP_J2A_DTM_CAPTURE_NEGATIVE"
 # System cycles a port transaction has to complete in once its access started.
@@ -661,21 +675,26 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
 
     def _record_bus_fields(
-        self, target: str, fields: list[tuple[str, int, int]], *, context: str
+        self,
+        target: str,
+        fields: list[tuple[str, int, int]],
+        *,
+        context: str,
+        check_id: str = BUS_REQ_CHECK_ID,
     ) -> None:
-        """Record every (field, observed, expected) under CHK-J2A-BUS-REQ, then raise on a mismatch."""
+        """Record every (field, observed, expected) under ``check_id``, then raise on a mismatch."""
         failed = [
             field
             for field, observed, expected in fields
             if not self.axi_scoreboard.expect_equal(
-                BUS_REQ_CHECK_ID,
+                check_id,
                 observed,
                 expected,
                 context=f"{context} target={target} field={field}",
             )
         ]
         if failed:
-            raise AssertionError(f"{BUS_REQ_CHECK_ID} FAIL: {context} target={target} {failed}")
+            raise AssertionError(f"{check_id} FAIL: {context} target={target} {failed}")
 
     async def wait_port_completion(self, target: str, *, read: bool, above: int) -> bool:
         """Wait until the port completes a transaction of one direction beyond ``above``.
@@ -709,7 +728,8 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         for a write the strobes and the strobed data, ``data`` and ``wstrb``
         being the bus lanes the request drives. A no-op unless this pass's ledger
         accounts ``target``. ``DTP_J2A_BUS_REQ_NEGATIVE=1`` corrupts the
-        expected address, so the run must fail.
+        expected address, so the run must fail. The same transaction's
+        attributes are then judged under CHK-J2A-AXI-ATTR.
         """
         ledger = self._bus_ledger
         if ledger is None or ledger.target != target:
@@ -728,3 +748,73 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             fields.append(("strobes", item.strobes[0] if item.strobes else -1, wstrb))
             fields.append(("data", item.first_data & lanes, data & lanes))
         self._record_bus_fields(target, fields, context=context)
+        self._check_axi_attrs(target, item, read=read, context=context)
+
+    def _check_axi_attrs(self, target: str, item: OcahAxiItem, *, read: bool, context: str) -> None:
+        """CHK-J2A-AXI-ATTR: the request's transfer attributes.
+
+        Every bridge drives AxPROT 0; the AXI4 bridge also one INCR beat with
+        AxCACHE 0b0010 and AxID, AxUSER and WUSER 0.
+        ``DTP_J2A_AXI_ATTR_NEGATIVE=1`` flips the expected AxPROT bit 0, so the
+        run must fail.
+        """
+        expected_prot = 0x1 if OcahKnobs.is_set(AXI_ATTR_NEGATIVE_KNOB) else 0
+        fields = [("prot", item.prot, expected_prot)]
+        if self.target_cfg(target).bus_type == 0:  # AXI4
+            fields += [
+                ("len", item.metadata.get("expected_beats", 0) - 1, 0),
+                ("burst", item.burst, _AXI_BURST_INCR),
+                ("cache", item.cache, J2A_AXI_CACHE),
+                ("id", item.transaction_id, 0),
+                ("user", item.user, 0),
+            ]
+            if not read:
+                fields.append(("wuser", item.wusers[0] if item.wusers else -1, 0))
+        self._record_bus_fields(target, fields, context=context, check_id=AXI_ATTR_CHECK_ID)
+
+    # --- responder timing and one transfer at a time --------------------------
+    def apply_responder_timing(
+        self,
+        target: str,
+        *,
+        aw: OcahAxiDelays,
+        w: OcahAxiDelays,
+        ar: OcahAxiDelays,
+        b: OcahAxiDelays,
+        r: OcahAxiDelays,
+    ) -> None:
+        """Stall ``target``'s responder READY on AW, W and AR, and delay its B and R,
+        each channel from its own seeded stream."""
+        responder = self.target_memory(target)
+        for channel, stalls in (("aw", aw), ("w", w), ("ar", ar)):
+            responder.enable_random_backpressure(channels=[channel], stalls=stalls)
+        responder.set_response_delay(b, read=False, write=True)
+        responder.set_response_delay(r, read=True, write=False)
+
+    def clear_responder_timing(self, target: str) -> None:
+        """Return ``target``'s responder to READY high and immediate responses."""
+        responder = self.target_memory(target)
+        responder.disable_backpressure()
+        responder.clear_response_delay()
+
+    def open_request_count(self, target: str) -> int:
+        """Cycles in which ``target``'s port raised AWVALID or ARVALID while an
+        accepted request awaited its last response."""
+        prefix = self.target_cfg(target).activity_prefix
+        return self.cfg.tb_if.sample(f"{prefix}_open_request_count")
+
+    def check_one_transfer(self, target: str, since: int, *, context: str) -> None:
+        """CHK-J2A-ONE-XFER: ``target``'s port raised no request while one was open
+        since ``open_request_count`` read ``since``.
+
+        ``DTP_J2A_ONE_XFER_NEGATIVE=1`` expects one such cycle, so the run must
+        fail.
+        """
+        expected = 1 if OcahKnobs.is_set(ONE_XFER_NEGATIVE_KNOB) else 0
+        self.check_equal(
+            self.target_evidence(target),
+            ONE_XFER_CHECK_ID,
+            self.open_request_count(target) - since,
+            expected,
+            context=f"{context} target={target} requests_while_open",
+        )

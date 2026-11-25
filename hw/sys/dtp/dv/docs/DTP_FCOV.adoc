@@ -117,6 +117,7 @@ checkers. Toggle and FSM coverage are not collected.
 |JTAG2AXI Debug Module access |`cg_j2a_dm_access` |`dtp_j2a_fcov`
 |JTAG2AXI System Bus Access |`cg_j2a_sba_access` |`dtp_j2a_fcov`
 |JTAG2AXI System Bus Access errors |`cg_j2a_sba_error` |`dtp_j2a_fcov`
+|JTAG2AXI port timing |`cg_j2a_axi_timing` |`dtp_j2a_fcov`
 |Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
 |Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
 |XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
@@ -548,6 +549,33 @@ is sampled in the cycle the Debug Module accepts it with `dmactive` 1 and
 `sbbusy` and `sbbusyerror` 0.
 `dtp_jtag2axi_sba_errors_test` reaches every `cp_code`, `cp_bus`, `cp_size`,
 and `cp_held` bin in every pass.
+
+==== `cg_j2a_axi_timing`
+
+*Description*: Covers the READY waits, response latencies, and AW and W
+handshake order on each JTAG2AXI bridge port, and the `sbcs` reads whose bus
+access completes while the read is in flight.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_aw_stall`, `cp_w_stall`, `cp_ar_stall` |One bin per bridge and wait of a handshake on the channel: `none` (VALID meets READY high), `short` (1 to 63 cycles), and `long` (64 cycles or more)
+|`cp_b_delay`, `cp_r_delay` |One bin per bridge and latency from the request's last handshake to the first BVALID or RVALID: `prompt` (up to 2 cycles), `short` (3 to 63 cycles), and `long` (64 cycles or more)
+|`cp_w_order` |One bin per bridge and order of a write's AW and W handshakes: AW first, W first, and on the SMC fabric bridge the same cycle; the OTP bridges present W after AW, so the same cycle there is ignored
+|`cp_sbcs_race` |One bin per bridge and the `sbbusy` the capture returns, 1 or 0, for an `sbcs` read issued while `sbbusy` is 1 whose port completes a transfer between the read's Update-DR and the capture that returns it
+|===
+
+`dtp_j2a_fcov` takes each bridge port's handshake signals from `tb_top` and
+samples on the bridges' system clock: a stall at the channel's handshake, a
+latency at the first BVALID or RVALID after the request's last handshake, and
+an order at the second of a write's AW and W handshakes. The `sbcs` race takes
+each bridge's DMI strobes, its update value, its captured `sbbusy`, and its
+Debug Module's `sbbusy` from its `jtag_dmi2axi` instance and samples at the
+capture on TCK.
+`dtp_jtag2axi_backpressure_test` reaches every `cp_aw_stall`, `cp_w_stall`,
+`cp_ar_stall`, `cp_b_delay`, `cp_r_delay`, and `cp_w_order` bin in every pass.
+A completion inside an `sbcs` read's window is a matter of timing, so
+`cp_sbcs_race` is closed across the passes and seeds of a run.
 
 ==== `cg_ctp`
 
@@ -1035,6 +1063,7 @@ review.
 |`dtp_jtag2axi_dm_regs_test` |`cg_j2a_dm_access` `x_access` and `x_sbcs_ro`
 |`dtp_jtag2axi_sba_sizes_test` |`cg_j2a_sba_access` `x_lane`, `x_autoinc`, and `cp_carry`
 |`dtp_jtag2axi_sba_errors_test` |`cg_j2a_sba_error` `cp_code`, `cp_bus`, `cp_size`, and `cp_held`
+|`dtp_jtag2axi_backpressure_test` |`cg_j2a_axi_timing` `cp_aw_stall`, `cp_w_stall`, `cp_ar_stall`, `cp_b_delay`, `cp_r_delay`, `cp_w_order`, and `cp_sbcs_race`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins

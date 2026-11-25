@@ -392,6 +392,8 @@ class OcahAxiMonitor(_BaseMonitor):
                         "size": _sig_int(aw, "awsize"),
                         "burst": _sig_int(aw, "awburst"),
                         "prot": _sig_int(aw, "awprot"),
+                        "cache": _sig_int(aw, "awcache"),
+                        "user": _sig_int(aw, "awuser"),
                         "length": _sig_int(aw, "awlen") + 1,
                         "start_ns": _now_ns(),
                     }
@@ -402,6 +404,7 @@ class OcahAxiMonitor(_BaseMonitor):
                     {
                         "data": _sig_int(w, "wdata"),
                         "strb": _sig_int(w, "wstrb", -1),
+                        "user": _sig_int(w, "wuser"),
                         "last": _sig_int(w, "wlast", 1),
                     }
                 )
@@ -435,6 +438,9 @@ class OcahAxiMonitor(_BaseMonitor):
                         size=aw_info["size"],
                         burst=aw_info["burst"],
                         prot=aw_info["prot"],
+                        cache=aw_info["cache"],
+                        user=aw_info["user"],
+                        wusers=[beat["user"] for beat in beats],
                         start_time_ns=aw_info["start_ns"],
                         end_time_ns=_now_ns(),
                         metadata={
@@ -456,6 +462,8 @@ class OcahAxiMonitor(_BaseMonitor):
                     "size": _sig_int(ar, "arsize"),
                     "burst": _sig_int(ar, "arburst"),
                     "prot": _sig_int(ar, "arprot"),
+                    "cache": _sig_int(ar, "arcache"),
+                    "user": _sig_int(ar, "aruser"),
                     "length": _sig_int(ar, "arlen") + 1,
                     "start_ns": _now_ns(),
                 }
@@ -499,6 +507,8 @@ class OcahAxiMonitor(_BaseMonitor):
                             size=ar_info["size"],
                             burst=ar_info["burst"],
                             prot=ar_info["prot"],
+                            cache=ar_info["cache"],
+                            user=ar_info["user"],
                             start_time_ns=ar_info["start_ns"],
                             end_time_ns=_now_ns(),
                             metadata={

@@ -53,6 +53,11 @@ class OcahAxiItem:
     burst: int | None = None
     transaction_id: int | None = None
     prot: int = 0
+    # AxCACHE, AxUSER and one WUSER per write beat, as the AXI4 monitor
+    # records them; AXI4-Lite carries none, so its items keep the defaults.
+    cache: int = 0
+    user: int = 0
+    wusers: tuple[int, ...] = ()
     resp_list: tuple[int, ...] = ()
     ok: bool = True
     timed_out: bool = False
@@ -74,6 +79,9 @@ class OcahAxiItem:
         burst: int | None = None,
         transaction_id: int | None = None,
         prot: int = 0,
+        cache: int = 0,
+        user: int = 0,
+        wusers: tuple[int, ...] = (),
         resp_list: tuple[int, ...] = (),
         ok: bool = True,
         timed_out: bool = False,
@@ -93,6 +101,9 @@ class OcahAxiItem:
         object.__setattr__(self, "burst", burst)
         object.__setattr__(self, "transaction_id", transaction_id)
         object.__setattr__(self, "prot", int(prot))
+        object.__setattr__(self, "cache", int(cache))
+        object.__setattr__(self, "user", int(user))
+        object.__setattr__(self, "wusers", _tuple_int(wusers))
         object.__setattr__(self, "resp_list", _tuple_int(resp_list))
         object.__setattr__(self, "ok", bool(ok))
         object.__setattr__(self, "timed_out", bool(timed_out))

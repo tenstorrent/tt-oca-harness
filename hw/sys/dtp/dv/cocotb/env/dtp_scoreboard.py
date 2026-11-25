@@ -272,7 +272,7 @@ class DtpScoreboard(OcahScoreboard):
         captured = observed.tdo_value & expected.mask
         self.record_compare(
             DTP_FEATURE_JTAG2AXI_STATUS,
-            passed=captured == expected.expected & expected.mask,
+            passed=expected.accepts(captured),
             expected=expected.describe(),
             observed=f"0x{captured:x}",
             context=expected.context,

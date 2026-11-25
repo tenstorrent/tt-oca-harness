@@ -9,7 +9,9 @@
 // sbautoincrement of each bus access a bridge's Debug Module starts, and the
 // autoincrements that carry into address bit 32 (cg_j2a_sba_access); the
 // errors each Debug Module records from its bus accesses, and the DMI writes
-// it acts on while it holds one (cg_j2a_sba_error).
+// it acts on while it holds one (cg_j2a_sba_error); the READY waits,
+// response latencies and AW/W order each bridge port sees, and the sbcs reads
+// whose access completes while the read is in flight (cg_j2a_axi_timing).
 //
 // One instance in the shared tb_top serves both flows. Each bridge's DMI
 // capture and update strobes, its captured status, the DMI value its bridge
@@ -28,6 +30,14 @@
 // one in the cycle a Debug Module records an error, which for a bus error is
 // the cycle of the B or R handshake that ends the access, and one for each
 // DMI write it accepts while sberror is not 0, with the sbcs it then holds.
+//
+// The port timing samples are taken on the same clock from each bridge
+// port's handshake signals, between the bridge and its responder. A port
+// carries one transfer at a time, so one counter per channel and bridge
+// measures it. The sbcs race samples are taken on TCK: the Update-DR of an
+// sbcs read while sbbusy is 1 records the port's completed transfers, and the
+// next DMI capture, which returns that read, is sampled with the sbbusy it
+// returns when the port completed a transfer in between.
 //
 // Covergroups follow the cross rules dtp_fcov.sv states.
 //
@@ -61,7 +71,21 @@ module dtp_j2a_fcov (
   // {address 40:34, op 33:32, data 31:0}
   input wire [2:0][40:0] dm_req_dmi_i,
   input wire [2:0][31:0] dm_sbcs_i,
-  input wire [2:0]      dm_sbbusy_i
+  input wire [2:0]      dm_sbbusy_i,
+  // sbcs sbbusy in each bridge's DMI capture data.
+  input wire [2:0]      capture_sbbusy_i,
+  input wire [2:0]      port_awvalid_i,
+  input wire [2:0]      port_awready_i,
+  input wire [2:0]      port_wvalid_i,
+  input wire [2:0]      port_wready_i,
+  input wire [2:0]      port_bvalid_i,
+  input wire [2:0]      port_bready_i,
+  input wire [2:0]      port_arvalid_i,
+  input wire [2:0]      port_arready_i,
+  input wire [2:0]      port_rvalid_i,
+  input wire [2:0]      port_rready_i,
+  // RLAST on smc_axi, 1 on the AXI4-Lite ports.
+  input wire [2:0]      port_rlast_i
 );
 
   localparam int unsigned Bridges = 3;
@@ -72,6 +96,19 @@ module dtp_j2a_fcov (
   localparam logic [6:0] AddrSbdata0 = 7'h3C;
   localparam logic [2:0] SberrorBus = 3'd2;
   localparam logic [2:0] SberrorSize = 3'd4;
+  localparam logic [1:0] DmiOpRead = 2'd1;
+  // cg_j2a_axi_timing sample kinds.
+  localparam logic [2:0] KindAwStall = 3'd0;
+  localparam logic [2:0] KindWStall = 3'd1;
+  localparam logic [2:0] KindArStall = 3'd2;
+  localparam logic [2:0] KindBDelay = 3'd3;
+  localparam logic [2:0] KindRDelay = 3'd4;
+  localparam logic [2:0] KindWOrder = 3'd5;
+  localparam logic [2:0] KindSbcsRace = 3'd6;
+  // Cycles from which a READY wait or a response latency counts as long, and
+  // the latency up to which a response counts as prompt.
+  localparam int unsigned LongCycles = 64;
+  localparam int unsigned PromptCycles = 2;
 
   // The status each bridge's last DMI capture presented, which its next DMI
   // update closes the scan of.
@@ -256,10 +293,84 @@ module dtp_j2a_fcov (
     }
   endgroup
 
+  // One sample per AW, W or AR handshake on a bridge port with the cycles
+  // VALID waited for READY (0 none, 1 short, 2 long), one per first BVALID or
+  // RVALID with the cycles since the request's last handshake (0 prompt, 1
+  // short, 2 long), one per write with the order of its AW and W handshakes
+  // (0 AW first, 1 W first, 2 the same cycle), and one per sbcs race with
+  // the sbbusy the capture returns. The OTP bridges present W after AW, so
+  // their AW and W handshakes share a cycle only by chance.
+  covergroup cg_j2a_axi_timing with function sample (
+      logic [1:0] bridge, logic [2:0] kind, logic [1:0] value
+  );
+    option.per_instance = 1;
+    // 4 * bridge + bucket
+    cp_aw_stall: coverpoint {
+      bridge, value
+    } iff (kind == KindAwStall) {
+      bins smc_axi[] = {[0 : 2]};
+      bins smc_otp[] = {[4 : 6]};
+      bins sep_otp[] = {[8 : 10]};
+      illegal_bins none = {3, 7, 11, [12 : 15]};
+    }
+    cp_w_stall: coverpoint {
+      bridge, value
+    } iff (kind == KindWStall) {
+      bins smc_axi[] = {[0 : 2]};
+      bins smc_otp[] = {[4 : 6]};
+      bins sep_otp[] = {[8 : 10]};
+      illegal_bins none = {3, 7, 11, [12 : 15]};
+    }
+    cp_ar_stall: coverpoint {
+      bridge, value
+    } iff (kind == KindArStall) {
+      bins smc_axi[] = {[0 : 2]};
+      bins smc_otp[] = {[4 : 6]};
+      bins sep_otp[] = {[8 : 10]};
+      illegal_bins none = {3, 7, 11, [12 : 15]};
+    }
+    cp_b_delay: coverpoint {
+      bridge, value
+    } iff (kind == KindBDelay) {
+      bins smc_axi[] = {[0 : 2]};
+      bins smc_otp[] = {[4 : 6]};
+      bins sep_otp[] = {[8 : 10]};
+      illegal_bins none = {3, 7, 11, [12 : 15]};
+    }
+    cp_r_delay: coverpoint {
+      bridge, value
+    } iff (kind == KindRDelay) {
+      bins smc_axi[] = {[0 : 2]};
+      bins smc_otp[] = {[4 : 6]};
+      bins sep_otp[] = {[8 : 10]};
+      illegal_bins none = {3, 7, 11, [12 : 15]};
+    }
+    // 4 * bridge + order
+    cp_w_order: coverpoint {
+      bridge, value
+    } iff (kind == KindWOrder) {
+      bins smc_axi[] = {[0 : 2]};
+      bins smc_otp[] = {4, 5};
+      bins sep_otp[] = {8, 9};
+      ignore_bins otp_same_cycle = {6, 10};
+      illegal_bins none = {3, 7, 11, [12 : 15]};
+    }
+    // 2 * bridge + sbbusy
+    cp_sbcs_race: coverpoint {
+      bridge, value[0]
+    } iff (kind == KindSbcsRace) {
+      bins smc_axi[] = {0, 1};
+      bins smc_otp[] = {2, 3};
+      bins sep_otp[] = {4, 5};
+      illegal_bins none = {6, 7};
+    }
+  endgroup
+
   cg_j2a_dmi_status u_cg_j2a_dmi_status = new();
   cg_j2a_dm_access u_cg_j2a_dm_access = new();
   cg_j2a_sba_access u_cg_j2a_sba_access = new();
   cg_j2a_sba_error u_cg_j2a_sba_error = new();
+  cg_j2a_axi_timing u_cg_j2a_axi_timing = new();
 
   always_ff @(posedge tck_i) begin
     if (tap_rst_ni) begin
@@ -325,6 +436,137 @@ module dtp_j2a_fcov (
                                     sba_error_i[b] == SberrorBus ? sba_write_q[b] : sba_write_i[b],
                                     sba_write_q[b] ? sba_bresp_i[b] : sba_rresp_i[b], '0);
         if (held_valid[b]) u_cg_j2a_sba_error.sample(2'(b), 1'b1, '0, 1'b0, '0, held_kind[b]);
+      end
+    end
+  end
+
+  function automatic logic [1:0] wait_bucket(logic [31:0] cycles, int unsigned prompt);
+    if (cycles >= LongCycles) return 2'd2;
+    if (cycles > prompt) return 2'd1;
+    return 2'd0;
+  endfunction
+
+  // Per bridge port: the cycles the pending AW, W and AR VALID has waited,
+  // the request handshakes of the transfer in flight and the cycles its
+  // response has taken, and the transfers the port completed.
+  logic [Bridges-1:0][31:0] aw_wait_q;
+  logic [Bridges-1:0][31:0] w_wait_q;
+  logic [Bridges-1:0][31:0] ar_wait_q;
+  logic [Bridges-1:0][31:0] b_wait_q;
+  logic [Bridges-1:0][31:0] r_wait_q;
+  logic [Bridges-1:0]       aw_seen_q;
+  logic [Bridges-1:0]       w_seen_q;
+  logic [Bridges-1:0]       ar_seen_q;
+  logic [Bridges-1:0]       b_sampled_q;
+  logic [Bridges-1:0]       r_sampled_q;
+  logic [Bridges-1:0][31:0] done_count_q;
+  logic [Bridges-1:0]       aw_hs;
+  logic [Bridges-1:0]       w_hs;
+  logic [Bridges-1:0]       ar_hs;
+  logic [Bridges-1:0]       b_hs;
+  logic [Bridges-1:0]       r_hs;
+
+  always_comb begin
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      aw_hs[b] = port_awvalid_i[b] && port_awready_i[b];
+      w_hs[b]  = port_wvalid_i[b] && port_wready_i[b];
+      ar_hs[b] = port_arvalid_i[b] && port_arready_i[b];
+      b_hs[b]  = port_bvalid_i[b] && port_bready_i[b];
+      r_hs[b]  = port_rvalid_i[b] && port_rready_i[b] && port_rlast_i[b];
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      aw_wait_q    <= '0;
+      w_wait_q     <= '0;
+      ar_wait_q    <= '0;
+      b_wait_q     <= '0;
+      r_wait_q     <= '0;
+      aw_seen_q    <= '0;
+      w_seen_q     <= '0;
+      ar_seen_q    <= '0;
+      b_sampled_q  <= '0;
+      r_sampled_q  <= '0;
+      done_count_q <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        aw_wait_q[b] <= (port_awvalid_i[b] && !aw_hs[b]) ? aw_wait_q[b] + 32'd1 : '0;
+        w_wait_q[b]  <= (port_wvalid_i[b] && !w_hs[b]) ? w_wait_q[b] + 32'd1 : '0;
+        ar_wait_q[b] <= (port_arvalid_i[b] && !ar_hs[b]) ? ar_wait_q[b] + 32'd1 : '0;
+        if (b_hs[b]) begin
+          aw_seen_q[b]   <= 1'b0;
+          w_seen_q[b]    <= 1'b0;
+          b_wait_q[b]    <= '0;
+          b_sampled_q[b] <= 1'b0;
+        end else begin
+          aw_seen_q[b] <= aw_seen_q[b] || aw_hs[b];
+          w_seen_q[b]  <= w_seen_q[b] || w_hs[b];
+          if (aw_seen_q[b] && w_seen_q[b] && !port_bvalid_i[b]) b_wait_q[b] <= b_wait_q[b] + 32'd1;
+          if (aw_seen_q[b] && w_seen_q[b] && port_bvalid_i[b]) b_sampled_q[b] <= 1'b1;
+        end
+        if (r_hs[b]) begin
+          ar_seen_q[b]   <= 1'b0;
+          r_wait_q[b]    <= '0;
+          r_sampled_q[b] <= 1'b0;
+        end else begin
+          ar_seen_q[b] <= ar_seen_q[b] || ar_hs[b];
+          if (ar_seen_q[b] && !port_rvalid_i[b]) r_wait_q[b] <= r_wait_q[b] + 32'd1;
+          if (ar_seen_q[b] && port_rvalid_i[b]) r_sampled_q[b] <= 1'b1;
+        end
+        if (b_hs[b] || r_hs[b]) done_count_q[b] <= done_count_q[b] + 32'd1;
+      end
+    end
+  end
+
+  always_ff @(posedge clk_i) begin
+    if (rst_ni) begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (aw_hs[b]) u_cg_j2a_axi_timing.sample(2'(b), KindAwStall, wait_bucket(aw_wait_q[b], 0));
+        if (w_hs[b]) u_cg_j2a_axi_timing.sample(2'(b), KindWStall, wait_bucket(w_wait_q[b], 0));
+        if (ar_hs[b]) u_cg_j2a_axi_timing.sample(2'(b), KindArStall, wait_bucket(ar_wait_q[b], 0));
+        if (aw_seen_q[b] && w_seen_q[b] && port_bvalid_i[b] && !b_sampled_q[b])
+          u_cg_j2a_axi_timing.sample(2'(b), KindBDelay, wait_bucket(b_wait_q[b], PromptCycles));
+        if (ar_seen_q[b] && port_rvalid_i[b] && !r_sampled_q[b])
+          u_cg_j2a_axi_timing.sample(2'(b), KindRDelay, wait_bucket(r_wait_q[b], PromptCycles));
+        if (aw_hs[b] && w_hs[b] && !aw_seen_q[b] && !w_seen_q[b])
+          u_cg_j2a_axi_timing.sample(2'(b), KindWOrder, 2'd2);
+        else if (aw_hs[b] && w_seen_q[b] && !aw_seen_q[b])
+          u_cg_j2a_axi_timing.sample(2'(b), KindWOrder, 2'd1);
+        else if (w_hs[b] && aw_seen_q[b] && !w_seen_q[b])
+          u_cg_j2a_axi_timing.sample(2'(b), KindWOrder, 2'd0);
+      end
+    end
+  end
+
+  // Per bridge: whether the last DMI update was an sbcs read issued while
+  // sbbusy is 1, which the next capture returns, and the port's completed
+  // transfers at that Update-DR.
+  logic [Bridges-1:0]       race_armed_q;
+  logic [Bridges-1:0][31:0] race_done_q;
+
+  always_ff @(posedge tck_i or negedge tap_rst_ni) begin
+    if (!tap_rst_ni) begin
+      race_armed_q <= '0;
+      race_done_q  <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (update_en_i[b]) begin
+          race_armed_q[b] <= update_dmi_i[b][1:0] == DmiOpRead &&
+              update_dmi_i[b][40:34] == AddrSbcs && dm_sbbusy_i[b];
+          race_done_q[b] <= done_count_q[b];
+        end else if (capture_en_i[b]) begin
+          race_armed_q[b] <= 1'b0;
+        end
+      end
+    end
+  end
+
+  always_ff @(posedge tck_i) begin
+    if (tap_rst_ni) begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (capture_en_i[b] && race_armed_q[b] && done_count_q[b] != race_done_q[b])
+          u_cg_j2a_axi_timing.sample(2'(b), KindSbcsRace, {1'b0, capture_sbbusy_i[b]});
       end
     end
   end

@@ -29,6 +29,12 @@ class ocah_axi_item extends uvm_sequence_item;
   ocah_axi_burst_e    burst = OCAH_AXI_BURST_INCR;
   bit [15:0]          transaction_id;
   bit [2:0]           prot;
+  // AXI4 only: AxCACHE, AxUSER and one WUSER per write beat. AXI4-Lite
+  // items keep 0 and an empty wusers; the master drives 0 for a missing
+  // wusers entry.
+  bit [3:0]           cache;
+  bit [63:0]          user;
+  bit [63:0]          wusers[$];
   ocah_axi_resp_e     resp_list[$];        // per beat (reads) / single (writes)
   // One entry per resp_list entry: the sampled BRESP/RRESP had an X or Z
   // bit. resp_list is two-state, so such a response reads as a legal code.
@@ -178,6 +184,9 @@ class ocah_axi_item extends uvm_sequence_item;
     burst          = rhs_item.burst;
     transaction_id = rhs_item.transaction_id;
     prot           = rhs_item.prot;
+    cache          = rhs_item.cache;
+    user           = rhs_item.user;
+    wusers         = rhs_item.wusers;
     resp_list      = rhs_item.resp_list;
     resp_xz        = rhs_item.resp_xz;
     expected_beats = rhs_item.expected_beats;

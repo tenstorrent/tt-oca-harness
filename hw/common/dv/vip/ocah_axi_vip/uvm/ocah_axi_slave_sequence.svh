@@ -121,9 +121,29 @@ class ocah_axi_slave_sequence extends uvm_object;
     responder.cfg.enable_backpressure(channels, stall_cycles);
   endfunction
 
+  // Seeded READY stalls (cocotb enable_random_backpressure parity): each
+  // READY window on a selected channel is low for stalls.next() cycles, then
+  // high for one. disable_backpressure() clears these too.
+  function void enable_random_backpressure(string channels[$], ocah_axi_delays stalls);
+    check_bound();
+    responder.cfg.enable_random_backpressure(channels, stalls);
+  endfunction
+
   function void disable_backpressure();
     check_bound();
     responder.cfg.disable_backpressure();
+  endfunction
+
+  // Seeded response delays (cocotb set_response_delay parity): each later B,
+  // and the first R beat of each later read, waits delays.next() cycles.
+  function void set_response_delay(ocah_axi_delays delays, bit read = 1'b1, bit write = 1'b1);
+    check_bound();
+    responder.cfg.set_response_delay(delays, read, write);
+  endfunction
+
+  function void clear_response_delay();
+    check_bound();
+    responder.cfg.clear_response_delay();
   endfunction
 
   // ------------------------------------------------------------------
@@ -135,6 +155,14 @@ class ocah_axi_slave_sequence extends uvm_object;
   function void arm_w_before_aw();
     check_bound();
     responder.cfg.arm_w_before_aw();
+  endfunction
+
+  // While `enable` is set, accept the address and the first data beat of
+  // each later write in READY windows of their own, so the AW and W READY
+  // patterns decide which handshake lands first, or both on one edge.
+  function void set_w_before_aw(bit enable);
+    check_bound();
+    responder.cfg.set_w_before_aw(enable);
   endfunction
 
   // Answer every later B and R beat with BUSER and RUSER drawn per beat

@@ -295,14 +295,16 @@ class dtp_scoreboard extends ocah_scoreboard;
     dtp_jtag2axi_status_item exp;
     ocah_jtag_scan_item      obs;
     bit               [63:0] captured;
+    string                   observed_s;
     if (!$cast(exp, expected))
       `uvm_fatal(get_type_name(), "jtag2axi_status: expected item type mismatch")
     if (!$cast(obs, observed))
       `uvm_fatal(get_type_name(), "jtag2axi_status: observed item is not an ocah_jtag_scan_item")
     if (!exp.compare) return;
     captured = obs.tdo_value() & exp.mask;
-    record_compare(DtpFeatureJtag2axiStatus, captured == (exp.expected & exp.mask),
-                   exp.convert2string(), $sformatf("0x%0h", captured), exp.context_s);
+    observed_s = $sformatf("0x%0h", captured);
+    record_compare(DtpFeatureJtag2axiStatus, exp.accepts(captured), exp.convert2string(),
+                   observed_s, exp.context_s);
   endfunction
 
   // ------------------------------------------------------------------

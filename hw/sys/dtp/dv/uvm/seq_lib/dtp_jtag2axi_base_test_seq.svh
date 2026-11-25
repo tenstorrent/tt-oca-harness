@@ -587,11 +587,9 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // The test requires CHK-J2A-BUS-REQ on the ledger bridge's recorder, so
   // the records of every port land there.
   function bit record_bus_field(string name, string field, bit [63:0] observed, bit [63:0] expected,
-                                string context_s);
+                                string context_s, string check_id = DtpJ2aBusReqCheckId);
     string detail = $sformatf("%s target=%s field=%s", context_s, name, field);
-    return target_evidence[m_ledger_target].expect_equal(
-        DtpJ2aBusReqCheckId, observed, expected, detail
-    );
+    return target_evidence[m_ledger_target].expect_equal(check_id, observed, expected, detail);
   endfunction
 
   // Wait until the port behind `t` has completed more than `completed`
@@ -612,7 +610,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // single beat, the AXI4 size, and for a write the strobes and the strobed
   // data, `data` and `wstrb` being the bus lanes the request drives. A no-op
   // unless this pass's ledger accounts `t`. +DTP_J2A_BUS_REQ_NEGATIVE
-  // corrupts the expected address, so the run must fail.
+  // corrupts the expected address, so the run must fail. The same
+  // transaction's attributes are then judged under CHK-J2A-AXI-ATTR.
   task expect_bus_request(dtp_j2a_target_t t, bit is_read, bit [63:0] addr, int unsigned size,
                           bit [63:0] data, bit [7:0] wstrb, string context_s);
     dtp_axi_port_history port;
@@ -643,6 +642,94 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       ));
       void'(record_bus_field(t.name, "data", item.first_data() & lanes, data & lanes, context_s));
     end
+    check_axi_attrs(t, item, is_read, context_s);
   endtask
+
+  // CHK-J2A-AXI-ATTR: the request's transfer attributes. Every bridge drives
+  // AxPROT 0; the AXI4 bridge also one INCR beat with AxCACHE 4'b0010 and
+  // AxID, AxUSER and WUSER 0. +DTP_J2A_AXI_ATTR_NEGATIVE flips the expected
+  // AxPROT bit 0, so the run must fail.
+  function void check_axi_attrs(dtp_j2a_target_t t, ocah_axi_item item, bit is_read,
+                                string context_s);
+    bit [2:0] exp_prot = test_cfg.j2a_axi_attr_negative ? 3'h1 : 3'h0;
+    void'(record_bus_field(
+        t.name, "prot", 64'(item.prot), 64'(exp_prot), context_s, DtpJ2aAxiAttrCheckId
+    ));
+    if (t.protocol != OCAH_AXI_PROTO_AXI4) return;
+    void'(record_bus_field(
+        t.name, "len", 64'(item.expected_beats) - 64'd1, 64'd0, context_s, DtpJ2aAxiAttrCheckId
+    ));
+    void'(record_bus_field(
+        t.name, "burst", 64'(item.burst), 64'(OCAH_AXI_BURST_INCR), context_s, DtpJ2aAxiAttrCheckId
+    ));
+    void'(record_bus_field(
+        t.name, "cache", 64'(item.cache), 64'(DtpJ2aAxiCache), context_s, DtpJ2aAxiAttrCheckId
+    ));
+    void'(record_bus_field(
+        t.name, "id", 64'(item.transaction_id), 64'd0, context_s, DtpJ2aAxiAttrCheckId
+    ));
+    void'(record_bus_field(t.name, "user", 64'(item.user), 64'd0, context_s, DtpJ2aAxiAttrCheckId));
+    if (!is_read)
+      void'(record_bus_field(
+          t.name,
+          "wuser",
+          (item.wusers.size() > 0) ? 64'(item.wusers[0]) : '1,
+          64'd0,
+          context_s,
+          DtpJ2aAxiAttrCheckId
+      ));
+  endfunction
+
+  // --- responder timing and one transfer at a time -----------------------------
+
+  // Stall the responder's AWREADY, WREADY and ARREADY and delay its B and R,
+  // each channel from its own seeded stream, and take every write's first W
+  // beat alongside its AW, so the AW and W stalls decide which lands first.
+  function void apply_responder_timing(dtp_j2a_target_t t, ocah_axi_delays aw, ocah_axi_delays w,
+                                       ocah_axi_delays ar, ocah_axi_delays b, ocah_axi_delays r);
+    ocah_axi_slave_sequence seq = responder(t.name);
+    seq.enable_random_backpressure('{"aw"}, aw);
+    seq.enable_random_backpressure('{"w"}, w);
+    seq.enable_random_backpressure('{"ar"}, ar);
+    seq.set_response_delay(b, 1'b0, 1'b1);
+    seq.set_response_delay(r, 1'b1, 1'b0);
+    seq.set_w_before_aw(1'b1);
+  endfunction
+
+  // Return the responder to READY high, immediate responses and AW before W.
+  function void clear_responder_timing(dtp_j2a_target_t t);
+    ocah_axi_slave_sequence seq = responder(t.name);
+    seq.disable_backpressure();
+    seq.clear_response_delay();
+    seq.set_w_before_aw(1'b0);
+  endfunction
+
+  // Cycles in which the port behind `t` raised AWVALID or ARVALID while an
+  // accepted request awaited its last response.
+  function int unsigned open_request_count(dtp_j2a_target_t t);
+    case (t.name)
+      "smc_axi": return tb_vif.smc_axi_open_request_count;
+      "smc_otp": return tb_vif.smc_otp_axil_open_request_count;
+      "sep_otp": return tb_vif.sep_otp_axil_open_request_count;
+      default: `uvm_fatal(get_type_name(), $sformatf("%s has no open-request counter", t.name))
+    endcase
+    return 0;
+  endfunction
+
+  // CHK-J2A-ONE-XFER: the port behind `t` raised no request while one was
+  // open since open_request_count() read `since`.
+  // +DTP_J2A_ONE_XFER_NEGATIVE expects one such cycle, so the run must fail.
+  function void check_one_transfer(dtp_j2a_target_t t, int unsigned since, string context_s);
+    ocah_axi_checker ev = evidence(t);
+    int unsigned     expected = test_cfg.j2a_one_xfer_negative ? 1 : 0;
+    int unsigned     seen = open_request_count(t) - since;
+    void'(ev.expect_equal(
+        DtpJ2aOneXferCheckId,
+        64'(seen),
+        64'(expected),
+        $sformatf(
+            "%s target=%s requests_while_open", context_s, t.name)
+    ));
+  endfunction
 
 endclass : dtp_jtag2axi_base_test_seq

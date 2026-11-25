@@ -182,6 +182,22 @@ module tb_top
   logic [31:0] sep_otp_axil_w_stall_count;
   logic [31:0] sep_otp_axil_ar_stall_count;
 
+  // JTAG2AXI bridge-port open-request counters: cycles in which AWVALID or
+  // ARVALID is high while an earlier accepted AW or AR on the port awaits its
+  // B or last R. The cycle of the handshake that closes it does not count.
+  logic        smc_axi_xfer_open;
+  logic        smc_otp_axil_xfer_open;
+  logic        sep_otp_axil_xfer_open;
+  logic [31:0] smc_axi_open_request_count;
+  logic [31:0] smc_otp_axil_open_request_count;
+  logic [31:0] sep_otp_axil_open_request_count;
+  logic        smc_axi_xfer_start;
+  logic        smc_axi_xfer_end;
+  logic        smc_otp_axil_xfer_start;
+  logic        smc_otp_axil_xfer_end;
+  logic        sep_otp_axil_xfer_start;
+  logic        sep_otp_axil_xfer_end;
+
   // SMC OTP AXI-Lite manager flattened for the shared ocah_axi_vip responder.
   logic [dtp_dv_cfg_pkg::OtpAxilAddrWidth-1:0] smc_otp_axil_awaddr;
   logic [2:0] smc_otp_axil_awprot;
@@ -701,6 +717,44 @@ module tb_top
     end
   end
 
+  assign smc_axi_xfer_start = (m_axi_awvalid & m_axi_awready) | (m_axi_arvalid & m_axi_arready);
+  assign smc_axi_xfer_end = (m_axi_bvalid & m_axi_bready) |
+      (m_axi_rvalid & m_axi_rready & m_axi_rlast);
+  assign smc_otp_axil_xfer_start = (smc_otp_axil_awvalid & smc_otp_axil_awready) |
+      (smc_otp_axil_arvalid & smc_otp_axil_arready);
+  assign smc_otp_axil_xfer_end = (smc_otp_axil_bvalid & smc_otp_axil_bready) |
+      (smc_otp_axil_rvalid & smc_otp_axil_rready);
+  assign sep_otp_axil_xfer_start = (sep_otp_axil_awvalid & sep_otp_axil_awready) |
+      (sep_otp_axil_arvalid & sep_otp_axil_arready);
+  assign sep_otp_axil_xfer_end = (sep_otp_axil_bvalid & sep_otp_axil_bready) |
+      (sep_otp_axil_rvalid & sep_otp_axil_rready);
+
+  always_ff @(posedge clk_i or negedge rst_n_i) begin
+    if (!rst_n_i) begin
+      smc_axi_xfer_open               <= 1'b0;
+      smc_otp_axil_xfer_open          <= 1'b0;
+      sep_otp_axil_xfer_open          <= 1'b0;
+      smc_axi_open_request_count      <= '0;
+      smc_otp_axil_open_request_count <= '0;
+      sep_otp_axil_open_request_count <= '0;
+    end else begin
+      if (smc_axi_xfer_start) smc_axi_xfer_open <= 1'b1;
+      else if (smc_axi_xfer_end) smc_axi_xfer_open <= 1'b0;
+      if (smc_otp_axil_xfer_start) smc_otp_axil_xfer_open <= 1'b1;
+      else if (smc_otp_axil_xfer_end) smc_otp_axil_xfer_open <= 1'b0;
+      if (sep_otp_axil_xfer_start) sep_otp_axil_xfer_open <= 1'b1;
+      else if (sep_otp_axil_xfer_end) sep_otp_axil_xfer_open <= 1'b0;
+      smc_axi_open_request_count <= smc_axi_open_request_count +
+          {31'b0, smc_axi_xfer_open & ~smc_axi_xfer_end & (m_axi_awvalid | m_axi_arvalid)};
+      smc_otp_axil_open_request_count <= smc_otp_axil_open_request_count +
+          {31'b0, smc_otp_axil_xfer_open & ~smc_otp_axil_xfer_end &
+           (smc_otp_axil_awvalid | smc_otp_axil_arvalid)};
+      sep_otp_axil_open_request_count <= sep_otp_axil_open_request_count +
+          {31'b0, sep_otp_axil_xfer_open & ~sep_otp_axil_xfer_end &
+           (sep_otp_axil_awvalid | sep_otp_axil_arvalid)};
+    end
+  end
+
   // Reset-assertion counters: observables the scoreboard predictors
   // re-baseline on (CSR shadow, TAP instruction) without an edge wait in
   // class code, assigned into dtp_tb_if in this core for both realizations.
@@ -1163,8 +1217,8 @@ module tb_top
   // JTAG2AXI coverage: each bridge's DMI strobes, captured status, update
   // value, dmireset, Debug Module dmactive, System Bus Access request and
   // errors, and the DMI requests its Debug Module accepts, through
-  // hierarchical references into its jtag_dmi2axi, in the bit order of
-  // dtp_tb_if.j2a_b_hold.
+  // hierarchical references into its jtag_dmi2axi, and its port's handshake
+  // signals, in the bit order of dtp_tb_if.j2a_b_hold.
   dtp_j2a_fcov u_dtp_j2a_fcov (
     .tck_i           (jtag_tck),
     .tap_rst_ni      (jtag_tap_rst_n),
@@ -1269,7 +1323,23 @@ module tb_top
       u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.sbbusy,
       u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.sbbusy,
       u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.sbbusy
-    })
+    }),
+    .capture_sbbusy_i({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.dmi_capture[23],
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.dmi_capture[23],
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.dmi_capture[23]
+    }),
+    .port_awvalid_i  ({sep_otp_axil_awvalid, smc_otp_axil_awvalid, m_axi_awvalid}),
+    .port_awready_i  ({sep_otp_axil_awready, smc_otp_axil_awready, m_axi_awready}),
+    .port_wvalid_i   ({sep_otp_axil_wvalid, smc_otp_axil_wvalid, m_axi_wvalid}),
+    .port_wready_i   ({sep_otp_axil_wready, smc_otp_axil_wready, m_axi_wready}),
+    .port_bvalid_i   ({sep_otp_axil_bvalid, smc_otp_axil_bvalid, m_axi_bvalid}),
+    .port_bready_i   ({sep_otp_axil_bready, smc_otp_axil_bready, m_axi_bready}),
+    .port_arvalid_i  ({sep_otp_axil_arvalid, smc_otp_axil_arvalid, m_axi_arvalid}),
+    .port_arready_i  ({sep_otp_axil_arready, smc_otp_axil_arready, m_axi_arready}),
+    .port_rvalid_i   ({sep_otp_axil_rvalid, smc_otp_axil_rvalid, m_axi_rvalid}),
+    .port_rready_i   ({sep_otp_axil_rready, smc_otp_axil_rready, m_axi_rready}),
+    .port_rlast_i    ({1'b1, 1'b1, m_axi_rlast})
   );
 
   // Scan-network coverage (iJTAG SIBs / STAP 3DCR / scan-side debug
@@ -1969,6 +2039,9 @@ module tb_top
   assign u_tb_if.sep_otp_axil_aw_stall_count = sep_otp_axil_aw_stall_count;
   assign u_tb_if.sep_otp_axil_w_stall_count  = sep_otp_axil_w_stall_count;
   assign u_tb_if.sep_otp_axil_ar_stall_count = sep_otp_axil_ar_stall_count;
+  assign u_tb_if.smc_axi_open_request_count      = smc_axi_open_request_count;
+  assign u_tb_if.smc_otp_axil_open_request_count = smc_otp_axil_open_request_count;
+  assign u_tb_if.sep_otp_axil_open_request_count = sep_otp_axil_open_request_count;
 
   // XTRIG CSR AXI-Lite initiator: the shared ocah_axi_vip master (SV-UVM
   // agent or cocotb BFM) drives the CSR port (the initiator mirror of the
