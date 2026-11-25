@@ -13,17 +13,16 @@ Contract (``hw/sys/sep/doc/interrupts.adoc``, sources 41 to 43;
 Only"; ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc``,
 ``ERROR_CODE``, ``STATUS``):
 
-* a CPU access that the register bridge of a block answers with a TL-UL
-  error answers SLVERR and latches the block bit of ``PERIPH_BUS_ERR_STATUS``
+* a CPU access to an in-extent hole of the HMAC, KMAC or OTBN register
+  bridge answers SLVERR and latches the block bit of ``PERIPH_BUS_ERR_STATUS``
   (``periph_bus_err_e``: aes 0, hmac 1, kmac 2, otbn 3, csrng 4, edn 5, wdt 6,
-  spi 7); source 43 (vector bit 42) is the OR of the bits. The faulting
-  accesses are a read or a write of an in-extent hole of HMAC, KMAC or OTBN,
-  and, for the SPI host, a read of the write-only TXDATA window or a write of
-  the read-only RXDATA window (``hw/sys/sep/doc/spi.adoc``, "Register-Bus
-  Faults"; ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson``,
-  windows ``RXDATA`` ``swaccess: "ro"`` and ``TXDATA`` ``swaccess: "wo"``;
-  the SPI aperture has no in-extent hole,
-  ``hw/sys/sep/regs/gen/adoc/memory_map.adoc:81``);
+  spi 7); source 43 (vector bit 42) is the OR of the bits;
+* a write of 1 to the SPI host ``ALERT_TEST.fatal_fault`` raises the SPI host
+  fatal alert, which latches the spi bit (``hw/sys/sep/doc/spi.adoc:100-103``).
+  The write is a legal register write and answers OKAY; the alert is one-shot,
+  so a clear leaves the bit at 0. The bit sets after the alert handshake: the
+  leaf waits up to ``SPI_ALERT_WIN`` clocks after the write response for the
+  bit on ``sep_ras_probe_o``, and the status read after the wait grades it;
 * a partial write (a byte strobe that misses a byte the register owns) to an
   AES or watchdog register answers SLVERR and latches that block's bit alone
   (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:63-68``); the register
@@ -107,8 +106,8 @@ Checkers:
                   before, and for the first 16 of them the clock and those
                   bits (the six bits with an unstated idle level are not
                   compared).
-  CHK-RESP        a fault write (a hole write, or an SPI RXDATA write)
-                  answers SLVERR.
+  CHK-RESP        a hole write answers SLVERR; an SPI ALERT_TEST write
+                  answers OKAY.
   CHK-LATCH       PERIPH_BUS_ERR_STATUS equals the faulted set.
   CHK-OR          vector bit 42 equals (status != 0).
   CHK-CLR-MATRIX  a clear bit clears only its own block (every status bit +
@@ -296,7 +295,6 @@ PERIPH_MASK = SEP_CPU_CTRL.mask32("PERIPH_BUS_ERR_STATUS")
 DMA_MASK = SEP_CPU_CTRL.mask32("DMA_BUS_ERR_STATUS")
 PERIPH_CLR_MASK = SEP_CPU_CTRL.mask32("PERIPH_BUS_ERR_CLEAR")
 DMA_CLR_MASK = SEP_CPU_CTRL.mask32("DMA_BUS_ERR_CLEAR")
-UNLATCHABLE = [i for i, n in enumerate(PERIPH_BITS) if n not in BLOCKS]
 # In-extent hole range of each block: from the first word after its CSR block to
 # the start of its next region (seq_lib/sep_irq_aggregator_seq.py).
 HOLE_RANGE = {
@@ -304,12 +302,13 @@ HOLE_RANGE = {
     "kmac": (kmac_reg_unmapped_addr(), sym("KMAC_STATE_MEM_BASE_ADDR")),
     "otbn": (otbn_reg_unmapped_addr(), sym("OTBN_IMEM_MEM_BASE_ADDR")),
 }
-# SPI host fault accesses: a read of the write-only TXDATA window and a write
-# of the read-only RXDATA window (spi_host.hjson).
-SPI_FAULT = {
-    "rd": sym("SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR"),
-    "wr": sym("SPI_CONTROLLER_RXDATA_0__MEM_BASE_ADDR"),
-}
+# SPI host fault: a write of 1 to ALERT_TEST.fatal_fault (hw/sys/sep/doc/spi.adoc:100-103).
+SPI_ALERT_ADDR = SPI_CONTROLLER.addr("ALERT_TEST")
+SPI_ALERT_DATA = SPI_CONTROLLER.field_mask("ALERT_TEST", "fatal_fault")
+# clk_i cycles from the ALERT_TEST write response to the spi bit on the RAS tap:
+# the bound of the alert window of sep_spi_ot_host_csr_irq_rand_test.
+SPI_ALERT_WIN = 64
+SPI_RAS_BIT = ras_bit("periph_bus_err", PERIPH_BUS_ERR_BLOCKS.index("spi"))
 LEGAL = {
     "hmac": HMAC.addr("CFG"),
     "kmac": KMAC.addr("STATUS"),
@@ -437,15 +436,18 @@ class _Cfg:
             lo, hi = HOLE_RANGE[b]
             self.hole[b] = lo + 4 * rng.randrange((hi - lo) // 4)
         self.refault_ops = ["rd" if rng.getrandbits(1) else "wr" for _ in range(96)]
-        self.clear_order = list(range(len(PERIPH_BITS)))
+        self.clear_order = list(PERIPH_BITS)
         rng.shuffle(self.clear_order)
+        # Each mask is a PERIPH_BUS_ERR_CLEAR value: at least two bits, one of
+        # them the bit of a block that no hole or alert leg latches.
         self.masks = []
         for _ in range(rng.randrange(1, 4)):
             while True:
                 mk = rng.randrange(1, 1 << len(PERIPH_BITS))
-                if bin(mk).count("1") >= 2 and any(mk >> i & 1 for i in UNLATCHABLE):
+                names = [n for i, n in enumerate(PERIPH_BITS) if mk >> i & 1]
+                if len(names) >= 2 and any(n not in BLOCKS for n in names):
                     break
-            self.masks.append(mk)
+            self.masks.append(sum(BIT[n] for n in names))
         self.retrig_clear = rng.choice(TAPPED_BLOCKS)
         self.retrig_set = rng.choice([b for b in BLOCKS if b != self.retrig_clear])
         self.dma_size = 4 * rng.randrange(1, MAX_COPY // 4 + 1)
@@ -479,7 +481,8 @@ class _Cfg:
         writes each block once; each restore faults every block of the block
         order that the model holds clear, with the next refault op; a clear
         removes its bits; the re-trigger leg faults its two blocks with the next
-        ops. The partial-write legs set and clear their own bits only.
+        ops. Every spi fault is a write. The partial-write legs set and clear
+        their own bits only.
         """
         ops = itertools.cycle(self.refault_ops)
         latched = set(BLOCKS)
@@ -487,7 +490,7 @@ class _Cfg:
 
         def fault(b: str) -> None:
             nonlocal n
-            n += next(ops) == "wr"
+            n += next(ops) == "wr" or b == "spi"
             latched.add(b)
 
         def restore() -> None:
@@ -495,14 +498,14 @@ class _Cfg:
                 if b not in latched:
                     fault(b)
 
-        for i in self.clear_order:
+        for b in self.clear_order:
             restore()
-            latched.discard(PERIPH_BITS[i])
+            latched.discard(b)
         restore()
         latched.clear()
         for mk in self.masks:
             restore()
-            latched.difference_update(name for i, name in enumerate(PERIPH_BITS) if mk >> i & 1)
+            latched.difference_update(n for n in PERIPH_BITS if mk & BIT[n])
         restore()
         latched.discard(self.retrig_clear)
         fault(self.retrig_clear)
@@ -513,7 +516,7 @@ class _Cfg:
         return [
             f"block_order={','.join(self.block_order)} sweep_order={','.join(self.sweep_order)}",
             "holes=" + ",".join(f"{b}:0x{a:08x}" for b, a in self.hole.items()),
-            "clear_order=" + ",".join(PERIPH_BITS[i] for i in self.clear_order),
+            "clear_order=" + ",".join(self.clear_order),
             "masks=" + ",".join(f"0x{m:02x}" for m in self.masks),
             f"retrigger clear={self.retrig_clear} still_set={self.retrig_set}",
             f"dma_src=0x{self.dma_src:08x} dma_size={self.dma_size}",
@@ -856,11 +859,42 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.op_i += 1
         return op
 
+    async def _spi_alert_wait(self, was_set: bool) -> None:
+        """Wait for the spi bit on the RAS tap, at most SPI_ALERT_WIN clocks.
+
+        A bit that was already set shows no edge, so the wait runs the whole
+        bound and the alert completes before any later clear.
+        """
+        tap = cocotb.top.sep_ras_probe_o
+        for _ in range(SPI_ALERT_WIN):
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            v = tap.value
+            if not was_set and v.is_resolvable and int(v) >> SPI_RAS_BIT & 1:
+                break
+        await NextTimeStep()
+
     async def _fault(self, b: str, op: str) -> int:
-        """One faulting access to ``b``; grades the response; updates the model."""
-        addr = SPI_FAULT[op] if b == "spi" else self.c.hole[b]
+        """One faulting access to ``b``; grades the response; updates the model.
+
+        The fault of spi is the ALERT_TEST write and ignores ``op``.
+        """
         if b in RAS_LATCH:
             self.ras.begin_rise(b)
+        if b == "spi":
+            self.wr_faults += 1
+            resp, _ = await self._acc(SepAxiOp.WRITE, SPI_ALERT_ADDR, SPI_ALERT_DATA)
+            line = (
+                f"block=spi op=alert_test addr=0x{SPI_ALERT_ADDR:08x} "
+                f"resp={RESP_NAME.get(resp, resp)} expect=OKAY"
+            )
+            if resp != RESP_OKAY:
+                self._fail("CHK-RESP", line)
+            self._pass("CHK-RESP", line)
+            await self._spi_alert_wait(bool(self.latched & BIT[b]))
+            self.latched |= BIT[b]
+            return resp
+        addr = self.c.hole[b]
         if op == "wr":
             self.wr_faults += 1
             resp, _ = await self._acc(SepAxiOp.WRITE, addr, 0xA5A5_0000 | (addr & 0xFFFF))
@@ -1301,23 +1335,23 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
 
     async def _leg_matrix(self) -> None:
         open_graded_window(TEST, self.logger)
-        for i in self.c.clear_order:
+        for b in self.c.clear_order:
             await self._arm()
             await self._restore_full()
-            twin = "latched" if PERIPH_BITS[i] in BLOCKS else "unlatched_twin=latched_bits"
-            await self._clear_step("CHK-CLR-MATRIX", 1 << i, f"cleared={PERIPH_BITS[i]} {twin}")
+            twin = "latched" if b in BLOCKS else "unlatched_twin=latched_bits"
+            await self._clear_step("CHK-CLR-MATRIX", BIT[b], f"cleared={b} {twin}")
             await self._release()
         # Drain to zero, one latched bit at a time in the clear order. The
         # restore faults are graded by CHK-RESP and by the first drain step's
         # comparison of the status before the clear with the model.
         await self._arm()
         await self._restore_full()
-        order = [i for i in self.c.clear_order if PERIPH_BITS[i] in BLOCKS]
-        for k, i in enumerate(order):
+        order = [b for b in self.c.clear_order if b in BLOCKS]
+        for k, b in enumerate(order):
             if k:
                 await self._arm()
-            text, ok = await self._clear_write(1 << i)
-            line = f"drain={k + 1}/{len(order)} cleared={PERIPH_BITS[i]} {text}"
+            text, ok = await self._clear_write(BIT[b])
+            line = f"drain={k + 1}/{len(order)} cleared={b} {text}"
             if not ok:
                 self._fail("CHK-CLR-MATRIX", line)
             self._pass("CHK-CLR-MATRIX", line)
