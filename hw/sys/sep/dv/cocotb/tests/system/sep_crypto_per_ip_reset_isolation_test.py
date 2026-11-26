@@ -676,7 +676,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         transaction on an isolated path completes SLVERR with read data
         0x1501A7ED (hw/sys/sep/doc/reset_controller.adoc:138-140, :154). The
         reads go out while the TRNG gated reset is low, which follows the
-        isolated report (:143); the probe is read again after the three reads,
+        isolated report (:142); the probe is read again after the three reads,
         so a read that was not inside the hold fails.
         """
         got = []

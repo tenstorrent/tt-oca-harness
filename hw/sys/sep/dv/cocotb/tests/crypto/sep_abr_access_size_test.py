@@ -981,13 +981,13 @@ class sep_abr_access_size_test(sep_base_test):
                 and not moved
             ), (
                 f"CHK-ABR-INMAP-HOLE FAIL: {line}; the SEP memory map states {exp_rd.cell} "
-                f"(memory_map.adoc:66, {exp_rd.row}, {exp_rd.column}), R beat "
+                f"(memory_map.adoc:62, {exp_rd.row}, {exp_rd.column}), R beat "
                 f"0x{want_beat:016x}, two AW handshakes, no graded register moved"
             )
             lines.append(line)
         self.logger.info(
             "CHK-ABR-INMAP-HOLE PASS: AxSIZE=2 accesses at %d in-extent words no register "
-            "or memory owns answered as the SEP memory map states (%s, memory_map.adoc:66) "
+            "or memory owns answered as the SEP memory map states (%s, memory_map.adoc:62) "
             "and moved no graded register: %s",
             len(lines),
             _unbacked(INMAP_COUNTER_HOLE, "r").cell,

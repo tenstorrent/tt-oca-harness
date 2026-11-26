@@ -491,7 +491,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             f"CHK-EXT-SHIM-BYTE FAIL: {tag} shim leg left on PR-EXT: "
             + "; ".join(b.fmt() for b in c["ext"] + c["ext_rsp"])
         )
-        # memory_map.adoc:156-161: the shim window is forwarded unchanged, so
+        # memory_map.adoc:157-162: the shim window is forwarded unchanged, so
         # only the written lane changes and it takes the written byte.
         want = (c["pre"] & ~(0xFF << (8 * lane)) & WORD32) | (c["byte"] << (8 * lane))
         assert c["byte"] != old_byte and c["post"] == want, (

@@ -10,8 +10,8 @@ running on the KM CPU can present a transaction to them.
 
 Contract (hw/sys/sep/doc/crypto.adoc:94-95, hw/sys/sep/doc/reset_controller.adoc):
 
-  * :139-140 new transactions on an isolated path complete with SLVERR;
-  * :143 a domain's reset asserts once all of its paths report isolated;
+  * :138-139 new transactions on an isolated path complete with SLVERR;
+  * :142 a domain's reset asserts once all of its paths report isolated;
   * :144 the release reopens the paths;
   * :154 the Key Manager domain isolates all five key paths and the eFuse path.
 

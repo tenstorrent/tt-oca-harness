@@ -328,7 +328,7 @@ GO value during a transfer is not graded.
 Busy write contract (CHK-DMA-CTRL-BUSY): "A start is a write of `CONTROL.GO`
 while `STATUS.BUSY` is clear" (``hw/sys/sep/doc/dma.adoc:81-82``), so a GO=1
 write at BUSY=1 is not a start; the engine takes its configuration at a start
-(``:80-86``), so the copy moves only its own beats. What the write does to
+(``:82-88``), so the copy moves only its own beats. What the write does to
 CONTROL, and what a GO=0 write at BUSY=1 does to the copy, are not stated and
 stay logged.
 

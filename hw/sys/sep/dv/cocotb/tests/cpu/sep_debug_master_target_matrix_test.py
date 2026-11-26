@@ -117,7 +117,7 @@ Checks:
                   ``sep_cpu_reset_n`` and ``sep_reset_n`` taps stay high from
                   the start of the pulse to the readback
                   (``hw/sys/sep/doc/reset_controller.adoc:45-53``, the terms of
-                  ``sep_reset_n`` and ``sep_cpu_reset_n``; ``:81``,
+                  ``sep_reset_n`` and ``sep_cpu_reset_n``; ``:80``,
                   ``dbg_rstb_i``). Controls:
                   ``dmactive`` reads 1 before the pulse; the ``wdt_rst_ni_i``
                   pulse of step 12 drops the ``sep_cpu_reset_n`` tap; the cold
@@ -171,7 +171,7 @@ Checks:
                   and its returned R or B beat, while PR-ROM and PR-XBAR-TCM take
                   no handshake (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg``:
                   the ``cpu_tcm`` row, ``:93-98``, has only the DMA dot, and the
-                  boot ROM row, ``:159-162``, the IFU and LSU dots). Positive
+                  boot ROM row, ``:166-169``, the IFU and LSU dots). Positive
                   probes on the same tap objects, before the graded accesses and
                   outside every window: an LSU read of the boot ROM base gives a
                   PR-ROM request, and a secure DMA copy of one SRAM word to the
@@ -201,7 +201,7 @@ Checks:
                   carries 0x1501A7ED in the 32-bit lane of the access, and
                   ``sberror`` is not 0 (``hw/sys/sep/doc/reset_controller.adoc:138-140``:
                   new transactions on an isolated path complete with SLVERR and
-                  that read data; the HMAC host path is isolated, ``:153``;
+                  that read data; the HMAC host path is isolated, ``:152``;
                   the debug master reaches ``sep_crypto``,
                   ``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:129``).
   CHK-DBG-SBA-REG: (entry S) 64-bit debug-master read and write of

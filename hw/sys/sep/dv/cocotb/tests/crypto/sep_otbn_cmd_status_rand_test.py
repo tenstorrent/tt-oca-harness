@@ -231,7 +231,7 @@ Checkers:
                        long as the LOCKED window (the fatal alert "can only be cleared
                        by resetting OTBN", ToO:314; the gated crypto reset and
                        ``otbn_sw_rst_n`` reset OTBN, ``hw/sys/sep/doc/reset_controller.adoc``
-                       :60-66, :97). The rise count in the LOCKED window is the control
+                       :60-66, :96). The rise count in the LOCKED window is the control
                        that a window of that length sees the repeat.
                        IMEM_INTG_VIOLATION "Data read from the instruction memory
                        failed the integrity checks." is fatal (ToO:261-263); "A

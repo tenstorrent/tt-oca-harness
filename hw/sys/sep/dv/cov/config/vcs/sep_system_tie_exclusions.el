@@ -657,33 +657,33 @@ Condition 52 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:137-153), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:179-186), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Block 12 "2970101142" "req_error_d = 1'b0;"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:137-153), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:179-186), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Branch 2 "3464338896" "state_q" (1) "state_q IDLE ,0,1,1,-,-,-,-,-,-,-,-,-"
 
 CHECKSUM: "2097437693 3453034612"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:137-153), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:179-186), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Fsm state_q "3453034612"
 Transition IDLE->AXI_B_RESP "0->6"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:227-245), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:268-277), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Block 12 "2970101142" "req_error_d = 1'b0;"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:227-245), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:268-277), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Branch 2 "3464338896" "state_q" (1) "state_q IDLE ,0,1,1,-,-,-,-,-,-,-,-,-"
 
 CHECKSUM: "2097437693 3453034612"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:227-245), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:268-277), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Fsm state_q "3453034612"
 Transition IDLE->AXI_B_RESP "0->6"
 

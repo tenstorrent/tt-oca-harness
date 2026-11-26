@@ -70,7 +70,7 @@ Checkers:
                  ERROR_CODE set and ``host_path_err`` set
                  (``hw/sys/sep/doc/dma.adoc:120-123``: ICCM and DCCM take only
                  whole 32-bit words from the DMA, any other write ends in
-                 BUS_ERROR and sets the host-path fault; ``:95-96``: error
+                 BUS_ERROR and sets the host-path fault; ``:97-98``: error
                  reporting is the same for a copy; VeeR EL2 PRM at
                  tt-Cores-VeeR-EL2@07a51d817, ``docs/source/memory-map.md``,
                  "Write Alignment Rules" ``:1203-1204`` and "Misaligned

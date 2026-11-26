@@ -7140,7 +7140,7 @@ The owner has an empty checker set (<<sep-fcov-km-checker-gate>>).
 
 *Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>).
 
-*Specification*: `hw/ip/key_manager/doc/architecture.adoc`, "CRC Accelerator Instructions" (`:1028-1035`, `:1039-1044`, `:1048-1049`, `:1055-1058`).
+*Specification*: `hw/ip/key_manager/doc/architecture.adoc`, "CRC Accelerator Instructions" (`:1026-1033`, `:1037-1042`, `:1046-1047`, `:1053-1056`).
 
 [cols="2,6,2,3,2",options="header"]
 |===

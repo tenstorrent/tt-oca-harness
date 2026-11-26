@@ -106,10 +106,10 @@ Checkers:
                    (``CTRL-IF-PRESENSE-JTAG-TWIN``) landed. ``CHK-HOOK FAIL ...
                    check=IF-PRESENSE-JTAG`` when a JTAG access completes after the
                    rise. The refused map read returns SLVERR. Golden:
-                   ``hw/sys/sep/doc/otp_fuse_controller.adoc:103`` (until sense
-                   done, APB accesses to the MAP window return SLVERR), ``:41-44``
-                   (the JTAG port merges into the same AXI-Lite to APB bridge;
-                   the lifecycle filter answers only a blocked access),
+                   ``hw/sys/sep/doc/otp_fuse_controller.adoc:103-104`` (until
+                   sense done, APB accesses to the MAP window return SLVERR),
+                   ``:41-46`` (the JTAG port merges into the same AXI-Lite to APB
+                   bridge; any other or blocked access answers SLVERR),
                    ``:130-131`` (programming only after LOCKS is sensed);
                    ``hw/sys/sep/doc/lifecycle_controller.adoc:714-721`` (TEST_DEV
                    JTAG reaches the shadow map and the program controls, so the

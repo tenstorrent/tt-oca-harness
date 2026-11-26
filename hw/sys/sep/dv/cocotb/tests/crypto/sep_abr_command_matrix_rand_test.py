@@ -29,7 +29,7 @@ Checkers:
   CHK-ABR-SINGLE-STATUS
                     a single-step command shows VALID=1 and READY=0 at the
                     first STATUS read with VALID or ERROR set
-                    (``adams_bridge.adoc``:191-195: the sequencer parks at the
+                    (``adams_bridge.adoc``:192-196: the sequencer parks at the
                     end state of any operation with ``STATUS.VALID`` set, and
                     ``STATUS.READY`` re-asserts only after a zeroize or a reset).
   CHK-ABR-SIGN-DETERMINISTIC
@@ -50,7 +50,7 @@ Checkers:
                     trial that does not write the window fails the check.
   CHK-ABR-RESET-VALID
                     after an ABR reset (``SW_RESET_N`` bit 6,
-                    ``reset_controller.adoc``:102) the first STATUS read with
+                    ``reset_controller.adoc``:101) the first STATUS read with
                     READY set shows VALID=0, the reset value of the field
                     (``abr_reg.rdl``:102-104 MLDSA, :349-351 MLKEM,
                     ``resetsignal = reset_b``, ``VALID = 1'b0``). VALID read 1
@@ -81,7 +81,7 @@ Checkers:
                     park, and STATUS still reads VALID 1 and READY 0
                     (``abr_reg.rdl``:77, :81-83, :328, ``swwe = abr_ready`` on
                     the command fields; :91-92, :340-341, READY is "ready to
-                    take a control command"; ``adams_bridge.adoc``:191-195).
+                    take a control command"; ``adams_bridge.adoc``:192-196).
                     Y is ML-DSA VERIFYING (output ``MLDSA_VERIFY_RES``) after
                     KEYGEN+SIGN, and ML-KEM ENCAPS (outputs
                     ``MLKEM_CIPHERTEXT``, ``MLKEM_SHARED_KEY``) after
@@ -93,7 +93,7 @@ Checkers:
 ``STATUS.ERROR`` is logged and not graded. The RDL describes the bit
 (``integration/rdl/sep/abr_reg.rdl``:97 and :344, "the process ended with an
 error"; field text :106 and :352, "Status error bit") and states no rule for
-the value at the end of a command, and ``adams_bridge.adoc``:191-195
+the value at the end of a command, and ``adams_bridge.adoc``:192-196
 names only ``VALID`` and ``READY``. CHK-ABR-COMBO, CHK-ABR-SINGLE-STATUS and
 CHK-ABR-PARK carry it in an ``obs_error`` field.
 
