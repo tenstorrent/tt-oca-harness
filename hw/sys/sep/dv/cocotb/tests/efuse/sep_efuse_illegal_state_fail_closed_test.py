@@ -5,9 +5,11 @@
 ``efuse_read_interface`` and ``efuse_program_interface`` each hold a two-bit
 state. ``hw/ip/efuse/doc/architecture.adoc`` names a two-state sequence
 (idle, then waiting for a bank response). No document names the encodings.
-The leaf forces each state register, for one cycle, to the two codes outside
-the set the state-inject record in ``tb/tb_top.sv`` accepts. Those codes have
-no frontdoor. They are stimulus only: no graded term uses an encoding.
+The leaf records the encodings each state output shows while a frontdoor read
+and a frontdoor program run, requires exactly two of them
+(CTRL-<READ|PROGRAM>-LIVE-STATES), and forces each state register, for one
+cycle, to the two codes outside that set. Those codes have no frontdoor. They
+are stimulus only: no graded term uses an encoding.
 
 Graded after each injection:
 
@@ -71,12 +73,11 @@ from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
 # hw/ip/efuse/doc/architecture.adoc names a two-state sequence (idle, waiting)
-# and no encodings. The set below is the one the state-inject record in
-# tb/tb_top.sv accepts. The injection walks its complement. These constants
-# choose stimulus only; no graded term compares against them.
-_ST_IDLE = 0b01
-_ST_WAIT_RESP = 0b10
-_ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
+# and no encodings. The live encodings are read from the two-bit state outputs
+# during the frontdoor controls; the injections walk the rest of the code space.
+_STATE_CODES = 4
+_LIVE_STATE_COUNT = 2
+_ILLEGAL_STATE_COUNT = _STATE_CODES - _LIVE_STATE_COUNT
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -149,7 +150,7 @@ _SETTLE_CYCLES = 64
 
 # SPARE7 bits the program legs consume: the live control before the
 # injections, and per illegal encoding one injection and one live control.
-_PROGRAM_BITS_NEEDED = 1 + 2 * len(_ILLEGAL_STATES)
+_PROGRAM_BITS_NEEDED = 1 + 2 * _ILLEGAL_STATE_COUNT
 
 
 @pyuvm.test()
@@ -185,6 +186,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             while not stop.is_set():
                 await RisingEdge(cocotb.top.clk_i)
                 await ReadOnly()
+                self._live_states["read"].add(int(cocotb.top.efuse_read_state_o.value))
                 if int(cocotb.top.efuse_read_cmd_req_valid_o.value):
                     seen_active = True
 
@@ -431,6 +433,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             while not stop.is_set():
                 await RisingEdge(cocotb.top.clk_i)
                 await ReadOnly()
+                self._live_states["program"].add(int(cocotb.top.efuse_program_state_o.value))
                 if int(cocotb.top.efuse_program_cmd_req_valid_o.value):
                     seen_active = True
 
@@ -448,6 +451,29 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "CHK-PROGRAM-ALIVE PASS: a frontdoor OTP program drove a bank command (SPARE7 bit %d)",
             bit_offset,
         )
+
+    def _illegal_states(self, which: str) -> tuple[int, ...]:
+        """The codes outside the encodings ``which`` showed during its control.
+
+        The read and program controls run a real frontdoor operation, so the
+        state output passes through idle and waiting. Exactly two encodings
+        must appear; anything else means the probe or the control did not
+        see the machine move, and the complement would not be the illegal set.
+        """
+        live = sorted(self._live_states[which])
+        assert len(live) == _LIVE_STATE_COUNT, (
+            f"CTRL-{which.upper()}-LIVE-STATES FAIL: the {which} state output showed "
+            f"{[hex(v) for v in live]} during the frontdoor control, expected "
+            f"{_LIVE_STATE_COUNT} encodings (idle and waiting)"
+        )
+        illegal = tuple(v for v in range(_STATE_CODES) if v not in live)
+        self.logger.info(
+            "CTRL-%s-LIVE-STATES live=%s inject=%s",
+            which.upper(),
+            ",".join(f"{v:#04x}" for v in live),
+            ",".join(f"{v:#04x}" for v in illegal),
+        )
+        return illegal
 
     async def _kick(self, which: str, bit_addr: int) -> None:
         """Start one frontdoor operation and return without retiring it."""
@@ -750,16 +776,19 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "its own word from zero or from the timed-out read's word"
         )
         self.write_efuse_image(img)
+        self._live_states: dict[str, set[int]] = {"read": set(), "program": set()}
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
         # Controls first: both interfaces issue a bank command when asked.
         await self._assert_read_alive("before")
         await self._assert_program_alive(pg_bits[0])
+        read_illegal = self._illegal_states("read")
+        program_illegal = self._illegal_states("program")
 
         # Establish the in-flight window before logging a withdrawal inside it.
         await self._assert_request_held("read", self._control_word * 32)
 
-        for leg, state in enumerate(_ILLEGAL_STATES, start=1):
+        for leg, state in enumerate(read_illegal, start=1):
             await self._inject("read", state, self._control_word * 32, leg=leg)
         # The read FSM serves a new request after the injections (OCAH-HSR-SEP-010).
         await self._assert_read_alive("after")
@@ -769,7 +798,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # wrong reason.
         pg_leg_bits = zip(pg_bits[1::2], pg_bits[2::2])
         for leg, (state, (inject_bit, alive_bit)) in enumerate(
-            zip(_ILLEGAL_STATES, pg_leg_bits), start=1
+            zip(program_illegal, pg_leg_bits), start=1
         ):
             if leg > 1:
                 # The leg before left program_status at 1. A cold reset returns

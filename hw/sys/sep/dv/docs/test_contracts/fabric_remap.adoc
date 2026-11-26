@@ -2075,7 +2075,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 |CHK-ROW-POOL-UNMAPPED
 |An SI 32-bit read of each half of an unmapped pool word answers SLVERR with zero data in the addressed lane (`entropy_pool.adoc:47-48`). Limit: the pool is empty in this leaf and an empty `DATA` read also answers SLVERR, so the check cannot tell an alias onto `DATA` from the unmapped cell.
 |CHK-ROW-SPI-BURST
-|For an SI read burst that crosses the SPI host extent end, every in-extent beat answers OKAY with the staged or RDL reset value, and every beat past the extent answers not OKAY and returns no staged live word; for the write burst the in-extent beat lands, no other register changes and the B is not OKAY (`peripheral_subsystem.adoc:43-46`: the error responder of `sep_io` answers only the beats past the extent; extent `memory_map.adoc:81`). The AR or AW is one burst of the issued shape. Catches a refused burst, past beats answered OKAY or aliased onto a live register, early termination and a split burst.
+|For an SI read burst that crosses the SPI host extent end, every in-extent beat answers OKAY with the staged or RDL reset value, and every beat past the extent answers the response code and read data of the generated memory-map cell of its address (the same cell lookup as CHK-ROW) and returns no staged live word; for the write burst the in-extent beat lands, no other register changes and the B code is that of the map cell of the first past-extent word (`peripheral_subsystem.adoc:43-46`: the error responder of `sep_io` answers only the beats past the extent; extent `memory_map.adoc:81`). The AR or AW is one burst of the issued shape. Catches a refused burst, past beats answered OKAY, with another error code or other data than the map states, or aliased onto a live register, early termination and a split burst.
 |CHK-ROW-SPI-BURST-CONTROL
 |The same burst wholly inside the SPI host extent answers OKAY on every beat with the staged values, and the write lands. A DUT that refuses every SPI burst fails here.
 |CTRL-ROW-SPI-DEEP-BURST
@@ -2083,7 +2083,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 |INFO-ROW-SPI-DEEP-BURST
 |Logged only. Per direction, the start of the crossing burst that runs deep past the extent and its drawn past-beat count. Format: `INFO-ROW-SPI-DEEP-BURST LOG: dir=<R\|W> start=0x<a> past_beats=<n>`.
 |INFO-ROW-SPI-BURST-CODE
-|The exact response and read data of each past-extent beat and the B code of the crossing write. CHK-ROW-SPI-BURST grades the class of each past-extent beat, and the exact code is not graded. Graded by `CHK-ROW-SPI-BURST`; no open specification question.
+|The response and read data of each past-extent beat and the B code of the crossing write, logged beside the line of `CHK-ROW-SPI-BURST`, which grades the same values against the map cells.
 |CHK-SI-ID-ECHO
 |Every SI access of the leaf, OKAY and error rows alike, answers with the drawn non-zero AxID on RID (read) or BID (write), sampled from the `m_axi` response handshake. A response carries the ID of its request (AMBA AXI IHI 0022), and the fabric retains the AXI IDs needed for responses across the AXI4-Lite bridge (`hw/sys/sep/doc/fabric.adoc:22-23`). The check also fails on an SI access, the logged burst leg included, that returns no response, and when no SI access answered. Evidence: `CHK-SI-ID-ECHO PASS: <n> SI accesses answered BID/RID equal to the drawn AxID`.
 |INFO-ROW-BURST
