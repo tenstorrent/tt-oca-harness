@@ -37,7 +37,8 @@ manager port for the CTM and one for each external CTP, 17 by default.
 In the cross-trigger network, `u_axil_xbar` decodes the DTP CSR window, which the
 SMC peripheral crossbar rebases to 0, onto the CTM at offset 0x000 and one 16-byte
 window for each external CTP from 0x200. The internal cross-trigger lanes are
-`u_int_ctp_core` instances without CSRs, whose protocol `XTRIG_INT_CT_MODE` fixes.
+`u_int_ctp_core` instances without CSRs. `XTRIG_INT_CT_MODE` fixes the protocol of
+each lane, wire-OR, point-to-point, or toggle, and its stretch.
 In the SMU the first two lanes connect to the SMC DFD CLA, one clock-stop request
 comes from the CLA, and the remaining lanes and requests leave the SMU.
 

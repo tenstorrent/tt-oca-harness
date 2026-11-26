@@ -7,11 +7,14 @@ reads 1 and quieted by selecting a relation value that did not fire, so the
 action stays selected while the relation is false. The W2C bit of the pair is
 pulsed through `CDbgEapStatus`.
 
-`dfd_cla.rdl` describes `Action0` only as "Select an Action" and `dfd.adoc`
-names the actions without codes, so the code that drives an action line is
-measured: `Action0` is walked over its RDL-declared range, each value fired
-from a quiet relation with the status cleared, and the first value after which
-the line reads 1 is the action code used by the release legs.
+`dfd.adoc` Action Codes and the `Action0` description of `dfd_cla.rdl` give
+the code of each action: 1 is the clock halt and 2 the debug interrupt. The
+code that drives an action line is measured and held to that table: `Action0`
+is walked upward from 0 over its RDL-declared range, each value fired from a
+quiet relation with the status cleared and the line sampled on each of
+`SAMPLE_CYCLES` cycles after the status reads 1, and the first value under
+which the line reads 1 has to be the documented code (`CHK-CLA-ACTION-CODE`).
+That code is the one the release legs use.
 """
 
 from __future__ import annotations
@@ -22,6 +25,11 @@ from cocotb.triggers import ClockCycles
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import pack_fields
+
+CHK_ACTION_CODE = "CHK-CLA-ACTION-CODE"
+# dfd.adoc Action Codes: the code of the action that drives each observed line.
+ACTION_CLOCK_HALT = 1
+ACTION_DEBUG_INTERRUPT = 2
 
 SETTLE_CYCLES = 8
 SAMPLE_CYCLES = 20
@@ -119,10 +127,12 @@ class SmcDfdClaActionSeq(SmcCsrSeq):
             quiet = (activating + 1) % len(ops)
         return activating, quiet
 
-    async def _discover(self, pin: str, label: str) -> tuple[int, int, int]:
+    async def _discover(self, pin: str, label: str, documented: int) -> tuple[int, int, int]:
         """Walk Action0 until `pin` rises; return (action code, activating op, quiet op).
 
-        The pair is left fired with the returned code selected.
+        The first code that raises `pin` has to be `documented`, the code
+        `dfd.adoc` Action Codes gives the action. The pair is left fired with
+        the returned code selected.
         """
         before = self._pin(pin)
         assert before == 0, f"{pin}={before} before any Action0 value was fired, want 0"
@@ -143,14 +153,33 @@ class SmcDfdClaActionSeq(SmcCsrSeq):
                     f"CDbgEapStatus.Node0Eap0 did not read 1 with Action0={action} on "
                     f"LogicalOp {activating}"
                 )
-            await ClockCycles(cocotb.top.clk_smc_i, SAMPLE_CYCLES)
-            if self._pin(pin) == 1:
+            raised = False
+            for _ in range(SAMPLE_CYCLES):
+                await ClockCycles(cocotb.top.clk_smc_i, 1)
+                seen = self._pin(pin)
+                assert seen in (0, 1), (
+                    f"{CHK_ACTION_CODE} FAIL: {pin} is X or Z with Action0={action} fired on "
+                    f"LogicalOp {activating}"
+                )
+                raised = raised or seen == 1
+            if raised:
                 line = (
                     f"OBS-CLA-ACTION-CODE pin={pin} Action0={action} LogicalOp={activating} "
                     f"quiet_op={quiet}"
                 )
                 cocotb.log.info(line)
                 self.samples.append(line)
+                assert action == documented, (
+                    f"{CHK_ACTION_CODE} FAIL: {pin} first read 1 with Action0={action}, "
+                    f"dfd.adoc Action Codes gives code {documented} for this action"
+                )
+                cocotb.log.info(
+                    "%s PASS: pin=%s first read 1 at Action0=%d, the documented code, and "
+                    "read 0 on every sampled cycle after each lower code was fired",
+                    CHK_ACTION_CODE,
+                    pin,
+                    action,
+                )
                 return action, activating, quiet
         raise AssertionError(
             f"{pin} never read 1 over every value of the {width}-bit Action0 field fired on "

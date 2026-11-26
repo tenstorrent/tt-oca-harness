@@ -96,7 +96,7 @@ Checkers:
                    :80, :132-134; ``otbn.hjson`` ``SecSkipUrndReseedAtStart``
                    default 0), and RND asks the EDN only on a read or a prefetch
                    (ToO:66, :70-71); the program reads RND first at its second
-                   instruction. Client numbers: ``hw/sys/sep/doc/trng.adoc`` :93.
+                   instruction. Client numbers: ``hw/sys/sep/doc/trng.adoc`` :95.
                    Control ``CTRL-XRST-URNDFIRST``: bit 3 reads 0 on the first
                    traced clock, so the rise is the EXECUTE reseed and not a
                    request still high from an earlier one.

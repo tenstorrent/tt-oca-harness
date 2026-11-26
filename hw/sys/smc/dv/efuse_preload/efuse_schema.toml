@@ -8,10 +8,10 @@
 # headers.
 
 [LOCKS]
-regwidth = 64
+regwidth = 128
   [LOCKS.fields.lock_entries]
-  bits = "63:0"
-  desc = "Per-field read/write lock controls. Bit 2*i = write lock, bit 2*i+1 = read lock, in configuration order."
+  bits = "127:0"
+  desc = "HARNESS_LOCKS in [63:0], SUPPLEMENTARY_LOCKS in [127:64]. In HARNESS_LOCKS, bit 2*i = write lock, bit 2*i+1 = read lock, in configuration order."
 
 [JTAG_PUBLIC_IDENTITY]
 regwidth = 256
@@ -38,7 +38,7 @@ regwidth = 64
   desc = "OCCP transport timeout in bits [31:0]; bits [63:32] reserved. The boot ROM reads this and substitutes a 10000-cycle default when it reads 0."
 
 [SPARE]
-regwidth = 7168
+regwidth = 960
   [SPARE.fields.spare_data]
-  bits = "7167:0"
-  desc = "28 x 256 b individually lockable spare regions. Each element has its own write/read lock pair in LOCKS (slots 4-31). Reserved for fields assigned after the RTL is frozen."
+  bits = "959:0"
+  desc = "SPARE[3] (3 x 256 b, LOCKS slots 4-6) in [767:0], then SPARE_TAIL[3] (3 x 64 b, LOCKS slot 7) in [959:768]. The lock flags here set slot 4 only; set slots 5-7 through LOCKS.lock_entries. Reserved for fields assigned after the RTL is frozen."

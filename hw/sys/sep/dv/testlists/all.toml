@@ -80,7 +80,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 303
+expected_count = 304
 # Listed longest first by each entry's longest measured leaf time, over every
 # measured seed. An entry with no measured time is placed by its estimated time.
 # Place a new test by its runtime.
@@ -232,6 +232,7 @@ tests = [
     "sep_efuse_lock_slot_matrix_rand_test_chain",
     "sep_efuse_lock_slot_matrix_rand_test_single",
     "sep_efuse_lock_slot_matrix_rand_test_exempt",
+    "sep_efuse_lock_slot_matrix_rand_test_uid_rdlock",
     "sep_cpu_reset_retention_test",
     "sep_aes_mode_keysize_rand_test",
     "sep_axi_order_sweep_test",
@@ -528,6 +529,7 @@ tests = [
     "sep_efuse_lock_slot_matrix_rand_test_chain",
     "sep_efuse_lock_slot_matrix_rand_test_single",
     "sep_efuse_lock_slot_matrix_rand_test_exempt",
+    "sep_efuse_lock_slot_matrix_rand_test_uid_rdlock",
     "sep_efuse_secure_tm_matrix_rand_test",
     "sep_efuse_jtag_access_rand_test",
     "sep_sec_dis_timing_rand_test",
@@ -947,6 +949,47 @@ tests = [
     "sep_rom_zero_fill_fault_retry_test",
     "sep_rom_zero_fill_fault_scrub_test",
     "sep_rom_zero_fill_fault_iccm_clear_test",
+    # Spec-graded ROM invariants.
+    "sep_rom_observer_smoke_test",
+    "sep_rom_reset_entry_order_test",
+    "sep_rom_boot_quiet_invariants_test",
+    "sep_rom_dccm_scrub_test",
+    "sep_rom_sram_iccm_clear_test",
+    "sep_rom_fuse_sense_wait_test",
+    "sep_rom_fuse_sense_wait_test_hold",
+    "sep_rom_lc_state_record_test_test_dev",
+    "sep_rom_lc_state_record_test_prod",
+    "sep_rom_lc_state_record_test_rma_sip_0x2",
+    "sep_rom_lc_state_record_test_rma_sip_0x3",
+    "sep_rom_lc_state_record_test_rma_chiplet_0x6",
+    "sep_rom_lc_state_record_test_rma_chiplet_0x7",
+    "sep_rom_lc_state_record_test_prod_end",
+    "sep_rom_pmp_program_test",
+    "sep_rom_pmp_release_handoff_test",
+    "sep_rom_demote_after_lock_order_test",
+    "sep_rom_version_hash_report_test",
+    "sep_rom_pcrv_slot_order_test",
+    "sep_rom_smc_scratch_sanity_test",
+    "sep_rom_smc_manifest_ready_wait_test",
+    "sep_rom_smc_manifest_offset_invalid_test_window_end",
+    "sep_rom_smc_manifest_offset_invalid_test_window_straddle",
+    "sep_rom_smc_manifest_offset_invalid_test_manifest_straddle",
+    "sep_rom_status_ring_bounds_test_straddle",
+    "sep_rom_status_ring_bounds_test_bad_header",
+    "sep_rom_status_ring_severity_test",
+    "sep_rom_oca_library_callback_test",
+    "sep_rom_entropy_health_fail_terminal_test",
+    "sep_rom_entropy_lock_order_test",
+    "sep_rom_no_fuse_program_test",
+    "sep_rom_rsa_exponent_non_f4_refuse_test",
+    "sep_rom_rsa_exponent_non_f4_refuse_test_f4_signed",
+    "sep_rom_rsa_key_direct_otbn_test",
+    "sep_rom_encryption_requires_secure_boot_test",
+    "sep_rom_decrypt_exit_zeroize_test_success",
+    "sep_rom_decrypt_exit_zeroize_test_aes_init_fail",
+    "sep_rom_decrypt_exit_zeroize_test_kdf_fail",
+    "sep_rom_decrypt_exit_zeroize_test_aes_dec_fail",
+    "sep_rom_spi_retry_exhaust_test",
 ]
 
 [[groups]]
@@ -1114,7 +1157,7 @@ tests = [
 # Convenience group of the eFuse, lifecycle and SEC_DIS tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_efuse_lifecycle"
-expected_count = 23
+expected_count = 24
 tests = [
     "sep_efuse_window_decode_reset_test",
     "sep_efuse_field_layout_rand_test",
@@ -1135,6 +1178,7 @@ tests = [
     "sep_efuse_lock_slot_matrix_rand_test_chain",
     "sep_efuse_lock_slot_matrix_rand_test_single",
     "sep_efuse_lock_slot_matrix_rand_test_exempt",
+    "sep_efuse_lock_slot_matrix_rand_test_uid_rdlock",
     "sep_efuse_secure_tm_matrix_rand_test",
     "sep_efuse_jtag_access_rand_test",
     "sep_sec_dis_timing_rand_test",

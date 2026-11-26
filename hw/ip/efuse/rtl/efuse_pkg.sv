@@ -19,6 +19,15 @@ package efuse_pkg;
   localparam int unsigned LockFieldBitWidth = 96;
   localparam int unsigned EfuseFieldMapIdxWidth = $clog2(LockFieldBitWidth / 2);
 
+  // SUPPLEMENTARY_LOCKS is one 64-bit register: one write/read pair per supplementary lock region.
+  localparam int unsigned SupplementaryLockBits = 64;
+  localparam int unsigned SupplementaryLockRegions = 32;
+
+  // Word width of a supplementary shadow port, which keeps one word, tied to zero, with no region.
+  function automatic int unsigned supplementary_port_words(int unsigned supplementary_fuse_words);
+    return supplementary_fuse_words > 0 ? supplementary_fuse_words : 1;
+  endfunction
+
   //////////////////////////////
   // Register Map Definitions //
   //////////////////////////////
@@ -31,14 +40,15 @@ NumEndPointsDecode
     SHIM_SEL              = 1'd1
   } efuse_req_decode_select_e;
 
-  localparam int unsigned NumEndPointsReg = 4;
+  localparam int unsigned NumEndPointsReg = 5;
   typedef enum logic [$clog2(
 NumEndPointsReg
 )-1:0] {
-    SHADOW_REG_MAP              = 2'd0,
-    EFUSE_CSR_REG_MAP           = 2'd1,
-    EFUSE_MMR_REG_MAP           = 2'd2,
-    ERR_DECODE                  = 2'd3
+    SHADOW_REG_MAP              = 3'd0,
+    EFUSE_CSR_REG_MAP           = 3'd1,
+    EFUSE_MMR_REG_MAP           = 3'd2,
+    ERR_DECODE                  = 3'd3,
+    SUPPLEMENTARY_SHADOW_REG_MAP      = 3'd4
   } efuse_reg_map_e;
 
   //////////////////////////////

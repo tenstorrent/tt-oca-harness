@@ -40,8 +40,8 @@ from seq_lib.smc_prod_rom_boot_seq import smc_prod_rom_boot_seq
 from seq_lib.smc_prod_rom_defs import describe_post_code
 from smc_base_test import smc_base_test
 from smc_reg import (
+    SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR,
     SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR,
-    SMC_EFUSE_MAP_LOCKS_REG_ADDR,
     SMC_I2C_WRAP_I2C_0__TARGET_ID_REG_ADDR,
     SMC_I2C_WRAP_I2C_1__TARGET_ID_REG_ADDR,
 )
@@ -160,7 +160,7 @@ class _ShadowOverrideSeq(smc_prod_rom_boot_seq):
         )
 
         lc_state = int(dut.tb_lc_state.value)
-        locks = await self._jtag_read("LOCKS", SMC_EFUSE_MAP_LOCKS_REG_ADDR)
+        locks = await self._jtag_read("LOCKS", SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR)
         before = await self._slot6()
         if lc_state != LC_STATE_TEST_DEV or locks & LOCKS_I2C_I3C_ID_WRITE_LOCK:
             raise AssertionError(

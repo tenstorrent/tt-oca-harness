@@ -210,30 +210,33 @@ if { [sizeof_collection [get_pins -quiet "${avs_hier}/u_clk_div/div_clk/Q"]] } {
           and AVS_DIV_CLK_Q_FROM_PERIPHERALCLK are not stamped"
 }
 
-# apply generated clock to the final gpio output pin as well
-create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
-    -master_clock AVS_CLKMUX_OUTPUT_FROM_REFCLK \
-    -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
-    [get_ports {core2pad_o[49]}]
+# The AVS clock leaves the chip on core2pad_o[49]. Block-top only: a parent stamps
+# the exported clock on its own pad.
+if {[cdc_is_block_top]} {
+    create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
+        -master_clock AVS_CLKMUX_OUTPUT_FROM_REFCLK \
+        -divide_by 1 \
+        -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
+        [get_ports {core2pad_o[49]}]
 
-create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
-    -master_clock AVS_CLK_FROM_REFCLK \
-    -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"] \
-    [get_ports {core2pad_o[49]}]
+    create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
+        -master_clock AVS_CLK_FROM_REFCLK \
+        -divide_by 1 \
+        -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"] \
+        [get_ports {core2pad_o[49]}]
 
-create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
-    -master_clock AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
-    -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
-    [get_ports {core2pad_o[49]}]
+    create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
+        -master_clock AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
+        -divide_by 1 \
+        -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
+        [get_ports {core2pad_o[49]}]
 
-create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
-    -master_clock AVS_CLK_FROM_PERIPHERALCLK \
-    -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"] \
-    [get_ports {core2pad_o[49]}]
+    create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
+        -master_clock AVS_CLK_FROM_PERIPHERALCLK \
+        -divide_by 1 \
+        -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"] \
+        [get_ports {core2pad_o[49]}]
+}
 
 # CDC-only modeling: collapse the AVS-clock domain attribution downstream of
 # the programmable divider. Inside `prim_prog_clk_div_posedge`, the bypass
@@ -260,18 +263,25 @@ if { $avs_mapped } {
           clock-sense stop is not applied, so those clocks propagate downstream"
 }
 
-# These two can never be active simultaneously (muxed sources)
-set_clock_groups -logically_exclusive \
-    -group {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLK_FROM_REFCLK AVS_CLK_DIV_CLK_O_FROM_REFCLK AVS_DIV_TOGGLE_FROM_REFCLK AVS_DIV_CLK_Q_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO AVS_CLK_FROM_REFCLK_GPIO} \
-    -group {AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK AVS_CLK_FROM_PERIPHERALCLK AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK AVS_DIV_TOGGLE_FROM_PERIPHERALCLK AVS_DIV_CLK_Q_FROM_PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO AVS_CLK_FROM_PERIPHERALCLK_GPIO}
+# These two can never be active simultaneously (muxed sources). Each group keeps only the
+# clocks this run created: the div_clk/Q stamps exist only after mapping, the GPIO stamps
+# only at block top.
+set avs_refclk_family [get_clocks -quiet {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLK_FROM_REFCLK AVS_CLK_DIV_CLK_O_FROM_REFCLK AVS_DIV_TOGGLE_FROM_REFCLK AVS_DIV_CLK_Q_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO AVS_CLK_FROM_REFCLK_GPIO}]
+set avs_periph_family [get_clocks -quiet {AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK AVS_CLK_FROM_PERIPHERALCLK AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK AVS_DIV_TOGGLE_FROM_PERIPHERALCLK AVS_DIV_CLK_Q_FROM_PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO AVS_CLK_FROM_PERIPHERALCLK_GPIO}]
+if {[sizeof_collection $avs_refclk_family] && [sizeof_collection $avs_periph_family]} {
+    set_clock_groups -logically_exclusive -group $avs_refclk_family -group $avs_periph_family
+}
 
 # SPI
 # SPICLK has no parent-level equivalent (at SMU, spi_clk_i is driven internally by SEP),
 # so it is created at both levels: on the port at block top, on the instance pin above.
 create_clock -add -name SPICLK            -period $clock_periods(SPICLK_PERIOD)                [cdc_port_or_pin "spi_clk_i"]
 
-create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO  -master_clock SPICLK -divide_by 1 -source [cdc_port_or_pin "spi_clk_i"]
-create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [cdc_port_or_pin "spi_clk_i"]
+# SPI.CLK on the GPIO pads. Block-top only: a parent stamps these on its own pads.
+if {[cdc_is_block_top]} {
+    create_generated_clock [get_ports {pad2core_i[9]}] -name SPICLK_IN_GPIO  -master_clock SPICLK -divide_by 1 -source [cdc_port_or_pin "spi_clk_i"]
+    create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master_clock SPICLK -divide_by 1 -source [cdc_port_or_pin "spi_clk_i"]
+}
 
 # I2C
 # controller uses PERIPHCLK + a counter to create output SCL, there is no logic based on SCL output

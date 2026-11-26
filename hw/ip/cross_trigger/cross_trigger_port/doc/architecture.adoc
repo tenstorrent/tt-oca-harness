@@ -17,14 +17,16 @@ interfaces.
 image::ctp-module-structure.svg["Gate-level structure of the Cross Trigger Port: the u_reg CSR block and the u_core pulse stretcher, handshake controller, synchronisers and pad-control muxes and registers",width=100%,pdfwidth=100%]
 
 The figure is read from the core side on the left to the four GPIO pads on the
-right. Every 2:1 mux is selected by `mode_wire_or_i`, and the numbers inside
-it mark which input each select value takes. Input 1, drawn upper, passes in
-wire-OR mode, when `mode_wire_or_i` is high because `CONFIG.MODE` is 0; input 0,
-drawn lower, passes in point-to-point mode. Italic names are nets driven by
+right. It shows the two modes that `CONFIG.MODE` selects; the toggle-mode logic,
+which only a static `mode_i` can select, is described in <<ctp-toggle-mode>>.
+Every 2:1 mux is selected by `mode_wire_or`, the decode of `mode_i` that is high
+in wire-OR mode, and the numbers inside it mark which input each select value
+takes. Input 1, drawn upper, passes in wire-OR mode, when `CONFIG.MODE` is 0;
+input 0, drawn lower, passes in point-to-point mode. Italic names are nets driven by
 `u_reg` from the named CSR fields. Every pad control and both core-side outputs, `ct_dst_o` and `busy_o`,
 leave the port through a register on `clk_i`. Each pad input passes through two
 synchroniser registers and an XOR with `invert_i` and, on the handshake inputs, an
-AND with `p2p_din_valid` before any logic uses it. The
+AND with `din_valid` before any logic uses it. The
 `STATUS` read-back from the core to `u_reg` is not drawn.
 
 === Submodule Hierarchy
@@ -51,10 +53,10 @@ endif::backend-html5[]
 |Implements 2-FF synchronizers for asynchronous GPIO inputs (ct_req_out_din, ct_req_in_din, ct_ack_in_din) from remote chiplets
 
 |`ctp_pulse_stretcher`
-|Extends source pulse duration for Wire-OR mode transmission, with configurable stretch multiplier (0-65535 cycles)
+|Extends source pulse duration for Wire-OR mode transmission, with configurable stretch multiplier (0-65535 cycles), and times the hold after each toggle in toggle mode
 
 |`ctp_edge_detector`
-|Detects positive edges on the synchronized ct_req_in signal; its output is not connected, because the receiver state machine works on the ct_req_in level
+|Detects rising and falling edges on the synchronized ct_req_in signal for the toggle-mode receiver; the point-to-point receiver state machine works on the ct_req_in level instead
 
 |`ctp_handshake_ctrl`
 |Implements sender and receiver state machines for Point-to-Point mode four-phase handshaking protocol
@@ -172,6 +174,69 @@ The timing is illustrative, and the delays are not to scale:
 .CTP request-acknowledge timing
 image::p2p_timing_diagram.svg["Four-phase handshake: Source CT_Req_out rises, Target CT_Req_in follows after the wire delay, Target CT_Ack_out rises after the target-domain delay, Source CT_Ack_in follows after the wire delay, and the same sequence repeats for deassertion after the source response delay",scaledwidth=90.0%]
 
+[[ctp-toggle-mode]]
+=== Toggle Mode
+
+Toggle mode sends each cross trigger as one level change on a single wire in
+each direction. It needs no pre-arranged pulse width, as wire-OR mode does, and
+no acknowledge round trip, as point-to-point mode does. A bidirectional link
+uses two signals: _CT_Req_out_ to the peer and _CT_Req_in_ from it. The _CT_Ack_in_
+and _CT_Ack_out_ pads are not used, and their enables and output data stay low.
+_CT_Req_out_ is driven push-pull.
+
+Only a static `mode_i` selects toggle mode. The one-bit `CONFIG.MODE` field of
+`cross_trigger_port` selects wire-OR or point-to-point mode only, so a port with
+CSRs cannot use toggle mode. The internal CTPs of the Cross Trigger Network can.
+
+==== Transmit
+
+A `ct_src_i` pulse inverts the toggle register, and so the _CT_Req_out_ level,
+and starts the hold. The pulse stretcher times the hold: it is active for
+`stretch_mult_i + 1` cycles after the cycle that accepts the trigger. A
+`ct_src_i` pulse while the hold is active is discarded. It does not invert the
+level, at that time or after the hold, and it does not restart the hold. Each
+_CT_Req_out_ level is therefore held for a minimum of `stretch_mult_i + 2`
+`clk_i` cycles, and a burst of pulses inside one hold gives one trigger at the
+peer. `busy_o` and `STATUS.BUSY` follow the hold, one cycle late.
+
+`invert_i` inverts the driven level. The toggle register resets to 0, so
+_CT_Req_out_ is low after reset, or high when `invert_i` is set.
+`handshake_reset_i` has no effect in toggle mode.
+
+==== Receive
+
+The core synchronizes _CT_Req_in_ with the same two-register chain as in
+point-to-point mode, applies `invert_i`, and gives one `ct_dst_o` pulse for each
+rising or falling edge of the result. The pulse appears on `ct_dst_o` two
+`clk_i` cycles after the first synchronizer register samples the new level,
+the same latency as the wire-OR receive path. The edge detector does not report
+an edge until the synchronized input carries pad data, two cycles after the
+input enable rises, as for the point-to-point handshake. The first synchronized
+level after reset is therefore the reference, and it does not give a trigger.
+
+==== Requirements on the Peer
+
+Toggle mode has no back-pressure. The sender cannot know when the peer has
+seen a level, so both ends must obey these rules:
+
+* The peer must hold each level it drives on _CT_Req_in_ for a minimum of two
+  `clk_i` cycles of the receiving port. Two level changes inside one sample
+  period of the synchronizer cancel, and the receiver sees no trigger.
+* Set `stretch_mult_i` so that the hold of `stretch_mult_i + 2` cycles is at
+  least two cycles of the peer's receive clock.
+* A reset of only one end while its output is high changes the level the other
+  end sees, and the other end gives one trigger. Reset the two ends together, or
+  keep every cross trigger matrix route through the port closed until both ends
+  are out of reset.
+
+<<ctp-toggle-timing-figure>> shows two triggers on one wire. The second trigger
+arrives during the hold of the first and is discarded. The timing is
+illustrative, and the delays are not to scale.
+
+[[ctp-toggle-timing-figure]]
+.CTP toggle timing
+image::toggle_timing_diagram.svg["Toggle mode: each accepted ct_src pulse inverts the sender's CT_Req_out and starts a hold; a pulse during the hold is discarded; the receiver gives one ct_dst pulse for each level change of its synchronized CT_Req_in",scaledwidth=90.0%]
+
 ==== Synchronization and CDC Handling
 
 All GPIO input signals are asynchronous with respect to the CTP system clock and
@@ -199,8 +264,8 @@ endif::backend-html5[]
 |Synchronizes open-drain wire state from remote chiplets before edge detection
 
 |`ct_req_in_din`
-|Point-to-Point
-|Synchronizes request signal from remote sender before receiver FSM
+|Point-to-Point, Toggle
+|Synchronizes request signal from remote sender before the receiver FSM or the toggle edge detector
 
 |`ct_ack_in_din`
 |Point-to-Point
@@ -227,8 +292,8 @@ state machine controls outgoing cross-trigger requests, while the receiver state
 machine handles incoming requests. Both state machines operate synchronously in
 the system clock domain on synchronized GPIO inputs.
 
-The state machines run only in point-to-point mode. While wire-OR mode is
-selected, `cross_trigger_port_core` holds the sender in SENDER_IDLE with
+The state machines run only in point-to-point mode. While wire-OR or toggle mode
+is selected, `cross_trigger_port_core` holds the sender in SENDER_IDLE with
 `ct_req_out=0` and blocks `ct_src_i` from reaching it. The `CT_Req_in` and
 `CT_Ack_in` pad inputs are disabled in wire-OR mode, and after point-to-point
 mode is selected their synchronizers hold the disabled pad level for two
@@ -275,7 +340,7 @@ endif::backend-html5[]
 |Force `ct_req_out=0`
 
 |Any state
-|Wire-OR mode selected
+|Wire-OR or toggle mode selected
 |SENDER_IDLE
 |Force `ct_req_out=0`
 |===

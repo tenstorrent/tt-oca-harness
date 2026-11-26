@@ -495,7 +495,8 @@ typedef union {
 // (an unmapped offset, or a partial write: a byte strobe that misses a byte the
 // register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
 // written. The faulting access also received SLVERR synchronously. A narrow
-// read inside a register returns OKAY.
+// read inside a register returns OKAY. The spi bit also latches the SPI host
+// fatal alert.
 // All bits OR together into a single PIC source, so read this register to
 // identify which block faulted.
 // No bit is cleared by a CPU-only reset (the WDT resets the CPU without
@@ -536,6 +537,14 @@ typedef union {
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_bp 6
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__WDT_reset 0x0
+// SPI host register bridge error, or the SPI host fatal_fault alert (a
+// register-bus integrity fault, or a write of ALERT_TEST.fatal_fault). A
+// real integrity fault repeats the alert until the SEP reset, so clearing
+// this bit does not keep it clear.
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__SPI_bm 0x80
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__SPI_bp 7
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__SPI_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_STATUS__SPI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         // AES register bridge error.
@@ -552,7 +561,12 @@ typedef union {
         uint64_t edn :1;
         // Watchdog timer register bridge error.
         uint64_t wdt :1;
-        uint64_t :57;
+        // SPI host register bridge error, or the SPI host fatal_fault alert (a
+        // register-bus integrity fault, or a write of ALERT_TEST.fatal_fault). A
+        // real integrity fault repeats the alert until the SEP reset, so clearing
+        // this bit does not keep it clear.
+        uint64_t spi :1;
+        uint64_t :56;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS_t;
@@ -599,6 +613,11 @@ typedef union {
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_bp 6
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_bw 1
 #define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__WDT_reset 0x0
+// Write 1 to clear PERIPH_BUS_ERR_STATUS.spi. Always reads 0.
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__SPI_bm 0x80
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__SPI_bp 7
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__SPI_bw 1
+#define SEP_CPU_CTRL__PERIPH_BUS_ERR_CLEAR__SPI_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         // Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.
@@ -615,7 +634,9 @@ typedef union {
         uint64_t edn :1;
         // Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.
         uint64_t wdt :1;
-        uint64_t :57;
+        // Write 1 to clear PERIPH_BUS_ERR_STATUS.spi. Always reads 0.
+        uint64_t spi :1;
+        uint64_t :56;
     } f;
     uint64_t w;
 } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR_t;

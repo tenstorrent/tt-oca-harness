@@ -275,7 +275,26 @@ class ImageRuleTest(unittest.TestCase):
             ]
             self.assertTrue(progs, f"seed {seed}: no denied EFUSE_PROGRAM_CTRL write")
             for a in progs:
-                self.assertEqual(a["data"], P.program_ctrl_word(p.leg["spare_p"]["addr"]))
+                self.assertEqual(a["data"], P.program_ctrl_word())
+
+    def test_interface_status_wide_oor_address_hides_an_in_range_bit(self) -> None:
+        half = P.EFUSE_ADDR_BITS // 2
+        self.assertEqual(
+            P.EFUSE_ADDR_BITS,
+            P.EFUSE_INTERFACE_CTRL.field_width("EFUSE_READ_ADDR", "efuse_addr"),
+        )
+        lows = set()
+        for seed in range(1, 200):
+            oor = P.plan(P.T_IF_STATUS, seed).leg["oor_addresses"]
+            self.assertTrue(all(P.FUSE_BITS <= a < 1 << P.EFUSE_ADDR_BITS for a in oor), oor)
+            wide = oor[-1]
+            low = wide & ((1 << half) - 1)
+            self.assertGreaterEqual(wide >> half, 1, f"seed {seed}: upper half is 0")
+            self.assertLess(low, P.FUSE_BITS, f"seed {seed}: lower half is out of range")
+            self.assertEqual(P.program_addr_word(wide) >> half, wide >> half)
+            self.assertEqual(P.read_addr_word(wide) >> half, wide >> half)
+            lows.add(low)
+        self.assertGreater(len(lows), 1, lows)
 
     def test_field_layout_redraw_is_logged_with_its_class(self) -> None:
         seen = 0
@@ -358,8 +377,11 @@ class TokenGoldenTest(unittest.TestCase):
         self.assertEqual(P.token_go_op(P.CH_CHIPLET)[1], 1 << 8)
 
     def test_control_words(self) -> None:
-        self.assertEqual(P.program_ctrl_word(0x1F01), 0x1F01 | 1 << 16 | 1 << 17 | 1 << 27)
-        self.assertEqual(P.read_ctrl_word(0x20), 0x20 | 1 << 16 | 1 << 28)
+        self.assertEqual(P.program_ctrl_word(), 1 << 16 | 1 << 17 | 1 << 27)
+        self.assertEqual(P.program_ctrl_word(data=0), 1 << 17 | 1 << 27)
+        self.assertEqual(P.read_ctrl_word(), 1 << 16 | 1 << 28)
+        self.assertEqual(P.program_addr_word(0x1F01), 0x1F01)
+        self.assertEqual(P.read_addr_word(0x20), 0x20)
 
 
 def _expected_row(state: str, sip: int, sys_: int, d1: int, d2: int, sec: int) -> int:

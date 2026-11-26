@@ -10268,7 +10268,7 @@ it as the LOCKS register describes.</ipxact:description>
         <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
         <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
         <ipxact:baseAddress>'h10930400</ipxact:baseAddress>
-        <ipxact:range>'h1c</ipxact:range>
+        <ipxact:range>'h24</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>EFUSE_INTERFACE_CTRL_STATUS</ipxact:name>
@@ -10364,21 +10364,9 @@ it as the LOCKS register describes.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_PROGRAM_CTRL</ipxact:name>
-          <ipxact:description>eFuse program control and status. Configures the program address and data, triggers a program, and reports program progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to program</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_data</ipxact:name>
             <ipxact:description>Data to program to eFuse.  If this bit is 0, the program request will be ignored</ipxact:description>
@@ -10458,21 +10446,9 @@ it as the LOCKS register describes.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>EFUSE_READ_CTRL</ipxact:name>
-          <ipxact:description>eFuse read control and status. Configures the read address, triggers a read, and reports read progress and completion status.</ipxact:description>
+          <ipxact:description>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</ipxact:description>
           <ipxact:addressOffset>'h8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>efuse_addr</ipxact:name>
-            <ipxact:description>Bit address to read</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
           <ipxact:field>
             <ipxact:name>efuse_read_go</ipxact:name>
             <ipxact:description>When set, triggers a read to efuse.</ipxact:description>
@@ -10633,6 +10609,42 @@ it as the LOCKS register describes.</ipxact:description>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_PROGRAM_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</ipxact:description>
+          <ipxact:addressOffset>'h1c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>EFUSE_READ_ADDR</ipxact:name>
+          <ipxact:description>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</ipxact:description>
+          <ipxact:addressOffset>'h20</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>efuse_addr</ipxact:name>
+            <ipxact:description>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -19537,7 +19549,8 @@ when a CPU access to that block's registers returned a TL-UL error response
 (an unmapped offset, or a partial write: a byte strobe that misses a byte the
 register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
 written. The faulting access also received SLVERR synchronously. A narrow
-read inside a register returns OKAY.
+read inside a register returns OKAY. The spi bit also latches the SPI host
+fatal alert.
 
 All bits OR together into a single PIC source, so read this register to
 identify which block faulted.
@@ -19629,6 +19642,22 @@ describe a fault from before that reset rather than a new one.</ipxact:descripti
             <ipxact:name>wdt</ipxact:name>
             <ipxact:description>Watchdog timer register bridge error.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>spi</ipxact:name>
+            <ipxact:description>SPI host register bridge error, or the SPI host fatal_fault alert (a
+register-bus integrity fault, or a write of ALERT_TEST.fatal_fault). A
+real integrity fault repeats the alert until the SEP reset, so clearing
+this bit does not keep it clear.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
@@ -19731,6 +19760,19 @@ latches.</ipxact:description>
             <ipxact:name>wdt</ipxact:name>
             <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>spi</ipxact:name>
+            <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.spi. Always reads 0.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>

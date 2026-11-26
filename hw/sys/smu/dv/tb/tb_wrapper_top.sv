@@ -73,12 +73,12 @@ module smu_wrapper_uvm_top
   end
 
   // Same override tb_top.sv applies: exercise the most-significant configured
-  // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
+  // DTP cross-trigger lane while [1:0] stay SMC-reserved. Without it lane 7
   // is wire-OR here and point-to-point there, so the CTM leaves would score a
   // different design on the two DUTs.
   function automatic smu_pkg::smu_cfg_t make_tb_cfg();
     smu_pkg::smu_cfg_t cfg = SmuBaseCfg;
-    cfg.XTRIG_INT_CT_MODE = 8'h80;
+    cfg.XTRIG_INT_CT_MODE[7].mode = cross_trigger_port_pkg::MODE_POINT_TO_POINT;
     cfg.SEP_SEC_DISABLE_TOKEN = SEC_DIS_TB_DIGEST;
     return cfg;
   endfunction

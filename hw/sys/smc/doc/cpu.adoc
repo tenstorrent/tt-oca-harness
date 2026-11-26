@@ -131,6 +131,80 @@ ifdef::backend-pdf[]
 <<fabric,Fabric>>.
 endif::backend-pdf[]
 
+[[smc-physical-memory-attributes]]
+=== Physical Memory Attributes
+
+The cores apply the physical memory attributes (PMA) in
+<<smc-physical-memory-attributes-table>> to every physical address. Chipyard
+generates them from the cluster's memory map, and they are fixed in hardware:
+no CSR, strap or fuse changes them. Rocket has no page-based memory types, and
+PMP only restricts the permissions the PMA grants.
+
+[[smc-physical-memory-attributes-table]]
+[cols="27%,33%,10%,10%,10%,10%",options="header"]
+.SMC core physical memory attributes
+|=======================================================================
+|Address range |Region |Access |Cacheable |Side effects |AMOs
+|`0x0000_0000` – `0xBFFF_FFFF` |System address space |RWX |No |Yes |No
+|`0xC000_0000` – `0xC000_0FFF` |Watchdog timers |RW |No |Yes |Yes
+|`0xC000_1000` – `0xC000_1FFF` |Debug Module hart interface |RWX |No |Yes |Yes
+|`0xC000_2000` – `0xC003_FFFF` |System and peripheral control, fabric control,
+mailbox, data processing, CPU and I/O control |RWX |No |Yes |No
+|`0xC004_0000` – `0xC005_FFFF` |Boot ROM |RX |Yes |No |No
+|`0xC006_0000` – `0xC015_FFFF` |Scratchpad |RWX |Yes |No |Yes
+|`0xC016_0000` – `0xC3FF_FFFF` |CLA, adopter external window, M-mode and
+Xvisor remap regions, and the rest of the local alias |RWX |No |Yes |No
+|`0xC400_0000` – `0xC801_3FFF` |PLIC, CLINT and bus error units |RW |No |Yes
+|Yes
+|`0xC801_4000` – `0xC801_4FFF` |Cluster error device |RWX |No |No |Yes
+|`0xC801_5000` – `0xFF_FFFF_FFFF_FFFF` |System address space |RWX |No |Yes
+|No
+|=======================================================================
+
+Addresses at or above 2^56^ are outside the physical address space, and every
+access to them faults. An AMO outside the ranges that permit AMOs, or an LR or
+SC outside a cacheable range, takes an access fault.
+
+Only the boot ROM and the scratchpad, reached through the local alias, are
+cacheable. The same memories reached through `GLOBAL_BASE` are uncached, as is
+every other window, including adopter targets behind the SMC output fabric.
+Loads and stores to an uncached range bypass the L1 D-cache.
+
+The L1 I-cache has no uncached fetch path. A fetch from any executable range
+that misses refills a 64-byte line into the I-cache tag and data arrays, and
+later fetches from that line hit in the I-cache until the line is replaced or
+invalidated. Cacheability governs only speculative refills: a speculative
+fetch that misses in an uncached range issues no refill and is fetched again
+once it is no longer speculative. Bit 3 of the machine-mode custom CSR `0x7C1`
+also suppresses speculative refills from cacheable ranges. It resets to 1, and
+M-mode software can clear it.
+
+A refill that returns an error response is reported to the core's bus error
+unit as an instruction-cache bus error, whether or not the core goes on to
+execute the fetched instructions. The line is installed marked as erroneous.
+An instruction fetched from it raises an instruction access fault only when it
+executes, and every later fetch that hits the line does the same until the
+line is replaced or invalidated.
+
+The I-cache takes no coherence probes, so it does not observe stores from any
+hart or writes by other initiators. After code in any executable range
+changes, each hart that executes it runs `fence.i` first. `fence.i`
+invalidates only the I-cache of the hart that executes it.
+
+No software or integration setting extends the cacheable set. An adopter that needs another range
+cached by the cores, such as an external memory or an executable window behind
+the SMC output fabric, needs an RTL change: the cluster regenerated from
+`OCAH4COREClusterConfig.scala` with that range marked cacheable. The AxCACHE
+that an
+ifdef::backend-html5[]
+xref:smc:fabric.adoc#smc-fabric-alias-remapping[alias remap region]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-fabric-alias-remapping,alias remap region>>
+endif::backend-pdf[]
+applies affects only the fabric and the system beyond it; it does not make a
+range cacheable in the cores' L1 caches.
+
 [[smc-per-core-reset]]
 == Reset and Boot
 
@@ -203,6 +277,14 @@ for completion. When repair reports done, the ROM checks success; the
 reported failure. These firmware checks do not establish that repair has
 completed successfully. The external sequencer must enforce the platform's
 repair and MBIST requirements before reporting boot-sequence completion.
+
+`ext_boot_seq_done_i` releases the cores from reset, so it is asserted only
+once every SMC memory macro, the L1 cache macros as well as the scratchpad, is
+safe to use; any task that prepares them, such as memory repair or MBIST,
+finishes first. The boot ROM at `0xC004_0000` is cacheable and
+Rocket has no instruction-cache enable or bypass, so the first instruction
+fetch after `int_rst_core_n` releases already goes through the L1
+instruction-cache arrays, before any firmware can check them.
 
 == System Interfaces
 

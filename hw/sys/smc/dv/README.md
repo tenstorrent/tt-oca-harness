@@ -344,7 +344,34 @@ default and on Verilator with `--tool verilator`. The bench architecture is
 in `docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
 conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 
-One bound scenario is `smc_register_sanity_test`:
+Sixteen scenarios are bound. Six carry both implementations:
+`smc_register_sanity_test`, `smc_default_reg_rd_test`, `smc_mutex_semaphore_test`,
+`smc_spm_mem_boundary_test`, `smc_reset_unit_lock_test` and
+`smc_multi_reset_csr_persistence_test`. Ten are SV-UVM only and sit in
+`testlists/holdout.toml`, by group:
+
+* `csr_uvm_extended`: `smc_regblock_sparse_strobe_test`, `smc_lock_pipelined_write_test`,
+  `smc_external_reg_lane_test`, `smc_narrow_access_side_effect_test`;
+* `wdt_uvm_extended`: `smc_wdt_feed_zerocmp_test`, `smc_wdt_core_awake_gate_test`,
+  `smc_wdt_second_stage_reset_test`;
+* `cg_uvm_extended`: `smc_fabric_reg_clock_gate_test`;
+* `mailbox_uvm_extended`: `smc_mailbox_cool_reset_recovery_test`;
+* `reset_uvm_extended`: `smc_ingress_reset_inflight_test`.
+
+`uvm_extended` collects the eight of them that run on Verilator or VCS; the
+other two, `smc_wdt_second_stage_reset_test` and
+`smc_fabric_reg_clock_gate_test`, are kept on a four-state simulator (VCS)
+because each samples DUT taps on every clock of its watch window and grades
+`$isunknown` of those taps as a check term of its own, not as a guard on a
+compared value, and that term cannot fail on a two-state simulator. The
+taps are the first-stage, second-stage and per-core timeout taps and the primary,
+watchdog, warm and core reset taps (`CHK-WDT-STAGE2-SCOPE`, `-FIRST` and `-HELD`),
+and the `cg_clk_active` and `cg_bus_active` taps (`CHK-REG-CG-SCOPE`). The other legs of
+those checks, and the other checks of the two leaves, would also grade on a
+two-state simulator, where they lose only their X/Z parts: the X/Z part of their tap and
+response compares, the read helpers' X/Z-mask term, the `*_KNOWN` AXI rules and `SMC_AXI_R_DATA_KNOWN`.
+
+The worked example is `smc_register_sanity_test`:
 SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
 `SCRATCH_COLD_WARM` registers over 16 seeded passes. In the SV-UVM shape every
 scratch read is predicted by `smc_scratch_csr_ref_model`, paired by the
@@ -437,7 +464,7 @@ hw/sys/smc/dv/
 │                           #   smc_efuse_image_*_test leaf generates into its
 │                           #   run directory at test start; those leaves derive
 │                           #   their expectations from that image
-├── assets/                 # the committed images: the hand-maintained eFuse
+├── assets/                 # the committed images: the generated eFuse
 │                           #   image and shadow-register preload the
 │                           #   single-instance run modes load
 │                           #   (smc_efuse_default.hex,
@@ -489,7 +516,7 @@ hw/sys/smc/dv/
   `dual` run mode senses (`build/efuse/smc_efuse_generated.hex`) and the image
   each `smc_efuse_image_*_test` leaf writes into its run directory and names
   through its own `+smc_efuse_hex`. It does not produce
-  `assets/smc_efuse_default.hex`, which is hand-maintained; the two targets
+  `assets/smc_efuse_default.hex`, which `efuse_preload/generate_efuse_preload.py` produces; the two targets
   sense different images, and `smc_sim_cfg.toml` (`[run_modes.dual]`) says why.
   Keeping the generators beside the schema is what lets a reviewer read which
   field a configuration sets.

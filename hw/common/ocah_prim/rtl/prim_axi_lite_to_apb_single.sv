@@ -17,112 +17,120 @@ module prim_axi_lite_to_apb_single #(
   parameter bit [AXI_ADDR_WIDTH-1:0] ADDR_START = 32'h0,  // Inclusive APB decode base.
   parameter bit [AXI_ADDR_WIDTH:0]   ADDR_END   = 33'h0,  // Exclusive APB decode limit.
 
-  localparam type addr_t = logic [AXI_ADDR_WIDTH-1:0],  // Address type alias.
+  parameter type axil_req_t  = logic,  // AXI-Lite request struct, AXI_ADDR_WIDTH-bit addresses.
+  parameter type axil_resp_t = logic,  // AXI-Lite response struct.
+  parameter type apb_req_t   = logic,  // APB request struct with paddr, pprot, psel, penable,
+                                       // pwrite, pwdata and pstrb.
+  parameter type apb_resp_t  = logic,  // APB response struct with pready, prdata and pslverr.
+
   localparam type data_t = logic [AXI_DATA_WIDTH-1:0],  // Data type alias.
   localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]  // Strobe type alias.
 ) (
   input logic clk_i,  // Clock shared by the AXI-Lite and APB sides of the bridge.
   input logic rst_ni,  // Async reset, active-low.
 
-  input  logic            axi_lite_awvalid_i,  // Write-address valid from the AXI-Lite manager.
-  input  addr_t           axi_lite_awaddr_i,  // Write byte address, decoded against [ADDR_START,
-                                              // ADDR_END).
-  input  axi_pkg::prot_t  axi_lite_awprot_i,  // Write protection attributes, forwarded to pprot_o.
-  output logic            axi_lite_awready_o,  // Write-address ready to the AXI-Lite manager.
-  input  logic            axi_lite_wvalid_i,  // Write-data valid from the AXI-Lite manager.
-  input  data_t           axi_lite_wdata_i,  // Write data, forwarded to pwdata_o.
-  input  strb_t           axi_lite_wstrb_i,  // Write byte strobes, forwarded to pstrb_o.
-  output logic            axi_lite_wready_o,  // Write-data ready to the AXI-Lite manager.
-  output logic            axi_lite_bvalid_o,  // Write-response valid to the AXI-Lite manager.
-  output axi_pkg::resp_t  axi_lite_bresp_o,  // Write response; SLVERR on pslverr_i, DECERR outside the decode range.
-  input  logic            axi_lite_bready_i,  // Write-response ready from the AXI-Lite manager.
-  input  logic            axi_lite_arvalid_i,  // Read-address valid from the AXI-Lite manager.
-  input  addr_t           axi_lite_araddr_i,  // Read byte address, decoded against [ADDR_START, ADDR_END).
-  input  axi_pkg::prot_t  axi_lite_arprot_i,  // Read protection attributes, forwarded to pprot_o.
-  output logic            axi_lite_arready_o,  // Read-address ready to the AXI-Lite manager.
-  output logic            axi_lite_rvalid_o,  // Read-data valid to the AXI-Lite manager.
-  output data_t           axi_lite_rdata_o,  // Read data returned from prdata_i.
-  output axi_pkg::resp_t  axi_lite_rresp_o,  // Read response; SLVERR on pslverr_i, DECERR outside the decode range.
-  input  logic            axi_lite_rready_i,  // Read-data ready from the AXI-Lite manager.
+  input  axil_req_t  axil_req_i,  // AXI-Lite request; addresses decode against [ADDR_START,
+                                  // ADDR_END).
+  output axil_resp_t axil_resp_o,  // AXI-Lite response; SLVERR on pslverr, DECERR outside the
+                                   // decode range.
 
-  output logic       psel_o,  // APB PSEL.
-  output logic       penable_o,  // APB PENABLE.
-  output logic       pwrite_o,  // APB PWRITE.
-  output addr_t      paddr_o,  // APB PADDR.
-  output data_t      pwdata_o,  // APB PWDATA.
-  output strb_t      pstrb_o,  // APB PSTRB.
-  output logic [2:0] pprot_o,  // APB PPROT.
-  input  logic       pready_i,  // APB PREADY.
-  input  logic       pslverr_i,  // APB PSLVERR.
-  input  data_t      prdata_i  // APB PRDATA.
+  output apb_req_t  apb_req_o,  // APB request to the single subordinate.
+  input  apb_resp_t apb_resp_i  // APB response from the single subordinate.
 );
 
+  `include "axi/typedef.svh"
+
+  // One extra address bit lets ADDR_END reach the top of the AXI_ADDR_WIDTH address space.
   localparam int unsigned ExtendedAddrWidth = AXI_ADDR_WIDTH + 1;
 
-  logic [ExtendedAddrWidth-1:0] paddr_out;
+  typedef logic [ExtendedAddrWidth-1:0] ext_addr_t;
 
-  AXI_LITE #(
-    .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-    .AXI_ADDR_WIDTH(ExtendedAddrWidth)
-  ) axi_lite ();
+  `AXI_LITE_TYPEDEF_ALL(ext_axil, ext_addr_t, data_t, strb_t)
+
+  typedef struct packed {
+    ext_addr_t      paddr;
+    axi_pkg::prot_t pprot;
+    logic           psel;
+    logic           penable;
+    logic           pwrite;
+    data_t          pwdata;
+    strb_t          pstrb;
+  } ext_apb_req_t;
+
+  typedef struct packed {
+    logic  pready;
+    data_t prdata;
+    logic  pslverr;
+  } ext_apb_resp_t;
 
   typedef struct packed {
     int unsigned idx;
-    logic [ExtendedAddrWidth-1:0] start_addr;
-    logic [ExtendedAddrWidth-1:0] end_addr;
+    ext_addr_t   start_addr;
+    ext_addr_t   end_addr;
   } rule_t;
 
-  localparam rule_t [0:0] ApbRuleT = '{
-      '{idx: 32'd0, start_addr: {1'b0, ADDR_START}, end_addr: ADDR_END}  // reset_unit
+  localparam rule_t [0:0] ApbRule = '{
+      '{idx: 32'd0, start_addr: {1'b0, ADDR_START}, end_addr: ADDR_END}
   };
 
-  axi_lite_to_apb_intf #(
-    .NoApbSlaves(1),
-    .NoRules(1),
-    .AddrWidth(ExtendedAddrWidth),
-    .DataWidth(AXI_DATA_WIDTH),
-    .PipelineRequest(PIPELINE_REQUEST),
+  ext_axil_req_t  ext_axil_req;
+  ext_axil_resp_t ext_axil_resp;
+  ext_apb_req_t   ext_apb_req;
+  ext_apb_resp_t  ext_apb_resp;
+
+  assign ext_axil_req.aw_valid = axil_req_i.aw_valid;
+  assign ext_axil_req.aw.addr  = {1'b0, axil_req_i.aw.addr};
+  assign ext_axil_req.aw.prot  = axil_req_i.aw.prot;
+  assign ext_axil_req.w_valid  = axil_req_i.w_valid;
+  assign ext_axil_req.w.data   = axil_req_i.w.data;
+  assign ext_axil_req.w.strb   = axil_req_i.w.strb;
+  assign ext_axil_req.b_ready  = axil_req_i.b_ready;
+  assign ext_axil_req.ar_valid = axil_req_i.ar_valid;
+  assign ext_axil_req.ar.addr  = {1'b0, axil_req_i.ar.addr};
+  assign ext_axil_req.ar.prot  = axil_req_i.ar.prot;
+  assign ext_axil_req.r_ready  = axil_req_i.r_ready;
+
+  assign axil_resp_o.aw_ready = ext_axil_resp.aw_ready;
+  assign axil_resp_o.w_ready  = ext_axil_resp.w_ready;
+  assign axil_resp_o.b_valid  = ext_axil_resp.b_valid;
+  assign axil_resp_o.b.resp   = ext_axil_resp.b.resp;
+  assign axil_resp_o.ar_ready = ext_axil_resp.ar_ready;
+  assign axil_resp_o.r_valid  = ext_axil_resp.r_valid;
+  assign axil_resp_o.r.data   = ext_axil_resp.r.data;
+  assign axil_resp_o.r.resp   = ext_axil_resp.r.resp;
+
+  axi_lite_to_apb #(
+    .NoApbSlaves     (1),
+    .NoRules         (1),
+    .AddrWidth       (ExtendedAddrWidth),
+    .DataWidth       (AXI_DATA_WIDTH),
+    .PipelineRequest (PIPELINE_REQUEST),
     .PipelineResponse(PIPELINE_RESPONSE),
-    .rule_t(rule_t)
+    .axi_lite_req_t  (ext_axil_req_t),
+    .axi_lite_resp_t (ext_axil_resp_t),
+    .apb_req_t       (ext_apb_req_t),
+    .apb_resp_t      (ext_apb_resp_t),
+    .rule_t          (rule_t)
   ) u_axi_lite_to_apb (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .slv(axi_lite),
-    .paddr_o(paddr_out),
-    .pprot_o(pprot_o),
-    .pselx_o(psel_o),
-    .penable_o(penable_o),
-    .pwrite_o(pwrite_o),
-    .pwdata_o(pwdata_o),
-    .pstrb_o(pstrb_o),
-    .pready_i(pready_i),
-    .prdata_i(prdata_i),
-    .pslverr_i(pslverr_i),
-    .addr_map_i(ApbRuleT)
+    .clk_i          (clk_i),
+    .rst_ni         (rst_ni),
+    .axi_lite_req_i (ext_axil_req),
+    .axi_lite_resp_o(ext_axil_resp),
+    .apb_req_o      (ext_apb_req),
+    .apb_resp_i     (ext_apb_resp),
+    .addr_map_i     (ApbRule)
   );
 
-  assign paddr_o = paddr_out[AXI_ADDR_WIDTH-1:0];
+  assign apb_req_o.paddr   = ext_apb_req.paddr[AXI_ADDR_WIDTH-1:0];
+  assign apb_req_o.pprot   = ext_apb_req.pprot;
+  assign apb_req_o.psel    = ext_apb_req.psel;
+  assign apb_req_o.penable = ext_apb_req.penable;
+  assign apb_req_o.pwrite  = ext_apb_req.pwrite;
+  assign apb_req_o.pwdata  = ext_apb_req.pwdata;
+  assign apb_req_o.pstrb   = ext_apb_req.pstrb;
 
-  // assign IOs to interface
-  assign axi_lite.aw_valid = axi_lite_awvalid_i;
-  assign axi_lite.aw_addr = {1'b0, axi_lite_awaddr_i};
-  assign axi_lite.aw_prot = axi_lite_awprot_i;
-  assign axi_lite.w_valid = axi_lite_wvalid_i;
-  assign axi_lite.w_data = axi_lite_wdata_i;
-  assign axi_lite.w_strb = axi_lite_wstrb_i;
-  assign axi_lite.b_ready = axi_lite_bready_i;
-  assign axi_lite.ar_valid = axi_lite_arvalid_i;
-  assign axi_lite.ar_addr = {1'b0, axi_lite_araddr_i};
-  assign axi_lite.ar_prot = axi_lite_arprot_i;
-  assign axi_lite.r_ready = axi_lite_rready_i;
-
-  assign axi_lite_awready_o = axi_lite.aw_ready;
-  assign axi_lite_wready_o = axi_lite.w_ready;
-  assign axi_lite_bvalid_o = axi_lite.b_valid;
-  assign axi_lite_bresp_o = axi_lite.b_resp;
-  assign axi_lite_arready_o = axi_lite.ar_ready;
-  assign axi_lite_rvalid_o = axi_lite.r_valid;
-  assign axi_lite_rdata_o = axi_lite.r_data;
-  assign axi_lite_rresp_o = axi_lite.r_resp;
+  assign ext_apb_resp.pready  = apb_resp_i.pready;
+  assign ext_apb_resp.prdata  = apb_resp_i.prdata;
+  assign ext_apb_resp.pslverr = apb_resp_i.pslverr;
 
 endmodule : prim_axi_lite_to_apb_single

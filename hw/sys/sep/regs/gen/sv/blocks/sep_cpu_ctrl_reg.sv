@@ -552,6 +552,10 @@ module sep_cpu_ctrl_reg (
                 logic next;
                 logic load_next;
             } wdt;
+            struct {
+                logic next;
+                logic load_next;
+            } spi;
         } PERIPH_BUS_ERR_CLEAR;
     } field_combo_t;
     field_combo_t field_combo;
@@ -715,6 +719,9 @@ module sep_cpu_ctrl_reg (
             struct {
                 logic value;
             } wdt;
+            struct {
+                logic value;
+            } spi;
         } PERIPH_BUS_ERR_CLEAR;
     } field_storage_t;
     field_storage_t field_storage;
@@ -1556,6 +1563,32 @@ module sep_cpu_ctrl_reg (
         end
     end
     assign hwif_out.PERIPH_BUS_ERR_CLEAR.wdt.value = field_storage.PERIPH_BUS_ERR_CLEAR.wdt.value;
+    // Field: sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR.spi
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PERIPH_BUS_ERR_CLEAR.spi.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PERIPH_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PERIPH_BUS_ERR_CLEAR.spi.value & ~decoded_wr_biten[7:7]) | (decoded_wr_data[7:7] & decoded_wr_biten[7:7]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.PERIPH_BUS_ERR_CLEAR.spi.next = next_c;
+        field_combo.PERIPH_BUS_ERR_CLEAR.spi.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PERIPH_BUS_ERR_CLEAR.spi.value <= 1'h0;
+        end else begin
+            if(field_combo.PERIPH_BUS_ERR_CLEAR.spi.load_next) begin
+                field_storage.PERIPH_BUS_ERR_CLEAR.spi.value <= field_combo.PERIPH_BUS_ERR_CLEAR.spi.next;
+            end
+        end
+    end
+    assign hwif_out.PERIPH_BUS_ERR_CLEAR.spi.value = field_storage.PERIPH_BUS_ERR_CLEAR.spi.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1678,6 +1711,7 @@ module sep_cpu_ctrl_reg (
             readback_data_var[4] = hwif_in.PERIPH_BUS_ERR_STATUS.csrng.next;
             readback_data_var[5] = hwif_in.PERIPH_BUS_ERR_STATUS.edn.next;
             readback_data_var[6] = hwif_in.PERIPH_BUS_ERR_STATUS.wdt.next;
+            readback_data_var[7] = hwif_in.PERIPH_BUS_ERR_STATUS.spi.next;
         end
         if(rd_mux_addr == 13'h1000) begin
             readback_data_var[31:0] = 32'hdeadbeef;

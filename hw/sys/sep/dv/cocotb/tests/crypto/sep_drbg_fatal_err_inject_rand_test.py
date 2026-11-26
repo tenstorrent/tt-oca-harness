@@ -115,7 +115,7 @@ check on its own line (``CHK-RAS-<FIELD>-BOOT``, ``-IDLE``, ``-RISE``, ``-MODE2`
   CHK-RAS-EDN_FATAL-FIFO: the EDN FIFO errors are fatal
   (``vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc:321,326``)
   and a fatal error repeats ``edn_fatal`` until reset
-  (``hw/sys/sep/rtl/sep_pkg.sv:510-511``, delegated by ``port_table.adoc:130``).
+  (``hw/sys/sep/rtl/sep_pkg.sv:512-513``, delegated by ``port_table.adoc:130``).
   In each EDN FIFO-error cell the field rises at least twice from the
   ERR_CODE_TEST write to the end of the cell window, before its TRNG reset. In
   each EDN FIFO trial it rises at least twice from the word-14 write to the
@@ -473,7 +473,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         close_graded_window(self.logger)
         set_drbg_fatal_pass(False, self.logger)
         self._ras_shape(ras_m0)
-        self._stop_sb()
+        await self._stop_sb()
         await self.vec.stop()
         await self.ras.stop()
         self.chk.finish()
@@ -516,9 +516,9 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
     def _now(self) -> int:
         return self.vec.clk
 
-    def _stop_sb(self) -> None:
+    async def _stop_sb(self) -> None:
         if self.sb is not None:
-            self.sb.stop()
+            await self.sb.stop()
             self.sb = None
 
     async def _wait_probe(self, cond, bound: int) -> bool:
@@ -534,7 +534,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
     async def _trng_reset(self) -> None:
         """TRNG reset 0 then 1 on SW_RESET_N bit 5, with the probes of the release."""
         dut = cocotb.top
-        self._stop_sb()
+        await self._stop_sb()
         await self.swrst.park("trng")
         if not await self._wait_probe(
             lambda: self.rd(dut.trng_reset_active_probe_o, mask=1) == 1, TRNG_RELEASE_CAP

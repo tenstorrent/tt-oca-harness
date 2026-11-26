@@ -322,6 +322,17 @@ module smc_uvm_top
     output logic        bfm_cpu_trace_exc /*verilator public_flat_rw*/,
     output logic [63:0] bfm_cpu_trace_cause /*verilator public_flat_rw*/,
     output logic [57:0] bfm_cpu_trace_tval /*verilator public_flat_rw*/,
+    // Target harts 1-3 retirement records, each masked while its core is in
+    // reset, so a test can see which harts execute which ROM code.
+    output logic        dut_hart1_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart1_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart1_trace_pc /*verilator public_flat_rw*/,
+    output logic        dut_hart2_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart2_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart2_trace_pc /*verilator public_flat_rw*/,
+    output logic        dut_hart3_trace_valid /*verilator public_flat_rw*/,
+    output logic        dut_hart3_trace_exc /*verilator public_flat_rw*/,
+    output logic [57:0] dut_hart3_trace_pc /*verilator public_flat_rw*/,
 
     // ------------------------------------------------------------------
     // Read-only peek into the TARGET's scratch SRAM.
@@ -645,6 +656,9 @@ module smc_uvm_top
     bit tb_hold_ext_boot /*verilator public_flat_rw*/;
     // ext_interrupts_i[16:2], PLIC sources 3-17; bits 1 and 0 keep their own pins.
     bit [16:2] tb_ext_interrupts_hi_i /*verilator public_flat_rw*/;
+    // ext_interrupts_i[255:17], PLIC sources 18-256.
+    bit [smc_4core_cpu_pkg::NumExtInterrupts-1:17]
+        tb_ext_interrupts_ext_i /*verilator public_flat_rw*/;
     // +smc_uart_cross_3to0: cross-wire UART pairs 0↔3 and 1↔2
     // (TX of each into RX of the peer).
     bit tb_uart_cross_3to0;
@@ -1426,9 +1440,8 @@ module smc_uvm_top
         .smc_ras_o                  (smc_ras),
         .smc_global_base_o          (),
         .smc_region_size_o          (smc_region_size),
-        .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NumExtInterrupts-17){1'b0}},
-                                       tb_ext_interrupts_hi_i, tb_temp_interrupt_i,
-                                       tb_ext_interrupt_0_i}),
+        .smc_ext_interrupts_i       ({tb_ext_interrupts_ext_i, tb_ext_interrupts_hi_i,
+                                       tb_temp_interrupt_i, tb_ext_interrupt_0_i}),
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (tb_sep_wdt_reset_n),
         .smc_fuse_sense_done_o,
@@ -2106,7 +2119,7 @@ module smc_uvm_top
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.valid;
     assign tb_efuse_shim_resp_status =
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.status;
-    assign tb_efuse_locks = shadow_regs.locks.locks;
+    assign tb_efuse_locks = shadow_regs.locks.harness_locks;
     `define SMC_MBX0 u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_axil_mailbox.gen_mailbox[0].u_axi_lite_mailbox
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;
@@ -5660,6 +5673,24 @@ module smc_uvm_top
     assign bfm_cpu_trace_tval   = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_tval : '0;
     `undef SMC_DUT_HART0_CSR
     `undef SMC_BFM_HART0_CSR
+
+    `define SMC_DUT_CPU u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper
+    `define SMC_DUT_HART1_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr
+    `define SMC_DUT_HART2_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr
+    `define SMC_DUT_HART3_CSR `SMC_DUT_CPU.u_smc_cpu.u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr
+    assign dut_hart1_trace_valid = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart1_trace_exc   = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart1_trace_pc    = `SMC_DUT_CPU.core_reset_n[1] ? `SMC_DUT_HART1_CSR.io_trace_0_iaddr : '0;
+    assign dut_hart2_trace_valid = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart2_trace_exc   = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart2_trace_pc    = `SMC_DUT_CPU.core_reset_n[2] ? `SMC_DUT_HART2_CSR.io_trace_0_iaddr : '0;
+    assign dut_hart3_trace_valid = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_valid : 1'b0;
+    assign dut_hart3_trace_exc   = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_exception : 1'b0;
+    assign dut_hart3_trace_pc    = `SMC_DUT_CPU.core_reset_n[3] ? `SMC_DUT_HART3_CSR.io_trace_0_iaddr : '0;
+    `undef SMC_DUT_HART1_CSR
+    `undef SMC_DUT_HART2_CSR
+    `undef SMC_DUT_HART3_CSR
+    `undef SMC_DUT_CPU
 
     // ------------------------------------------------------------------
     // Controller I3C TX-port snoop (see the port comment). Passive: it only
