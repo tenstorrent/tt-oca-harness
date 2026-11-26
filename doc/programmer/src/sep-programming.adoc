@@ -66,21 +66,23 @@ other NMI source:
 . Place an NMI handler in ICCM.
 . Write the handler's address to `SEP_NMI_VEC`.
 . Set `SEP_NMI_VEC_LOCK` (offset `0x188`) to freeze the vector until the next
-  reset.
+  SEP reset (cold reset or the JTAG `sep_reset_n` override); a watchdog restart
+  does not unlock it.
 . Only then enable the WDT.
 
 If a bark arrives while the reset value is still in place, the core jumps to
 `0xC000_0100` and executes whatever occupies that location: arbitrary
-instructions if the loaded image covers it, or an uncorrectable ICCM ECC error
-if it does not. The ECC case re-raises NMI, so the core makes no forward
-progress.
+instructions if the loaded image covers it. A fetch there that takes an
+uncorrectable ICCM ECC error raises an instruction access fault (`mcause`
+`0x1`) through `mtvec`, not the NMI.
 ====
 
-Because `SEP_NMI_VEC_LOCK` is write-one-to-set and sticky until reset, the
-vector cannot be repointed once locked. Firmware that needs to install a
-different handler after lock must do so through its own indirection — the
-reference firmware keeps a runtime-writable handler pointer that the trampoline
-dispatches through, so the locked vector always targets the trampoline.
+Because `SEP_NMI_VEC_LOCK` is write-one-to-set and sticky until the next SEP
+reset, the vector cannot be repointed once locked. Firmware that needs to
+install a different handler after lock must do so through its own indirection
+— the reference firmware keeps a runtime-writable handler pointer that the
+trampoline dispatches through, so the locked vector always targets the
+trampoline.
 
 If the watchdog bite threshold is also enabled, an unserviced bark still
 escalates to the watchdog reset path and restarts the SEP CPU. A mis-programmed
@@ -229,6 +231,10 @@ specific service:
 .SEP interrupt sources with specific service
 |===
 |Source |Service
+|34, eFuse locked-field access |A one-cycle pulse for each shadow-register
+access that a field lock blocks. Program `meigwctrl[34]` as an edge gateway and
+write `meigwclr[34]` in the handler; a level gateway can lose the pulse. No
+register records the blocked address.
 |39, entropy pool pointer fault |Level-sensitive with no write-one-to-clear.
 Mask the source, or scrub the pool with `TRNG_ENTROPY_CLEAR`. The source is tied
 to zero in the current configuration.
@@ -237,7 +243,9 @@ Read `TOKEN_MATCH_FAULT` to identify the token, then mask the source; an
 unmasked handler re-enters.
 |41, 42, DMA register-path and host-path faults |Write `DMA_BUS_ERR_CLEAR.clr`.
 |43, peripheral register-bridge fault |Read `PERIPH_BUS_ERR_STATUS` to identify
-the block, then clear that block's bit in `PERIPH_BUS_ERR_CLEAR`.
+the block, then clear that block's bit in `PERIPH_BUS_ERR_CLEAR`. An SPI host
+register-bus integrity fault repeats until the SEP reset, so
+`PERIPH_BUS_ERR_STATUS.spi` sets again after its clear; mask the source.
 |===
 
 .PIC example C definitions.
@@ -664,8 +672,9 @@ periodically by resetting its count, proving that the SEP CPU is still making
 progress. If the count reaches the bark threshold, the watchdog raises the NMI,
 which jumps through `SEP_NMI_VEC`; program and lock that vector first, as
 <<sep-nmi-vector-programming>> describes. If the count reaches the bite
-threshold, the watchdog requests a watchdog reset. `wdt_debug_sleep_mode_i`
-selects whether the timer keeps counting while the CPU is halted in debug.
+threshold, the watchdog requests a watchdog reset. The SEP watchdog keeps
+counting while the CPU is halted in debug, and `WDOG_CTRL.pause_in_sleep` has
+no effect.
 
 A bite from the SEP or the SMC watchdog restarts both CPUs and returns the SEP
 watchdog to its reset values: disabled, and unlocked even if firmware cleared
@@ -820,7 +829,9 @@ apart:
   `EVENT_ENABLE`; service the event condition or change `EVENT_ENABLE`.
 
 `INTR_ENABLE` gates only the interrupt line, so both state bits can be polled
-with it clear. Activity is reported only by `STATUS.ACTIVE`. Access the
+with it clear. The core's `fatal_fault` alert, raised by a register-bus
+integrity fault or by `ALERT_TEST`, sets `PERIPH_BUS_ERR_STATUS.spi` rather
+than `INTR_STATE`. Activity is reported only by `STATUS.ACTIVE`. Access the
 registers with 32-bit accesses: the 64-bit peripheral bus splits an 8-byte write
 into two 4-byte register writes.
 

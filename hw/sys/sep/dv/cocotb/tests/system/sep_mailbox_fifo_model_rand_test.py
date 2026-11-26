@@ -21,9 +21,10 @@ Results", "Sending and Receiving";
   ``IRQEN``; the line of a port is the OR of ``IRQP``;
 * a flush bit discards the selected FIFO and ``CTRL`` reads 0;
 * the inbound line of mailbox ``m`` is bit ``m`` of
-  ``sep_internal_interrupts_probe_o``; the eight outbound lines are the eight
-  bits of ``smc_mailbox_interrupt_o``, graded as a set (count, 0x00, 0xFF,
-  Hamming distance), because no text states the port-bit map.
+  ``sep_internal_interrupts_probe_o``; the outbound line of mailbox ``m`` is
+  bit ``m`` of ``smc_mailbox_interrupt_o`` (``hw/sys/sep/doc/mailbox.adoc``:32-35),
+  so CHK-LINE-OUT compares the port with the model mask, and CHK-SMC-MAP
+  grades that the one port bit that rises with one outbound line is bit ``m``.
 
 Expected values come from ``env/sep_mbox_pair_model.MboxSystem``, which holds
 the stimulus only. The CPU-LSU master drives the outbound apertures; the
@@ -55,15 +56,14 @@ that does not grade all of these cells on both FIFOs fails with
 of unstrobed lanes that carry non-zero data is not claimed.
 
 Checks: CHK-ENTRY, CHK-STATUS, CHK-CLAMP, CHK-FLUSH, CHK-CTRL0, CHK-ALIAS,
-CHK-LINE-IN, CHK-LINE-OUT, CHK-LINE-ISO, CHK-GATE, CHK-W1C, CHK-WIDTH,
-CHK-GLITCH, CHK-NONVAC. The outbound mailbox 0 cells that open tests grade
+CHK-LINE-IN, CHK-LINE-OUT, CHK-SMC-MAP, CHK-LINE-ISO, CHK-GATE, CHK-W1C,
+CHK-WIDTH, CHK-GLITCH, CHK-NONVAC. The outbound mailbox 0 cells that open tests grade
 (the outbound write threshold and ``wtirq`` gate of FIFO A, the acknowledge
 of ``wtirq`` above the threshold, the outbound ``wflush`` and the outbound
 read threshold of FIFO B) run as controls and print ``CTRL-<NAME> LOG``;
 ``STATUS`` bits [1:0] print ``CTRL-STATUS LOG`` outside the flush check; the
 alias-leg pops print ``CTRL-ENTRY LOG``.
-Log only: ``OBS-KM-LINE`` (probe bit 14), ``OBS-SMC-MAP`` (the port bit that
-rose when one outbound line rose).
+Log only: ``OBS-KM-LINE`` (probe bit 14).
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``, RAND-REP.
 Every draw comes from ``SepSeededRng`` and the run seed: mailbox order,
@@ -213,6 +213,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         "CHK-ALIAS",
         "CHK-LINE-IN",
         "CHK-LINE-OUT",
+        "CHK-SMC-MAP",
         "CHK-LINE-ISO",
         "CHK-GATE",
         "CHK-W1C",
@@ -296,6 +297,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         exp_in = self.mbx.in_lines()
         exp_cnt = self.mbx.out_count()
         out_now = self.mbx.out_lines()
+        exp_out = self.mbx.out_mask()
         probe = smc = -1
         for _ in range(SETTLE_BOUND):
             await RisingEdge(clk)
@@ -352,15 +354,21 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         cc = CC(probe_end, smc_end, km)
 
         # ---- the 16 lines --------------------------------------------------
-        all_zero_ok = "na" if exp_cnt else int(smc_end == 0)
-        all_one_ok = "na" if exp_cnt != 8 else int(smc_end == 0xFF)
+        # The settle wait counts high bits only, so a port-bit map defect reaches
+        # CHK-SMC-MAP at the first single rise before the mask compare below.
+        rose = [m for m in range(8) if out_now[m] and not self.prev_out[m]]
+        if len(rose) == 1:
+            new = smc_end & ~self.prev_smc & 0xFF
+            self._grade(
+                "CHK-SMC-MAP",
+                new == 1 << rose[0],
+                f"mbox={rose[0]} rose=0x{new:02x} exp=0x{1 << rose[0]:02x} {note}",
+            )
         self.max_high = max(self.max_high, exp_cnt)
-        out_ok = popcount(smc_end) == exp_cnt and all_zero_ok != 0 and all_one_ok != 0
         self._grade(
             "CHK-LINE-OUT",
-            out_ok,
-            f"high_model={exp_cnt} smc=0x{smc_end:02x} popcount={popcount(smc_end)} "
-            f"all_zero_ok={all_zero_ok} all_one_ok={all_one_ok} {note}",
+            smc_end == exp_out,
+            f"smc=0x{smc_end:02x} model=0x{exp_out:02x} high_model={exp_cnt} {note}",
         )
         if exp_cnt == 8 and smc_end == 0xFF:
             self.seen_all_one = True
@@ -378,10 +386,6 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             f"driven={driven} others=0x{others:02x} model=0x{others_model:02x} smc_hamming={ham} "
             f"model_changed={changed} driven_moved={int(bool(moved))} {note}",
         )
-        rose = [m for m in range(8) if out_now[m] and not self.prev_out[m]]
-        if len(rose) == 1 and popcount(smc_end & ~self.prev_smc) == 1:
-            bit = (smc_end & ~self.prev_smc).bit_length() - 1
-            self.logger.info("OBS-SMC-MAP LOG seed=%d mbox=%d bit=%d", self.seed, rose[0], bit)
         self.prev_out = out_now
         self.prev_smc = smc_end
         self.prev_probe = probe_end
@@ -442,11 +446,8 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         return cc
 
     def _line(self, cc: CC, m: int, port: str) -> int:
-        """The observed line of one port: probe bit m, or the port count less the other outbound lines."""
-        if port == "in":
-            return (cc.probe >> m) & 1
-        others = sum(self.mbx[k].line("out") for k in range(8) if k != m)
-        return popcount(cc.smc) - others
+        """The observed line of one port: bit m of the probe or of the SMC-facing port."""
+        return ((cc.probe if port == "in" else cc.smc) >> m) & 1
 
     # ------------------------------------------------------------------ draws
     def _payload(self, used: set, bits: int = 64, both_halves: bool = False) -> int:

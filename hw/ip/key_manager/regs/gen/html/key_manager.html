@@ -62,7 +62,7 @@
 <tr><td>0x1112C</td><td><a href="#SYS_PUBK_HASH">SYS_PUBK_HASH</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x1114C</td><td><a href="#SYS_UID">SYS_UID</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x1116C</td><td><a href="#STATUS_RPT">STATUS_RPT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11170</td><td><a href="#ROM_CTL">ROM_CTL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11170</td><td><a href="#ROM_CTL">ROM_CTL</a></td><td>RW</td><td>Reserved.</td></tr>
 <tr><td>0x11174</td><td><a href="#SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x11178</td><td><a href="#CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x11198</td><td><a href="#CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</a></td><td>RW</td><td>-</td></tr>
@@ -543,9 +543,7 @@
 <h3 id="ROM_CTL">ROM_CTL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>reserved</td><td>RW</td><td>0x0</td><td>reserved</td></tr>
-<tr><td>5:1</td><td>rom_swap_ctrl</td><td>RW</td><td>0x0</td><td>controls how the rom slices are swapped</td></tr>
-<tr><td>0</td><td>rom_endianness_ctrl</td><td>RW</td><td>0x0</td><td>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</td></tr>
+<tr><td>31:0</td><td>reserved</td><td>RW</td><td>0x0</td><td>reserved</td></tr>
 </table>
 <h3 id="SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</h3>
 <table>

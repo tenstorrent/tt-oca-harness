@@ -212,7 +212,7 @@ Checkers:
                        FIFO_CTRL.ENABLE, INTR_STATUS.FIFO_OVERFLOW; architecture.adoc:146,
                        :150).
   CHK-COND-HT-OFF      with ``CTRL.BYPASS_ENTROPY_COMPRESSOR`` = 1 the 32-bit health test
-                       is clock-gated off (architecture.adoc:47-48; trng.adoc:62-63):
+                       is clock-gated off (architecture.adoc:47-48; trng.adoc:64-65):
                        HEALTH_TEST_STATUS (entropy_source.rdl:352) reads 0 after a write
                        of 0xFF and still reads 0 after max(WINDOW, t_ctrl) + 64
                        constant-zero strobes (WINDOW = 2048, the health-test window;

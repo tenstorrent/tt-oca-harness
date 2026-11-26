@@ -10,7 +10,8 @@
 // NUM_COMPONENTS sizes the IO fabric. NumSlaves is NUM_COMPONENTS + 1 for the error
 // slave.
 // sep_io_spi_req_o / sep_io_spi_rsp_i carry the SPI pad request/response struct, which also
-// holds the SPI interrupt and DMA trigger.
+// holds the SPI interrupt and DMA trigger. spi_bus_err_o / spi_bus_err_clr_i are the SPI
+// wrapper's sticky register-bus fault and its clear.
 
 `include "axi/assign.svh"
 
@@ -32,7 +33,11 @@ module sep_io #(
   output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,  // SPI pad outputs (clock, chip select, 4
                                                           // data lanes and their output enables),
                                                           // plus the SPI interrupt and DMA trigger.
-  input  sep_io_pkg::sep_io_spi_rsp_t  sep_io_spi_rsp_i  // SPI data-lane inputs from the pads.
+  input  sep_io_pkg::sep_io_spi_rsp_t  sep_io_spi_rsp_i,  // SPI data-lane inputs from the pads.
+
+  output logic                      spi_bus_err_o,  // SPI register-bridge TL-UL error response or
+                                                    // fatal alert; sticky until spi_bus_err_clr_i.
+  input  logic                      spi_bus_err_clr_i  // Single-cycle clear for spi_bus_err_o.
 );
 
   /////////////////////////
@@ -183,7 +188,10 @@ module sep_io #(
     .spi_sd_i       (sep_io_spi_rsp_i.sd),
 
     .irq_o          (sep_io_spi_req_o.irq),
-    .lsio_trigger_o (sep_io_spi_req_o.lsio_trigger)
+    .lsio_trigger_o (sep_io_spi_req_o.lsio_trigger),
+
+    .bus_err_o      (spi_bus_err_o),
+    .bus_err_clr_i  (spi_bus_err_clr_i)
   );
 
   prim_axi_lite_err_slv #(

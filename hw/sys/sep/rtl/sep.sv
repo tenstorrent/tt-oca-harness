@@ -1039,7 +1039,10 @@ NumSramDemuxPorts
     .sep_io_axi_resp_o (sep_io_axi_resp),
 
     .sep_io_spi_req_o  (sep_io_spi_req_o),
-    .sep_io_spi_rsp_i  (sep_io_spi_rsp_i)
+    .sep_io_spi_rsp_i  (sep_io_spi_rsp_i),
+
+    .spi_bus_err_o     (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_SPI]),
+    .spi_bus_err_clr_i (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_SPI])
   );
 
   //////////////////////

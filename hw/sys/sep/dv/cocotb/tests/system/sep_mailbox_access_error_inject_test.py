@@ -50,10 +50,11 @@ inbound port by the external SMN master through two inbound filter entries
 over each whole 4 KiB pair (``allow_ns`` 0 and 1, ``src_id`` 0). The K4, K5,
 K6 and ``WRITE_DATA`` read accesses go on the external master to either
 aperture. The inbound line of mailbox ``m`` is bit ``m`` of
-``sep_internal_interrupts_probe_o``; the outbound lines are graded as the
-count of high bits of ``smc_mailbox_interrupt_o`` and as one port bit that
-rises, holds and drops while no other bit moves. Which port bit belongs to
-which mailbox is not graded: no text states the map.
+``sep_internal_interrupts_probe_o``. The outbound line of mailbox ``m`` is
+bit ``m`` of ``smc_mailbox_interrupt_o`` (``hw/sys/sep/doc/mailbox.adoc:32-35``):
+every sample compares the whole port with the model mask, and the error line of
+the outbound port is graded on bit ``m``, which rises, holds and drops while no
+other bit moves.
 
 Checks: CHK-ERR-RD, CHK-ERR-WR, CHK-RO, CHK-HOLE, CHK-EXTENT, CHK-HOLE-FLAGS,
 CHK-FLAGS-CLEAR, CHK-FLAGS-BOTH, CHK-ERR-LINE, CHK-WO-READ, CHK-TWIN,
@@ -100,7 +101,7 @@ from env.sep_mbox_golden import (
     ST_EMPTY,
     WRITE_DATA_RD_SENTINEL,
 )
-from env.sep_mbox_pair_model import IRQ_ALL, MboxSystem, popcount
+from env.sep_mbox_pair_model import IRQ_ALL, MboxSystem
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0 as MBX_REGS
@@ -791,18 +792,17 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             async def line_obs(tag: str) -> tuple[int, str]:
                 probe, smc = await self._sample_lines()
                 exp_probe = self.mbx.in_lines()
-                exp_cnt = self.mbx.out_count()
-                if probe != exp_probe or popcount(smc) != exp_cnt:
+                exp_smc = self.mbx.out_mask()
+                if probe != exp_probe or smc != exp_smc:
                     self._fail(
                         "CHK-ERR-LINE",
                         f"mbox={m} port={p} at={tag} probe=0x{probe:02x} exp_probe=0x{exp_probe:02x} "
-                        f"smc=0x{smc:02x} count={popcount(smc)} exp_count={exp_cnt}",
+                        f"smc=0x{smc:02x} exp_smc=0x{exp_smc:02x}",
                     )
                 if p == "in":
                     return (probe >> m) & 1, f"probe=0x{probe:02x}", smc
-                return popcount(smc), f"smc=0x{smc:02x}", smc
+                return (smc >> m) & 1, f"smc=0x{smc:02x}", smc
 
-            k_before = self.mbx.out_count()
             resp, data = await self.ops[m].pop(p)
             mb.pop(p)
             l0, s0, v0 = await line_obs("before_enable")
@@ -822,20 +822,15 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 )
                 ok = (l0, l1, l2, l3) == (0, 1, 1, 0)
             else:
-                # One port bit rises, no other bit moves, and the same bit holds and drops.
+                # Port bit m rises, no other bit moves, and bit m holds and drops.
                 rose = v1 ^ v0
                 txt = (
-                    f"mbox={m} port=out resp={resp_name(resp)} irqs_bit2={(irqs >> 2) & 1} k={k_before} "
-                    f"smc_count_before_enable={l0} smc_count_after_enable={l1} smc_count_after_read={l2} "
-                    f"error_flags=0x{flags:x} smc_count_after_w1c={l3} rose=0x{rose:02x} "
+                    f"mbox={m} port=out resp={resp_name(resp)} irqs_bit2={(irqs >> 2) & 1} "
+                    f"smc_bit_before_enable={l0} smc_bit_after_enable={l1} smc_bit_after_read={l2} "
+                    f"error_flags=0x{flags:x} smc_bit_after_w1c={l3} rose=0x{rose:02x} exp_rose=0x{1 << m:02x} "
                     f"{s0} {s1} {s2} {s3}"
                 )
-                ok = (l0, l1, l2, l3) == (
-                    k_before,
-                    k_before + 1,
-                    k_before + 1,
-                    k_before,
-                ) and (popcount(rose) == 1 and v1 & rose and v2 == v1 and v3 == v0)
+                ok = (l0, l1, l2, l3) == (0, 1, 1, 0) and rose == 1 << m and v2 == v1 and v3 == v0
             ok = ok and resp == RESP_SLVERR and irqs & IRQ_EIRQ and flags == ERR_READ
             if not ok:
                 self._fail("CHK-ERR-LINE", txt)

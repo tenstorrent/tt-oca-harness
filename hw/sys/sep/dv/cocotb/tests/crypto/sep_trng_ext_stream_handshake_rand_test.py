@@ -39,7 +39,7 @@ a and b, the idle gap before the lock write (0 to 32 clocks), the initial pool f
 L (0 to 32 pairs) and the random pool operations (20 to 60).
 
 Checkers: CHK-SEL-RW, CHK-EXT-XFER, CHK-EXT-STRB, CHK-EXT-DROP, CHK-EXT-BP,
-CHK-EXT-IRQ, CHK-SEL-READY, CHK-SEL-HOLD, CHK-SEL-LOCK, CHK-SEL-LOCKFIRST,
+CHK-EXT-IRQ, CHK-EXT-IRQ-HOLD, CHK-SEL-READY, CHK-SEL-HOLD, CHK-SEL-LOCK, CHK-SEL-LOCKFIRST,
 CHK-SEL-GLOBAL, CHK-POOL-DATA, CHK-EDN-FIFO-DEPTH (contracts in the docstring of
 each leg), CHK-EXT-NOSRC-POP (below), and CHK-SEL-RESET: the first reads of the select and the lock return
 their RDL reset values (``EXT_TRNG_SRC_SEL.sel`` 0x7, ``EXT_TRNG_SRC_SEL_LOCK.lock``
@@ -138,6 +138,11 @@ LONG_GAP = 200
 IRQ_BOUND = 64
 # Clocks that ext_trng_irq_i keeps each level after vector bit 16 follows it.
 IRQ_HOLD = 8
+# Clock edges from a drive written after a rising edge until vector bit 16 follows.
+# Vector bit 16 is the PIC input, ahead of the two-flop resynchronizer that
+# interrupts.adoc places in the PIC gateway, so the bound covers the bench force
+# (applied at the falling edge) with margin; it does not measure the resynchronizer.
+IRQ_FOLLOW = 3
 # Outer caps of a first measurement (design rule: 20 x the clean value of the logs).
 TRNG_RESET_CAP = 4_000
 SETTLE_CAP = 20_000
@@ -514,6 +519,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         "CHK-EXT-DROP",
         "CHK-EXT-BP",
         "CHK-EXT-IRQ",
+        "CHK-EXT-IRQ-HOLD",
         "CHK-SEL-READY",
         "CHK-SEL-HOLD",
         "CHK-SEL-LOCK",
@@ -1375,8 +1381,12 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     # --- legs after both streams -------------------------------------------------------
     async def _irq_leg(self) -> None:
-        """CHK-EXT-IRQ: ext_trng_irq_i = 1 gives vector bit 16 = 1, and 0 gives 0. Each level
-        is held for IRQ_HOLD clocks after bit 16 follows it (``OBS-EXT-IRQ-HOLD``)."""
+        """CHK-EXT-IRQ: ext_trng_irq_i = 1 gives vector bit 16 = 1, and 0 gives 0.
+        CHK-EXT-IRQ-HOLD: bit 16 follows each drive within IRQ_FOLLOW clock edges, and
+        then equals the input on each of the IRQ_HOLD clocks the input keeps the level.
+        The text states that SEP adds no edge detection or pulse stretching, and puts
+        the two-flop resynchronizer in the PIC gateway, after vector bit 16
+        (``hw/sys/sep/doc/interrupts.adoc``, source 17)."""
         dut = cocotb.top
         vec = dut.sep_internal_interrupts_probe_o
         mask = 1 << VEC_EXT_IRQ
@@ -1388,21 +1398,28 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self._ctrl("EXT-IRQ", before == 0, vec16_before=before)
         self._open()
         for level in (1, 0):
+            await RisingEdge(dut.clk_i)
             self.ext.set_irq(level)
             n = await self._until(lambda lv=level: bit16() == lv, IRQ_BOUND)
             fields = {"irq_i": level, "vec16": bit16(), "clk": n if n is not None else "na"}
             if n is None:
                 fields["reason"] = f"timeout:vec16 bound={IRQ_BOUND}"
             self._grade("EXT-IRQ", n is not None, **fields)
-            # The input keeps the level for IRQ_HOLD clocks after bit 16 follows it, so the
-            # sampled clock after the change sees the input and bit 16 at the same level.
-            # Whether bit 16 is a level is not stated, so the hold is logged only.
-            if n is not None:
-                held = 0
-                for _ in range(IRQ_HOLD):
-                    await RisingEdge(cocotb.top.clk_i)
-                    held += int(bit16() == level)
-                self.chk.obs("EXT-IRQ-HOLD", irq_i=level, vec16_at_level_clk=held, hold=IRQ_HOLD)
+            if n is None:
+                break
+            held = 0
+            for _ in range(IRQ_HOLD):
+                await RisingEdge(dut.clk_i)
+                held += int(bit16() == self.rd(dut.ext_trng_irq_drive_i, 1))
+            self._grade(
+                "EXT-IRQ-HOLD",
+                n <= IRQ_FOLLOW and held == IRQ_HOLD,
+                irq_i=level,
+                follow_clk=n,
+                follow_max=IRQ_FOLLOW,
+                vec16_eq_irq_i_clk=held,
+                hold=IRQ_HOLD,
+            )
         close_graded_window(self.logger)
 
     async def _lock(self, value: int) -> int:

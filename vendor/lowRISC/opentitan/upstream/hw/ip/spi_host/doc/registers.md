@@ -161,9 +161,9 @@ Status register
 |   25   |   ro   |   0x0   | RXFULL    | When high, indicates that the receive fifo is full.  Any ongoing transactions will stall until firmware reads some data from [`RXDATA.`](#rxdata)                         |
 |   24   |   ro   |   0x0   | RXEMPTY   | When high, indicates that the receive fifo is empty. Any reads from RX FIFO will cause an error interrupt.                                                                |
 |   23   |   ro   |   0x0   | RXSTALL   | If high, signifies that an ongoing transaction has stalled due to lack of available space in the RX FIFO                                                                  |
-|   22   |   ro   |   0x0   | BYTEORDER | The value of the ByteOrder parameter, provided so that firmware can confirm proper IP configuration.                                                                      |
+|   22   |   ro   |   0x0   | BYTEORDER | The value of the ByteOrder parameter, provided so that firmware can confirm proper IP configuration. Reads 1 in SEP (ByteOrder = 1); the listed reset value of 0 holds only for the first clock after reset. |
 |   21   |        |         |           | Reserved                                                                                                                                                                  |
-|   20   |   ro   |   0x0   | RXWM      | If high, the number of 32-bits in the RX FIFO now exceeds the [`CONTROL.RX_WATERMARK`](#control) entries (32b each).                                                      |
+|   20   |   ro   |   0x0   | RXWM      | If high, the number of 32-bit words in the RX FIFO is greater than or equal to [`CONTROL.RX_WATERMARK.`](#control) |
 | 19:16  |   ro   |   0x0   | CMDQD     | Command queue depth. Indicates how many unread 32-bit words are currently in the command segment queue.                                                                   |
 |  15:8  |   ro   |   0x0   | RXQD      | Receive queue depth. Indicates how many unread 32-bit words are currently in the RX FIFO.  When active, this result may an underestimate due to synchronization delays.   |
 |  7:0   |   ro   |   0x0   | TXQD      | Transmit queue depth. Indicates how many unsent 32-bit words are currently in the TX FIFO. When active, this result may be an overestimate due to synchronization delays. |
@@ -448,7 +448,7 @@ Assert to send a spi_event interrupt whenever the number of 32-bit words in
 
 ### EVENT_ENABLE . RXWM
 Assert to send a spi_event interrupt whenever the number of 32-bit words in
-   the RX FIFO is greater than [`CONTROL.RX_WATERMARK.`](#control) To prevent the
+   the RX FIFO is greater than or equal to [`CONTROL.RX_WATERMARK.`](#control) To prevent the
    reassertion of this interrupt, read more data from the RX FIFO, or
    increase [`CONTROL.RX_WATERMARK.`](#control)
 

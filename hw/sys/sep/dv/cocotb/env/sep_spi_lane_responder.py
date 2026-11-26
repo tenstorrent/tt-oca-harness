@@ -66,41 +66,53 @@ are ``pack_tx_words`` (``ByteOrder = 1`` packing). Without ``order`` the RX
 bytes are ``unpack_rx_words`` (``ByteOrder = 1``: the first byte received is
 RXDATA[7:0]); with ``order`` they come from ``order.bytes_of``.
 
-In-word byte order (OpenTitan SPI_HOST "Input and Output Byte Ordering" and
-"Command Length and Alignment in DATA"): ``lsb_first`` is ``ByteOrder = 1``
-(first wire byte in bits 7:0), ``msb_first`` is ``ByteOrder = 0`` (first wire
-byte in bits 31:24). ``word_image(words, order)`` is the wire-order bytes of
-whole words. In both orders the data of a partial last RX word comes first in
-its image and the zero pad last, so one ``[:n]`` cut serves both. A TX image
-is built from ``pack_tx_words``, so the ``msb_first`` image of a 1- or 2-byte
-last TX word holds only zero pad.
+In-word byte order: SEP sets the SPI_HOST parameter ``ByteOrder = 1``
+(STATUS.BYTEORDER "Reads 1 in SEP (ByteOrder = 1)",
+``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:124-127``),
+so the LSB of TXDATA (bits 7:0) goes on the wire first and the first byte
+received lands in RXDATA bits 7:0
+(``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:415-419``).
+That order is ``lsb_first``; ``msb_first`` is the ``ByteOrder = 0`` order
+(first wire byte in bits 31:24). ``word_image(words, order)`` is the
+wire-order bytes of whole words. In both orders the data of a partial last RX
+word comes first in its image and the zero pad last, so one ``[:n]`` cut
+serves both. A TX image is built from ``pack_tx_words``, so the ``msb_first``
+image of a 1- or 2-byte last TX word holds only zero pad.
 
-``SepSpiByteOrder`` holds one order for every data word of a leaf. Build one
-per leaf and pass it to every compare, to ``run_lane_frame`` and to each
-``SepSpiScoreboard``. Each word is graded on its own:
+``SepSpiByteOrder`` grades every data word of a leaf against ``lsb_first``.
+Build one per leaf and pass it to every compare, to ``run_lane_frame`` and to
+each ``SepSpiScoreboard``. Each word is counted on its own:
 
-* a word that only one order matches fixes the order when none is fixed,
-  and counts as decisive when it matches the fixed order;
+* a word that only ``lsb_first`` matches is decisive;
 * a word that both orders match (a byte palindrome, e.g. all zero) passes on
-  its bytes and fixes nothing;
-* a TX word whose image in the only order it matches is only zero pad fixes
-  nothing: it passes, as ambiguous, only when that order is already fixed,
-  and fails otherwise;
-* a word that matches neither order, or only the order not fixed, fails.
+  its bytes and is ambiguous;
+* a word that only ``msb_first`` matches (and is not only zero pad there)
+  counts as other-order and fails;
+* any other word is unmatched and fails.
+
+The ``where`` of the first word that fails is kept as ``first_bad``.
 
 ``bytes_of(words, n, expect=..., where=...)`` (RX, and any word image a
 leaf reads from memory) and ``tx_bytes(data, wire, where=...)`` (TX, used by
-the scoreboard) return a value that equals the caller's own golden (``expect``
-or the wire) exactly when every word passes, so the caller's check keeps its
-name and fails on its own compare. The golden is always the expected byte
-stream (flash-model, queued or seeded bytes), never DUT data. A leaf whose
-words are all byte palindromes ends ``undecided``. ``log_info`` prints the one
-``INFO-SPI-BYTEORDER`` line of the leaf::
+the scoreboard) return the ``lsb_first`` image, which equals the caller's own
+golden (``expect`` or the wire) exactly when every word passes, so the
+caller's check keeps its name and fails on its own compare. The golden is
+always the expected byte stream (flash-model, queued or seeded bytes), never
+DUT data. ``adopt(order, where=...)`` takes an order another grader reports
+(e.g. a firmware console line): ``lsb_first`` counts as one decisive word and
+returns True, the other order counts as other-order and returns False.
+``log_info`` prints the one ``CHK-SPI-BYTEORDER`` line of the leaf after its
+last compare::
 
-    INFO-SPI-BYTEORDER seed=<n> order=<lsb_first|msb_first|undecided>
-        fixed_at=<where|-> decisive_words=<d> ambiguous_words=<a>
-        other_order_words=<o> unmatched_words=<u> compares=<c>
+    CHK-SPI-BYTEORDER PASS seed=<n> order=lsb_first fixed_at=ByteOrder=1
+        decisive_words=<d> ambiguous_words=<a> other_order_words=<o>
+        unmatched_words=<u> first_bad=<where@pos|-> compares=<c>
         status_byteorder=<0|1|->
+        expect_status_byteorder=1
+
+It fails when any word matched only ``msb_first`` or when a STATUS.BYTEORDER
+value the leaf passes is not 1. It fails as ``CTRL-MISSING
+CHK-SPI-BYTEORDER`` when no word was decisive and no STATUS value was passed.
 
 ``spi_lane_fcov`` writes one graded record into the ``spi_ln_*`` variables of
 the FCOV sampler (``cov/sv/sep_fcov.sv``, docs/SEP_FCOV.adoc). Call it only
@@ -121,6 +133,7 @@ from seq_lib.sep_spi_host_ops import DIR_BIDIR, DIR_DUMMY, DIR_RX, DIR_TX, comma
 from env.sep_fcov_gate import fcov_present, owner_code
 
 __all__ = [
+    "SEP_WORD_ORDER",
     "SPI_WORD_ORDERS",
     "SepSpiByteOrder",
     "SepSpiLaneResponder",
@@ -394,17 +407,21 @@ def word_image(words: Sequence[int], order: str) -> bytes:
     return b"".join((int(w) & 0xFFFF_FFFF).to_bytes(4, _ENDIAN[order]) for w in words)
 
 
+SEP_WORD_ORDER = "lsb_first"
+
+
 class SepSpiByteOrder:
-    """One in-word byte order for every SPI data word of a leaf (see the module text)."""
+    """The SEP in-word byte order (``lsb_first``) graded on every SPI data word of a leaf."""
 
     def __init__(self) -> None:
-        self.order: str | None = None
-        self.fixed_at = "-"
+        self.order = SEP_WORD_ORDER
+        self.fixed_at = "ByteOrder=1"
         self.compares = 0
         self.decisive = 0
         self.ambiguous = 0
         self.other_order = 0
         self.unmatched = 0
+        self.first_bad = "-"
         self._logged = False
 
     def _grade(
@@ -413,12 +430,12 @@ class SepSpiByteOrder:
         target: bytes,
         where: str,
         pad_only: dict[str, int] | None = None,
-    ) -> str:
-        """Grade ``target`` word by word against the image of each order; return the leaf order.
+    ) -> bytes:
+        """Count ``target`` word by word against the image of each order; return the SEP image.
 
         ``pad_only`` maps an order to the position of the one word whose image
-        in that order is only zero pad. The returned order is the fixed one, or
-        ``lsb_first`` while none is fixed.
+        in that order is only zero pad; a word that only that image matches is
+        unmatched. ``where`` names the compare of the first failing word.
         """
         self.compares += 1
         pad_only = pad_only or {}
@@ -426,31 +443,27 @@ class SepSpiByteOrder:
         for pos in range(0, size, 4):
             want = target[pos : pos + 4]
             hits = [o for o in SPI_WORD_ORDERS if images[o][pos : pos + 4] == want]
-            if len(hits) == 1 and pad_only.get(hits[0]) == pos:
-                if hits[0] == self.order:
-                    self.ambiguous += 1
-                    continue
-                hits = []
             if len(hits) == 2:
                 self.ambiguous += 1
-            elif not hits:
-                self.unmatched += 1
-            elif self.order is None:
-                self.order, self.fixed_at = hits[0], where
+                continue
+            if self.order in hits:
                 self.decisive += 1
-            elif hits[0] == self.order:
-                self.decisive += 1
-            else:
+                continue
+            if hits and pad_only.get(hits[0]) != pos:
                 self.other_order += 1
-        return self.order or SPI_WORD_ORDERS[0]
+            else:
+                self.unmatched += 1
+            if self.first_bad == "-":
+                self.first_bad = f"{where}@{pos}"
+        return images[self.order]
 
     def bytes_of(
         self, words: Sequence[int], n: int, *, expect: bytes, where: str, pad: bool = False
     ) -> bytes:
-        """The ``n`` bytes that ``words`` carry, read in the leaf order.
+        """The ``n`` bytes that ``words`` carry, read in the SEP order.
 
         ``expect`` is the ``n``-byte golden. The result equals ``expect``
-        exactly when every word carries it in the leaf order. With ``pad`` the
+        exactly when every word carries it in the SEP order. With ``pad`` the
         bytes after ``n`` in the last word must be 0 too; when they are not,
         the result is the whole-word image, so it differs from ``expect``.
         """
@@ -463,55 +476,68 @@ class SepSpiByteOrder:
         else:
             images = {o: img[:n] for o, img in images.items()}
             target = expect
-        image = images[self._grade(images, target, where)]
+        image = self._grade(images, target, where)
         return image[:n] if image == target else image
 
     def tx_bytes(self, data: bytes, wire: bytes, *, where: str) -> bytes:
         """Expected wire bytes of a TX segment whose TXDATA words were ``pack_tx_words(data)``.
 
-        ``wire`` (the monitor decode) chooses the order only; the result is
-        built from ``data`` and equals ``wire`` exactly when every word was
-        sent in the leaf order.
+        The result is built from ``data`` in the SEP order and equals ``wire``
+        (the monitor decode) exactly when every word was sent in that order.
         """
         data = bytes(data)
         words = pack_tx_words(data)
         images = {o: word_image(words, o)[: len(data)] for o in SPI_WORD_ORDERS}
         tail = len(data) % 4
         pad_only = {"msb_first": len(data) - tail} if tail in (1, 2) else None
-        return images[self._grade(images, bytes(wire), where, pad_only)]
+        return self._grade(images, bytes(wire), where, pad_only)
 
     def adopt(self, order: str, *, where: str) -> bool:
-        """Take an order that another grader fixed (e.g. a firmware console line).
-
-        Returns False when it differs from the order already fixed; the caller
-        fails its check then.
-        """
+        """Take an order that another grader reports; False when it is not the SEP order."""
         if order not in SPI_WORD_ORDERS:
             raise ValueError(f"order={order!r}: one of {SPI_WORD_ORDERS}")
         self.compares += 1
-        if self.order is None:
-            self.order, self.fixed_at = order, where
-        return order == self.order
+        if order == self.order:
+            self.decisive += 1
+            return True
+        self.other_order += 1
+        if self.first_bad == "-":
+            self.first_bad = where
+        return False
 
     def fields(self) -> dict[str, object]:
         return {
-            "order": self.order or "undecided",
+            "order": self.order,
             "fixed_at": self.fixed_at,
             "decisive_words": self.decisive,
             "ambiguous_words": self.ambiguous,
             "other_order_words": self.other_order,
             "unmatched_words": self.unmatched,
+            "first_bad": self.first_bad,
             "compares": self.compares,
         }
 
     def log_info(self, logger: Any, seed: int, *, status_byteorder: int | None = None) -> None:
-        """Print the leaf's one ``INFO-SPI-BYTEORDER`` line, after its last compare."""
+        """Grade and print the leaf's one ``CHK-SPI-BYTEORDER`` line, after its last compare.
+
+        STATUS.BYTEORDER reads 1 in SEP (``spi_controller.rdl:124-127``).
+        """
         if self._logged:
-            raise RuntimeError("INFO-SPI-BYTEORDER is logged once per leaf")
+            raise RuntimeError("CHK-SPI-BYTEORDER is logged once per leaf")
         self._logged = True
+        sbo = None if status_byteorder is None else status_byteorder & 1
         text = " ".join(f"{k}={v}" for k, v in self.fields().items())
-        sbo = "-" if status_byteorder is None else str(status_byteorder & 1)
-        logger.info("INFO-SPI-BYTEORDER seed=%d %s status_byteorder=%s", seed, text, sbo)
+        line = (
+            f"seed={seed} {text} status_byteorder={'-' if sbo is None else sbo} "
+            "expect_status_byteorder=1"
+        )
+        if not self.decisive and sbo is None:
+            logger.error("CTRL-MISSING CHK-SPI-BYTEORDER %s", line)
+            raise AssertionError(f"CTRL-MISSING CHK-SPI-BYTEORDER {line}")
+        if self.other_order or sbo not in (None, 1):
+            logger.error("CHK-SPI-BYTEORDER FAIL %s", line)
+            raise AssertionError(f"CHK-SPI-BYTEORDER FAIL {line}")
+        logger.info("CHK-SPI-BYTEORDER PASS %s", line)
 
 
 async def run_lane_frame(

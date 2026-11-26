@@ -811,20 +811,11 @@ typedef struct __attribute__ ((__packed__)) {
 #define SEP_EFUSE_MAP__STATUS_RPT__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::ROM_CTL
-// controls the endianness of the rom data out. 0->little endian; 1->big endian
-#define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bm 0x1
-#define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bp 0
-#define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_bw 1
-#define SEP_EFUSE_MAP__ROM_CTL__ROM_ENDIANNESS_CTRL_reset 0x0
-// controls how the rom slices are swapped
-#define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bm 0x3e
-#define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bp 1
-#define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_bw 5
-#define SEP_EFUSE_MAP__ROM_CTL__ROM_SWAP_CTRL_reset 0x0
+// Reserved.
 // reserved
-#define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bm 0xffffffc0
-#define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bp 6
-#define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bw 26
+#define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bm 0xffffffff
+#define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bp 0
+#define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bw 32
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_reset 0x0
 
 // reg - sep_efuse_map::SYSCLK_FREQ_MHZ

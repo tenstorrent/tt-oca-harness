@@ -173,8 +173,8 @@ volatile uint32_t g_p[P_COUNT] = {
 #define POOL_LEVEL(st) \
     (((st)&SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bm) >> SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bp)
 // EXT_TRNG_SRC_SEL bit 2 selects the source of stream 2, the entropy pool fill
-// (integration/rdl/sep/sep_cpu_ctrl.rdl:308-310; hw/sys/sep/doc/trng.adoc:94-95).
-// With bit 2 at 1 the internal endpoint is backpressured (trng.adoc:104-105), so
+// (integration/rdl/sep/sep_cpu_ctrl.rdl:308-310; hw/sys/sep/doc/trng.adoc:96-97).
+// With bit 2 at 1 the internal endpoint is backpressured (trng.adoc:106-107), so
 // only the words the test sends on the external stream 2 reach the pool.
 #define EXT_SEL SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_BASE_ADDR
 #define EXT_SEL_MASK SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bm
@@ -1323,10 +1323,10 @@ static void nc_legs(void) {
 // start, so the boot phase of the source can end before this step. The CPU
 // therefore always resets and programs the entropy domain: that write selects
 // the internal DRBG for every stream (EXT_TRNG_SRC_SEL resets to all external,
-// hw/sys/sep/doc/trng.adoc:98-100), enables CSRNG and stages the EDN commands.
+// hw/sys/sep/doc/trng.adoc:100-102), enables CSRNG and stages the EDN commands.
 // Before EDN starts, the CPU selects the external source for stream 2 again, so
 // the internal pool endpoint is backpressured and keeps its words
-// (trng.adoc:104-105) and the pool level is set by the test alone. The record
+// (trng.adoc:106-107) and the pool level is set by the test alone. The record
 // logs the source select that the CPU reads back after it.
 static int entropy_bringup_fresh(void) {
     sep_entropy_configure();
