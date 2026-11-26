@@ -1487,6 +1487,16 @@ module tb_top
       u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.u_dmi_tdr_bridge.error_q != '0,
       u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.u_dmi_tdr_bridge.error_q != '0,
       u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.u_dmi_tdr_bridge.error_q != '0
+    }),
+    .dtmcs_select_i  ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.dtmcs_scan_ctrl_i.select,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.dtmcs_scan_ctrl_i.select,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.dtmcs_scan_ctrl_i.select
+    }),
+    .dmi_select_i    ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.dmi_scan_ctrl_i.select,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.dmi_scan_ctrl_i.select,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.dmi_scan_ctrl_i.select
     })
   );
 
