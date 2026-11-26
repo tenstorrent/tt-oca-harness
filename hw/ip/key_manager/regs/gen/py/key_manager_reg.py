@@ -5621,23 +5621,17 @@ class SEP_EFUSE_MAP_STATUS_RPT_reg_u(Union):
 
 SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_ROM_CTL_REG_FIELD_ACCESS = (
-    ('rom_endianness_ctrl', 'rw', '', '', False),
-    ('rom_swap_ctrl', 'rw', '', '', False),
     ('reserved', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_ROM_CTL_REG_WIDTH = 32
 SEP_EFUSE_MAP_ROM_CTL_REG_FIELDS = (
-    ('rom_endianness_ctrl', 0, 0, 'rw', 'rw', '', '', False, True, 0),
-    ('rom_swap_ctrl', 1, 5, 'rw', 'rw', '', '', False, True, 0),
-    ('reserved', 6, 31, 'rw', 'rw', '', '', False, True, 0),
+    ('reserved', 0, 31, 'rw', 'rw', '', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_ROM_CTL_reg_t(Structure):
     _fields_ = [
-        ('rom_endianness_ctrl', c_uint32, 1),
-        ('rom_swap_ctrl', c_uint32, 5),
-        ('reserved', c_uint32, 26),
+        ('reserved', c_uint32, 32),
     ]
 
 SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT = 0x00000000

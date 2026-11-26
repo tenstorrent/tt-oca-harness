@@ -5552,7 +5552,7 @@ Registers Address Map").
 |`cp_window` |shadow `[0x1093_0000, 0x1093_03FF]`; ctrl_in `[0x1093_0400, 0x1093_0423]`; ctrl_past `[0x1093_0424, 0x1093_04FF]`; tok_in `[0x1093_0500, 0x1093_0573]`; rsvd `[0x1093_0600, 0x1093_FFFF]`. The span `0x1093_0574` to `0x1093_05FF` is not declared: the response differs between two documents |executable
 |`cp_rsvd_zone` |low `[0x1093_0600, 0x1093_0FFF]`; high `[0x1093_1000, 0x1093_FFFF]` |executable
 |`x_win_op_resp` |Window x op x response class {OKAY, not OKAY}, sampled only while `fuse_sense_done_i` is high, because before sense done every access to the shadow window answers SLVERR (`otp_fuse_controller.adoc`, section "Fuse Sensing and Boot Sequencing"). 5 legal cells: (shadow, rd, OKAY); (ctrl_in, rd and wr, OKAY); (tok_in, rd and wr, OKAY). The ctrl_past and rsvd windows have no cell (see Bins not graded): `sep_unmapped_access_policy_test` grades the response past the interface-control extent and the owning test only logs it, and no cited source states the CPU-side response of the reserved span. `illegal_bins`: an in-extent window with a non-OKAY response, except the `ignore_bins`. `ignore_bins`: (shadow, wr); (shadow, rd) while the read-lock bit of the field at the address is set in the LOCKS words of `efuse_shadow_probe_o`, because the response of a blocked read is not stated; (ctrl_in, wr) at `EFUSE_INTERFACE_CTRL_STATUS`, whose read-only fields make the response of a write not stated. The rule for the other registers: an access that the register access type of the register description does not offer is ignored, because the response is not stated. So every write to a register with access R is ignored, which are `EFUSE_PROGRAM_INTERFACE_READ_DATA` at `0xC`, `EFUSE_READ_INTERFACE_READ_DATA` at `0x10`, the three `*_TOKEN_MATCH` registers at `0x64`, `0x68` and `0x6C`, and `TOKEN_MATCH_FAULT` at `0x70`; and the read of the write-only `TOKEN_EOP` at `0x60` is ignored |executable
-|`cp_shadow_field` |9 bins, one per graded narrow register of `sep_efuse_map.adoc` (the ten 32-bit rows except `LOCKS_SPARE`: `LC_STATE`, `SBOOT_DIS`, `TRANSIENT_RMA_EN`, `CHIPLET_PUBK_REVOKE`, `STATUS_RPT`, `ROM_CTL`, `SYSCLK_FREQ_MHZ`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`), decoded by byte offset, on an OKAY 32-bit read of the graded used-bit leg. The word-by-word read of all 43 rows is a control of the owning test and fills no bin; the open owners of that compare keep it |executable
+|`cp_shadow_field` |8 bins, one per graded narrow register of `sep_efuse_map.adoc` (the ten 32-bit rows except `LOCKS_SPARE` and `ROM_CTL`, which has no used bit: `LC_STATE`, `SBOOT_DIS`, `TRANSIENT_RMA_EN`, `CHIPLET_PUBK_REVOKE`, `STATUS_RPT`, `SYSCLK_FREQ_MHZ`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`), decoded by byte offset, on an OKAY 32-bit read of the graded used-bit leg. The word-by-word read of all 43 rows is a control of the owning test and fills no bin; the open owners of that compare keep it |executable
 |`cp_edge_addr` |Last shadow word `0x1093_03FC`; last control register `0x1093_0420`; first past-extent word `0x1093_0424`; first reserved word `0x1093_0600` |executable
 |`x_ctrl_reg_op` |14 cells: `EFUSE_INTERFACE_CTRL_STATUS`, `EFUSE_PROGRAM_CTRL`, `EFUSE_READ_CTRL`, `EFUSE_PROGRAM_ADDR` and `EFUSE_READ_ADDR` (read and write each, 10 cells); `EFUSE_READ_REQ_TIMEOUT`, `EFUSE_PROGRAM_REQ_TIMEOUT`, `EFUSE_PROGRAM_INTERFACE_READ_DATA` and `EFUSE_READ_INTERFACE_READ_DATA` (read, 4 cells). Offsets `0x0` to `0x20`. The write cells of the two timeout registers are not declared (see Bins not graded) |executable
 |`x_token_blk_op` |10 cells: three token arrays (read and write, 6); three match registers (read, 3); `TOKEN_EOP` (write, 1). Offsets per `efuse_mmr.adoc`. A write to a read-only register of the block is not a cell. The `TOKEN_MATCH_FAULT` read is not declared (see Bins not graded) |executable
@@ -5582,7 +5582,7 @@ drives in every leaf.
 
 *Description*: Narrow eFuse fields are sensed with their edge values.
 
-*Basis*: `sep_efuse_map.adoc` (sections "SBOOT_DIS", "STATUS_RPT", "ROM_CTL",
+*Basis*: `sep_efuse_map.adoc` (sections "SBOOT_DIS", "STATUS_RPT",
 "SYSCLK_FREQ_MHZ", "CHIPLET_PUBK_REVOKE", "REQUIRED_SIGNERS", "REQUIRED_ALGS",
 "BL1_VERSION").
 
@@ -5595,7 +5595,6 @@ drives in every leaf.
 |`cp_required_signers` |0, 1, 2, 3 (bits 1:0) |executable; seed-dependent
 |`x_algs_owner_value` |Owner chiplet `[3:0]`, SiP `[7:4]`, system `[11:8]` x value of bits 1:0 in {0, 1, 2, 3}. 12 cells |executable; seed-dependent
 |`cp_status_rpt` |0, 1, 2, 3 (`rpt` bits 1:0) |executable; seed-dependent
-|`cp_rom_ctl` |Endianness 0, 1; swap field `[5:1]` in {0, each single bit (5), all five set, other}. 10 bins |executable; seed-dependent
 |`cp_sysclk_class` |1, 2 to 2046, 2047. The field is 11 bits. Value 0 is "ignored" and is not drawn |executable; seed-dependent
 |`cp_revoke_class` |0, one bit set, bits 25:0 all set, other nonzero |executable; seed-dependent
 |`x_version_bit` |Field {BL1_VERSION, BL2_VERSION} x burned bit index class {0, 1 to 254, 255}, sampled on the first sense done after a program, from the new set bit of the sensed shadow words (`efuse_shadow_probe_o`). 6 cells |executable; seed-dependent
@@ -5612,9 +5611,8 @@ coverpoint. Uniform values seldom fall in an edge class, so each owner draws
 the class first, with equal weight per class, and then a value inside it.
 `sep_efuse_field_layout_rand_test` draws in this way `SBOOT_DIS`, `STATUS_RPT`,
 `REQUIRED_SIGNERS`, the three nibbles of `REQUIRED_ALGS`, `SYSCLK_FREQ_MHZ`
-(1, 2047 or a middle value), the `ROM_CTL` endianness and swap class, and the
-`CHIPLET_PUBK_REVOKE` class, and these coverpoints close in about 4
-regressions. `sep_efuse_lock_slot_matrix_rand_test` draws the pair (version
+(1, 2047 or a middle value) and the `CHIPLET_PUBK_REVOKE` class, and these
+coverpoints close in about 2 regressions. `sep_efuse_lock_slot_matrix_rand_test` draws the pair (version
 field, burned index class) in its chain leaves, and the 6 cells of
 `x_version_bit` close in about 22 regressions.
 

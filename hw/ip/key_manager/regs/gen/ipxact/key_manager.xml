@@ -2211,44 +2211,19 @@ it as the LOCKS register describes.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>ROM_CTL</ipxact:name>
+          <ipxact:description>Reserved.</ipxact:description>
           <ipxact:addressOffset>'h170</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
-            <ipxact:name>rom_endianness_ctrl</ipxact:name>
-            <ipxact:description>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</ipxact:description>
+            <ipxact:name>reserved</ipxact:name>
+            <ipxact:description>reserved</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>rom_swap_ctrl</ipxact:name>
-            <ipxact:description>controls how the rom slices are swapped</ipxact:description>
-            <ipxact:bitOffset>1</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>5</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>reserved</ipxact:name>
-            <ipxact:description>reserved</ipxact:description>
-            <ipxact:bitOffset>6</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>26</ipxact:bitWidth>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
