@@ -249,7 +249,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
         # The next legal read after the timed-out one completes with no error
         # and the sensed word of its own address (architecture.adoc:102-107;
-        # efuse_interface_ctrl.rdl:127, :133; smc-programming.adoc:1725-1729).
+        # efuse_interface_ctrl.rdl:127, :133; smc-programming.adoc:1741-1745).
         # It reads the recovery word, not the timed-out control word, so the
         # two expected words differ. The error of the timed-out read is the
         # precondition. When the flag clears is not stated; it is logged.
@@ -324,7 +324,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         """A read of the control word that outlives its timeout budget sets the error.
 
         It retires with done and the error set (efuse_interface_ctrl.rdl:133;
-        smc-programming.adoc:1690-1692). The budget is short enough that the
+        smc-programming.adoc:1706-1708). The budget is short enough that the
         SHIM cannot answer inside it, and the read must present its bank
         command, so the timeout decides the outcome.
         """
