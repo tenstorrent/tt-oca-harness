@@ -218,7 +218,7 @@ out; `dtp_tb_if` publishes the build's own, which the bypass reference models re
 |SMC/SEP OTP AXI-Lite |Flattened onto `u_smc_otp_slave_if` / `u_sep_otp_slave_if` (responders) and `u_smc_otp_axil_if` / `u_sep_otp_axil_if` (monitors); geometry from the bench configuration; an errored R beat carries the errored-beat word its injection armed, as on the SMC fabric port
 |DEBUG_CONTROL and IC_RESET |Boot-stall, clock-stop, and IC_RESET struct outputs flattened onto `dtp_tb_if`; `dtp_tb_if.xtrig_clk_stop_req` drives the CLA clock-stop requests, registered onto `xtrig_clk_stop_req_i` at `clk_i` falling edges; `tb_top` counts the `stop_clks_o` changes while `rst_n_i` is high, and those among them outside a `clk_i` rising edge, onto `dtp_tb_if`
 |XTRIG CSR/CTP/CTM |`u_xtrig_master_if` (initiator) and `u_xtrig_axil_if` (monitor) for the CSR port (the generated CSR blocks elaborate under Verilator); `tb_top` reads the handshakes and state of the AXI-Lite demux behind the port by hierarchical reference into the network's crossbar and drives onto `dtp_tb_if` the demux AW-lock and pending-W mirrors, the demux stall and open-request counters, and the spill-register counters, which it keeps from the beats each spill register (the crossbar's two-beat register on each CSR port channel) holds, counted from the port's and the demux's handshakes; CTM/CTP pins on `dtp_xtrig_if`. Every CT_Req_out pad sits on an open-drain wire (`ocah_open_drain_bus`, `hw/common/dv/shims/analog/`): a private wire with one bench-side chiplet driver, or the group wire the pads in `xtrig_ctp_wire_group` share; each wire rests at the pull of the board built for its port's INVERT sense, and the resolved wires and the ports' receive pulses are mirrored onto `dtp_xtrig_if`
-|Clocks/resets |`dtp_tb_if.clk`, `sys_rst_n`, `por_rst_n`: cocotb deposits them, the UVM harness generates the clock and sequences drive the resets; `sys_rst_on_ar_arm` and `sys_rst_on_ar_cycles` arm `tb_top` to assert the system reset on the clock edge that completes a bridge's AR handshake (cocotb `DtpTbIf.arm_reset_on_read` and `disarm_reset_on_read`), and `rst_n` is the system reset the DUT and the AXI responders see; the responders drive BVALID and RVALID low from its assertion. The JTAG master owns TCK/TRST sequencing
+|Clocks/resets |`dtp_tb_if.clk`, `sys_rst_n`, `por_rst_n`: cocotb deposits them, the UVM harness generates the clock and sequences drive the resets; `sys_rst_on_ar_arm` and `sys_rst_on_ar_cycles` arm `tb_top` to assert the system reset on the clock edge that completes a bridge's AR handshake (cocotb `DtpTbIf.arm_reset_on_read` and `disarm_reset_on_read`), and `rst_n` is the system reset the DUT and the AXI responders see; the responders drive BVALID and RVALID low from its assertion. The JTAG master owns TCK/TRST sequencing. Sequences drive `test_en` and `scan_rst_n`, the DUT's `test_en_i` and `scan_rst_ni`, and change `test_en` only while both resets are released. `tb_top` exposes `j2a_rst_n`, the reset the bridges synchronize (`scan_rst_n` while `test_en` is 1, `rst_n` otherwise), with its assertion counter, and reads each bridge's two synchronized resets from its `tdr2axi`: `j2a_clk_release_edges` and `j2a_tck_release_edges` give per bridge the rising edges of `clk_i` or TCK between the release of `j2a_rst_n` and that reset's release, and `j2a_release_err_count` counts the falls with `j2a_rst_n` high and, outside test mode, the rises with `rst_n` low or away from a rising edge of their clock
 |===
 
 The three JTAG2AXI bridge geometries (bus type, address width, and data width)
@@ -337,7 +337,8 @@ shifts no bit included. It yields the expected capture, masked to the bits the
 scan shifted out, while the PTAP 3DCR select is clear, and reads the bridge's
 debug disable and response holds from `dtp_tb_if` at the update; a TAP reset
 drops a scan that has not reached its Update-DR, the power-on reset counter
-resets the TAP model, and the system reset counter resets the bridges. The
+resets the TAP model, and the `j2a_rst_n` assertion counter resets the
+bridges. The
 model follows the Debug Module rules of the PTAP document. A DMI update loads
 the scanned address and data and reads or writes that Debug Module register.
 A read or write is in progress from its update until the Debug Module's
@@ -360,9 +361,15 @@ side: the port's when the port completes a transaction within
 `DtpDmiSettleTck` TCK cycles of the update, which then pairs with the access,
 and the disabled side's otherwise; no scan of that bridge falls within those
 cycles. A completion observed on the port applies at the first update at least
-one TCK cycle after its handshake. A system reset returns every bridge to its
-reset state, and the accesses already on the fabric complete as orphans that
-the model consumes without applying them.
+one TCK cycle after its handshake. The bridge reset, `rst_n_i` while
+`test_en_i` is 0 and `scan_rst_ni` while it is 1, returns every bridge to its
+reset state and drops the accesses in flight; a TAP reset leaves the bridges
+unchanged. Outside test mode the bridges' TCK side stays in reset for three
+TCK edges after the release, and in test mode it follows `scan_rst_ni`. A DMI
+or DTMCS capture on a TCK edge in reset returns 0, and an update or a
+`dmireset` on one does nothing. The scoreboard withdraws the `jtag2axi_req`
+predictions waiting at a system reset, since the ports, the responders, and
+their monitors reset with it; a power-on reset leaves them waiting.
 
 The model places every DMI capture and update against the last read or write
 update. Within `DtpDmiBusyTck` (6) TCK cycles the operation is in progress,
@@ -471,11 +478,20 @@ reusable operations in `_seq`.
 |JTAG TCK |shared JTAG engine |`ocah_jtag_master_driver` |Half period from the VIP config, randomized in the test cfg (TCK 100..1000 ns)
 |`dtp_tb_if.sys_rst_n`, `por_rst_n` |base test bring-up through `DtpTbIf` |base test `bring_up()` through `dtp_tb_if`, in cycles of the randomized period |Scenarios re-sequence them through the TB interface, and the back-to-back reset legs time their deposits from its clock edges and CDC phase observables; tb_top counts assertions for the scoreboard
 |TRST |JTAG engine TAP-reset operation, and `assert_trst` / `release_trst` for a held level |`dtp_jtag_tap_reset_seq` (VIP TAP reset) and `dtp_jtag_trst_seq` (VIP TRST level) |Reset-family scenarios hold TRST through the JTAG VIP's TRST-level operation and sample the TAP state before the first TCK edge
+|`dtp_tb_if.test_en`, `scan_rst_n` |`DtpTbIf` handles the sequence deposits |`dtp_tb_if` members the sequence drives |0 and 1 except in the JTAG2AXI reset scenario, which sets `test_en` with both resets released and pulses `scan_rst_n` and `sys_rst_n` in test mode; tb_top counts `j2a_rst_n` assertions and each bridge's release edges
 |===
 
 JTAG2AXI sequences poll sbcs, at most eight reads per bus access, and every
 system-domain wait derives from the clock period on the TB interface, so CDC
 and AXI latency handling holds across the randomized timing.
+
+The JTAG2AXI reset scenario asserts and releases each reset at a seeded time
+between two `clk_i` edges and releases the bridge reset with TCK stopped. It
+changes TRST and power-on reset only while TCK is stopped, so neither lands on
+the TCK edge that leaves Update-DR, where a DMI update would race the TAP
+reset. The bench resets the JTAG2AXI responders with `rst_n_i`, so an access
+the bridge reset drops never completes on either side of its port; how the
+subordinates reset relative to `rst_n_i` is for the integration to verify.
 
 === Stimulus Strategy
 
@@ -497,6 +513,7 @@ seed.
 |JTAG2AXI errors |On each bridge, start every access size above the data width with each trigger, and have the responder answer a write and a read with SLVERR and with DECERR, armed with the expectation of each response in the AXI checks; check `sberror`, try an `sbdata0` and an `sbaddress0` access while it is set, clear it, and recover; keep one error per bridge while the later bridges run
 |JTAG2AXI back-pressure |On each bridge, give the responder's READY stalls and B and R delays seeded streams of no, short, and long stalls of up to two `sbcs` polls and a mix, every mode on every channel; write, read back, and write and read seeded lanes under each, and check that the port raised no request while one was open
 |JTAG2AXI debug disables |Make an access on each bridge under every combination of the three bridge disables; on a disabled bridge, read and write the Debug Module registers and make an alignment and a size error; set a bridge's disable while its port holds an access, change it in both directions at delays that close in on the cycle an access takes its side, and reset the system under a seeded mix of disables and under its complement
+|JTAG2AXI resets |On each bridge, reset the TAP by TRST, by five TMS-high clocks, and by power-on reset with the bridge idle, with an access held at its port, and with the sticky status set; assert the bridge reset in each phase of a read and of a write and during scans, release it with TCK stopped, and pulse `rst_n_i` and `scan_rst_ni` in test mode
 |===
 
 Additional stimulus categories cover STAP/3DCR, iJTAG, XTRIG CSR, CTP, CTM,

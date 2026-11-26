@@ -260,6 +260,11 @@ localparam int unsigned DtpDmiSettleTck = 24;
 // three-stage synchronizer and one more register in the TCK domain before
 // the bridge state machine samples it.
 localparam int unsigned DtpDmiBusyTck = 6;
+// TCK edges after the release of a JTAG2AXI bridge's reset for which its
+// TCK side stays in reset outside test mode: the depth of the bridge's reset
+// synchronizer. A DMI capture on one of them returns 0 and an update
+// or a dmireset does nothing.
+localparam int unsigned DtpJ2aResetSyncTck = 3;
 
 // The DMI register: address 40:34, data 33:2, op 1:0.
 typedef struct packed {
@@ -368,6 +373,15 @@ localparam string DtpJ2aDbgDisableCheckId = "CHK-J2A-DBG-DISABLE";
 // The path an access takes when its bridge's disable changes while the
 // access is held at the port or is starting.
 localparam string DtpJ2aDbgSwitchCheckId = "CHK-J2A-DBG-SWITCH";
+// The DMI capture, dmistat, Debug Module state and held access a TAP reset
+// leaves on a bridge.
+localparam string DtpJ2aTapResetCheckId = "CHK-J2A-TAP-RESET";
+// The state a bridge reads after the bridge reset, the port effect of the
+// access it drops, and the bridge's state through a test-mode rst_n_i pulse.
+localparam string DtpJ2aBridgeResetCheckId = "CHK-J2A-BRIDGE-RESET";
+// The clock edges each bridge's synchronized resets take to release, and the
+// reset rules every change of them keeps.
+localparam string DtpJ2aResetReleaseCheckId = "CHK-J2A-RESET-RELEASE";
 // Every 32 bits of the error slave's read data.
 localparam bit [31:0] DtpJ2aErrSlaveWord = 32'hBADC_AB1E;
 // The AxCACHE of every request the AXI4 bridge drives.

@@ -24,6 +24,7 @@ __all__ = [
     "DTMCS_LEN",
     "DTP_DMI_BUSY_TCK",
     "DTP_DMI_SETTLE_TCK",
+    "DTP_J2A_RESET_SYNC_TCK",
     "DTP_EXPECTED_DTMCS",
     "DTP_FEATURE_BYPASS",
     "DTP_FEATURE_IDCODE",
@@ -94,6 +95,12 @@ DTP_DMI_SETTLE_TCK = 24
 # three-stage synchronizer and one more register in the TCK domain before the
 # bridge state machine samples it.
 DTP_DMI_BUSY_TCK = 6
+
+# TCK edges after the release of a JTAG2AXI bridge's reset for which its TCK
+# side stays in reset outside test mode: the depth of the bridge's reset
+# synchronizer. A DMI capture on one of them returns 0 and an update or a
+# dmireset does nothing.
+DTP_J2A_RESET_SYNC_TCK = 3
 
 
 class DtpJtagInstr(IntEnum):

@@ -39,8 +39,6 @@ class dtp_jtag2axi_debug_disable_test_seq extends dtp_jtag2axi_base_test_seq;
   localparam int unsigned Races = 6;
   localparam int unsigned RaceSpread = 16;
 
-  typedef string names_t[$];
-
   protected string m_ledger;
 
   function new(string name = "dtp_jtag2axi_debug_disable_test_seq");
@@ -227,14 +225,6 @@ class dtp_jtag2axi_debug_disable_test_seq extends dtp_jtag2axi_base_test_seq;
 
   // --- building blocks ---------------------------------------------------------
 
-  function string pick(bit condition, string if_set, string if_clear);
-    return condition ? if_set : if_clear;
-  endfunction
-
-  function names_t bridge_names();
-    return '{"smc_axi", "smc_otp", "sep_otp"};
-  endfunction
-
   // Drive the three bridge disables, bit t.reset_arm_bit for bridge t, and
   // wait for the synchronizers.
   task set_bridge_disables(bit [2:0] disables);
@@ -253,91 +243,15 @@ class dtp_jtag2axi_debug_disable_test_seq extends dtp_jtag2axi_base_test_seq;
     m_ledger = t.name;
     open_bus_ledger();
     if (disabled) disabled_access(t, is_read, context_s);
-    else enabled_access(t, is_read, context_s);
+    else port_access(t, is_read, DtpJ2aDbgDisableCheckId, context_s);
     close_bus_ledger();
     m_ledger = "";
   endtask
-
-  // A seeded legal access: its size, and its offset in the beat.
-  function void seeded_access(input dtp_j2a_target_t t, output bit [63:0] addr,
-                              output int unsigned size, output int unsigned offset);
-    size   = $urandom_range(t.default_size);
-    offset = $urandom_range(t.beat_bytes / dtp_j2a_size_bytes(size) - 1) * dtp_j2a_size_bytes(size);
-    addr   = random_target_addr(t) + offset;
-  endfunction
-
-  // The responder's `size` word at `addr`.
-  function bit [63:0] memory_word(dtp_j2a_target_t t, bit [63:0] addr, int unsigned size);
-    return responder(t.name).read_int(addr, dtp_j2a_size_bytes(size)) & dtp_j2a_data_mask(size);
-  endfunction
-
-  // A seeded nonzero `size` word other than `avoid`.
-  function bit [63:0] sized_word(int unsigned size, bit [63:0] avoid = '0);
-    bit [63:0] word;
-    do begin
-      word = {$urandom(), $urandom()} & dtp_j2a_data_mask(size);
-    end while (word == '0 || word == avoid);
-    return word;
-  endfunction
 
   // The error slave's read beat: 0xBADCAB1E in each 32 bits.
   function bit [63:0] err_slave_beat(dtp_j2a_target_t t);
     return {DtpJ2aErrSlaveWord, DtpJ2aErrSlaveWord} & bit_mask(t.data_width);
   endfunction
-
-  // The sbdata bits read_sbdata returns: the Debug Module shifts the beat to
-  // the access offset and keeps the bits above the access size.
-  function bit [63:0] sbdata_mask(int unsigned size);
-    return (size == 3) ? '1 : 64'hFFFF_FFFF;
-  endfunction
-
-  function void record_field(dtp_j2a_target_t t, string check_id, string field, bit [63:0] observed,
-                             bit [63:0] expected, string context_s);
-    void'(evidence(t).expect_equal(check_id, observed, expected,
-                                   $sformatf("%s target=%s field=%s", context_s, t.name, field)));
-  endfunction
-
-  // A seeded access that reaches the port, judged on the bus and on its
-  // data, with CHK-J2A-DBG-DISABLE recording that the port took it. A read
-  // returns the bytes a full-beat write put there first; the passive AXI
-  // checks compare every byte of the beat a read returns.
-  task enabled_access(dtp_j2a_target_t t, bit is_read, string context_s);
-    bit          [63:0] addr;
-    bit          [63:0] data;
-    bit          [63:0] beat;
-    bit          [63:0] rdata;
-    int unsigned        size;
-    int unsigned        offset;
-    int unsigned        port_start;
-    int unsigned        moved;
-    ocah_axi_checker    ev = evidence(t);
-    string              ctx = {context_s, " enabled"};
-    seeded_access(t, addr, size, offset);
-    data = sized_word(size, memory_word(t, addr, size));
-    if (is_read) begin
-      beat = {$urandom(), $urandom()} & bit_mask(t.data_width);
-      beat &= ~(dtp_j2a_data_mask(size) << (8 * offset));
-      beat |= data << (8 * offset);
-      sba_write(t, addr - offset, beat, t.default_size, {context_s, ".fill"});
-    end
-    port_start = port_history(t.name).count(is_read);
-    if (is_read) begin
-      sba_read(t, addr, size, {context_s, ".read"}, rdata);
-      rdata &= dtp_j2a_data_mask(size);
-      void'(ev.expect_equal(
-          "CHK-AXI-RDATA",
-          rdata,
-          data,
-          $sformatf(
-              "%s.read target=%s source=bridge_capture", context_s, t.name)
-      ));
-    end else begin
-      sba_write(t, addr, data, size, {context_s, ".write"});
-      check_target_word(t, addr, data, size, {context_s, ".mem"});
-    end
-    moved = port_history(t.name).count(is_read) - port_start;
-    record_field(t, DtpJ2aDbgDisableCheckId, "port_transactions", 64'(moved), 64'd1, ctx);
-  endtask
 
   // A seeded access, under a seeded sbautoincrement, that ends on the error
   // slave: sberror 2, the error slave's data on a read, the responder word
@@ -571,34 +485,11 @@ class dtp_jtag2axi_debug_disable_test_seq extends dtp_jtag2axi_base_test_seq;
   // Update-DR.
   task flip_after_update(dtp_j2a_target_t t, int unsigned delay);
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
-    wait (tb_vif.tap_state == UPDATE_DR);
-    wait (tb_vif.tap_state != UPDATE_DR);
+    wait_update_dr_exit();
     repeat (delay) @(posedge tb_vif.clk);
     d = tb_vif.dbg_disable;
     dtp_dbg_path_set(d, t.dbg_path, !dtp_dbg_path_disabled(d, t.dbg_path));
     tb_vif.drive_dbg_disable(d);
-  endtask
-
-  // Cycles t's port has raised ARVALID (`is_read`) or AWVALID.
-  function int unsigned valid_count(dtp_j2a_target_t t, bit is_read);
-    case (t.reset_arm_bit)
-      0: return is_read ? tb_vif.smc_axi_arvalid_count : tb_vif.smc_axi_awvalid_count;
-      1: return is_read ? tb_vif.smc_otp_axil_arvalid_count : tb_vif.smc_otp_axil_awvalid_count;
-      default:
-      return is_read ? tb_vif.sep_otp_axil_arvalid_count : tb_vif.sep_otp_axil_awvalid_count;
-    endcase
-  endfunction
-
-  // sbdata0, and sbdata1 for an 8-byte access.
-  task read_sbdata(input dtp_j2a_target_t t, input int unsigned size, input string context_s,
-                   output bit [63:0] value);
-    bit [31:0] word;
-    dmi_read(t, DTP_DM_SBDATA0, {context_s, ".sbdata0"}, word);
-    value = 64'(word);
-    if (size == 3) begin
-      dmi_read(t, DTP_DM_SBDATA1, {context_s, ".sbdata1"}, word);
-      value[63:32] = word;
-    end
   endtask
 
   // Clear sberror, keeping sbaccess `size`, and require sbcs idle with no

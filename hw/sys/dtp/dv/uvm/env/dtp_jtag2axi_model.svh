@@ -59,9 +59,13 @@
 //                the update, and the disabled path's otherwise; no scan of
 //                that bridge falls within those cycles.
 //
-// A system reset returns every bridge to its reset state; a TAP reset leaves
-// them unchanged. Captures and updates come from the TCK steps, so a DR scan
-// of any length counts: its update loads the captured value shifted by the
+// The bridge reset, j2a_rst_n of dtp_tb_if, returns every bridge to its
+// reset state and drops the accesses in flight, whose ports reset with it; a
+// TAP reset leaves the bridges unchanged. Outside test mode the TCK side of
+// every bridge stays in reset for DtpJ2aResetSyncTck TCK edges after the
+// release, and in test mode it follows the reset. A capture on a TCK edge in
+// reset returns 0, and an update or a dmireset on one does nothing. Captures
+// and updates come from the TCK steps, so a DR scan of any length counts: its update loads the captured value shifted by the
 // bits the scan shifted, and only those bits of its capture are compared. A
 // DMI operation is applied on the TCK cycle that leaves its Update-DR, and a
 // bus completion at the first update at least one TCK cycle after the port
@@ -133,8 +137,6 @@ class dtp_jtag2axi_model;
     bit [63:0]   sbdata_mask;
     bit          inflight_valid;
     access_t     inflight;
-    // Completions due for accesses a system reset discarded.
-    int unsigned orphans;
   } bridge_t;
 
   localparam bit [31:0] DataBusy = 32'hB051_B051;
@@ -164,18 +166,13 @@ class dtp_jtag2axi_model;
     reset();
   endfunction
 
-  // System reset: every bridge back to its reset state; accesses in flight
-  // are discarded.
+  // Bridge reset: every bridge back to its reset state; accesses in flight
+  // are dropped.
   function void reset();
     string names[3] = '{"smc_otp", "sep_otp", "smc_axi"};
     foreach (names[i]) begin
-      string   n = names[i];
-      bridge_t fresh = new_bridge();
-      if (m_bridge.exists(n))
-        fresh.orphans = m_bridge[n].orphans +
-            int'(m_bridge[n].inflight_valid && m_completed_q[n].size() == 0 &&
-                 m_either_item[n] == null);
-      m_bridge[n] = fresh;
+      string n = names[i];
+      m_bridge[n] = new_bridge();
       m_completed_q[n] = {};
       m_completed_tck[n] = {};
       m_either_valid[n] = 1'b0;
@@ -278,10 +275,6 @@ class dtp_jtag2axi_model;
   function bit complete(string target, ocah_axi_item observed, int unsigned tck,
                         output ocah_axi_item predicted);
     predicted = null;
-    if (m_bridge[target].orphans != 0) begin
-      m_bridge[target].orphans--;
-      return 1'b0;
-    end
     m_completed_q[target].push_back(observed);
     m_completed_tck[target].push_back(tck);
     if (m_either_item[target] == null || tck > m_either_deadline[target]) return 1'b0;
@@ -320,7 +313,6 @@ class dtp_jtag2axi_model;
     b.sbdata_mask    = '1;
     b.inflight_valid = 1'b0;
     b.inflight       = '{is_read: 1'b0, size: 0, offset: 0};
-    b.orphans        = 0;
     return b;
   endfunction
 
@@ -635,13 +627,17 @@ endclass : dtp_jtag2axi_model
 // the response holds and the j2a_dis_race bit of the bridge are read from
 // dtp_tb_if on the update cycle. A port transaction that completes an access
 // which may take either path is returned from on_axi with the bridge's name.
+// The bridge reset and its release come from j2a_rst_n, its assertion
+// counter and test_en, read on every TCK edge, TRST asserted or not.
 class dtp_jtag2axi_tracker;
 
   virtual dtp_tb_if             tb_vif;
   dtp_jtag_ir_model             ir;
   dtp_jtag2axi_model            bridges;
   protected string              m_target_by_source[string];
-  protected bit          [31:0] m_sys_rst_seen;
+  protected bit          [31:0] m_j2a_rst_seen;
+  // TCK edges the bridges' TCK side has left in reset after its release.
+  protected int unsigned        m_tck_reset_edges;
   protected int unsigned        m_tck;
   protected time                m_prev_step;
   // The bridge register captured in the DR scan in progress: its value, known
@@ -705,14 +701,20 @@ class dtp_jtag2axi_tracker;
   // launches.
   function bit on_event(ocah_jtag_event t, output string target, output ocah_axi_item launched);
     bit started = 1'b0;
+    bit in_reset;
     launched = null;
     sync_reset();
+    in_reset = t.kind == OCAH_JTAG_EV_STEP && tck_side_in_reset();
     if (t.kind == OCAH_JTAG_EV_STEP && t.trst_n) begin
       m_tck++;
       if (ir.tap_state() == OCAH_JTAG_CAPTURE_DR) capture();
       else if (ir.tap_state() == OCAH_JTAG_UPDATE_DR && m_captured) begin
-        target  = m_target.name;
-        started = update(launched);
+        if (in_reset) begin
+          m_captured = 1'b0;
+        end else begin
+          target  = m_target.name;
+          started = update(launched);
+        end
       end
       m_prev_step = t.timestamp;
     end
@@ -779,14 +781,27 @@ class dtp_jtag2axi_tracker;
     );
   endfunction
 
-  // Power-on reset resets the TAP; a system reset resets every bridge.
+  // Power-on reset resets the TAP; the bridge reset resets every bridge.
   protected function void sync_reset();
     void'(ir.sync_power_on_reset(tb_vif.por_assert_count));
     if (ir.take_tap_reset()) m_captured = 1'b0;
-    if (tb_vif.sys_rst_assert_count !== m_sys_rst_seen) begin
-      m_sys_rst_seen = tb_vif.sys_rst_assert_count;
+    if (tb_vif.j2a_rst_assert_count !== m_j2a_rst_seen) begin
+      m_j2a_rst_seen = tb_vif.j2a_rst_assert_count;
       bridges.reset();
     end
+  endfunction
+
+  // Whether the bridges' TCK side is in reset on this TCK edge.
+  protected function bit tck_side_in_reset();
+    if (tb_vif.j2a_rst_n !== 1'b1) begin
+      m_tck_reset_edges = tb_vif.test_en ? 0 : DtpJ2aResetSyncTck;
+      return 1'b1;
+    end
+    if (m_tck_reset_edges != 0) begin
+      m_tck_reset_edges--;
+      return 1'b1;
+    end
+    return 1'b0;
   endfunction
 
 endclass : dtp_jtag2axi_tracker

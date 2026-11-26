@@ -66,12 +66,30 @@ interface dtp_tb_if;
   // sys_rst_n with the read-armed pulse.
   logic rst_n;
 
-  // DFT controls of the DUT: test_en_i (test-mode enable for the JTAG2AXI
-  // bridges and the CTN CSR crossbar) and scan_rst_ni (unused by the DUT),
-  // held at their functional values; DFT mode is outside the bench's scope
-  // (DTP_VPLAN).
+  // DFT controls of the DUT (driven by the sequences): test_en_i, the
+  // test-mode enable of the JTAG2AXI bridges and the CTN CSR crossbar, and
+  // scan_rst_ni, which resets the bridges while test_en_i is 1. test_en
+  // changes only while scan_rst_n and rst_n are both 1.
   logic test_en    = 1'b0;
   logic scan_rst_n = 1'b1;
+
+  // The reset the JTAG2AXI bridges synchronize (driven by tb_top): scan_rst_n
+  // while test_en is 1 and rst_n otherwise, and its assertion counter, on
+  // which the bridge models reset every bridge.
+  logic        j2a_rst_n;
+  logic [31:0] j2a_rst_assert_count;
+  // Each bridge's synchronized resets (driven by tb_top from its tdr2axi; bit
+  // order as sys_rst_on_ar_arm): arst_clk_n on clk_i and arst_tck_n on TCK,
+  // and the rising clk_i and TCK edges between the last rise of j2a_rst_n and
+  // the last rise of each.
+  logic [2:0]      j2a_arst_clk_n;
+  logic [2:0]      j2a_arst_tck_n;
+  logic [2:0][7:0] j2a_clk_release_edges;
+  logic [2:0][7:0] j2a_tck_release_edges;
+  // Changes of those resets that no reset rule allows (driven by tb_top): a
+  // fall while the reset they synchronize is 1, and in functional mode a rise
+  // while rst_n is 0 or at a time other than a rising edge of its clock.
+  logic [31:0]     j2a_release_err_count;
 
   // Reset-assertion counters (driven by tb_top): the scoreboard predictors
   // re-baseline the CSR shadow and the TAP instruction on them.
