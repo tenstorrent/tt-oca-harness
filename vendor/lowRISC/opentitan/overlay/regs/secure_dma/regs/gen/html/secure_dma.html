@@ -124,7 +124,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:0</td><td>REGWEN</td><td>RW0C</td><td>0x6</td><td>Used by firmware to lock the DMA enabled memory range configuration registers from further modification.<br>Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.<br><br>Default Value = kMultiBitBool4True -&gt; Unlocked at reset.</td></tr>
+<tr><td>3:0</td><td>REGWEN</td><td>RW0C</td><td>0x6</td><td>Used by firmware to lock the DMA enabled memory range configuration registers from further modification.<br>The range registers are writable only while this field reads kMultiBitBool4True (0x6), its reset value.<br>A write from the reset value stores the written value, so writing kMultiBitBool4False (0x9) reads back 0x9, and any value other than 0x6 locks the range.<br>After that, writes can only clear bits 1 and 2 and set bits 0 and 3, so the field cannot return to kMultiBitBool4True before a reset.</td></tr>
 </table>
 <h3 id="CFG_REGWEN">CFG_REGWEN</h3>
 <table>
@@ -165,15 +165,15 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>WRAP</td><td>RW</td><td>0x0</td><td>When 0: Chunks occupy contiguous ascending addresses.<br>When 1: Source address wraps back to the starting address when finishing a chunk.</td></tr>
-<tr><td>0</td><td>INCREMENT</td><td>RW</td><td>0x0</td><td>Defines the increment behavior after every DMA read.<br>When 0: Source address is not changed.<br>All reads are done from the same address.<br>When 1: Source address is incremented by transfer_width after each read.</td></tr>
+<tr><td>1</td><td>WRAP</td><td>RW</td><td>0x0</td><td>When 0: each chunk starts where the previous one ended: with INCREMENT = 0, SRC_ADDR_LO/HI advance by CHUNK_DATA_SIZE after each chunk; with INCREMENT = 1, reads continue ascending from the end of the previous chunk.<br>When 1: every chunk starts at SRC_ADDR_LO/HI.<br>Set INCREMENT = 0 and WRAP = 1 to read every chunk from one fixed address, such as a peripheral FIFO.</td></tr>
+<tr><td>0</td><td>INCREMENT</td><td>RW</td><td>0x0</td><td>Defines the address step within a chunk.<br>When 0: every read of a chunk uses the chunk&#x27;s start address.<br>When 1: each read is transfer_width bytes above the previous one.<br>WRAP sets where the next chunk starts.</td></tr>
 </table>
 <h3 id="DST_CONFIG">DST_CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>WRAP</td><td>RW</td><td>0x0</td><td>When 0: Chunks occupy contiguous ascending addresses.<br>When 1: Destination address wraps back to the starting address when finishing a chunk.</td></tr>
-<tr><td>0</td><td>INCREMENT</td><td>RW</td><td>0x0</td><td>Defines the increment behavior after every DMA write.<br>When 0: Destination address is not changed.<br>All writes are done to the same address.<br>When 1: Destination address is incremented by transfer_width after each write.</td></tr>
+<tr><td>1</td><td>WRAP</td><td>RW</td><td>0x0</td><td>When 0: each chunk starts where the previous one ended: with INCREMENT = 0, DST_ADDR_LO/HI advance by CHUNK_DATA_SIZE after each chunk; with INCREMENT = 1, writes continue ascending from the end of the previous chunk.<br>When 1: every chunk starts at DST_ADDR_LO/HI.<br>Set INCREMENT = 0 and WRAP = 1 to write every chunk to one fixed address, such as a peripheral FIFO.</td></tr>
+<tr><td>0</td><td>INCREMENT</td><td>RW</td><td>0x0</td><td>Defines the address step within a chunk.<br>When 0: every write of a chunk uses the chunk&#x27;s start address.<br>When 1: each write is transfer_width bytes above the previous one.<br>WRAP sets where the next chunk starts.</td></tr>
 </table>
 <h3 id="STATUS">STATUS</h3>
 <table>

@@ -35,7 +35,7 @@ Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
   edge of their own clock after the ``scan_rst_ni`` rise (the synchronizer is
   not in the path). With ``test_en_i`` low, ``scan_rst_ni`` has no effect.
 * "Replaces" and "selects" (``reset_controller.adoc:82-84``,
-  ``clk_rst.adoc:78-79``) make each net equal ``scan_rst_ni`` whatever its
+  ``clk_rst.adoc:85-86``) make each net equal ``scan_rst_ni`` whatever its
   functional reset is, so with ``scan_rst_ni`` = 1 and ``test_en_i`` = 1 the 16
   nets stay high while ``rst_ni``, which is in the functional cone of every one
   of them, is low.

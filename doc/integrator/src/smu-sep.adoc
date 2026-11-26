@@ -69,8 +69,15 @@ master interface allows SEP firmware to access system resources outside the SEP
 domain, such as SMC registers or external memory. The `smn_inbound_axi` slave
 interface accepts requests from system masters requiring access to SEP-managed
 resources. System masters must access SEP register regions with single-beat
-transactions. The `sep_ext_to_smc_axi` output provides a dedicated AXI path for
-SEP-to-SMC transactions, connecting to the SMC's `sep_axi_in` port.
+transactions. The system boots before SEP and must send no request on
+`smn_inbound_axi` while SEP is in reset: until the boot-qualified SEP reset
+releases, the port accepts AW, AR and W beats and discards them without a
+response. Such a request never completes, and in the SMU the ID-width converter
+in front of the port keeps its ID outstanding. After the release, the inbound
+filter answers every request with DECERR until SEP firmware enables a matching
+entry or SEP-scope debug bypasses the filter. The `sep_ext_to_smc_axi` output
+provides a dedicated AXI path for SEP-to-SMC transactions, connecting to the
+SMC's `sep_axi_in` port.
 
 An additional AXI extension port (`axi_extension_axi`) enables adopters to
 attach custom peripherals to the SEP interconnect fabric without modifying the
@@ -89,6 +96,12 @@ and a bit write mask. The `sep_boot_rom` interface provides the BL0 ROM
 containing the first-stage bootloader; its request carries the macro clock, a
 read request and the 64-bit word address. Both macros accept every request and
 return read data on the next clock, and need no reset.
+
+The scratch SRAM path carries no parity, ECC or scrambling, and the interface
+has no error return: a read returns the stored bits with an OKAY response, so a
+flipped stored bit reaches the initiator as silent bad data. An integrator who
+needs protection must build it into the macro, which can correct but not report
+an error through this interface.
 
 The crypto subsystem requires additional memory interfaces.
 `sep_crypto_pka_imem_sram` and `sep_crypto_pka_dmem_sram` connect to the OTBN
@@ -174,8 +187,10 @@ are built to meet the following requirements, and a hard macro of
 
 For adopters providing an external TRNG, the `ext_trng_axil` AXI-Lite interface
 connects to the external TRNG's control registers, while the `ext_trng_axis`
-AXI-Stream interfaces carry entropy data. The `ext_trng_irq_i` input is routed
-to the PIC.
+AXI-Stream interfaces carry entropy data. The asynchronous `ext_trng_irq_i`
+input reaches SEP PIC source 17 through a two-flop synchronizer. Hold it for at
+least two SEP clock cycles, or until firmware services it if firmware uses a
+level gateway.
 
 SEP decodes the 4 kB TRNG aperture (`0x1091_7000` - `0x1091_7FFF`) as a single
 window and forwards every access on `ext_trng_axil`. It does not decode offsets

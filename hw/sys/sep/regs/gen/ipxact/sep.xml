@@ -371,9 +371,9 @@ Source and destination address must have the same alignment.</ipxact:description
           <ipxact:field>
             <ipxact:name>REGWEN</ipxact:name>
             <ipxact:description>Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
-Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.
-
-Default Value = kMultiBitBool4True -&gt; Unlocked at reset.</ipxact:description>
+The range registers are writable only while this field reads kMultiBitBool4True (0x6), its reset value.
+A write from the reset value stores the written value, so writing kMultiBitBool4False (0x9) reads back 0x9, and any value other than 0x6 locks the range.
+After that, writes can only clear bits 1 and 2 and set bits 0 and 3, so the field cannot return to kMultiBitBool4True before a reset.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -594,10 +594,10 @@ Firmware clears the `go` bit to stop the hardware handshake operation earlier.</
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>INCREMENT</ipxact:name>
-            <ipxact:description>Defines the increment behavior after every DMA read.
-When 0: Source address is not changed.
-        All reads are done from the same address.
-When 1: Source address is incremented by transfer_width after each read.</ipxact:description>
+            <ipxact:description>Defines the address step within a chunk.
+When 0: every read of a chunk uses the chunk's start address.
+When 1: each read is transfer_width bytes above the previous one.
+WRAP sets where the next chunk starts.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -609,8 +609,9 @@ When 1: Source address is incremented by transfer_width after each read.</ipxact
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>WRAP</ipxact:name>
-            <ipxact:description>When 0: Chunks occupy contiguous ascending addresses.
-When 1: Source address wraps back to the starting address when finishing a chunk.</ipxact:description>
+            <ipxact:description>When 0: each chunk starts where the previous one ended: with INCREMENT = 0, SRC_ADDR_LO/HI advance by CHUNK_DATA_SIZE after each chunk; with INCREMENT = 1, reads continue ascending from the end of the previous chunk.
+When 1: every chunk starts at SRC_ADDR_LO/HI.
+Set INCREMENT = 0 and WRAP = 1 to read every chunk from one fixed address, such as a peripheral FIFO.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -627,10 +628,10 @@ When 1: Source address wraps back to the starting address when finishing a chunk
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>INCREMENT</ipxact:name>
-            <ipxact:description>Defines the increment behavior after every DMA write.
-When 0: Destination address is not changed.
-        All writes are done to the same address.
-When 1: Destination address is incremented by transfer_width after each write.</ipxact:description>
+            <ipxact:description>Defines the address step within a chunk.
+When 0: every write of a chunk uses the chunk's start address.
+When 1: each write is transfer_width bytes above the previous one.
+WRAP sets where the next chunk starts.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -642,8 +643,9 @@ When 1: Destination address is incremented by transfer_width after each write.</
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>WRAP</ipxact:name>
-            <ipxact:description>When 0: Chunks occupy contiguous ascending addresses.
-When 1: Destination address wraps back to the starting address when finishing a chunk.</ipxact:description>
+            <ipxact:description>When 0: each chunk starts where the previous one ended: with INCREMENT = 0, DST_ADDR_LO/HI advance by CHUNK_DATA_SIZE after each chunk; with INCREMENT = 1, writes continue ascending from the end of the previous chunk.
+When 1: every chunk starts at DST_ADDR_LO/HI.
+Set INCREMENT = 0 and WRAP = 1 to write every chunk to one fixed address, such as a peripheral FIFO.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9741,44 +9743,19 @@ it as the LOCKS register describes.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>ROM_CTL</ipxact:name>
+          <ipxact:description>Reserved.</ipxact:description>
           <ipxact:addressOffset>'h170</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
-            <ipxact:name>rom_endianness_ctrl</ipxact:name>
-            <ipxact:description>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</ipxact:description>
+            <ipxact:name>reserved</ipxact:name>
+            <ipxact:description>reserved</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>rom_swap_ctrl</ipxact:name>
-            <ipxact:description>controls how the rom slices are swapped</ipxact:description>
-            <ipxact:bitOffset>1</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>5</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>reserved</ipxact:name>
-            <ipxact:description>reserved</ipxact:description>
-            <ipxact:bitOffset>6</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>26</ipxact:bitWidth>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
@@ -18864,10 +18841,10 @@ disabled on a 64-bit bus; the reset does not follow the data width.</ipxact:desc
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>rc</ipxact:name>
-            <ipxact:description>SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
-then poll this register until the readback reflects the written value before
-writing again. The counter keeps advancing, so the readback is at or just
-above the written value rather than equal to it.</ipxact:description>
+            <ipxact:description>SEP REFERENCE COUNTER, counting after deassert of the boot-qualified SEP
+reset. Write once, then poll this register until the readback reflects the
+written value before writing again. The counter keeps advancing, so the
+readback is at or just above the written value rather than equal to it.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -19244,6 +19221,12 @@ above the written value rather than equal to it.</ipxact:description>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>addr</ipxact:name>
+            <ipxact:description>Base of the local alias window, which CPU and secure DMA accesses reach as
+0x1000_0000 onwards. Only bits [31:0] are used;
+bits [55:32] are ignored. Legal values are 0xD000_0000 to 0xFFFF_FFFF; other
+values overlap fixed SEP regions and are not supported. Keeping the reset value
+is recommended. The window ends at 0xFFFF_FFFF and does not wrap, so a higher
+base shortens it. An address outside the window is not translated.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -19366,8 +19349,9 @@ program this register with the address of its own NMI handler, and then set
 SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).
 If a bark arrives while the reset value is still in place, the CPU jumps to
 0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if
-the loaded image covers that location, or an uncorrectable ICCM ECC error
-(which itself re-raises NMI) if it does not.</ipxact:description>
+the loaded image covers that location, or, if the fetch takes an
+uncorrectable ICCM ECC error, an instruction access fault (mcause 0x1)
+through mtvec.</ipxact:description>
           <ipxact:addressOffset>'h180</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
@@ -19549,7 +19533,8 @@ when a CPU access to that block's registers returned a TL-UL error response
 (an unmapped offset, or a partial write: a byte strobe that misses a byte the
 register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
 written. The faulting access also received SLVERR synchronously. A narrow
-read inside a register returns OKAY.
+read inside a register returns OKAY. The spi bit also latches the SPI host
+fatal alert.
 
 All bits OR together into a single PIC source, so read this register to
 identify which block faulted.
@@ -19641,6 +19626,22 @@ describe a fault from before that reset rather than a new one.</ipxact:descripti
             <ipxact:name>wdt</ipxact:name>
             <ipxact:description>Watchdog timer register bridge error.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>spi</ipxact:name>
+            <ipxact:description>SPI host register bridge error, or the SPI host fatal_fault alert (a
+register-bus integrity fault, or a write of ALERT_TEST.fatal_fault). A
+real integrity fault repeats the alert until the SEP reset, so clearing
+this bit does not keep it clear.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
@@ -19743,6 +19744,19 @@ latches.</ipxact:description>
             <ipxact:name>wdt</ipxact:name>
             <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>spi</ipxact:name>
+            <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.spi. Always reads 0.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
@@ -20013,8 +20027,8 @@ currently in the command segment queue.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>RXWM</ipxact:name>
-            <ipxact:description>If high, the number of 32-bits in the RX FIFO now exceeds the
-!!CONTROL.RX_WATERMARK entries (32b each).</ipxact:description>
+            <ipxact:description>If high, the number of 32-bit words in the RX FIFO is greater
+than or equal to !!CONTROL.RX_WATERMARK.</ipxact:description>
             <ipxact:bitOffset>20</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -20028,7 +20042,9 @@ currently in the command segment queue.</ipxact:description>
           <ipxact:field>
             <ipxact:name>BYTEORDER</ipxact:name>
             <ipxact:description>The value of the ByteOrder parameter, provided so that firmware
-can confirm proper IP configuration.</ipxact:description>
+can confirm proper IP configuration. Reads 1 in SEP (ByteOrder = 1);
+the listed reset value of 0 holds only for the first clock after
+reset.</ipxact:description>
             <ipxact:bitOffset>22</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -20573,7 +20589,7 @@ goes high</ipxact:description>
           <ipxact:field>
             <ipxact:name>RXWM</ipxact:name>
             <ipxact:description>Assert to send a spi_event interrupt whenever the number of 32-bit words in
-the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+the RX FIFO is greater than or equal to !!CONTROL.RX_WATERMARK. To prevent the
 reassertion of this interrupt, read more data from the RX FIFO, or
 increase !!CONTROL.RX_WATERMARK.</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>

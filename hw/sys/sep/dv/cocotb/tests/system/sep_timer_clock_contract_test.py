@@ -35,12 +35,12 @@ this order, over the CPU-LSU master on ``s_axi``:
   (CTRL-WDT-ALERT-REACH, CTRL-MISSING otherwise), so a refused write fails the
   leaf. INFO-WDT-ALERT-RESP logs the response code, not graded: no
   specification states the response code of a legal register write. With
-  ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, INFO-WDT-PAUSE-RUN logs the
-  count advance over ``WDT_WAIT`` ``clk_wdt_i`` periods against the
-  ``clk_wdt_i`` edges between the two count reads; no specification states
-  the level of the sleep input of the timer in SEP. Control
-  CTRL-WDT-PAUSE-RUN: ``WDOG_CTRL`` reads both bits 1 before the first count
-  read.
+  ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, the count advance over
+  ``WDT_WAIT`` ``clk_wdt_i`` periods matches the ``clk_wdt_i`` edges between
+  the two count reads within ``A`` (CHK-WDT-PAUSE-RUN; ``pause_in_sleep`` "has
+  no effect", ``hw/sys/sep/doc/watchdog.adoc:23``). The CPU is a stub in this
+  leaf, so no debug halt runs. Control CTRL-WDT-PAUSE-RUN: ``WDOG_CTRL`` reads
+  both bits 1 before the first count read.
 * Leg H. The watchdog runs with ``clk_i`` held low past its bite threshold; the
   count advances by the ``clk_wdt_i`` edges of the hold (CHK-WDT-CLKSTOP-COUNT),
   and the bite request rises in the hold at or above the bite threshold
@@ -70,7 +70,9 @@ this order, over the CPU-LSU master on ``s_axi``:
   wakeup registers land.
 * Leg P. A pet restarts the watchdog count and holds off the bark; bark
   threshold 0 barks once enabled; a bark and then a bite threshold written at or
-  below the running count fire.
+  below the running count fire; a bite threshold below the bark threshold bites
+  with the bark line and status at 0 (CHK-WDT-BITE-FIRST,
+  ``hw/sys/sep/doc/watchdog.adoc:27``).
 * Leg K. The wakeup timer at prescaler 4095 with threshold 0: periods per
   count, the expired status and ``WKUP_CAUSE`` at the first prescaler
   completion, and a ``WKUP_CTRL`` write that restarts the prescaler.
@@ -114,12 +116,13 @@ WDOG_BARK_THOLD" (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:
   ``clk_i`` edge where the bark line, the bite request or the wakeup bit of
   ``aon_wkup_probe_o`` first rises, the count tap (``wdt_wdog_count_o``, or the
   low word of ``aon_wkup_probe_o``) is at or above the threshold
-  (``README.md:35,55-56``), so an event that fires early fails with no
-  allowance. ``A`` stays only in the bounds on the bus reads. A rise later than
-  the threshold passes this bound, so whether the watchdog compare includes the
-  threshold itself is not graded: OBS-WDT-BITE-EQ logs, for each run of
-  CHK-WDT-ORDER and CHK-WDT-MAX, the count tap at the first bark and bite rise
-  minus its threshold ("none" for a missing rise).
+  (``README.md:35,55-56``; for the watchdog, CHK-WDT-FIRE-NOT-EARLY: each "fires once
+  the watchdog count reaches its own threshold", ``hw/sys/sep/doc/watchdog.adoc:27``),
+  so an event that fires early fails with no allowance. ``A`` stays only in the
+  bounds on the bus reads. No text states the latency from the threshold to
+  the rise at the taps: OBS-WDT-BITE-LAT logs, for each run of CHK-WDT-ORDER
+  and CHK-WDT-MAX, the count tap at the first bark and bite rise minus its
+  threshold.
 
 Each of these windows also requires ``dcount x (p + 1) > 2 x bound``, so a count
 at half or twice the stated rate is outside the bound. Control: CTRL-WDT-ENABLE
@@ -368,7 +371,8 @@ CHK-REGWEN-STICKY, CHK-REGWEN-HOLD, CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE
 CHK-BITE-HOLD, CHK-WDT-RATE, CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-SCOPE, CHK-WDT-PET,
 CHK-WDT-PET-HOLD, CHK-WDT-PET-BITE, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
 CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ, CHK-WDT-CLKSTOP-COUNT,
-CHK-WDT-CLKSTOP-BITE, CHK-WDT-BARK-REARM, CHK-WDT-INTRTEST-COUNT, CHK-WDT-NO-SPURIOUS.
+CHK-WDT-CLKSTOP-BITE, CHK-WDT-BARK-REARM, CHK-WDT-INTRTEST-COUNT, CHK-WDT-NO-SPURIOUS,
+CHK-WDT-BITE-FIRST, CHK-WDT-FIRE-NOT-EARLY, CHK-WDT-PAUSE-RUN.
 Controls (not counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
 CTRL-WKUP-SMALL, CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
 CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
@@ -376,7 +380,7 @@ CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY
 CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-PAUSE-RUN, CTRL-WDT-ALERT-RESP,
 CTRL-WDT-ALERT-REACH, CTRL-WDT-INTRTEST-WKUP-CAUSE.
 Observations (not graded): INFO-WDT-CLKSTOP-AFTER, INFO-BITE-CLEAR-EDGE,
-INFO-REFCNT-SPACED-LAT, INFO-WDT-PAUSE-RUN, OBS-WDT-BITE-FIRST, OBS-WDT-BITE-EQ,
+INFO-REFCNT-SPACED-LAT, OBS-WDT-BITE-LAT,
 INFO-WDT-ALERT-RESP, INFO-WDT-INTRTEST-WKUP-CAUSE.
 
 The graded window (owner code of this test) opens at leg R and closes for the
@@ -738,6 +742,9 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-WDT-BARK-REARM",
         "CHK-WDT-INTRTEST-COUNT",
         "CHK-WDT-NO-SPURIOUS",
+        "CHK-WDT-BITE-FIRST",
+        "CHK-WDT-FIRE-NOT-EARLY",
+        "CHK-WDT-PAUSE-RUN",
     )
 
     # -- primitives -----------------------------------------------------------
@@ -1497,23 +1504,26 @@ class sep_timer_clock_contract_test(sep_base_test):
         )
         if early or not after or not all(after):
             self._fail(f"{chk} FAIL: bark line: {line_txt}")
-        # The count tap at the first rise of each event is at or above its threshold
-        # (aon_timer README.md: a bark or bite while the count is at or above the
-        # threshold), so an event that fires early fails with no allowance.
+        # CHK-WDT-FIRE-NOT-EARLY: each event fires "once the watchdog count reaches its own
+        # threshold" (hw/sys/sep/doc/watchdog.adoc:27), so the count tap at the
+        # first rise of each event is at or above its threshold, with no allowance.
         rise = run["rise"]
         rise_txt = (
             f"count_at_bark_rise={rise.get('bark')} count_at_bite_rise={rise.get('bite')} "
             f"bark_thold={bx} bite_thold={dx}"
         )
-        if "bark" not in rise or "bite" not in rise or rise["bark"] < bx or rise["bite"] < dx:
+        if "bark" not in rise or "bite" not in rise:
             raise AssertionError(f"{chk} FAIL: run={tag} event rise: {rise_txt}")
-        above = {
-            ev: "none" if rise.get(ev) is None else rise[ev] - thr
-            for ev, thr in (("bark", bx), ("bite", dx))
-        }
+        eq_txt = f"seed={self.tcfg.seed} chk={chk} run={tag} {rise_txt}"
+        if rise["bark"] < bx or rise["bite"] < dx:
+            raise AssertionError(f"CHK-WDT-FIRE-NOT-EARLY FAIL: {eq_txt}")
+        self.logger.info("CHK-WDT-FIRE-NOT-EARLY PASS: %s", eq_txt)
+        # No text states the latency from the threshold to the rise at the taps, so a
+        # compare that fires one count late (">" for ">=") is not graded.
+        above = {ev: rise[ev] - thr for ev, thr in (("bark", bx), ("bite", dx))}
         self.logger.info(
-            "OBS-WDT-BITE-EQ: seed=%d chk=%s run=%s bark_rise_minus_thold=%s "
-            "bite_rise_minus_thold=%s bark_thold=%d bite_thold=%d",
+            "OBS-WDT-BITE-LAT: seed=%d chk=%s run=%s bark_rise_minus_thold=%d "
+            "bite_rise_minus_thold=%d bark_thold=%d bite_thold=%d",
             self.tcfg.seed,
             chk,
             tag,
@@ -2112,7 +2122,17 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.logger.info("CHK-WDT-NO-SPURIOUS PASS: %s", line)
 
     async def _pause_run(self, bx: int, dx: int) -> None:
-        """Count window with ``WDOG_CTRL`` enable and ``pause_in_sleep`` set (window closed)."""
+        """CHK-WDT-PAUSE-RUN: ``pause_in_sleep`` = 1 leaves the watchdog count rate unchanged.
+
+        "SEP ties ``wdt_debug_sleep_mode_i`` low, so the timer keeps counting while
+        the CPU is halted in debug and ``WDOG_CTRL.pause_in_sleep`` has no effect."
+        (``hw/sys/sep/doc/watchdog.adoc:23``; also
+        ``doc/programmer/src/sep-programming.adoc:675-677``). With enable and
+        ``pause_in_sleep`` both 1, the count advance between two reads lies in
+        ``[E_min - A, E_max + A]``, where ``E_min`` and ``E_max`` are the
+        ``clk_wdt_i`` edges inside and around the two reads. The graded window
+        is closed over the run.
+        """
         seed = self.tcfg.seed
         want = WDOG_EN | WDOG_PAUSE
         was = await self._ungraded()
@@ -2139,19 +2159,19 @@ class sep_timer_clock_contract_test(sep_base_test):
         c1, s1, e1 = await self._timed_rd(WDOG_COUNT)
         st = await self._rd(INTR_STATE)
         await self._wr(WDOG_CTRL, 0)
-        self.logger.info(
-            "INFO-WDT-PAUSE-RUN seed=%d wdog_ctrl=0x%x count0=0x%x count1=0x%x dcount=%d "
-            "clk_wdt_edges_min=%d clk_wdt_edges_max=%d wait_wdt=%d bark=%d",
-            seed,
-            ctrl,
-            c0,
-            c1,
-            c1 - c0,
-            self._edges("clk_wdt_i", e0, s1),
-            self._edges("clk_wdt_i", s0, e1),
-            WDT_WAIT,
-            int(bool(st & BARK_BIT)),
+        a = COUNT_ALLOW
+        e_min = self._edges("clk_wdt_i", e0, s1)
+        e_max = self._edges("clk_wdt_i", s0, e1)
+        line = (
+            f"seed={seed} wdog_ctrl=0x{ctrl:x} count0=0x{c0:x} count1=0x{c1:x} "
+            f"dcount={c1 - c0} clk_wdt_edges_min={e_min} clk_wdt_edges_max={e_max} "
+            f"allow={a} wait_wdt={WDT_WAIT} bark={int(bool(st & BARK_BIT))}"
         )
+        if e_min <= 2 * a:
+            raise AssertionError(f"CTRL-MISSING CHK-WDT-PAUSE-RUN: window too short: {line}")
+        if not e_min - a <= c1 - c0 <= e_max + a:
+            raise AssertionError(f"CHK-WDT-PAUSE-RUN FAIL: {line}")
+        self.logger.info("CHK-WDT-PAUSE-RUN PASS: %s", line)
         await self._regraded(was)
 
     # -- leg H ------------------------------------------------------------------
@@ -3315,17 +3335,22 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.logger.info("CHK-WDT-PET-BITE PASS: %s", line)
 
     async def _bite_first(self) -> None:
-        """OBS-WDT-BITE-FIRST: one run with the bite threshold below the bark threshold.
+        """CHK-WDT-BITE-FIRST: a bite threshold below the bark threshold bites with no bark.
 
-        ``watchdog.adoc`` and the aon_timer README state two separate
-        thresholds, but ``watchdog.adoc`` also calls the bite the second stage
-        that fires after an unanswered bark, so the bark status when the bite
-        comes first is an open question. The run logs the bark status, the
-        clk_i edges of the bite request and the bark line, and the count tap
-        ``wdt_wdog_count_o`` on the ``clk_i`` edge of the first bite rise ("none"
-        when no rise comes within the bound).
+        "The bark and bite thresholds are independent: each fires once the
+        watchdog count reaches its own threshold, whether or not the other has
+        fired." (``hw/sys/sep/doc/watchdog.adoc:27``). With the bite threshold
+        ``BITE_FIRST_BITE`` below the bark threshold ``BITE_FIRST_BARK``, the bite
+        request rises within the bound, the count tap ``wdt_wdog_count_o`` on the
+        ``clk_i`` edge of the first rise is at or above the bite threshold, the
+        bark line (tap ``wdt_bark_probe_o``) reads 0 on every ``clk_i`` edge from
+        the enable write to the end of the status read, and that read shows the
+        bark status 0. Control: a ``WDOG_COUNT`` read after the status read is
+        below the bark threshold, so the bark is not due at the status read
+        (CTRL-MISSING otherwise).
         """
         dut = cocotb.top
+        chk = "CHK-WDT-BITE-FIRST"
         was = await self._ungraded()
         await self._wdt_baseline(BITE_FIRST_BARK, BITE_FIRST_BITE, 0)
         watch = SepBitWatch(dut.wdt_timer_rst_req_o, name="wdt_timer_rst_req_o").start()
@@ -3347,22 +3372,27 @@ class sep_timer_clock_contract_test(sep_base_test):
                 break
         tap.kill()
         st = await self._rd(INTR_STATE)
+        bark_high = bark.high_clocks_since(mb)
+        cnt = await self._rd(WDOG_COUNT)
         bite_cnt = rise.get("bite")
-        self.logger.info(
-            "OBS-WDT-BITE-FIRST bite_thold=0x%x bark_thold=0x%x bite_rise_clk=%s "
-            "bark_rise_clk=%s bark_status=%d count_at_bite_rise=%s",
-            BITE_FIRST_BITE,
-            BITE_FIRST_BARK,
-            watch.rise_clks_since(mw)[:1] or "none",
-            bark.rise_clks_since(mb)[:1] or "none",
-            int(bool(st & BARK_BIT)),
-            "none" if bite_cnt is None else f"0x{bite_cnt:x}",
+        line = (
+            f"seed={self.tcfg.seed} bite_thold=0x{BITE_FIRST_BITE:x} "
+            f"bark_thold=0x{BITE_FIRST_BARK:x} "
+            f"bite_rise_clk={watch.rise_clks_since(mw)[:1] or 'none'} "
+            f"count_at_bite_rise={'none' if bite_cnt is None else f'0x{bite_cnt:x}'} "
+            f"bark_line_high_clk={bark_high} bark_status={int(bool(st & BARK_BIT))} "
+            f"count_after_status=0x{cnt:x}"
         )
         await watch.stop()
         await bark.stop()
         await self._wr(WDOG_CTRL, 0)
         if self.rd(dut.wdt_timer_rst_req_o):
             await self._bite_clear("bite_first")
+        if cnt >= BITE_FIRST_BARK:
+            raise AssertionError(f"CTRL-MISSING {chk}: count reached the bark threshold: {line}")
+        if bite_cnt is None or bite_cnt < BITE_FIRST_BITE or bark_high or st & BARK_BIT:
+            raise AssertionError(f"{chk} FAIL: {line}")
+        self.logger.info("%s PASS: %s", chk, line)
         await self._regraded(was)
 
     async def _leg_p(self) -> None:
