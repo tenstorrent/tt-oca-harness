@@ -721,7 +721,7 @@ registers that have a function in a JTAG2AXI bridge.
 
 |0x10
 |dmcontrol
-|`dmactive` (bit 0) enables the Debug Module. While it is 0, the other registers hold their reset values. `ndmreset` has no effect.
+|`dmactive` (bit 0) enables the Debug Module. While it is 0, the other registers hold their reset values and the SBA registers start no access. `ndmreset` has no effect.
 
 |0x11
 |dmstatus
@@ -767,6 +767,15 @@ the data width. Accesses with `sberror` 3 or 4 start no AXI transfer. While
 `sberror` is not 0, the bridge starts no access. A write to `sbcs` with a
 nonzero `sberror` field clears `sberror`, and a write of 1 to `sbbusyerror`
 clears `sbbusyerror`.
+
+While `dmcontrol.dmactive` is 0, a write of `sbdata0`, a write of `sbaddress0`
+and a read of `sbdata0` start no AXI access. An access that is in progress when
+`dmactive` goes to 0 completes with the address, the size and the data that it
+started with. `sbcs`, `sbaddress` and `sbdata` keep their values until that
+access completes, and take their reset values after it. If `dmactive` is set to
+1 again before the access completes, these registers do not take their reset
+values, and they get the result of the access. A debugger therefore reads
+`sbcs` until `sbbusy` is 0 before it sets `dmactive` to 1 again.
 
 The Programmer's Guide gives the
 ifdef::backend-html5[]
