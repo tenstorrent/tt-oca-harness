@@ -961,7 +961,9 @@ class SepUnmappedAccess:
         res = ProbeResult(p, resp, rdata, to)
         if watch:
             res.lite_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in lite)
-            res.ext_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in ext)
+            # The probe is the only access in flight, so any ext handshake in its window is
+            # the probe returning, whatever address it carries.
+            res.ext_reached = bool(ext)
         if p.op == "r" and not to:
             res.alias = self.read_alias(rdata)
         if p.op == "w":
