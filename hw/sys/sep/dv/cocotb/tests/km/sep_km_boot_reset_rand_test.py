@@ -42,7 +42,7 @@ Checks:
                   and rises before the first host read that shows the READY word
   CHK-BOOT-ORDER-WARM
                   at every warm boot COLD_BOOT_DONE reads 1 while the KM is held
-                  and after the READY word (``reset_controller.adoc:95,182``;
+                  and after the READY word (``reset_controller.adoc:95,181``;
                   ``km_csr.rdl:697,701``; ``architecture.adoc:1125``)
   CHK-BOOT-FLUSH  at each warm reset of the warm-reset leg: the FIFOs keep their
                   words while the KM is held (every stale write OKAY, inbound depth
@@ -944,7 +944,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
     def _boot_order_warm(self, tag: str, cbd_held: int, cbd_ready: int) -> None:
         """CHK-BOOT-ORDER-WARM: a KM warm reset keeps COLD_BOOT_DONE at 1.
 
-        ``hw/sys/sep/doc/reset_controller.adoc:95,182``: SW_RESET_N bit 0 drives the
+        ``hw/sys/sep/doc/reset_controller.adoc:95,181``: SW_RESET_N bit 0 drives the
         KM warm reset; ``hw/ip/key_manager/regs/km_csr.rdl:697,701``: the bit stays
         set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1125``:
         on a warm reset ``COLD_BOOT_DONE`` already reads 1. The cold-boot reference

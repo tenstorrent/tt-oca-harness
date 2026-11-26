@@ -944,7 +944,7 @@ static int chk_host_intg(void) {
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
-    // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:67-69):
+    // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:69-71):
     // with the pin low again, STATUS still holds host_path_err. The testbench
     // requires aggregator bit 41 high up to CHK-HOSTINTG-HELD, and the pin low on
     // a clock after its release at this read (CTRL-HOSTINTG-HELD-PIN).

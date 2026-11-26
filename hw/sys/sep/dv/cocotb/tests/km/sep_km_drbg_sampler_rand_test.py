@@ -104,7 +104,7 @@ Checkers:
                   and DRBG_ERR 0. The pulse is seen on the reset-sequencer
                   probes: the TRNG gated reset is low for at least one clock,
                   every such clock has the three TRNG host paths isolated and
-                  the KM warm reset low (reset_controller.adoc:189-193, 211-212),
+                  the KM warm reset low (reset_controller.adoc:189-193, 210-211),
                   and it is high before and after the pulse. Control: before the
                   pulse the producer offers a beat (TVALID 1) that the held
                   sampler does not take (TREADY 0).

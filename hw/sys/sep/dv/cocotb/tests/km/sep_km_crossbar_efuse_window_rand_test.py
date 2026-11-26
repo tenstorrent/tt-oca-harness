@@ -135,7 +135,7 @@ draw is logged on a ``DRAW`` line.
 
 Write-locked shadow word, after the boot-one checks and before the boot-two
 re-sense (``otp_fuse_controller.adoc:110-114``; ``hw/ip/key_manager/doc/
-architecture.adoc:924-928``, the KM eFuse path honors the native per-field
+architecture.adoc:923-927``, the KM eFuse path honors the native per-field
 locks): ``CHK-EFW-WLOCK-SHADOW`` grades that a KM write of a drawn value, which
 differs from the staged word in a used bit of the field (it sets a used bit
 that is 0, or clears a used bit when every used bit is 1), to a word of the
