@@ -22,8 +22,11 @@ Checkers:
   CHK-CLKDIV-RW     ``PKA_CLK_DIV`` reads back the ratio just written.
   CHK-CLKDIV-EXEC   every run ends at IDLE with ``ERR_BITS`` 0 and both result
                     words equal to the golden.
-  CHK-CLKDIV-SCALE  the 990-iteration time at an effective ratio e (0 counts as
-                    1) is between 0.75 x e and 1.25 x e times its time at ratio 1.
+  CHK-CLKDIV-SCALE  the 990-iteration time at a ratio r other than 1, with
+                    effective ratio e (0 counts as 1), is between 0.875 x e and
+                    1.125 x e times its time at ratio 1. The band is half the gap
+                    to the next ratio at e = 4, so a divide by e - 1 or e + 1 fails.
+  INFO-CLKDIV-BASE  the 990-iteration time at ratio 1, the reference of the scale.
 """
 
 from __future__ import annotations
@@ -42,11 +45,12 @@ from seq_lib.sep_otbn_seq import OTBN_STATUS_IDLE
 _NAME = "sep_otbn_clk_div_test"
 
 PKA_CLK_DIV = SEP_CPU_CTRL.addr("PKA_CLK_DIV")
-_RESET_RATIO = 2
+_DIV_RESET = SEP_CPU_CTRL.field_reset("PKA_CLK_DIV", "div")
+_DIV_MASK = SEP_CPU_CTRL.field_mask("PKA_CLK_DIV", "div")
 _RATIOS = (0, 1, 2, 3, 4)
 _LOOP_SHORT = 10
 _LOOP_LONG = 1000
-_SCALE_TOL = 0.25
+_SCALE_TOL = 0.125
 
 
 @pyuvm.test()
@@ -69,21 +73,24 @@ class sep_otbn_clk_div_test(sep_base_test):
         otbn = SepOtbnCompute(self)
         await otbn.wait_idle("post-wipe", timeout=8_000)
 
-        reset_val = await otbn._rd(PKA_CLK_DIV) & 0xFF
-        self.chk.ok("CLKDIV-RESET", reset_val == _RESET_RATIO, got=reset_val, exp=_RESET_RATIO)
+        reset_val = await otbn._rd(PKA_CLK_DIV) & _DIV_MASK
+        self.chk.ok("CLKDIV-RESET", reset_val == _DIV_RESET, got=reset_val, exp=_DIV_RESET)
 
         plan = SepOtbnCapPlan.from_seed(seed)
         body_cycles: dict[int, int] = {}
         for ratio in ratios:
             await otbn._wr(PKA_CLK_DIV, ratio)
-            got_ratio = await otbn._rd(PKA_CLK_DIV) & 0xFF
+            got_ratio = await otbn._rd(PKA_CLK_DIV) & _DIV_MASK
             self.chk.ok("CLKDIV-RW", got_ratio == ratio, got=got_ratio, exp=ratio)
             short = await self._run_loop(otbn, plan, ratio, _LOOP_SHORT)
             long = await self._run_loop(otbn, plan, ratio, _LOOP_LONG)
             body_cycles[ratio] = long - short
 
         base = body_cycles[1]
+        self.chk.info("CLKDIV-BASE", ratio=1, body_cycles=base)
         for ratio in ratios:
+            if ratio == 1:
+                continue
             eff = max(ratio, 1)
             scale = body_cycles[ratio] / base
             self.chk.ok(
@@ -95,7 +102,7 @@ class sep_otbn_clk_div_test(sep_base_test):
                 scale=f"{scale:.2f}",
             )
 
-        await otbn._wr(PKA_CLK_DIV, _RESET_RATIO)
+        await otbn._wr(PKA_CLK_DIV, _DIV_RESET)
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()

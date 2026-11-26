@@ -5656,9 +5656,11 @@ qualified as `{imem, idx, wdata}` fails.
 |CHK-CLKDIV-EXEC
 |Every run ends with `STATUS` = IDLE in a bounded poll, `ERR_BITS` = 0, and both result words equal to the `loopi n, 2` golden, n x step and n (`base-insns.yml`, `loopi`). A divided clock that corrupts OTBN state or stops it fails here. Evidence: one `CHK-CLKDIV-EXEC PASS seed=<n> ratio=<r> loop_n=<n> status=0x00 ... cycles=<c>` line per run.
 |CHK-CLKDIV-SCALE
-|For each ratio r with effective ratio e = max(r, 1), the 990-iteration time divided by its value at ratio 1 is between 0.75 x e and 1.25 x e. The URND reseed at the start of each EXECUTE runs on `clk_i` with a latency the EDN sets, and cancels out of the difference with the secure wipe at the end. A divider that ignores the field, that does not bypass at 0 or 1, or that divides by the wrong ratio fails here. Evidence: one `CHK-CLKDIV-SCALE PASS seed=<n> ratio=<r> body_cycles=<c> base_body_cycles=<b> scale=<s>` line per ratio.
+|For each ratio r other than 1, with effective ratio e = max(r, 1), the 990-iteration time divided by its value at ratio 1 is between 0.875 x e and 1.125 x e. The band is half the gap between ratios 4 and 3 or 5, so a divide by e - 1 or e + 1 fails at every graded ratio. The URND reseed at the start of each EXECUTE runs on `clk_i` with a latency the EDN sets, and cancels out of the difference with the secure wipe at the end. A divider that ignores the field, that does not bypass at 0 or 1, or that divides by the wrong ratio fails here. Evidence: one `CHK-CLKDIV-SCALE PASS seed=<n> ratio=<r> body_cycles=<c> base_body_cycles=<b> scale=<s>` line per ratio.
 |CHK1..CHK4 / CHK5_otbn_urnd
 |The strict entropy scoreboard runs against the chained golden, with `CHK5_otbn_urnd` in observe mode, because each EXECUTE reseeds URND.
+|INFO-CLKDIV-BASE
+|The 990-iteration time at ratio 1, the reference of CHK-CLKDIV-SCALE. It cannot fail on its own and is not a checker.
 |INFO-RANDCFG
 |The leaf logs the ratio order and the two loop counts. The line reports the stimulus the seed drew, cannot fail on the DUT, and is not a checker.
 |===
