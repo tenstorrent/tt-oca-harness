@@ -3,13 +3,8 @@
 
 // Mux and ripple-divide per-lane sample clocks for NRINGS noise generators.
 //
-// Each generator selects external sample_clk_i or a shared internal ring oscillator, then
-// divides by powers of two from ÷1 through ÷32.
-//
-// The shared RO enables when any generator enables and detunes when any generator
-// requests detune (OR aggregation); detune selects its full 109-stage path and otherwise
-// it runs on its 53-stage tap. It is about 10× longer than the noise ROs to hit the
-// target frequency ratio.
+// Each generator selects external sample_clk_i or the shared ring oscillator's shared_clk_i,
+// then divides by powers of two from ÷1 through ÷32.
 
 module entropy_sampler_clocks #(
   parameter int unsigned NRINGS = 12  // Ring-oscillator lane count.
@@ -22,35 +17,20 @@ module entropy_sampler_clocks #(
   input       logic [NRINGS-1:0]      sample_clk_select_i,  // Per-lane clock source: high for the
                                                             // shared ring oscillator, low for
                                                             // sample_clk_i; change only while that
-                                                            // lane's enable_i is low.
-  input       logic [NRINGS-1:0]      enable_i,  // Per-lane enable requests; any set bit starts the
-                                                 // shared ring oscillator.
-  input       logic [NRINGS-1:0]      detune_ro_i,  // Detune requests for the shared ring
-                                                    // oscillator; any set bit selects its
-                                                    // full-length feedback path.
+                                                            // lane's sample-clock enable is low.
+  input       logic                   shared_clk_i,  // Shared ring-oscillator output,
+                                                     // asynchronous.
   input       logic [NRINGS-1:0][4:0] sample_clk_divide_i,  // Per-lane divide exponent: 0-5 divide
                                                             // by 1 to 32, other values divide by 4;
                                                             // change only while that lane's
-                                                            // enable_i is low.
+                                                            // sample-clock enable is low.
   output      logic [NRINGS-1:0]      sample_clk_o  // Per-lane selected and divided sample clock
-                                                    // for the noise-source sampling flop.
+                                                    // for the noise sampler's sampling flop.
 );
-
-  /////////////////////
-  // Local parameters
-  /////////////////////
-
-  // Shared RO: ~10× longer than noise-generating ROs to achieve the target
-  // frequency ratio; detuned length chosen to preserve that ratio
-  localparam int unsigned SharedTotalLength = 109;
-  localparam int unsigned SharedTappedLength = 53;
 
   /////////////
   // Signals
   /////////////
-
-  logic shared_ring_osc_clk;
-  logic shared_detune_enable;
 
   logic [NRINGS-1:0]      selected_clk;
   logic [NRINGS-1:0][5:0] sample_clk_divided;
@@ -58,27 +38,11 @@ module entropy_sampler_clocks #(
   logic [NRINGS-1:0]      div_hi_clk;
 
   /////////////////
-  // Combinational
-  /////////////////
-
-  // Shared RO detunes if ANY generator requests it
-  assign shared_detune_enable = |detune_ro_i;
-
-  /////////////////
   // Sub-instances
   /////////////////
 
-  entropy_ring_oscillator #(
-    .TOTAL_LENGTH  (SharedTotalLength),
-    .TAPPED_LENGTH (SharedTappedLength)
-  ) u_shared_ro (
-    .enable_i (|enable_i),
-    .detune_i (shared_detune_enable),
-    .noise_o  (shared_ring_osc_clk)
-  );
-
   // Clock-cell selects are not glitch-free. sample_clk_select_i[i] and
-  // sample_clk_divide_i[i] change only while enable_i[i] is low.
+  // sample_clk_divide_i[i] change only while lane i's sample-clock enable is low.
   for (genvar i = 0; i < NRINGS; i++) begin : gen_sampler_clk
     logic       div_hi_en;
     logic       div_hi_sel;
@@ -86,7 +50,7 @@ module entropy_sampler_clocks #(
 
     prim_clock_mux2 u_sample_clk_src_mux (
       .clk0_i(sample_clk_i),
-      .clk1_i(shared_ring_osc_clk),
+      .clk1_i(shared_clk_i),
       .sel_i (sample_clk_select_i[i]),
       .clk_o (selected_clk[i])
     );

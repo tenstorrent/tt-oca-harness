@@ -7,7 +7,7 @@ type comes from the generated register map through
 :mod:`seq_lib.smc_rdl_regmap` and :mod:`seq_lib.smc_cla_regmap`. The vendored
 RTL is not a source for any value this sequence programs or compares against.
 
-The other trace leaves fill the sink and stop there, so the sink's read side
+The trace fill leaves fill the sink and stop there, so the sink's read side
 stays idle: its read pointer stays at its reset, the buffer never reads
 non-empty against the write pointer, and the RAM data port is not taken. This
 sequence drives the other half of the same register
@@ -38,9 +38,14 @@ A second leg then traces the CLA debug-bus mux in toggle mode
 (``CDbgMuxSelLo.Dbmmode`` 3, ``Dbmid`` 0) into a window spanning the whole
 16 KiB the eight trace RAMs hold (``hw/sys/smc/doc/dfd.adoc``), uncompressed:
 
-* ``Trdstramrplow`` is read before and after each empty-buffer data read and
-  both values are logged beside the documented behaviour, a read with no
-  unread data leaving it in place; the bench is observed to advance it.
+* ``Trdstramrplow`` is read before and after each empty-buffer data read, and
+  ``Trdstramwplow`` is read first and has to sit on the read pointer with the
+  wrap flag 0, which is the state in which the RAM holds no unread data.
+  ``dfd_dst_sink.rdl`` states that every ``Trdstramdata`` read advances the
+  read pointer by one word, and that a read while the RAM holds no unread data
+  returns 0 and still advances it, so each of those reads has to return 0 and
+  leave the pointer one word on. No trace has written the RAM at that point, so
+  the 0 does not separate an empty read from a read of the RAM's reset content.
 * The fill is a bounded poll of ``Trdstramwplow`` until the write pointer has
   been seen at or beyond the window's midpoint and, at a later sample, below
   the highest position seen, which is the pointer wrapping round the window.
@@ -49,13 +54,13 @@ A second leg then traces the CLA debug-bus mux in toggle mode
   previous one left it drives the action field over its range again. The trace
   is then stopped by clearing the DST enable.
 * Each of the eight 2 KiB segments is read out with 512 ``Trdstramdata`` reads
-  from its start. A read that returns unread data advances the read pointer by
-  one word, and from ``Trdstramlimitlow`` it wraps to ``Trdstramstartlow``, so
-  every pointer sample has to equal the segment start plus one word per
-  pointer-advancing read, and once a read leaves the pointer in place it stays put.
-  How many reads return data and which bits the words carry are logged, not
-  compared: the RAM address map, the unread-data accounting after a wrap and
-  the toggle payload format are not documented.
+  from its start. Every read advances the read pointer by one word, and from
+  ``Trdstramlimitlow`` it wraps to ``Trdstramstartlow``, so every pointer
+  sample, taken after each of the first 16 reads and after the last, has to
+  equal the segment start plus one word per data read. Which
+  bits the words carry is logged, not compared: the RAM address map is not
+  documented, and the words are the packet stream of ``dfd.adoc`` Trace RAM
+  Format, which this leaf does not decode.
 * The read pointer is placed on the limit and one data read has to take it
   back to the window start.
 """
@@ -136,7 +141,6 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         self.toggle_reissues = 0
         self.toggle_wp_samples: list[int] = []
         self.toggle_peak = -1
-        self.segment_words: list[int] = []
         # term -> [first access stamp (ps), last stamp (ps), accesses at start, at end]
         self._terms: dict[str, list[int]] = {}
 
@@ -336,10 +340,19 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         # each 8-byte word inside the first set: still nothing to read.
         wp = sink_register("Trdstramwplow")
         rp = sink_register("Trdstramrplow")
+        rp_field = reg_field(rp, "Trdstramrplow")
+        wp_field = reg_field(wp, "Trdstramwplow")
+        wrap = reg_field(wp, "Trdstramwrap")
         self._term_start("EMPTY_RP")
         for offset in _SET_OFFSETS:
             await self._write(wp, field_word(wp, "Trdstramwplow", offset), f"empty_wp{offset:x}")
             await self._write(rp, field_word(rp, "Trdstramrplow", offset), f"empty_rp{offset:x}")
+            wp_word = await self._read(wp, f"empty_wp{offset:x}_before")
+            assert (wp_word & wp_field.mask, wp_word & wrap.mask) == (offset, 0), (
+                f"DST_SINK Trdstramwplow reads 0x{wp_word:x} before the empty read at byte "
+                f"offset 0x{offset:x}; the RAM holds no unread data only with the write "
+                f"pointer on the read pointer and Trdstramwrap 0"
+            )
             rp_before = await self._read(rp, f"empty_rp{offset:x}_before")
             word = await self._read(data, f"empty{offset:x}")
             rp_after = await self._read(rp, f"empty_rp{offset:x}_after")
@@ -347,8 +360,16 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
                 f"DST_SINK Trdstramdata reads 0x{word:08x} with the write and read pointers both "
                 f"at byte offset 0x{offset:x} and no trace captured; an empty sink RAM reads 0"
             )
+            rp_before &= rp_field.mask
+            rp_after &= rp_field.mask
+            assert (rp_before, rp_after) == (offset, offset + 4), (
+                f"CHK-DST-TOGGLE-EMPTY-RP FAIL: Trdstramrplow reads 0x{rp_before:x} before and "
+                f"0x{rp_after:x} after a Trdstramdata read with the write and read pointers "
+                f"both at byte offset 0x{offset:x}; a read while the RAM holds no unread data "
+                f"advances the pointer by one word, to 0x{offset + 4:x}"
+            )
             self.empty_rp.append((rp_before, rp_after, word))
-            self.value_checks += 1
+            self.value_checks += 3
         await self._write(wp, 0, "empty_wp_restore")
         await self._write(rp, 0, "empty_rp_restore")
         self._term_end("EMPTY_RP")
@@ -413,9 +434,9 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
 
         self._term_end("EXISTING_LEGS")
         cocotb.log.info(
-            "CHK-DST-TOGGLE-EMPTY-RP: %d empty reads, rp before/after/data per position %s; "
-            "documented unchanged (LINKED-ISSUE: whether an empty-buffer data read advances "
-            "the read pointer)",
+            "CHK-DST-TOGGLE-EMPTY-RP: %d empty reads of a RAM no trace has written, each "
+            "with Trdstramwplow read on the read pointer and Trdstramwrap 0, returned 0 and "
+            "advanced the read pointer by one word; rp before/after/data per position %s",
             len(self.empty_rp),
             " ".join(f"before=0x{b:x} after=0x{a:x} data=0x{d:x}" for b, a, d in self.empty_rp),
         )
@@ -455,7 +476,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             )
 
     def _rp_expected(self, start: int, reads: int) -> int:
-        """Read-pointer byte address after ``reads`` pointer-advancing reads from ``start``."""
+        """Read-pointer byte address after ``reads`` data reads from ``start``."""
         return (start + 4 * reads) % _TOGGLE_WINDOW_BYTES
 
     async def _toggle_leg(self) -> None:
@@ -575,10 +596,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         for seg in range(_TRACE_RAMS):
             start = seg * _SEGMENT_BYTES
             await self._seek(start)
-            returned = 0
-            stalled = False
             words: list[int] = []
-            prev = start
             for read in range(1, _SEGMENT_READS + 1):
                 word = await self._read(data, f"seg{seg}_r{read}")
                 words.append(word)
@@ -586,59 +604,25 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
                     continue
                 got = (await self._read(rp, f"seg{seg}_rp{read}")) & rp_field.mask
                 sample_total += 1
-                if read <= 16:
-                    if got == self._rp_expected(start, read):
-                        assert not stalled, (
-                            f"segment {seg}: Trdstramrplow reads 0x{got:x} after data read "
-                            f"{read}, moving again after an earlier read left it in place at "
-                            f"0x{prev:x}"
-                        )
-                        returned = read
-                    else:
-                        assert got == prev, (
-                            f"segment {seg}: Trdstramrplow reads 0x{got:x} after data read "
-                            f"{read}; one read moves it by one word to "
-                            f"0x{self._rp_expected(start, read):x} or leaves it at 0x{prev:x}"
-                        )
-                        stalled = True
-                else:
-                    if stalled:
-                        assert got == prev, (
-                            f"segment {seg}: Trdstramrplow reads 0x{got:x} after data read "
-                            f"{read}, having stopped at 0x{prev:x} by read 16"
-                        )
-                    else:
-                        moved = [
-                            n for n in range(16, read + 1) if self._rp_expected(start, n) == got
-                        ]
-                        assert moved, (
-                            f"segment {seg}: Trdstramrplow reads 0x{got:x} after data read "
-                            f"{read}, not the segment start 0x{start:x} plus a whole number of "
-                            f"words between 16 and {read}"
-                        )
-                        returned = moved[0]
-                prev = got
-            assert returned >= 1, (
-                f"segment {seg}: Trdstramrplow stayed at the segment start 0x{start:x} after "
-                f"the first Trdstramdata read, so the segment returned no word after a full "
-                f"pass of the window"
-            )
-            self.value_checks += len(_RP_SAMPLES) + 1
-            self.segment_words.append(returned)
-            got_words = words[:returned]
-            distinct = len(set(got_words))
+                assert got == self._rp_expected(start, read), (
+                    f"CHK-DST-TOGGLE-RP-ADVANCE FAIL: segment {seg}: Trdstramrplow reads "
+                    f"0x{got:x} after {read} Trdstramdata reads from 0x{start:x}; every read "
+                    f"advances it by one word, to 0x{self._rp_expected(start, read):x}"
+                )
+            self.value_checks += len(_RP_SAMPLES)
+            distinct = len(set(words))
             ones = 0
             zeros = 0
-            for w in got_words:
+            for w in words:
                 ones |= w
                 zeros |= ~w & 0xFFFFFFFF
             assert distinct > 1, (
-                f"segment {seg}: all {returned} words read out of the toggle-mode capture are "
-                f"0x{got_words[0]:08x}, one constant word"
+                f"segment {seg}: all {len(words)} words read out of the toggle-mode capture are "
+                f"0x{words[0]:08x}, one constant word"
             )
             self.value_checks += 1
             payload.append(
-                f"seg{seg} words={returned} distinct={distinct} ones=0x{ones:08x} "
+                f"seg{seg} words={len(words)} distinct={distinct} ones=0x{ones:08x} "
                 f"zeros=0x{zeros:08x}"
             )
         muxed = await self._read(mux, "toggle_after")
@@ -652,19 +636,16 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         )
         self.value_checks += 1
         cocotb.log.info(
-            "CHK-DST-TOGGLE-RP-ADVANCE: segment 0..7 words returned=%s rp==start+n at %d "
-            "samples (%d per segment, after reads %s), one word per pointer-advancing read and "
-            "no move after a read that returned none (count of pointer-advancing reads "
-            "LINKED-ISSUE: how start and limit address the trace RAM)",
-            ",".join(str(n) for n in self.segment_words),
+            "CHK-DST-TOGGLE-RP-ADVANCE: segments 0..7 rp == start + 4 bytes per read at %d "
+            "samples (%d per segment, after reads %s), one word per Trdstramdata read",
             sample_total,
             len(_RP_SAMPLES),
             ",".join(str(n) for n in _RP_SAMPLES),
         )
         cocotb.log.info(
             "CHK-DST-TOGGLE-PAYLOAD: %s; every segment more than one distinct word; mux "
-            "after=%d/%d (bit masks LINKED-ISSUE: the format and drivable byte lanes of the "
-            "trace words; the memory-mode encoding and when the wrap flag sets; how start "
+            "after=%d/%d (bit masks logged, the packet stream is not decoded; LINKED-ISSUE: "
+            "the memory-mode encoding and when the wrap flag sets; how start "
             "and limit address the trace RAM)",
             "; ".join(payload),
             mux_mode,

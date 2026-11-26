@@ -18,8 +18,8 @@ from smc_base_test import smc_base_test
 class smc_dfd_cla_irq_plic_source_test(smc_base_test):
     """Fire the debug-interrupt action and grade the PLIC pending bits 321 and 322."""
 
-    required_evidence = ("CHK-CLA-IRQ-PLIC-322",)
-    min_evidence = 1
+    required_evidence = ("CHK-CLA-ACTION-CODE", "CHK-CLA-IRQ-PLIC-322")
+    min_evidence = 2
 
     auto_protocol_vip = False
 

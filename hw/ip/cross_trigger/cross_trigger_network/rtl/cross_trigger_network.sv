@@ -6,10 +6,14 @@
 // NUM_CTP external ports and NUM_INT_CT internal ports attach to the CTM. GPIO pad buses
 // expose CT_Req_out/in and CT_Ack_in/out for each external CTP.
 //
-// INT_CT_MODE selects the internal CTP protocol:
+// INT_CT_MODE sets the protocol and stretch of each internal CTP:
 //
-// - 0: simple pulse sync; acks are unused.
-// - 1: req/ack four-phase handshaking per internal CTP.
+// - MODE_WIRE_OR: pulse on ctm_src_req_o and ctm_dst_req_i; acks are unused.
+// - MODE_POINT_TO_POINT: req/ack four-phase handshake.
+// - MODE_TOGGLE: one level change on ctm_src_req_o or ctm_dst_req_i per trigger; acks are
+//   unused.
+//
+// The stretch_mult field of each lane is the wire-OR pulse stretch and the toggle-mode hold.
 //
 // CLA clock-stop requests OR-reduce into combinational cla_clock_stop_o and, together with
 // the JTAG DEBUG_CONTROL clock stop, into stop_clks_o, synchronized and registered in clk_i.
@@ -20,6 +24,8 @@ module cross_trigger_network
     import cross_trigger_network_pkg::DefaultNumClkStopReq;
     import cross_trigger_network_pkg::ctn_axil_req_t;
     import cross_trigger_network_pkg::ctn_axil_resp_t;
+    import cross_trigger_port_pkg::ctp_int_cfg_t;
+    import cross_trigger_port_pkg::CtpIntCfgDefault;
 
     `include "axi/typedef.svh"
     `include "prim_assert.sv"
@@ -34,9 +40,10 @@ module cross_trigger_network
                                                                    // most 32.
     parameter int unsigned NUM_CLK_STOP_REQ = DefaultNumClkStopReq,  // Width of clk_stop_req_i; at least 1.
 
-    parameter logic [NUM_INT_CT-1:0] INT_CT_MODE = '0,  // Mode of each internal CTP, one bit per
-                                                        // CTP. 0 selects wire-OR pulse sync and 1 a
-                                                        // point-to-point four-phase handshake.
+    parameter ctp_int_cfg_t [NUM_INT_CT-1:0] INT_CT_MODE = {NUM_INT_CT{CtpIntCfgDefault}},  // Mode and
+                                                                                            // stretch of
+                                                                                            // each internal
+                                                                                            // CTP.
 
     parameter type axil_req_t  = ctn_axil_req_t,  // CTN AXI-Lite request type.
     parameter type axil_resp_t = ctn_axil_resp_t  // CTN AXI-Lite response type.
@@ -64,16 +71,19 @@ module cross_trigger_network
 
     output logic [NUM_INT_CT-1:0]  ctm_src_req_o,  // Cross-trigger requests from the CTM to
                                                    // internal CLA sinks; a stretched pulse in
-                                                   // pulse-sync mode, a four-phase request level in
-                                                   // handshake mode.
+                                                   // wire-OR mode, a four-phase request level in
+                                                   // point-to-point mode, and one level change
+                                                   // per trigger in toggle mode.
     input  logic [NUM_INT_CT-1:0]  ctm_src_ack_i,  // Acknowledges from internal CLA sinks for
                                                    // CTM-sourced requests, synchronized in the
-                                                   // port; unused in pulse-sync mode.
+                                                   // port; used only in point-to-point mode.
     input  logic [NUM_INT_CT-1:0]  ctm_dst_req_i,  // Cross-trigger requests from internal CLA
-                                                   // sources to the CTM, active-high and
-                                                   // synchronized in the port.
+                                                   // sources to the CTM, synchronized in the port;
+                                                   // active-high, or one level change per trigger
+                                                   // in toggle mode.
     output logic [NUM_INT_CT-1:0]  ctm_dst_ack_o,  // Acknowledges to internal CLA sources for
-                                                   // CTM-destined requests; low in pulse-sync mode.
+                                                   // CTM-destined requests; low outside
+                                                   // point-to-point mode.
 
     output logic [NUM_CTP-1:0]  ctp_req_out_dout_o,  // CT_Req_out pad output data, registered; in
                                                      // wire-OR mode a static low (high when
@@ -312,9 +322,13 @@ module cross_trigger_network
     for (genvar i = 0; i < NUM_INT_CT; i++) begin : gen_int_ctp
         // Internal CTP uses core module without CSRs
         // Configuration is static via parameters
+        localparam cross_trigger_port_pkg::ctp_mode_e Mode = INT_CT_MODE[i].mode;
 
-        // Mode configuration: pulse sync (0) or handshake (1)
-        localparam logic ModeWireOr = ~INT_CT_MODE[i];
+        `OCAH_ASSERT_STATIC(IntCtModeLegal_A,
+            Mode inside {cross_trigger_port_pkg::MODE_WIRE_OR,
+                         cross_trigger_port_pkg::MODE_POINT_TO_POINT,
+                         cross_trigger_port_pkg::MODE_TOGGLE},
+            "INT_CT_MODE[i].mode is not a ctp_mode_e mode")
 
         // Signals for internal CTP GPIO interface (directly connected to internal signals)
         logic int_ct_req_out_dout, int_ct_req_out_dout_en;
@@ -328,11 +342,10 @@ module cross_trigger_network
             .rst_ni                 (rst_ni),
 
             // Static configuration (no CSRs)
-            .mode_i                 (ModeWireOr ? cross_trigger_port_pkg::MODE_WIRE_OR
-                                                : cross_trigger_port_pkg::MODE_POINT_TO_POINT),
+            .mode_i                 (Mode),
             .invert_i               (1'b0),           // No inversion for internal
             .handshake_reset_i      (1'b0),           // No handshake reset
-            .stretch_mult_i         (16'h0001),       // Minimal stretch for internal
+            .stretch_mult_i         (INT_CT_MODE[i].stretch_mult),
 
             // Core-side cross trigger interface (to/from CTM)
             .ct_src_i               (ctm_ct_src[NUM_CTP + i]),
@@ -368,7 +381,7 @@ module cross_trigger_network
 
         // Map internal CTP GPIO signals to internal cross trigger interface
         // Mode-specific signal routing
-        if (ModeWireOr) begin : gen_wire_or_signals
+        if (Mode == cross_trigger_port_pkg::MODE_WIRE_OR) begin : gen_wire_or_signals
             // Wire-OR mode:
             // - CTP sends stretched pulses to CLAs on ct_req_out_dout_en (dout is static)
             // - CTP receives stretched pulses from CLAs on ct_req_out_din
@@ -380,6 +393,16 @@ module cross_trigger_network
             assign int_ct_req_in_din  = 1'b0;                   // Unused in Wire-OR
             assign int_ct_ack_in_din  = 1'b0;                   // Unused in Wire-OR
             assign ctm_dst_ack_o[i]   = 1'b0;                   // Unused in Wire-OR
+        end else if (Mode == cross_trigger_port_pkg::MODE_TOGGLE) begin : gen_toggle_signals
+            // Toggle mode:
+            // - CTP sends each trigger as a level change on ct_req_out_dout
+            // - CTP receives each trigger as a level change on ct_req_in_din
+            // - Acks unused
+            assign ctm_src_req_o[i]   = int_ct_req_out_dout;
+            assign int_ct_req_out_din = 1'b0;
+            assign int_ct_req_in_din  = ctm_dst_req_i[i];
+            assign int_ct_ack_in_din  = 1'b0;
+            assign ctm_dst_ack_o[i]   = 1'b0;
         end else begin : gen_p2p_signals
             // Point-to-Point mode:
             // - CTP sends handshake requests to CLAs on ct_req_out_dout

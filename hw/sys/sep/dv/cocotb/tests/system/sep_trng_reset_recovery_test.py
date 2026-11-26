@@ -537,7 +537,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
 
         # From here to the generator enable the reset domain is held or
         # released but not reinitialized, so ESRC presents no seed
-        # (hw/sys/sep/doc/trng.adoc:198-199).
+        # (hw/sys/sep/doc/trng.adoc:201-202).
         self._seed_clocks = 0
         self._seed_high = 0
         seed_watch = cocotb.start_soon(self._watch_seed())

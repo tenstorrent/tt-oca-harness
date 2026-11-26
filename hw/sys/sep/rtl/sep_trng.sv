@@ -7,6 +7,8 @@
 //
 // - entropy_source on a 32-bit AXI-Lite port (9-bit register offset), whose conditioned
 //   entropy stream seeds the DRBG directly.
+// - entropy_rosc_array, the ring oscillators entropy_source samples. It is the one module a
+//   build may replace, with a hard macro or with the synthesis stub, under the same name.
 // - The DRBG (CSRNG and EDN) on two 64-bit AXI-Lite ports, with NUM_AXIS EDN AXI-Stream
 //   endpoints and no native EDN endpoints.
 // - CSRNG and EDN alerts; for each, index 0 is recoverable (recov_alert) and index 1 is
@@ -97,6 +99,19 @@ module sep_trng #(
   logic [31:0] entropy_stream_data;
   logic entropy_stream_vld;
 
+  entropy_source_pkg::rosc_ctrl_t              rosc_ctrl;
+  logic [entropy_source_pkg::NRings-1:0]       rosc_noise;
+  logic                                        rosc_shared_clk;
+
+  entropy_rosc_array u_entropy_rosc_array (
+    .noise_enable_i  (rosc_ctrl.noise_enable),
+    .noise_detune_i  (rosc_ctrl.noise_detune),
+    .shared_enable_i (rosc_ctrl.shared_enable),
+    .shared_detune_i (rosc_ctrl.shared_detune),
+    .noise_o         (rosc_noise),
+    .shared_clk_o    (rosc_shared_clk)
+  );
+
   entropy_source u_entropy_source_s3c_scan (
     .clk_i                (clk_i),
     .rst_ni               (rst_ni),
@@ -122,6 +137,9 @@ module sep_trng #(
     .s_axil_rresp_o       (esrc_axil_resp_o.r.resp),
     .signal_monitor_o     (),
     .rosc_sample_clk_i    (entropy_rosc_sample_clk_i),
+    .rosc_ctrl_o          (rosc_ctrl),
+    .rosc_noise_i         (rosc_noise),
+    .rosc_shared_clk_i    (rosc_shared_clk),
     .entropy_stream_data_o(entropy_stream_data),
     .entropy_stream_vld_o (entropy_stream_vld),
     .irq_o                (entropy_source_irq_o)

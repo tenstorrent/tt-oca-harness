@@ -75,12 +75,13 @@ of an unmapped pool offset answers SLVERR with zero data on the addressed lane
 CHK-ROW-SPI-BURST: an SI INCR burst of 32-bit beats that starts one or two beats
 below the end of the 56-byte SPI host extent and crosses it in one 4 KB page.
 The in-extent beats answer OKAY with the register values (staged values, or the
-RDL reset of ``ERROR_STATUS``); every beat past the extent answers an error and
-carries none of the staged non-zero register values. A write burst lands its
-in-extent beats, answers a B response other than OKAY, and changes no other
-stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc``: the
-error responder of ``sep_io`` answers only the beats past the extent). The
-exact past-beat code and data are logged as ``INFO-ROW-SPI-BURST-CODE``.
+RDL reset of ``ERROR_STATUS``); every beat past the extent answers the code and
+data of its generated memory-map cell (``rr.expected_cell``) and carries none of
+the staged non-zero register values. A write burst lands its in-extent beats,
+answers the B code of the map cell of the first past-extent word, and changes no
+other stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc``:
+the error responder of ``sep_io`` answers only the beats past the extent). The
+past-beat codes and data are also logged as ``INFO-ROW-SPI-BURST-CODE``.
 CHK-ROW-SPI-BURST-CONTROL: the same burst shape wholly inside the extent answers
 OKAY on every beat and lands every beat.
 
@@ -1596,15 +1597,22 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             past_resp = beats[n_in:]
             past_data = got[n_in:]
             live_vals = set(live.values())
-            past_ok = (
-                len(past_resp) == nbeats - n_in
-                and all(r is not None and r != OKAY for r in past_resp)
-                and not (set(past_data) & live_vals)
-            )
+            past_cells = []
+            past_match = len(past_resp) == nbeats - n_in
+            for i, a in enumerate(addrs[n_in:]):
+                exp = rr.expected_cell(a, "r")
+                r = past_resp[i] if i < len(past_resp) else None
+                hit = r == exp.resp and (exp.rdata is None or past_data[i] == exp.rdata)
+                past_match = past_match and hit
+                past_cells.append(
+                    f"0x{a:08x}:{_RN.get(r, r)}/0x{past_data[i]:08x}/exp={_RN[exp.resp]}/"
+                    f"{'na' if exp.rdata is None else f'0x{exp.rdata:08x}'}"
+                )
+            past_ok = past_match and not (set(past_data) & live_vals)
             ok = shape and in_ok and past_ok
             line = (
                 f"init=SI dir=R start=0x{start:08x} size=2 len={nbeats - 1} beats={len(beats)} "
-                f"in={in_cells} past_not_okay={int(all(r is not None and r != OKAY for r in past_resp))} "
+                f"in={in_cells} past={past_cells} "
                 f"past_live_hit={sorted(hex(v) for v in set(past_data) & live_vals)} "
                 f"live_set={[hex(v) for v in live_words]} ax={ax}"
             )
@@ -1620,11 +1628,13 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 a = addrs[i]
                 self.regval[a] = rr.write_readback(a, self._expect_reg(a), words[i])[0]
             same, diff = await self._spi_after()
-            not_okay = s.resp_code in (SLVERR, DECERR)
-            ok = shape and not_okay and same
+            exp_b = rr.expected_cell(addrs[n_in], "w")
+            b_match = s.resp_code == exp_b.resp
+            ok = shape and b_match and same
             line = (
                 f"init=SI dir=W start=0x{start:08x} size=2 len={nbeats - 1} "
-                f"b_not_okay={int(not_okay)} in_wdata={[hex(w) for w in words[:n_in]]} "
+                f"bresp={_RN.get(s.resp_code, s.resp_code)} exp_b={_RN[exp_b.resp]} "
+                f"in_wdata={[hex(w) for w in words[:n_in]]} "
                 f"past_wdata={[hex(w) for w in words[n_in:]]} landed_and_unchanged={int(same)} "
                 f"diff={diff} ax={ax}"
             )

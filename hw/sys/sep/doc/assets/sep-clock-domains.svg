@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1046" viewBox="0 0 1040 1046" role="img" aria-labelledby="title desc">
 <title id="title">SEP clock domains</title>
-<desc id="desc">The SEP top-level block diagram with its clock domains shown as tinted zones. The SEP clock clk_i, which the SMU drives from clk_smu_i, clocks everything inside the SEP boundary except three regions: the watchdog counter runs on clk_wdt_i, the reference counter in the system peripherals runs on clk_ref_i, and the TRNG noise sampler in the crypto subsystem runs on entropy_rosc_sample_clk_i. Each of these clocks enters the SEP as an arrow in the colour of its zone. The CPU debug TAP runs on jtag_tck_i, which arrives with the JTAG port. The quad SPI serial clock is divided from clk_i inside the SPI host.</desc>
+<desc id="desc">The SEP top-level block diagram with its clock domains shown as tinted zones. The SEP clock clk_i, which the SMU drives from clk_smu_i, clocks everything inside the SEP boundary except three regions: the watchdog counter runs on clk_wdt_i, the reference counter in the system peripherals runs on clk_ref_i, and the TRNG noise sampler in the crypto subsystem runs on entropy_rosc_sample_clk_i or on the shared ring oscillator, and samples the TRNG ring oscillators beside it. Each of these clocks enters the SEP as an arrow in the colour of its zone. The CPU debug TAP runs on jtag_tck_i, which arrives with the JTAG port. The quad SPI serial clock is divided from clk_i inside the SPI host.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -208,9 +208,12 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="core" x="544" y="728" width="98" height="46" rx="5"/>
 <text class="s" x="593" y="756" text-anchor="middle">eFuse ctrl</text>
 <rect class="core" x="650" y="728" width="204" height="46" rx="5"/>
-<text class="s" x="696" y="756" text-anchor="middle">TRNG</text>
-<rect class="core" x="742" y="734" width="106" height="34" rx="4"/>
-<text class="s" x="795" y="756" text-anchor="middle">Noise sampler</text>
+<text class="s" x="672" y="756" text-anchor="middle">TRNG</text>
+<rect class="core" x="692" y="734" width="46" height="34" rx="4"/>
+<text class="s" x="715" y="756" text-anchor="middle">Rings</text>
+<path class="a-tel" d="M738,751 L751,751"/>
+<rect class="core" x="754" y="734" width="94" height="34" rx="4"/>
+<text class="s" x="801" y="756" text-anchor="middle">Noise sampler</text>
 <path class="n-tel" d="M1030,852 L869,852"/>
 <path class="n-tel" d="M859,852 L820,852 L820,790"/>
 <path class="a-tel" d="M820,790 L820,771"/>
@@ -253,10 +256,11 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sig" d="M864,803 L864,877"/>
 <path class="a-smu" d="M8,170 L70,170"/>
 <text class="s" x="6" y="160" text-anchor="start">clk_i</text>
-<path class="z-sep" d="M78,100 H882 A8,8 0 0 1 890,108 V822 A8,8 0 0 1 882,830 H78 A8,8 0 0 1 70,822 V108 A8,8 0 0 1 78,100 Z M784,258 H856 A4,4 0 0 1 860,262 V294 A4,4 0 0 1 856,298 H784 A4,4 0 0 1 780,294 V262 A4,4 0 0 1 784,258 Z M114,706 H276 A4,4 0 0 1 280,710 V732 A4,4 0 0 1 276,736 H114 A4,4 0 0 1 110,732 V710 A4,4 0 0 1 114,706 Z M746,734 H844 A4,4 0 0 1 848,738 V764 A4,4 0 0 1 844,768 H746 A4,4 0 0 1 742,764 V738 A4,4 0 0 1 746,734 Z"/>
+<path class="z-sep" d="M78,100 H882 A8,8 0 0 1 890,108 V822 A8,8 0 0 1 882,830 H78 A8,8 0 0 1 70,822 V108 A8,8 0 0 1 78,100 Z M784,258 H856 A4,4 0 0 1 860,262 V294 A4,4 0 0 1 856,298 H784 A4,4 0 0 1 780,294 V262 A4,4 0 0 1 784,258 Z M114,706 H276 A4,4 0 0 1 280,710 V732 A4,4 0 0 1 276,736 H114 A4,4 0 0 1 110,732 V710 A4,4 0 0 1 114,706 Z M696,734 H734 A4,4 0 0 1 738,738 V764 A4,4 0 0 1 734,768 H696 A4,4 0 0 1 692,764 V738 A4,4 0 0 1 696,734 Z M758,734 H844 A4,4 0 0 1 848,738 V764 A4,4 0 0 1 844,768 H758 A4,4 0 0 1 754,764 V738 A4,4 0 0 1 758,734 Z"/>
 <rect class="z-wdt" x="780" y="258" width="80" height="40" rx="4"/>
 <rect class="z-ref" x="110" y="706" width="170" height="30" rx="4"/>
-<rect class="z-rosc" x="742" y="734" width="106" height="34" rx="4"/>
+<rect class="z-rosc" x="692" y="734" width="46" height="34" rx="4"/>
+<rect class="z-rosc" x="754" y="734" width="94" height="34" rx="4"/>
 <path class="zp-sep" d="M890,122 V110 A10,10 0 0 0 880,100 H826 V113 A9,9 0 0 0 835,122 Z"/>
 <text class="zlt" x="858" y="116" text-anchor="middle">clk_i</text>
 <text class="s" x="42" y="975" text-anchor="start">Manager port</text>
@@ -279,7 +283,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="z-wdt" x="354" y="1013" width="40" height="18" rx="4"/>
 <text class="s" x="402" y="1027" text-anchor="start">clk_wdt_i</text>
 <rect class="z-rosc" x="524" y="1013" width="40" height="18" rx="4"/>
-<text class="s" x="572" y="1027" text-anchor="start">entropy_rosc_sample_clk_i</text>
+<text class="s" x="572" y="1027" text-anchor="start">entropy_rosc_sample_clk_i, ring oscillators</text>
 <rect class="ps" x="109.0" y="149.0" width="22" height="18" rx="4"/>
 <text class="pst" x="120" y="162.5" text-anchor="middle">S</text>
 <rect class="pm" x="109.0" y="201.0" width="22" height="18" rx="4"/>

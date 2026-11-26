@@ -58,9 +58,7 @@ module dtp
   parameter int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DefaultNumIntCt,  // Number of internal cross-trigger interfaces.
   parameter int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DefaultNumClkStopReq,  // Number of clock-stop request inputs.
 
-  parameter logic [XTRIG_NUM_INT_CT-1:0]  XTRIG_INT_CT_MODE = '0,  // Per-lane CTM protocol: 0 =
-                                                                   // pulse sync (ack unused), 1 =
-                                                                   // req/ack handshake.
+  parameter cross_trigger_port_pkg::ctp_int_cfg_t [XTRIG_NUM_INT_CT-1:0]  XTRIG_INT_CT_MODE = {XTRIG_NUM_INT_CT{cross_trigger_port_pkg::CtpIntCfgDefault}},  // Per-lane CTM protocol and stretch: wire-OR pulse, point-to-point handshake, or toggle.
 
   parameter type  jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t,  // JTAG TAP control type.
   parameter type  jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t,  // JTAG scan control type.
@@ -202,16 +200,14 @@ module dtp
   output xtrig_axil_resp_t  axil_xtrig_resp_o,  // Cross-trigger CSR AXI-Lite subordinate response.
 
   output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_req_o,  // CTM source requests toward sinks
-                                                             // (e.g. CLA) Ack unused when the
-                                                             // corresponding mode bit is 0 (pulse
-                                                             // sync).
-  input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_ack_i,  // Acks for CTM-sourced requests Unused
-                                                             // in pulse-synchronization mode.
+                                                             // (e.g. CLA), in the protocol that
+                                                             // XTRIG_INT_CT_MODE selects per lane.
+  input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_ack_i,  // Acks for CTM-sourced requests; used
+                                                             // only by point-to-point lanes.
   input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_req_i,  // CTM destination requests from
                                                              // sources (e.g. CLA).
-  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_ack_o,  // Acks for CTM-destined requests
-                                                             // Unused in pulse-synchronization
-                                                             // mode.
+  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_ack_o,  // Acks for CTM-destined requests;
+                                                             // low outside point-to-point mode.
 
   input  logic [XTRIG_NUM_CLK_STOP_REQ-1:0]  xtrig_clk_stop_req_i,  // CLA or other device requests to stop the clocks.
 

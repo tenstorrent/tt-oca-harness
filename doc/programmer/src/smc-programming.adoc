@@ -106,6 +106,20 @@ data must be copied into SRAM (by the single initializing core) before it can be
 referenced or modified. `.tbss`, `.bss`, the stack and the heap reside only in
 SRAM.
 
+The cores cache only the boot ROM and the scratchpad reached through the local
+alias. Every other range, including the same memories through `GLOBAL_BASE`, is
+uncached for data. The attributes are fixed in hardware, so caching any other
+range needs an RTL change. The L1 I-cache still holds lines fetched from
+uncached executable ranges and does not observe stores, so a hart runs
+`fence.i` before executing code that has changed in any range. The
+ifdef::backend-html5[]
+xref:ocah-docs:smc:cpu.adoc#smc-physical-memory-attributes[SMC physical memory attributes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-docs/latest/smc/cpu.html#smc-physical-memory-attributes[SMC physical memory attributes]
+endif::backend-pdf[]
+in the Technical Reference Manual give the attributes of every range.
+
 ==== SRAM Initialization using Memory Zeroer
 
 The SMC contains a Memory Zeroer unit at `BASE + 0x0001_1000`, which can be used
@@ -1549,7 +1563,8 @@ Thus `0x0` is secure unprivileged data, `0x1` secure privileged data, `0x2`
 non-secure unprivileged data, and `0x3` non-secure privileged data.
 
 . Choose `ACCESS_FILTER.awprot_requirement` and `arprot_requirement` for the
-  intended writers and readers. Both reset to `0x1`.
+  intended writers and readers. Both reset to `0x1`, the value every SMC
+  initiator issues, the CPU cores in every privilege mode included.
 . Set `write_filter_enable` and/or `read_filter_enable` to enforce those
   requirements. The current transaction must satisfy any filter already
   enabled.

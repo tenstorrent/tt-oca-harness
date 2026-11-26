@@ -9,7 +9,7 @@ Spec: ``vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc``
 ``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson`` :463-464 (``CMD``
 writes are ignored if OTBN is not idle; unrecognized commands are ignored);
 ``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/csr.yml`` :173 (an ``RND`` read
-stalls until a number arrives from the EDN); ``hw/sys/sep/doc/trng.adoc`` :189
+stalls until a number arrives from the EDN); ``hw/sys/sep/doc/trng.adoc`` :191
 (native requests get no acknowledgement during the TRNG adapter clear);
 ``hw/sys/sep/doc/interrupts.adoc`` :22 and :164-166 (vector bit 29 is PIC
 source 30, OTBN done);
@@ -254,7 +254,7 @@ Checkers:
   CHK-OTBN-RND-CLEAN   the ``RND`` run reads ``software_errs_fatal`` = 0 and
                        ``done`` = 0 before the ``CMD`` write, ends at IDLE (never
                        0xFF) with ``done`` = 1 and at least one acknowledge of the
-                       OTBN RND client (crypto EDN client 2, ``trng.adoc`` :92-93)
+                       OTBN RND client (crypto EDN client 2, ``trng.adoc`` :94-95)
                        between the ``CMD`` write and IDLE, and ``ERR_BITS`` reads 0
                        in every bit except ``rnd_rep_chk_fail`` (bit 6). ToO:137;
                        "A high tag prevents a FIPS-tag failure for that response"
@@ -542,7 +542,7 @@ def load_checksum_golden(writes: list[tuple[int, int, int]], order: str) -> int:
     return crc
 
 
-# Native crypto EDN client of OTBN RND, bit 2 of crypto_edn_ack_o (trng.adoc:92-93).
+# Native crypto EDN client of OTBN RND, bit 2 of crypto_edn_ack_o (trng.adoc:94-95).
 EDN_OTBN_RND = 2
 
 # Memory of the host read of the bus-access leg.

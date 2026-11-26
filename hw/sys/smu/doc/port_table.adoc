@@ -56,9 +56,9 @@
 |`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External JTAG IC_RESET override slice. Integrator-defined packed struct with `.ovrd` override enables and `.val` active-low override values. Driven by the DTP's `jtag_ic_reset_ext_o` when `CFG.JTAG_IC_RESET_ENABLE=1`, otherwise tied to '0. An integrator needing JTAG reset overrides for logic outside the SMU sets `ic_reset_ext_t` to their own override struct and routes this port to it; the SMU does not define that type. |Integrator-defined reset overrides |N/A
 
 |`xtrig_ctm_src_req_o` |`logic` |Output |`[XtrigNumIntCt-1:0]` |Cross trigger source requests. The SMU exposes DTP lanes above the SMC reservation (`smu_pkg::XtrigSmcIntCtLanes`). |Cross trigger network |N/A
-|`xtrig_ctm_src_ack_i` |`logic` |Input |`[XtrigNumIntCt-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |Tie to '0 in pulse-sync mode
+|`xtrig_ctm_src_ack_i` |`logic` |Input |`[XtrigNumIntCt-1:0]` |Cross trigger source acknowledges. Used only by point-to-point lanes; unused in wire-OR and toggle mode. |Cross trigger network |Tie to '0 on wire-OR and toggle lanes
 |`xtrig_ctm_dst_req_i` |`logic` |Input |`[XtrigNumIntCt-1:0]` |Cross trigger destination requests. The SMU exposes DTP lanes above the SMC reservation. |Cross trigger network |Tie to '0 if unused
-|`xtrig_ctm_dst_ack_o` |`logic` |Output |`[XtrigNumIntCt-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode. |Cross trigger network |N/A
+|`xtrig_ctm_dst_ack_o` |`logic` |Output |`[XtrigNumIntCt-1:0]` |Cross trigger destination acknowledges. Used only by point-to-point lanes; low in wire-OR and toggle mode. |Cross trigger network |N/A
 |`xtrig_clk_stop_req_i` |`logic` |Input |`[XtrigNumClkStopReq-1:0]` |Clock stop requests. The SMU exposes DTP lanes above the SMC reservation (`smu_pkg::XtrigSmcClkStopLanes`). |Clock stop requesters |Tie to '0 if unused
 
 |`xtrig_ctp_req_out_dout_o` |`logic` |Output |`[XtrigNumCtp-1:0]` |CTP request-out data output. |GPIO pad ring |N/A

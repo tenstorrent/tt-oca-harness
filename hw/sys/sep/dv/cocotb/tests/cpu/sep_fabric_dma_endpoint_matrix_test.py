@@ -1844,7 +1844,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         leg needs a level of 1 or more and below the depth before the GO.
         Stream 2, the pool fill, selects the external source from the entropy
         bring-up on (integration/rdl/sep/sep_cpu_ctrl.rdl:308-310), so the
-        internal endpoint is backpressured (hw/sys/sep/doc/trng.adoc:104-105)
+        internal endpoint is backpressured (hw/sys/sep/doc/trng.adoc:106-107)
         and only the words this test sends on the external stream 2 reach the
         pool: POOL_WORDS_PER_ENTRY times a drawn count below POOL_DEPTH. The
         precondition CTRL-DMA-POOL-PRE grades the level read before the GO

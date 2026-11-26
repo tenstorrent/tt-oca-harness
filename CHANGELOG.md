@@ -10,6 +10,21 @@ minor release it updates.
 
 ## [Unreleased]
 
+### RTL bugs
+
+- CSRNG `HW_EXC_STS` cleared one cycle after a hardware instance exception,
+  so software read 0 (#3733).
+- CSRNG CTR_DRBG V counter saturated at V[31:0] = `0xFFFFFFFF` instead of
+  wrapping, so a Generate repeated its last block (#3732).
+- A TRNG reset zeroed an EDN word already acknowledged to AES, KMAC or OTBN,
+  which took 0, and OTBN RND failed its FIPS check (#3731).
+- Entropy source `ANY_FAIL_COUNT` counted the last failing health-test window
+  again at the end of the clean window after it (#3730).
+- Entropy source raw-noise observe FIFO could repeat a sample, and lose the
+  next, when a sample-clock edge landed just before a `clk_i` edge (#3740).
+- Entropy source raw-noise observe FIFO wrote each word before its 32nd sample,
+  so the first word after a restart had a 0 in bit 0 (#3729).
+
 ## [0.6.0] - 2026-11-07 (Beta)
 
 ### Added

@@ -122,6 +122,53 @@ The SEP includes an internal entropy source that requires a ring-oscillator
 sample clock connected to `entropy_rosc_sample_clk_i`. This clock must be
 asynchronous to `clk_i` and typically runs between 100 and 400 MHz.
 
+The entropy source's twelve noise rings and its shared sample-clock ring are
+gathered in one module, `entropy_rosc_array`, which `sep_trng` instantiates. It
+holds nothing but the rings, has flat bit-level ports, and its outputs are
+sampled by the SEP, so a build may replace it under the same name:
+
+* with a ring-oscillator hard macro behind a wrapper of the same module and
+  ports;
+* with the loop-free stub that the Bender target `entropy_rosc_stub` selects,
+  for a netlist without the rings. Its deterministic output fails the health
+  tests, so a chip built with it takes its entropy from the external TRNG.
+
+The rings stay off while `test_en_i` is high.
+
+[[sep-rosc-requirements]]
+=== Ring Oscillators
+
+The ports of `entropy_rosc_array` are only part of its contract: `entropy_source`
+and the SEP's entropy claim also depend on how the rings behave. The RTL rings
+are built to meet the following requirements, and a hard macro of
+`entropy_rosc_array` must meet them too. The RTL's stage counts are not part of the contract.
+
+* *Twelve noise rings and one shared ring.* Twelve is fixed by the generator
+  lanes, the extractor and the registers.
+* *Enables.* While `noise_enable_i[i]` is low, noise ring _i_ stops and
+  `noise_o[i]` holds steady; `shared_enable_i` does the same for
+  `shared_clk_o`.
+* *Detunes.* `noise_detune_i[i]` switches noise ring _i_ between two
+  frequencies far enough apart to pull it out of a lock; the auto-tune state
+  machine toggles it after a health-test failure. `shared_detune_i` does the
+  same for the shared ring.
+* *No clock, no reset.* The outputs run free and are asynchronous;
+  `entropy_source` samples and synchronizes them.
+* *Independent rings.* No shared stages, and placement and supply that keep
+  the rings from locking to one another or to `clk_i`. Correlated rings feed
+  correlated bits into the extractor.
+* *Distinct frequencies.* No two noise rings run at the same frequency in
+  either detune setting.
+* *A slower shared ring.* The shared ring samples the noise rings and runs
+  roughly ten times slower, so that jitter accumulates over each sample period.
+  The SEP constraints define its output as the clock `ENTROPY_SHARED_RO`, whose
+  period in `flows/synth/constraints/clock_periods.tcl` is a placeholder until
+  the implementation's frequency range is known.
+* *Entropy assessment.* The entropy claim belongs to the rings as built. A hard
+  macro needs its own SP 800-90B assessment from raw-noise captures through the
+  observe FIFOs; the health-test thresholds are registers and can be set to the
+  entropy it measures.
+
 [[sep-ext-trng]]
 === External TRNG
 

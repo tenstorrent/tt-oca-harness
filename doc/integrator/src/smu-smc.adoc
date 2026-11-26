@@ -615,6 +615,15 @@ CPU cluster can safely access SRAM arrays. Repair is required on every cold
 reset but can be bypassed during Function Level Reset (FLR) operations for
 faster recovery.
 
+Assert `ext_boot_seq_done_i` only once every SMC memory macro is safe to use.
+Asserting it continues the boot and releases the cores from reset, so any
+boot-time task that prepares the memories, such as memory repair or MBIST,
+must finish first. This covers the L1 instruction- and data-cache macros as
+well as the scratchpad: the boot ROM is cacheable and Rocket has no
+instruction-cache enable or bypass, so the first instruction fetch after reset
+release already goes through the L1 instruction-cache arrays. The ROM runs from
+those arrays, so no firmware check can cover them.
+
 === Control Signals
 
 * `smc_fuse_sense_done_o`: eFuse controller output indicating fuse sensing
@@ -660,8 +669,9 @@ of the strap registers in the adopter peripheral window. Keep these three mechan
 * External repair logic independently honors `skip_mem_repair_o` to decide
   whether to bypass physical repair operations.
 
-Use bypass mode only when SRAM arrays are guaranteed defect-free, such as
-during development or with known-good components.
+Use bypass mode only when SRAM arrays, the L1 cache macros included, are
+guaranteed defect-free, such as during development or with known-good
+components.
 
 === Integration Requirements
 
@@ -670,7 +680,10 @@ Provide an external memory repair controller that monitors
 bypass control, reads repair data from eFuse shadow registers, applies repair
 configuration to SRAM arrays, asserts `ext_boot_seq_done_i` and updates
 `DFX_CTRL_STATUS` with completion status. The controller operates independently
-of the SMC core and must complete before the CPU cluster accesses SRAM.
+of the SMC core and must complete before the CPU cluster accesses SRAM: the
+scratchpad banks and the L1 instruction- and data-cache tag and data macros on
+`smc_l1_icache_*` and `smc_l1_dcache_*`. Assert `ext_boot_seq_done_i` only
+once all of them are safe to use.
 
 Note: For a standalone SEP, the adopter must synchronize `ext_boot_seq_done_i` to
 the system clock and ensure the signal is held until next cold reset.
