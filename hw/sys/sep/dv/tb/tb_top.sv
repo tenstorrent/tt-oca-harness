@@ -4276,24 +4276,45 @@ module sep_uvm_top
     assign crypto_edn_sync_req_o[1]       = `EDN_SYNC_KMAC.u_prim_sync_reqack_data.src_req_i;
     assign crypto_edn_sync_ack_o[1]       = `EDN_SYNC_KMAC.u_prim_sync_reqack_data.src_ack_o;
     assign crypto_edn_sync_data_o[63:32]  = `EDN_SYNC_KMAC.u_prim_sync_reqack_data.data_o[31:0];
-    assign crypto_edn_sync_req_o[2]       =
+    // OTBN takes a word on its own clock edge with src_req_i && src_ack_o. That clock is clk_i
+    // divided by PKA_CLK_DIV, so one handshake can span several clk_i cycles while data_o follows
+    // the clk_i-side EDN bus. Each OTBN lane therefore reports a take for the one clk_i cycle
+    // after that edge, with the word captured on the edge; an unknown src_ack_o shows as X.
+    logic [3:2]  otbn_edn_sync_req, otbn_edn_sync_ack, otbn_edn_take_tgl, otbn_edn_take_seen;
+    logic [63:0] otbn_edn_sync_data, otbn_edn_take_data;
+    assign otbn_edn_sync_req[2] =
         `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.src_req_i;
-    assign crypto_edn_sync_data_o[95:64]  =
-        `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.data_o[31:0];
-    assign crypto_edn_sync_req_o[3]       = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_req_i;
-    assign crypto_edn_sync_data_o[127:96] =
-        `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.data_o[31:0];
-    // The OTBN side runs on the OTBN clock, which PKA_CLK_DIV divides from clk_i, so one
-    // handshake there can span several clk_i cycles; its ack tap holds for the first only.
-    logic [3:2] otbn_edn_sync_ack, otbn_edn_sync_hs_q;
     assign otbn_edn_sync_ack[2] =
         `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.src_ack_o;
-    assign otbn_edn_sync_ack[3] = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_ack_o;
-    always_ff @(posedge clk_i or negedge rst_n_int) begin
-        if (!rst_n_int) otbn_edn_sync_hs_q <= '0;
-        else            otbn_edn_sync_hs_q <= crypto_edn_sync_req_o[3:2] & otbn_edn_sync_ack;
+    assign otbn_edn_sync_data[31:0] =
+        `EDN_SYNC_OTBN.u_prim_edn_rnd_req.u_prim_sync_reqack_data.data_o[31:0];
+    assign otbn_edn_sync_req[3]      = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_req_i;
+    assign otbn_edn_sync_ack[3]      = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.src_ack_o;
+    assign otbn_edn_sync_data[63:32] = `EDN_SYNC_OTBN.u_prim_sync_reqack_data_urnd.data_o[31:0];
+    always_ff @(posedge `EDN_SYNC_OTBN.clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            otbn_edn_take_tgl  <= '0;
+            otbn_edn_take_data <= '0;
+        end else begin
+            for (int i = 2; i <= 3; i++) begin
+                if (otbn_edn_sync_req[i] && otbn_edn_sync_ack[i]) begin
+                    otbn_edn_take_tgl[i] <= ~otbn_edn_take_tgl[i];
+                    otbn_edn_take_data[32*(i-2)+:32] <= otbn_edn_sync_data[32*(i-2)+:32];
+                end
+            end
+        end
     end
-    assign crypto_edn_sync_ack_o[3:2] = otbn_edn_sync_ack & ~otbn_edn_sync_hs_q;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) otbn_edn_take_seen <= '0;
+        else            otbn_edn_take_seen <= otbn_edn_take_tgl;
+    end
+    for (genvar i = 2; i <= 3; i++) begin : g_otbn_edn_take
+        logic take;
+        assign take = otbn_edn_take_tgl[i] ^ otbn_edn_take_seen[i];
+        assign crypto_edn_sync_req_o[i] = otbn_edn_sync_req[i] | take;
+        assign crypto_edn_sync_ack_o[i] = $isunknown(otbn_edn_sync_ack[i]) ? 1'bx : take;
+    end
+    assign crypto_edn_sync_data_o[127:64] = otbn_edn_take_data;
 `undef EDN_SYNC_AES
 `undef EDN_SYNC_KMAC
 `undef EDN_SYNC_OTBN
