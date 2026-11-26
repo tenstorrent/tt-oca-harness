@@ -718,11 +718,6 @@ INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_se
 ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:718 and :721 assign load_next_c = '1 in both arms, so REFERENCE_COUNTER load_next is constant 1 and the implicit else of 'if(load_next)' at :730 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test at :716."
 Branch 8 "2691458842" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "2906880031 1967776477"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-SPI-A2T-ERRCLR-TIED: hw/common/axi/axi_lite_to_tlul.sv:124 row 10 needs err_clr_i = 1, but hw/sys/sep/rtl/sep_ot_spi_wrap.sv:125 ties .err_clr_i to 1'b0. NOT waived: rows 01 and 11 of the same condition."
-Condition 1 "3055253419" "(sticky_err_q & ((~err_clr_i))) 1 -1" (2 "10")
-
 CHECKSUM: "2905179362 3747101343"
 MODULE: sep_cpu_ctrl_reg
 ANNOTATION: "SEP-REGBLOCK-LOADNEXT-BRANCH: in each of these field combos every path sets load_next_c to '1 (for example hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:718,721 and :1021,1024 and :1324,1327), so the implicit else of 'if(field_combo.*.load_next)' in the storage flop at lines 730, 1033, 1336, 1362, 1388, 1414, 1440, 1466, 1492 and 1518 is unreachable. NOT waived: the reset arm and the load arm of each flop, and the load_next branches of fields that software alone loads."

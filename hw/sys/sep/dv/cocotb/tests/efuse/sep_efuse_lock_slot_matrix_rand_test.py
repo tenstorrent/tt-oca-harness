@@ -28,13 +28,14 @@ the exempt cell 1, the order cell 2 and the chain leg 2.
 
 With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
 ``_PIN`` in place of the run seed: ``chain`` draws the chain leg, ``single`` the
-single-bit image (its plan seed draws the write-lock kind of slot 1) and ``exempt`` the
-exempt cell. The entry that sets it stages the same image with ``+sep_efuse_preload``.
+single-bit image (its plan seed draws the write-lock kind of slot 1), ``exempt`` the
+exempt cell and ``uid_rdlock`` a lock leg with a UID slot that has no lock, so
+CHK-UID-RDLOCK-PROG runs. The entry that sets it stages the same image with ``+sep_efuse_preload``.
 The run seed stays the ``seed=`` of every check line;
 INFO-SEED prints the plan seed as ``seed=`` and ``run_seed=``, ``plan_seed=`` and
 ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell.
-CTRL-PIN-LEG: the plan draws the pinned leaf kind, and for ``single`` slot 1 with
-the write-lock kind; a plan that draws another kind or cell logs
+CTRL-PIN-LEG: the plan draws the pinned leaf kind, for ``single`` slot 1 with
+the write-lock kind, and for ``uid_rdlock`` at least one UID slot with no lock; a plan that draws another kind or cell logs
 ``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
 
 Checkers:
@@ -131,7 +132,15 @@ Checkers:
                     ``go_resp`` (the response of the program go write); no specification text
                     states them.
   CHK-LOCK-EXEMPT   exempt cell: ``LC_STATE``, ``LOCKS`` and ``LOCKS_SPARE`` read their
-                    staged values with every assigned lock bit burned.
+                    staged values through the frontdoor with every assigned lock bit
+                    burned, and a read-interface request on ``LC_STATE`` bit 0
+                    (``path=read_if``) ends with ``efuse_req_error`` 0, ``read_done`` 1,
+                    ``read_busy`` 0, ``read_status`` 0 and
+                    ``EFUSE_READ_INTERFACE_READ_DATA`` equal to the staged ``LC_STATE``
+                    bank word (``otp_fuse_controller.adoc:109-111, 116-117, 224-225``;
+                    ``efuse_interface_ctrl.rdl:107, 127, 133, 152-158``). Before the go,
+                    ``efuse_req_error`` reads 0 and the read-data register holds a value
+                    other than the staged word, so a request that captures nothing fails.
   CHK-LOCK-EXEMPT-PROG exempt cell: a program of ``LC_STATE`` bit 0 or bit 3 (drawn)
                     lands with every assigned lock bit burned: one program command
                     at that bit address, the bank gains exactly that bit,
@@ -155,7 +164,9 @@ Checkers:
                     (slot 0, ``LC_STATE``) reads both bits 1, and a later write of 0
                     leaves both 1 (``sep_efuse_map.rdl`` ``LOCKS``, woset);
                     ``OBS-LOCK-SLOT0-RESP`` logs both response codes. The effect
-                    on ``LC_STATE`` is not graded. Control: both bits read 0 before.
+                    of the runtime-written bits on ``LC_STATE`` is not graded; the
+                    exempt cell grades the burned bits (CHK-LOCK-EXEMPT).
+                    Control: both bits read 0 before.
   CHK-PROG-ROUND    chain leg, per round: the frontdoor word is unchanged after the
                     program, the program reads ``program_busy`` 0, ``program_done``
                     1 and ``efuse_req_error`` 0, and the bank gains exactly the bit; after the resense all
@@ -345,6 +356,7 @@ _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_status")
 _RD_BUSY = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_busy")
 _RD_DONE = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_done")
 _RD_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_status")
+_RD_DATA_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_INTERFACE_READ_DATA")
 
 # A locked target completes the operation with an error: ``read_done`` 1 and
 # ``read_status`` 1 (Error).
@@ -382,6 +394,7 @@ _PIN = {
     "chain": (4, "chain", {}),
     "single": (5, "single_bit", {"slot": 1, "lock_kind": "write"}),
     "exempt": (44, "exempt", {}),
+    "uid_rdlock": (2, "lock_leg", {}),
 }
 # LC_STATE bits a program may set from TEST_DEV and the raw state each one reaches
 # (otp_fuse_controller.adoc:219-220; lifecycle_controller.adoc:118, :126-131).
@@ -590,17 +603,20 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         await self._wr(STATUS_ADDR, _CLEAR3)
         return await self._req_err_now()
 
-    async def _read_if(self, bit_addr: int) -> dict[str, Any]:
+    async def _read_if(self, bit_addr: int, *, data: bool = False) -> dict[str, Any]:
         """Read bit ``bit_addr`` through the read interface: go, full W, status, disable.
 
         ``efuse_req_error`` is sticky, so the request reads it before the go
         (``pre_req_err``) and after its own clear (``clr_req_err``); a blocked read
         graded on a flag that was already set cannot pass. ``read_done`` and
         ``read_status`` have no stated clear rule, so the request also reads them
-        before the go (``pre_done``, ``pre_status``).
+        before the go (``pre_done``, ``pre_status``). With ``data``, the request also
+        reads ``EFUSE_READ_INTERFACE_READ_DATA`` before the go (``pre_data``) and while
+        the request is still enabled (``data``).
         """
         pre = await self._req_err_now()
         pre_ctrl = await self._rd32(READ_CTRL_ADDR)
+        pre_data = await self._rd32(_RD_DATA_ADDR) if data else None
         addr = read_addr_word(bit_addr)
         await self._wr(READ_ADDR_ADDR, addr)
         await require_addr_readback(self._rd32, READ_ADDR_ADDR, addr)
@@ -609,6 +625,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, self.w)
         ctrl = await self._rd32(READ_CTRL_ADDR)
         st = await self._rd32(STATUS_ADDR)
+        rdata = await self._rd32(_RD_DATA_ADDR) if data else None
         await self._wr(READ_CTRL_ADDR, 0)
         r = {
             "pulses": self._pulses(start),
@@ -621,6 +638,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "pre_status": _bit(pre_ctrl, _RD_STATUS),
             "clr_req_err": "na",
         }
+        if data:
+            r["pre_data"] = pre_data
+            r["data"] = rdata
         if r["req_err"] or r["status"]:
             r["clr_req_err"] = await self._clear_status()
         return r
@@ -748,7 +768,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             self.required_evidence += ("CHK-LOCK-READ-DONE",)
         if kind == "single_bit" and p.leg["lock_kind"] == "read":
             self.required_evidence += ("CHK-LOCK-READ",)
-        if kind == "lock_leg" and _free_uid_slots(p.leg["layout"]):
+        free_uid = _free_uid_slots(p.leg["layout"]) if kind == "lock_leg" else []
+        if free_uid:
             self.required_evidence += ("CHK-UID-RDLOCK-PROG",)
         self.logger.info(
             "INFO-EVIDENCE seed=%d kind=%s required=%s",
@@ -759,12 +780,15 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         self.chk = SepChkLog(self, TEST, seed)
         if cell is not None and not self.chk.ctrl(
             "PIN-LEG",
-            kind == _PIN[cell][1] and all(p.leg.get(k) == v for k, v in _PIN[cell][2].items()),
+            kind == _PIN[cell][1]
+            and all(p.leg.get(k) == v for k, v in _PIN[cell][2].items())
+            and (cell != "uid_rdlock" or bool(free_uid)),
             pin=cell,
             plan_seed=plan_seed,
             kind=kind,
             slot=p.leg.get("slot", "none"),
             lock_kind=p.leg.get("lock_kind", "none"),
+            free_uid_slots=free_uid,
         ):
             self.chk.finish()
             return
@@ -1465,6 +1489,10 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         ck = await self._read_if(leg["class_key_bit"]["addr"])
         lk = await self._read_if(leg["locks_bit"]["addr"])
         ck_fd = await self._fd_locked(SLOT_OF_FIELD["CLASS_KEY"], "CLASS_KEY")
+        # LC_STATE bit 0: its read-lock bit is burned, and the request must still land.
+        await self._clear_status()
+        lc_addr = bit_address("LC_STATE", 0, 0)
+        lc = await self._read_if(lc_addr, data=True)
         ctl_rl = (
             ck["pre_req_err"] == 0
             and ck["req_err"] == 1
@@ -1513,6 +1541,28 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                 ctl_twin_done=lk["done"],
                 ctl_twin_req_err=lk["req_err"],
             )
+        lc_exp = img.words[field_word("LC_STATE")] & _WORD
+        ok &= self._grade(
+            "LOCK-EXEMPT",
+            lc["pre_req_err"] == 0
+            and lc["pre_data"] != lc_exp
+            and lc["req_err"] == 0
+            and lc["done"] == 1
+            and lc["busy"] == 0
+            and lc["status"] == 0
+            and lc["data"] == lc_exp,
+            target="LC_STATE",
+            path="read_if",
+            bit_addr=lc_addr,
+            exp=f"0x{lc_exp:08x}",
+            got=f"0x{lc['data']:08x}",
+            pre_data=f"0x{lc['pre_data']:08x}",
+            pre_req_err=lc["pre_req_err"],
+            req_err=lc["req_err"],
+            done=lc["done"],
+            busy=lc["busy"],
+            status=lc["status"],
+        )
         await self._pass(tag, ok and ctl_rl and ctl_twin)
         await self._exempt_prog()
 
@@ -1724,7 +1774,10 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         ``sep_efuse_map.rdl`` ``LOCKS``: ``LC_STATE_WRITE_LOCK`` [0] and
         ``LC_STATE_READ_LOCK`` [1] are ``sw = rw; onwrite = woset``, reset 0. A write of
         both bits sets them; a later write of 0 clears neither. Their response codes are
-        logged (``OBS-LOCK-SLOT0-RESP``). Their effect on ``LC_STATE`` is not graded (the specification and the RDL text disagree).
+        logged (``OBS-LOCK-SLOT0-RESP``). The effect of these runtime-written bits on
+        ``LC_STATE`` is not graded; the exempt cell grades the effect of the same bits
+        burned in the fuses, on the frontdoor and on the read-interface path
+        (CHK-LOCK-EXEMPT).
         Control: both bits read 0 before the write.
         """
         slot0 = (1 << write_lock_bit(0)) | (1 << read_lock_bit(0))

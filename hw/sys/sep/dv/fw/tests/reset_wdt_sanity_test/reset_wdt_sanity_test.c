@@ -91,7 +91,9 @@
 // No generated field header exists for the Adams Bridge interrupt block. The
 // field values come from global_intr_en_t in
 // vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.rdl:
-// error_en [0] and notif_en [1], both reset 0.
+// error_en [0] and notif_en [1], both reset 0. The firmware prints both values
+// (CTRL-SWRST-ABR-PROBE) and the cocotb leaf compares them with the fields
+// sep_reg.py generates from that RDL.
 #define ABR_GLOBAL_INTR_ENABLE_ADDR SEP_TOP_ABR_INTR_BLOCK_RF_GLOBAL_INTR_EN_R_BASE_ADDR
 #define ABR_GLOBAL_INTR_ENABLE_WR 0x3u
 #define ABR_GLOBAL_INTR_ENABLE_RST 0x0u
@@ -405,6 +407,11 @@ int main(void) {
         errors++;
     }
 
+    sep_mbx_puts("CTRL-SWRST-ABR-PROBE REC wr=");
+    sep_mbx_puthex(ABR_GLOBAL_INTR_ENABLE_WR);
+    sep_mbx_puts(" rst=");
+    sep_mbx_puthex(ABR_GLOBAL_INTR_ENABLE_RST);
+    sep_mbx_putc('\n');
     for (uint32_t i = 0; i < NUM_PROBES; i++) {
         errors += check_reset_wire(&k_probes[i]);
     }

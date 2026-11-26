@@ -358,9 +358,16 @@ Checkers:
                  after their clear, before the command, and bit 14 rose. Its
                  ``CMD_STS`` is graded by ``CHK-EDN-INVSEQ-STS`` (these two checks
                  print and grade ``hw_exc`` and ``hw_inst_exc``).
-                 ``HW_EXC_STS`` after the repeated software instantiate stays
-                 logged (``INFO-CSRNG-INVSEQ``): the register names hardware
-                 instances only.
+  CHK-CSRNG-SW-NO-HW-EXC  after the repeated software instantiate the whole of
+                 ``HW_EXC_STS`` reads 0 and ``INTR_STATE.cs_hw_inst_exc`` reads
+                 0: the register names hardware instances only and points to
+                 ``SW_CMD_STS`` for the software instance (csrng.rdl:327-332),
+                 and the interrupt is for a hardware-attached instance
+                 (csrng.rdl:24-27); EDN, hardware instance 0, is disabled in this
+                 leg. Control (``CTRL-CSRNG-SW-NO-HW-EXC``): both read 0 after
+                 their clear (write 0, write 1) before the command,
+                 ``EDN_CTRL.EDN_ENABLE`` reads false, and after the command bit
+                 14 reads 1 and ``CMD_STS`` reads 3.
   CHK-CSRNG-ACK-CLR  in the counter-wrap leg, ``CMD_ACK`` reads 0 between the
                  Instantiate header (clen 12) and its first data word ("It is set
                  to low each time a new command is written to !!CMD_REQ",
@@ -377,7 +384,7 @@ Checkers:
                  (theory_of_operation.md:217), ``GENBITS_FIPS`` "is set when
                  genbits are FIPS/CC compliant" (csrng.hjson:459), and the SEP
                  seed adapter attaches the provisional flag 1, forwarded to each
-                 endpoint (``hw/sys/sep/doc/trng.adoc``:138-141). Graded legs:
+                 endpoint (``hw/sys/sep/doc/trng.adoc``:140-143). Graded legs:
                  ``GENBITS_FIPS`` at the first ``GENBITS_VLD`` read with
                  ``GENBITS_VLD`` = 1 reads 1 after a flag0-False software
                  instantiate (a Generate in the CSRNG software leg; the first
@@ -572,6 +579,7 @@ ED_BOOT_MODE = EDN.fields("HW_CMD_STS")["BOOT_MODE"]["bm"]
 ED_AUTO_MODE = EDN.fields("HW_CMD_STS")["AUTO_MODE"]["bm"]
 ED_DONE = EDN.fields("INTR_STATE")["EDN_CMD_REQ_DONE"]["bm"]
 ED_ACK_ERR = EDN.fields("RECOV_ALERT_STS")["CSRNG_ACK_ERR"]["bm"]
+ED_CTRL_ENABLE = EDN.fields("CTRL")["EDN_ENABLE"]
 
 # The instantiate word: the RDL reset value of EDN BOOT_INS_CMD (edn.adoc BOOT_INS_CMD).
 CMD_INSTANTIATE = EDN.reset("BOOT_INS_CMD")
@@ -603,7 +611,7 @@ FIPS_FORCE_RESET = CSRNG.reset("FIPS_FORCE")
 CS_FIPS_FORCE_EN = CSRNG.fields("CTRL")["FIPS_FORCE_ENABLE"]
 # FIPS/CC flag of words from an instance: flag0 True makes the instance non-FIPS
 # (theory_of_operation.md:217); the SEP seed adapter marks its seeds FIPS
-# (hw/sys/sep/doc/trng.adoc:138-141).
+# (hw/sys/sep/doc/trng.adoc:140-143).
 FIPS_FLAG0_TRUE = 0
 FIPS_FLAG0_FALSE = 1
 # Internal state readback (csrng.hjson INT_STATE_NUM, INT_STATE_VAL): "the internal
@@ -1138,6 +1146,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         "CHK-EDN-INVSEQ-STS",
         "CHK-EDN-INVSEQ-ACK-ERR",
         "CHK-CSRNG-UNINST-STS",
+        "CHK-CSRNG-SW-NO-HW-EXC",
     )
 
     async def run_scenario(self) -> None:
@@ -1187,7 +1196,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 await NextTimeStep()
             close_graded_window(self.logger)
             if self.sb is not None:
-                self.sb.stop()
+                await self.sb.stop()
         await ingress.stop()
         self.chk.info(
             "DRBG-SEED-INGRESS",
@@ -1246,7 +1255,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
     async def _trng_reset(self) -> None:
         dut = cocotb.top
         if self.sb is not None:
-            self.sb.stop()
+            await self.sb.stop()
             self.sb = None
         await self.swrst.park("trng")
         rise = await self._wait_probe(dut.trng_reset_active_probe_o, False, "trng reset rise")
@@ -2231,6 +2240,50 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         )
         await self._release()
 
+    async def _sw_no_hw_exc_grade(self, pre: dict, invseq: int, cmd_sts: int) -> None:
+        """CHK-CSRNG-SW-NO-HW-EXC for the repeated instantiate on the CSRNG
+        software instance, a command sequencing error on that instance.
+
+        ``HW_EXC_STS`` "indicates whether one of the CSRNG HW instances has
+        encountered an exception", one bit per hardware instance, and "To monitor
+        the status of requests made to the SW instance, check the !!SW_CMD_STS
+        register" (csrng.rdl:327-332); ``CS_HW_INST_EXC`` is "Asserted when a
+        hardware-attached CSRNG instance encounters a command exception"
+        (csrng.rdl:24-27). EDN, the only hardware instance with a live port
+        (hw/ip/drbg/doc/architecture.adoc:58), is disabled in this leg, so the
+        whole of ``HW_EXC_STS`` reads 0 and ``INTR_STATE.cs_hw_inst_exc`` reads 0.
+        Control (``CTRL-CSRNG-SW-NO-HW-EXC``): both read 0 after their clear,
+        before the command, ``EDN_CTRL.EDN_ENABLE`` reads false, bit 14 rose and
+        ``SW_CMD_STS.CMD_STS`` reads 3, so the command was the sequencing error.
+        """
+        r = self.reg
+        hw_exc = await r._rd(CSRNG_HW_EXC_STS)
+        hw_inst_exc = int(bool(await r._rd(CSRNG_INTR_STATE) & CS_HW_INST_EXC))
+        f = {
+            **pre,
+            "edn_enable": f"0x{pre['edn_enable']:x}",
+            "invseq": invseq,
+            "cmd_sts": cmd_sts,
+        }
+        self.chk.ctrl(
+            "CSRNG-SW-NO-HW-EXC",
+            pre["pre_hw_exc"] == 0
+            and pre["pre_hw_inst_exc"] == 0
+            and pre["edn_enable"] == MUBI_FALSE
+            and invseq == 1
+            and cmd_sts == STS_INVALID_CMD_SEQ,
+            **f,
+        )
+        self._grade(
+            "CSRNG-SW-NO-HW-EXC",
+            hw_exc == 0 and hw_inst_exc == 0,
+            **f,
+            hw_exc=f"0x{hw_exc:x}",
+            expected_hw_exc="0x0",
+            hw_inst_exc=hw_inst_exc,
+            expected_hw_inst_exc=0,
+        )
+
     # --- CSRNG software instance leg ---------------------------------------------
     async def _csrng_sw_leg(self) -> None:
         await self._clean_start("csrng_sw")
@@ -2290,6 +2343,17 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             self.chk.ctrl("CSRNG-SW", first == 0, ctrl_first_invseq=first)
             bound = BOUND_FACTOR * t_cmd
             hs["bound"] = bound
+            # Before the repeated instantiate: HW_EXC_STS written 0 and
+            # cs_hw_inst_exc written 1 (W1C), both read back, so a 1 after it comes
+            # from that command. EDN_CTRL.EDN_ENABLE reads false, so no hardware
+            # instance runs a command in the window.
+            await r._wr(CSRNG_HW_EXC_STS, 0)
+            await r._wr(CSRNG_INTR_STATE, CS_HW_INST_EXC)
+            exc_pre = {
+                "pre_hw_exc": await r._rd(CSRNG_HW_EXC_STS),
+                "pre_hw_inst_exc": int(bool(await r._rd(CSRNG_INTR_STATE) & CS_HW_INST_EXC)),
+                "edn_enable": _field(await r._rd(EDN_CTRL), ED_CTRL_ENABLE),
+            }
             # A command completes "successfully or unsuccessfully"
             # (theory_of_operation.md:286), and cs_cmd_req_done "will assert when a
             # CSRNG command has been completed" (:421): after the repeated
@@ -2316,11 +2380,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 invseq=invseq,
                 done2=hs["done2"],
             )
-            self.chk.info(
-                "CSRNG-INVSEQ",
-                hw_exc=f"0x{await r._rd(CSRNG_HW_EXC_STS):x}",
-                graded="none",
-            )
+            await self._sw_no_hw_exc_grade(exc_pre, invseq, _field(sts, CS_STS_STS))
             await self._main_sm("csrng_invseq")
             await r._wr(CSRNG_RECOV_ALERT_STS, 0)
             cleared = int(not await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ)

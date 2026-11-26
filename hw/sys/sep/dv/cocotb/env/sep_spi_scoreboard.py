@@ -47,8 +47,8 @@ Receive and dummy beats are not graded for their enables.
 
 With ``order`` (a ``SepSpiByteOrder``), the expected bytes of each TX
 payload and tx segment are ``order.tx_bytes(data, wire)``: the stimulus
-bytes in the leaf's in-word byte order, chosen by the wire decode, so the
-compare grades the order-free part. The leaf must have pushed exactly
+bytes in the ByteOrder = 1 order (bits 7:0 of each TXDATA word first), so a
+word sent in the other order fails the compare. The leaf must have pushed exactly
 ``pack_tx_words(data)`` for that payload. Without ``order`` the expected
 bytes are ``data`` (``ByteOrder = 1``). RX bytes come in already decoded by
 the leaf (``SepSpiByteOrder.bytes_of``) and are compared as given.

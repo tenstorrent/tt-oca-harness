@@ -25,7 +25,7 @@ _BLOCKS = ("dst_sink", "funnel", "dst")
 _DST_REGISTERS = 6
 _FUSE_SENSE_MAX_CYCLES = 200_000
 
-# The document does not pin the supported value set of this field, so its readback is printed.
+# The all-ones and all-zeros patterns are not held to a value on this field; its readback is printed.
 _PRINT_ONLY_FIELDS = ("Trdstformat",)
 
 _FENCE = (
@@ -152,7 +152,7 @@ class smc_dfd_csr_field_access_test_seq(SmcCsrSeq):
         return (
             f"{compared} sw=rw DST field patterns (all ones then all zeros, field alone, others "
             f"at baseline) read back exactly; printed not compared (hardware-driven or "
-            f"value set not stated): {'; '.join(printed)}"
+            f"not held to a value): {'; '.join(printed)}"
         )
 
     # -- S3 ---------------------------------------------------------------

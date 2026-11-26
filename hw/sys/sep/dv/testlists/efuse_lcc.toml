@@ -638,6 +638,22 @@ args = [
 ]
 
 [[tests]]
+# Same module with a lock leg pinned: the plan comes from plan seed 2, which leaves
+# UID slot 15 without a lock, and the preload is that plan's t=0 image.
+name = "sep_efuse_lock_slot_matrix_rand_test_uid_rdlock"
+module = "efuse.sep_efuse_lock_slot_matrix_rand_test"
+seed = 1
+# No reseed: the plan, and so the stimulus, is fixed by the plan seed.
+timeout_sec = 900
+tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "grades_spec_km_efuse_scan"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+  "+sep_pin_cell=uid_rdlock",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lock_slot_uid_rdlock.toml",
+]
+
+[[tests]]
 # Secure test mode: secret fields mask at the sensed-shadow output, programs and JTAG
 # shadow writes are blocked at strap 1. RAND-REP.
 name = "sep_efuse_secure_tm_matrix_rand_test"

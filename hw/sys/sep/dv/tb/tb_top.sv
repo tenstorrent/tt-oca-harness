@@ -3308,6 +3308,29 @@ module sep_uvm_top
     end
 `undef DMA_HOST_CMD_INTG_DI
 
+    // ------------------------------------------------------------------
+    // SPI host register-bus command-integrity inject.
+    // ------------------------------------------------------------------
+    // The AXI4-Lite to TL-UL bridge of sep_ot_spi_wrap always emits a matching
+    // command user code, so no access raises the TL-UL integrity error of the
+    // SPI host register block. When spi_host_intg_inject_i=1, force the checker
+    // input (u_reg.u_chk.u_chk.data_i) to 0 so the real decoder raises the
+    // error on the next register access. The core latches it and repeats its
+    // fatal_fault alert until reset. PERIPH_BUS_ERR_STATUS, sep_ras_o and the
+    // interrupt aggregate stay frontdoor or probes. Re-issue every clock
+    // (Verilator snapshots a force RHS). Release when the port drops.
+    // Default 0; outside the AXI ready/valid cones.
+`define SPI_HOST_CMD_INTG_DI \
+    `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.u_reg.u_chk.u_chk.data_i
+    always @(posedge clk_i) begin
+        if (spi_host_intg_inject_i === 1'b1) begin
+            force `SPI_HOST_CMD_INTG_DI = '0;
+        end else begin
+            release `SPI_HOST_CMD_INTG_DI;
+        end
+    end
+`undef SPI_HOST_CMD_INTG_DI
+
     // While the input is high, every secure-DMA host response after the first pass_beats of a
     // transfer returns SLVERR, except during a zero fill, so a ROM memory clear still completes.
 `define DMA_HOST_AXIL_RSP `SEP_CORE.u_sep_dma_wrap.axi_lite_mst_resp
@@ -3627,8 +3650,8 @@ module sep_uvm_top
     // ESRC noise-source stuck-at inject.
     // ------------------------------------------------------------------
     // While bit i of esrc_noise_stuck_en_i is 1, the output of the noise ring
-    // oscillator of lane i (u_noise_source.noise_async, the net between the
-    // ring oscillator and the sampling flop u_smpl) is forced to bit i of
+    // oscillator of lane i (u_noise_sampler.noise_async_i, the input of the
+    // sampling flop u_smpl) is forced to bit i of
     // esrc_noise_stuck_val_i: a stuck noise source. The value passes the
     // sampling flop and the two-flop synchronizer like a real ring output, so it
     // reaches noise_bit, the noise observe FIFO samples and the decorrelator of
@@ -3638,10 +3661,10 @@ module sep_uvm_top
     // clock and released when the bit drops. Default 0: no force.
 `define ESRC_NOISE_STUCK(i) \
     if (esrc_noise_stuck_en_i[i] === 1'b1) \
-        force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async = \
+        force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_sampler.noise_async_i = \
             esrc_noise_stuck_val_i[i]; \
     else \
-        release `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_source.noise_async
+        release `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_noise_sampler.noise_async_i
     always @(negedge clk_i) begin
         `ESRC_NOISE_STUCK(0);  `ESRC_NOISE_STUCK(1);  `ESRC_NOISE_STUCK(2);
         `ESRC_NOISE_STUCK(3);  `ESRC_NOISE_STUCK(4);  `ESRC_NOISE_STUCK(5);
@@ -6286,6 +6309,7 @@ module sep_uvm_top
     assign efuse_status_inject_readback_i = 1'b0;
     assign efuse_shim_resp_hold_i   = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign spi_host_intg_inject_i   = 1'b0;
     assign mbox_lane_inject_arm_i   = 1'b0;
     assign mbox_lane_inject_mbx_i   = '0;
     assign mbox_lane_inject_data_i  = '0;

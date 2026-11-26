@@ -9242,6 +9242,9 @@ localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_EDN_SHIFT        
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_WDT_MASK                                           = 64'h40;
 localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_WDT_SHIFT                                          = 6;
 
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_SPI_MASK                                           = 64'h80;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_SPI_SHIFT                                          = 7;
+
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_AES_MASK                                            = 64'h1;
 localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_AES_SHIFT                                           = 0;
 
@@ -9262,6 +9265,9 @@ localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_EDN_SHIFT         
 
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_MASK                                            = 64'h40;
 localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_SHIFT                                           = 6;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_SPI_MASK                                            = 64'h80;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_SPI_SHIFT                                           = 7;
 
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK                                           = 64'hFFFFFFFF;
 localparam     int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_SHIFT                                          = 0;
@@ -12454,6 +12460,7 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   spi ;
     logic [0:0]   wdt ;
     logic [0:0]   edn ;
     logic [0:0]   csrng ;
@@ -12466,6 +12473,7 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   spi ;
     logic [0:0]   wdt ;
     logic [0:0]   edn ;
     logic [0:0]   csrng ;

@@ -17779,7 +17779,7 @@ module sep_fcov (
       wildcard illegal_bins held_word_acked_to_other = {3'b1_??};
     }
     // After a TRNG reset the chain produces fresh data only after
-    // reinitialization (hw/sys/sep/doc/trng.adoc:197-199).
+    // reinitialization (hw/sys/sep/doc/trng.adoc:200-202).
     cp_trng_reinit: coverpoint s.tr iff (s.tr_v) {
       bins fresh_seed = {2'd0}; bins fips_lock_restored = {2'd1}; bins pool_pop_okay = {2'd2};
     }
@@ -28913,7 +28913,7 @@ module sep_fcov (
       cxt_gen   <= 1'b0;
     end else if (cxt_arm && mr_ip[5]) begin
       // fresh_seed: a seed after the generators are enabled again; a seed
-      // before that write is not reinitialized data (hw/sys/sep/doc/trng.adoc:198-199).
+      // before that write is not reinitialized data (hw/sys/sep/doc/trng.adoc:201-202).
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_RING_OSC_ENABLE_REG_ADDR) &&
           ((wr_data & ENTROPY_SOURCE_RING_OSC_ENABLE_ENABLE_MASK) != 32'h0)) begin
         cxt_gen <= 1'b1;
@@ -45965,6 +45965,7 @@ module sep_fcov (
   localparam int unsigned RasPbeCsrng = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_CSRNG;
   localparam int unsigned RasPbeEdn = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_EDN;
   localparam int unsigned RasPbeWdt = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_WDT;
+  localparam int unsigned RasPbeSpi = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_SPI;
   if (RasW != RasLcSigintErr + 1) begin : g_ras_width_check
     $fatal(1, "sep_ras_t is %0d bits, the sep_ras_cg map has %0d", RasW, RasLcSigintErr + 1);
   end
@@ -45990,6 +45991,7 @@ module sep_fcov (
       bins periph_bus_err_kmac = {RasPbeKmac};
       bins periph_bus_err_otbn = {RasPbeOtbn};
       bins periph_bus_err_wdt = {RasPbeWdt};
+      bins periph_bus_err_spi = {RasPbeSpi};
       bins csrng_fatal = {RasCsrngFatal};
       bins edn_fatal = {RasEdnFatal};
       bins crypto_alert = {RasCryptoAlert};
@@ -46021,6 +46023,7 @@ module sep_fcov (
       RasDmaRegBusErr, RasPbeAes, RasPbeHmac, RasPbeKmac, RasPbeOtbn, RasPbeWdt:
       return graded_owner == FcovOwnSepCpuBridgeFaultMatrixRandTest;
       RasDmaHostIntgErr: return graded_owner == FcovOwnSepDmaBasicTest;
+      RasPbeSpi: return graded_owner == FcovOwnSepSpiOtHostCsrIrqRandTest;
       RasCsrngFatal, RasEdnFatal:
       return (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) ||
           (graded_owner == FcovOwnSepPicPendingMapWalkRandTest);

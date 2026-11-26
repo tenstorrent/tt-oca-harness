@@ -33,9 +33,9 @@ include::../regs/gen/adoc/memory_map.adoc[tag=sep-cpu-logical]
 endif::backend-pdf[]
 
 The `SEP Local Alias` row is an alternate CPU-side name for the same
-hardware listed in the `SEP Local` and `SEP External` rows. For
-example, `0xD000_0000` aliases `0x1000_0000` and `0xD080_2000` aliases
-`0x1080_2000`. This alias range is used by SEP-local masters, while
+hardware listed in the `SEP Local` and `SEP External` rows. At its
+reset location, `0xD000_0000` aliases `0x1000_0000` and `0xD080_2000`
+aliases `0x1080_2000`. This alias range is used by SEP-local masters, while
 external masters use chiplet-global addresses.
 
 The EL2 CPU resources are mapped into a separate segment than the SEP
@@ -46,9 +46,11 @@ internal wiring. The high local-alias mapping covers the `0xD000_0000`
 and above alias view. CPU CSRs are accessed with dedicated RISC-V
 instructions and do not appear in the address map.
 
-The high local alias span has a fixed SEP-local size of 768 MiB
-(`0xD000_0000` through `0xFFFF_FFFF`), corresponding to the direct
-internal range `0x1000_0000` through `0x3FFF_FFFF`. The
+The high local alias span covers up to 768 MiB and corresponds to
+the direct internal range `0x1000_0000` through `0x3FFF_FFFF`. Its reset
+location is `0xD000_0000` through `0xFFFF_FFFF`; `SEP_LOCAL_BASE_ADDR` can
+raise its base within that span, which shortens it, as the CPU chapter
+states. The
 chiplet-global SEP aperture configured by `SEP_GLOBAL_BASE_ADDR` /
 `SEP_REGION_SIZE` controls the SMU xbar and inbound global-to-local
 remap.

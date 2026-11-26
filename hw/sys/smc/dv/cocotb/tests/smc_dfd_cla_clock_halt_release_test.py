@@ -20,8 +20,8 @@ from smc_base_test import smc_base_test
 class smc_dfd_cla_clock_halt_release_test(smc_base_test):
     """Fire the clock-halt action, walk the release steps, grade the request after each."""
 
-    required_evidence = ("CHK-CLA-CLOCK-HALT-RELEASE",)
-    min_evidence = 1
+    required_evidence = ("CHK-CLA-ACTION-CODE", "CHK-CLA-CLOCK-HALT-RELEASE")
+    min_evidence = 2
 
     auto_protocol_vip = False
 

@@ -43,7 +43,7 @@ below.
   `CT_Ack_out`, so the board pulls set the level the far end sees on those
   lines. Choose pulls that the far end reads as deasserted.
 * Internal CTPs have no registers. The `INT_CT_MODE` parameter fixes their
-  protocol.
+  protocol and stretch. Only an internal CTP can use toggle mode.
 * The CTM configuration across the SiP is free of loops. A wire-OR CTP
   receives its own assertion of the shared wire, so a route from a wire-OR
   CTP back to the same CTP is a loop.

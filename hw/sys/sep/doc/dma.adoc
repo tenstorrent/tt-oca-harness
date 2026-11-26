@@ -27,8 +27,10 @@ endif::backend-pdf[]
 for this block.
 
 Source and destination addresses independently support incrementing, fixed
-address and wrap-at-chunk-boundary operation. Use incrementing addresses for
-memory and a fixed address for a peripheral FIFO. Transfers use 1-, 2- or
+and wrap-at-chunk-boundary operation. Use incrementing addresses for memory.
+For a peripheral FIFO, clear `INCREMENT` and set `WRAP`: with `WRAP` clear,
+`INCREMENT` = 0 holds the address only within a chunk, and each later chunk
+starts `CHUNK_DATA_SIZE` bytes higher. Transfers use 1-, 2- or
 4-byte accesses; inline hashing requires 4-byte transfers. The core issues
 individual TL-UL transactions, so the AXI wrapper does not turn a copy into
 a burst transfer. Hash results are read from the DMA digest registers.

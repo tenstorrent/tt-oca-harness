@@ -14,10 +14,10 @@ addrmap sep_cpu_ctrl {
             sw=rw;
             hw=rw;
             wr_swacc = true;
-            desc="SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
-                  then poll this register until the readback reflects the written value before
-                  writing again. The counter keeps advancing, so the readback is at or just
-                  above the written value rather than equal to it.";
+            desc="SEP REFERENCE COUNTER, counting after deassert of the boot-qualified SEP
+                  reset. Write once, then poll this register until the readback reflects the
+                  written value before writing again. The counter keeps advancing, so the
+                  readback is at or just above the written value rather than equal to it.";
         } rc [63:0] = 0x0;
     };
 
@@ -187,6 +187,12 @@ addrmap sep_cpu_ctrl {
         field {
             sw = rw;
             hw = r;
+            desc = "Base of the local alias window, which CPU and secure DMA accesses reach as
+                    0x1000_0000 onwards. Only bits [31:0] are used;
+                    bits [55:32] are ignored. Legal values are 0xD000_0000 to 0xFFFF_FFFF; other
+                    values overlap fixed SEP regions and are not supported. Keeping the reset value
+                    is recommended. The window ends at 0xFFFF_FFFF and does not wrap, so a higher
+                    base shortens it. An address outside the window is not translated.";
         } addr[55:0] = 0xD0000000;
     };
 
@@ -263,8 +269,9 @@ addrmap sep_cpu_ctrl {
                 SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).
                 If a bark arrives while the reset value is still in place, the CPU jumps to
                 0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if
-                the loaded image covers that location, or an uncorrectable ICCM ECC error
-                (which itself re-raises NMI) if it does not.";
+                the loaded image covers that location, or, if the fetch takes an
+                uncorrectable ICCM ECC error, an instruction access fault (mcause 0x1)
+                through mtvec.";
 
         field {
             sw = rw;
@@ -390,7 +397,8 @@ addrmap sep_cpu_ctrl {
                 (an unmapped offset, or a partial write: a byte strobe that misses a byte the
                 register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
                 written. The faulting access also received SLVERR synchronously. A narrow
-                read inside a register returns OKAY.
+                read inside a register returns OKAY. The spi bit also latches the SPI host
+                fatal alert.
 
                 All bits OR together into a single PIC source, so read this register to
                 identify which block faulted.
@@ -440,6 +448,15 @@ addrmap sep_cpu_ctrl {
             hw = w;
             desc = "Watchdog timer register bridge error.";
         } wdt [6:6] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "SPI host register bridge error, or the SPI host fatal_fault alert (a
+                    register-bus integrity fault, or a write of ALERT_TEST.fatal_fault). A
+                    real integrity fault repeats the alert until the SEP reset, so clearing
+                    this bit does not keep it clear.";
+        } spi [7:7] = 0x0;
     };
 
     reg PERIPH_BUS_ERR_CLEAR {
@@ -501,6 +518,13 @@ addrmap sep_cpu_ctrl {
             singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.";
         } wdt [6:6] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.spi. Always reads 0.";
+        } spi [7:7] = 0x0;
     };
 
     // ----------------------------------------------

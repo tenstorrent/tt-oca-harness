@@ -143,12 +143,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -198,12 +198,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap0 @ 0x120;
     reg {
@@ -218,12 +218,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -273,12 +273,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap1 @ 0x128;
     reg {
@@ -293,12 +293,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -348,12 +348,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap0 @ 0x130;
     reg {
@@ -368,12 +368,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -423,12 +423,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap1 @ 0x138;
     reg {
@@ -443,12 +443,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -498,12 +498,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap0 @ 0x140;
     reg {
@@ -518,12 +518,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -573,12 +573,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap1 @ 0x148;
     reg {
@@ -593,12 +593,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -648,12 +648,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap0 @ 0x150;
     reg {
@@ -668,12 +668,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -723,12 +723,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap1 @ 0x158;
     reg {
@@ -797,7 +797,7 @@ addrmap dfd_cla {
         } PosEdgeSignal1[15:15] = 0x0;
     } CDbgSignalEdgeDetectCfg @ 0x180;
     reg {
-        desc = "Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit.";
+        desc = "Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit. A status bit sets in every cycle in which its EAP relation holds while its node is current and EnableEap is set, and that set takes priority over a w2c write in the same cycle, which then leaves the bit at 1. Write the w2c bit once the relation is false, the node is no longer current or EnableEap is clear.";
         regwidth = 64;
 
         field {
@@ -1265,12 +1265,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -1320,12 +1320,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap2 @ 0x248;
     reg {
@@ -1340,12 +1340,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -1395,12 +1395,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap3 @ 0x250;
     reg {
@@ -1415,12 +1415,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -1470,12 +1470,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap2 @ 0x258;
     reg {
@@ -1490,12 +1490,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -1545,12 +1545,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap3 @ 0x260;
     reg {
@@ -1565,12 +1565,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -1620,12 +1620,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap2 @ 0x268;
     reg {
@@ -1640,12 +1640,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -1695,12 +1695,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap3 @ 0x270;
     reg {
@@ -1715,12 +1715,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -1770,12 +1770,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap2 @ 0x278;
     reg {
@@ -1790,12 +1790,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
@@ -1845,12 +1845,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap3 @ 0x280;
     reg {

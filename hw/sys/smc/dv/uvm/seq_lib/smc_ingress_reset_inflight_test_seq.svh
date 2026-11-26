@@ -26,6 +26,8 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
   bit [15:0] id;
   bit [63:0] base, baseline_data[Ops], fresh[Ops];
   int unsigned hold_cycles, item_bound, compare_before;
+  int unsigned rule_cycles;
+  bit counting_rule_cycles;
 
   function new(string name = "smc_ingress_reset_inflight_test_seq");
     super.new(name);
@@ -52,6 +54,19 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
                   tb_vif.rst_warm_smc_clk_n,
                   ResetBound
                   ));
+  endtask
+
+  // Counts the SEP_IN assertion clock edges on which the primary reset tap is low and axi_sva_en
+  // is set: the B/R VALID reset rules' reset and enable terms apart from the arming term. The
+  // sequence does not wait on this task, so a stopped clock leaves the count at zero and fails
+  // the record.
+  protected task count_rule_cycles();
+    while (counting_rule_cycles) begin
+      @(posedge tb_vif.clk_smc);
+      if (counting_rule_cycles && tb_vif.rst_primary_smc_clk_n === 1'b0 &&
+          tb_vif.axi_sva_en === 1'b1)
+        rule_cycles++;
+    end
   endtask
 
   protected function void grade(string check_id, string label, bit condition,
@@ -175,6 +190,11 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
                         scenario_seed, reset_delay, delay_samples, hold_cycles / 2), UVM_LOW)
     cold_before = tb_vif.cold_rst_assert_count;
     cool_before = tb_vif.cool_rst_assert_count;
+    rule_cycles = 0;
+    counting_rule_cycles = 1'b1;
+    fork
+      count_rule_cycles();
+    join_none
     tb_vif.rst_cool_n <= 1'b0;
     wait_reset_level(1'b0, ChkAsserted);
     require_value(ChkPhase,
@@ -190,6 +210,9 @@ class smc_ingress_reset_inflight_test_seq extends smc_base_test_seq;
                   ));
     tb_vif.rst_cool_n <= 1'b1;
     wait_reset_level(1'b1, ChkReleased);
+    counting_rule_cycles = 1'b0;
+    check_evidence(ChkSva, "SEP_IN assertion clock edges with B/R VALID reset rule terms",
+                   64'(rule_cycles > 0), 1, $sformatf("cycles=%0d", rule_cycles));
     wait_fuse_sense_done();
     require_value(ChkEpoch,
                   reset_monitor.extra_resets == 0 &&

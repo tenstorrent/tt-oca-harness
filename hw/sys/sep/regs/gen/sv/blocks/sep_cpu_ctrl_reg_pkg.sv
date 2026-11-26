@@ -117,6 +117,10 @@ package sep_cpu_ctrl_reg_pkg;
     } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__wdt__in_t;
 
     typedef struct {
+        logic next;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__spi__in_t;
+
+    typedef struct {
         sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__aes__in_t aes;
         sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__hmac__in_t hmac;
         sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__kmac__in_t kmac;
@@ -124,6 +128,7 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__csrng__in_t csrng;
         sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__edn__in_t edn;
         sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__wdt__in_t wdt;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__spi__in_t spi;
     } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__in_t;
 
     typedef struct {
@@ -333,6 +338,10 @@ package sep_cpu_ctrl_reg_pkg;
     } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__wdt__out_t;
 
     typedef struct {
+        logic value;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__spi__out_t;
+
+    typedef struct {
         sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__aes__out_t aes;
         sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__hmac__out_t hmac;
         sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__kmac__out_t kmac;
@@ -340,6 +349,7 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__csrng__out_t csrng;
         sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__edn__out_t edn;
         sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__wdt__out_t wdt;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__spi__out_t spi;
     } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__out_t;
 
     typedef struct {

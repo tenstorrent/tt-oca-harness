@@ -141,7 +141,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |CPU machine timer interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `timer_int` (the core pin that drives `mip.MTIP`) from the TB input `timer_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-TIMER-PIN).
 |CPU machine software interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `soft_int` (the core pin that drives `mip.MSIP`) from the TB input `soft_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-SOFT-PIN).
 |External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, the DRBG stall point of `sep_km_fault_inject_rand_test`, the beat-pattern legs of `sep_km_drbg_sampler_rand_test` (stream 0 with `EXT_TRNG_SRC_SEL` bit 0 set: CHK-SMP-PACK, CHK-SMP-PRE-PARTIAL, CHK-SMP-TO-ASM, CHK-SMP-STRM-CTRL), the pool leg of `sep_fabric_dma_endpoint_matrix_test` (stream 2: a drawn number of word pairs below the pool depth), and the external words of `sep_crypto_edn_round_robin_grant_test` (stream 1: single words, each followed by its grant; two rounds of six words, each offered when AES, KMAC and OTBN URND, then AES, KMAC and OTBN RND, all request at the crypto EDN arbiter).
-|External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
+|External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, and `sep_pic_pending_map_walk_rand_test` (CHK-SRC17-EDGE, CHK-SRC17-LEVEL).
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
 |CPU lockstep control |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `lockstep_ctrl_i` (`err_injection_en`, `disable_corruption_detection`) from the `tb_top` variable `lockstep_ctrl_i`, 0 from time 0, and observes `lockstep_status_o` in the variable of the same name. A leaf writes the variable through the `tb_top` handle. Owner: `sep_cpu_isa_pmp_csr_test`.
 |DMI enables |Added hook (top-port drive). `tb_top` drives the `sep` inputs `dmi_core_enable_i` and `dmi_uncore_enable_i` (wrapper ports `dmi_core_enable`, `dmi_uncore_enable`) from the TB inputs of the same name; a value other than 1 drives 0. `dmi_uncore_rdata` is held at 0. Owner: `sep_debug_master_target_matrix_test`.
@@ -283,7 +283,7 @@ Observation probe groups:
   clocked by `clk_wdt_i`. A bus read of `WDOG_COUNT` needs `clk_i`, so no
   frontdoor shows the count while `clk_i` is stopped. Read-only. Users: the
   timer and clock contract entry of the memory, boot, reset, WDT and clock
-  area.
+  area, and `sep_debug_master_target_matrix_test` (CHK-WDT-HALT-COUNT).
 * AON wakeup tap (`aon_wkup_probe_o[32:0]`): bit 32 the wakeup interrupt
   request `wkup_intr_o` and bits 31:0 the low word of the wakeup count
   `wkup_count` of the watchdog AON timer core
@@ -636,8 +636,8 @@ Observation probe groups:
   which reads `spi_tx_qd_probe_o` and `dma_busy_probe_o`).
 * SPI host alert tap (`spi_alert_tx_probe_o[1:0]`): the `fatal_fault` alert
   sender output of the OpenTitan SPI host (`u_spi_host.alert_tx_o[0]`), bit 1
-  `alert_p` and bit 0 `alert_n`. `sep_ot_spi_wrap` leaves the alert port open,
-  so no CSR or port shows the alert. Monitor only: it drives nothing and adds
+  `alert_p` and bit 0 `alert_n`. `sep_ot_spi_wrap` terminates the alert in a
+  `prim_alert_receiver` that sets `PERIPH_BUS_ERR_STATUS.spi`. Monitor only: it drives nothing and adds
   no force. Owner: `sep_spi_ot_host_csr_irq_rand_test` (CTRL-SPI-ALERT-REACH).
 * `SEP_TEST_CTRL` read decode tap (`sep_test_ctrl_rd_probe_o`): the read
   strobe of `SEP_TEST_CTRL` in the CPU control register block
@@ -939,9 +939,10 @@ Observation probe groups:
    the alias remap. Monitor only; sampled on `clk_i`; tied to 0 on the CPU
    stub build. AxBURST, AxLOCK and AxQOS are graded against the core-complex port
    table of the EL2 Programmer's Reference Manual that
-   `hw/sys/sep/doc/cpu.adoc` names; AxCACHE and AxREGION are logged only.
+   `hw/sys/sep/doc/cpu.adoc` names; AxCACHE and AxREGION are graded against
+   `hw/sys/sep/doc/cpu.adoc:120-124`.
    Owner: `sep_cpu_lsu_alias_window_twin_test` (CHK-CPU-AXBURST,
-   CHK-CPU-AXLOCK, CHK-CPU-AXQOS; OBS-LSU-AXCACHE-MRAC logged),
+   CHK-CPU-AXLOCK, CHK-CPU-AXQOS, CHK-LSU-AXCACHE-MRAC, CHK-LSU-AXREGION),
    `sep_cpu_rom_ar_contention_test` (AR address, to count ROM stalls for
    CTRL-ROM-AR-STALL; every AR field but AxPROT, CHK-ROM-AR-HOLD).
 ** PR-DMA-RAW (`pr_dma_raw_*`): AxPROT of the raw secure DMA master request
@@ -1078,7 +1079,7 @@ Exceptions (a closed set):
   drive one lane together.
 * *ESRC noise-source stuck-at inject* — while bit i of `esrc_noise_stuck_en_i`
   is 1, the output of the noise ring oscillator of lane i
-  (`u_noise_source.noise_async`, upstream of the sampling flop) is forced to
+  (`u_noise_sampler.noise_async_i`, the input of the sampling flop) is forced to
   bit i of `esrc_noise_stuck_val_i`, and the ESRC noise force of that lane is
   released. The value passes the sampling flop and the synchronizer, so it
   reaches the noise observe FIFO and the decorrelator of the lane. Software
@@ -1394,6 +1395,14 @@ Exceptions (a closed set):
   asserts on the next DMA command. Software cannot emit a broken command
   user code. The force targets that input only. `DMA_BUS_ERR_STATUS` and
   the interrupt aggregate stay frontdoor. Owner: `sep_dma_basic_test`.
+* *SPI host command-integrity inject* — `spi_host_intg_inject_i` forces the
+  command-integrity checker input of the SPI host register block
+  (`u_spi_host.u_reg.u_chk.u_chk.data_i`) to 0 so the checker asserts on the
+  next register access. The bridge of `sep_ot_spi_wrap` always emits a
+  matching command user code, so no access can raise the error. The force
+  targets that input only. `PERIPH_BUS_ERR_STATUS`, `sep_ras_o` and the
+  interrupt aggregate stay frontdoor or probes. Owner:
+  `sep_spi_ot_host_csr_irq_rand_test`.
 * *Mailbox WRITE_DATA unstrobed-lane inject* — while
   `mbox_lane_inject_arm_i` is 1, a W beat with WSTRB 0x0F or 0xF0 to the
   outbound `WRITE_DATA` of a mailbox selected in `mbox_lane_inject_mbx_i`

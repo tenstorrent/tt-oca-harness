@@ -212,7 +212,7 @@ Checkers:
                        FIFO_CTRL.ENABLE, INTR_STATUS.FIFO_OVERFLOW; architecture.adoc:146,
                        :150).
   CHK-COND-HT-OFF      with ``CTRL.BYPASS_ENTROPY_COMPRESSOR`` = 1 the 32-bit health test
-                       is clock-gated off (architecture.adoc:47-48; trng.adoc:62-63):
+                       is clock-gated off (architecture.adoc:47-48; trng.adoc:64-65):
                        HEALTH_TEST_STATUS (entropy_source.rdl:352) reads 0 after a write
                        of 0xFF and still reads 0 after max(WINDOW, t_ctrl) + 64
                        constant-zero strobes (WINDOW = 2048, the health-test window;
@@ -2498,10 +2498,12 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         await pass_tap.stop()
+        # The tap task ends in ReadOnly; a gate write needs the next time step.
+        # map_task can wait on NextTimeStep from this ReadOnly; a cancel then
+        # leaves the Verilator callback registered, so the cancel follows it.
+        await NextTimeStep()
         if not map_task.done():
             map_task.cancel()
-        # The tap task ends in ReadOnly; a gate write needs the next time step.
-        await NextTimeStep()
         close_graded_window(self.logger)
 
         fifo_level = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
