@@ -187,10 +187,11 @@ Isolation proof (both directions, then the remaining isolated bits):
   * CHK-EDN-EDGE  URND is granted, then a KMAC software reset is stepped
                     across one measured acknowledge period. URND may
                     complete its own beat and is not disturbed (a URND
-                    word that reads 0 on an edge with ``edn_ack`` low is
-                    the last word acknowledged to URND before the edge, the
-                    pop of a delivered word, and URND is acknowledged again
-                    within a bound), and the KMAC endpoint's
+                    word that changes on an edge with ``edn_ack`` low, to 0
+                    or to the next FIFO word, is the last word acknowledged
+                    to URND before the edge, the pop of a delivered word,
+                    and URND is acknowledged again within a bound, with the
+                    new word when it is non-zero), and the KMAC endpoint's
                     ``edn_ack`` is 0 on every gated-reset edge. An edge
                     with no KMAC ``edn_req`` outstanding is logged as
                     INFO-EDN-EDGE-KMAC-IDLE.
@@ -1705,9 +1706,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             return
         # The cycle after URND's own ack retires the request. That drop is
         # the handshake ending, not the KMAC reset cancelling it. A word that
-        # reads 0 with ack low must be the last word acknowledged to URND (the
-        # caller grades it). Replacing a requested word with a different
-        # non-zero word fails here.
+        # changes with ack low, to 0 or to the next word of the FIFO, must be
+        # the last word acknowledged to URND (the caller grades it).
         if pre["ack"]:
             return
         if pre["req"] and not cur["req"]:
@@ -1718,13 +1718,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         if (
             pre["req"]
             and pre["bus"] != 0
-            and cur["bus"] != 0
-            and (cur["bus"] != pre["bus"] or cur["fips"] != pre["fips"])
+            and cur["bus"] == pre["bus"]
+            and cur["fips"] != pre["fips"]
         ):
             raise AssertionError(
-                f"{tag} FAIL: KMAC reset replaced URND bus "
-                f"0x{pre['bus']:08x}->0x{cur['bus']:08x} fips "
-                f"{int(pre['fips'])}->{int(cur['fips'])} {where} with edn_ack low"
+                f"{tag} FAIL: KMAC reset changed the fips tag of URND word "
+                f"0x{pre['bus']:08x} {int(pre['fips'])}->{int(cur['fips'])} {where} "
+                "with edn_ack low"
             )
 
     def _last_urnd_ack(self, before: int) -> tuple[int, int] | None:
@@ -1735,11 +1735,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 return c, w
         return None
 
-    async def _require_zeroed_word_acked(
-        self, tag: str, where: str, edge: int, word: int
+    async def _require_popped_word_acked(
+        self, tag: str, where: str, edge: int, word: int, new: int = 0
     ) -> tuple[int, int, int]:
-        """A URND word that reads 0 on a KMAC reset edge with ``edn_ack`` low
-        must be a word URND already received, and URND must keep being served.
+        """A URND word that changes on a KMAC reset edge with ``edn_ack`` low, to
+        ``new`` (0, or the next word of the endpoint FIFO), must be a word URND
+        already received, and URND must keep being served.
 
         EDN acknowledges the word at the head of the endpoint FIFO and leaves
         it on ``edn_bus``; the next ``edn_req`` pops it ("the next request will
@@ -1750,7 +1751,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         acknowledge before the edge must carry ``word``: a different word
         there means the edge cleared a word that URND never received. Then
         the next URND acknowledge after the edge must come within
-        ``_EDN_KEEP_CYCLES`` cycles with a non-zero word. ``edge`` is the
+        ``_EDN_KEEP_CYCLES`` cycles with a non-zero word, which is ``new`` when
+        ``new`` is not 0. ``edge`` is the
         recorder cycle of the edge; the caller states whether the KMAC reset
         is still asserted during the wait. Returns ``(cycles from that last
         acknowledge to the edge, cycles from the edge to the next
@@ -1760,14 +1762,14 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         last = self._last_urnd_ack(edge)
         if last is None:
             raise AssertionError(
-                f"{tag} FAIL: URND word 0x{word:08x} read 0 with edn_ack low on the "
+                f"{tag} FAIL: URND word 0x{word:08x} changed with edn_ack low on the "
                 f"KMAC reset edge {where}, and URND has no acknowledge before the "
                 "edge. The KMAC reset cleared a word that URND never received"
             )
         at, last_word = last
         if last_word != word:
             raise AssertionError(
-                f"{tag} FAIL: URND word 0x{word:08x} read 0 with edn_ack low on the "
+                f"{tag} FAIL: URND word 0x{word:08x} changed with edn_ack low on the "
                 f"KMAC reset edge {where}, but the last URND acknowledge before the "
                 f"edge ({edge - at} cycles before it) carried 0x{last_word:08x}. "
                 "The KMAC reset cleared a word that URND never received"
@@ -1780,6 +1782,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     raise AssertionError(
                         f"{tag} FAIL: the first URND acknowledge after the KMAC reset "
                         f"edge {where} ({c - edge} cycles after it) carried a zero bus"
+                    )
+                if new and w != new:
+                    raise AssertionError(
+                        f"{tag} FAIL: URND bus changed to 0x{new:08x} with edn_ack low "
+                        f"on the KMAC reset edge {where}, but the next URND acknowledge "
+                        f"({c - edge} cycles after it) carried 0x{w:08x}"
                     )
                 return edge - at, c - edge, w
             if self._edn_cycle > edge + _EDN_KEEP_CYCLES:
@@ -1826,11 +1834,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         walks one measured acknowledge period. On the falling edge of the
         KMAC gated reset the KMAC endpoint gives no acknowledge, and URND may
         acknowledge its own word. The KMAC bus on the edge has no stated value
-        and is logged as ``INFO-EDN-CANCEL-BUS``. A URND word that reads 0 on
-        the edge with ``edn_ack`` low must be the last word acknowledged to
-        URND before the edge (the pop of a delivered word), and URND must be
-        acknowledged again within ``_EDN_KEEP_CYCLES`` while the KMAC reset is
-        still asserted. The software-reset write is an AXI transaction and
+        and is logged as ``INFO-EDN-CANCEL-BUS``. A URND word that changes on
+        the edge with ``edn_ack`` low, to 0 or to the next FIFO word, must be
+        the last word acknowledged to URND before the edge (the pop of a
+        delivered word), and URND must be acknowledged again within
+        ``_EDN_KEEP_CYCLES`` while the KMAC reset is still asserted, with the
+        new word when it is non-zero. The software-reset write is an AXI transaction and
         outlasts one KMAC seed, so a KMAC request outstanding on the edge is
         graded only when one occurs.
         """
@@ -1845,7 +1854,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         stop = False
         kmac_live = 0
         kmac_idle = 0
-        zeroed = 0
+        popped = 0
 
         async def watch() -> None:
             nonlocal prev_ack, prev_rst, prev_urnd, prev_kmac, cycle
@@ -1874,9 +1883,11 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 prev_kmac = kmac
 
         async def take_edge(where: str) -> dict:
-            nonlocal kmac_live, kmac_idle, zeroed
+            nonlocal kmac_live, kmac_idle, popped
             edge.clear()
-            await self.rst.assert_reset(ENG_KMAC.rst_bit)
+            # The direct write does not queue behind the entropy FIFO drain, so
+            # the step offset sets the phase of the reset edge.
+            await self._request_reset_direct(ENG_KMAC.rst_bit)
             for _ in range(_EDN_DROP_CYCLES):
                 if edge:
                     break
@@ -1904,22 +1915,23 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 pre_u["req"]
                 and not pre_u["ack"]
                 and pre_u["bus"] != 0
-                and cur_u["bus"] == 0
+                and cur_u["bus"] != pre_u["bus"]
                 and not cur_u["ack"]
             ):
                 # The KMAC reset stays asserted during this wait.
-                dist, lat, nxt = await self._require_zeroed_word_acked(
-                    tag, where_txt, snap["ack_cycle"], pre_u["bus"]
+                dist, lat, nxt = await self._require_popped_word_acked(
+                    tag, where_txt, snap["ack_cycle"], pre_u["bus"], cur_u["bus"]
                 )
-                zeroed += 1
+                popped += 1
                 self.logger.info(
-                    "%s %s: URND bus 0x%08x->0 with edn_ack low: the pop of the word "
-                    "acknowledged to URND %d cycles before the edge; with the KMAC "
+                    "%s %s: URND bus 0x%08x->0x%08x with edn_ack low: the pop of the "
+                    "word acknowledged to URND %d cycles before the edge; with the KMAC "
                     "reset asserted, the next URND acknowledge came %d cycles after "
                     "the edge with 0x%08x",
                     _info_name(tag),
                     where,
                     pre_u["bus"],
+                    cur_u["bus"],
                     dist,
                     lat,
                     nxt,
@@ -2022,7 +2034,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 self.logger.info(
                     "%s PASS: URND was not disturbed on any of the %d reset edges "
                     "and acknowledged its own beat on %d of them; %d URND words "
-                    "that read 0 on an edge were each the last word acknowledged "
+                    "that changed on an edge were each the last word acknowledged "
                     "to URND before it, and URND was acknowledged again after it; "
                     "KMAC edn_ack was "
                     "0 on every edge, %d of them with a KMAC edn_req outstanding; "
@@ -2032,7 +2044,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     tag,
                     steady + 1,
                     urnd_completions,
-                    zeroed,
+                    popped,
                     kmac_live,
                     pre_k["bus"],
                     _EDN_QUIET_CYCLES,
@@ -2041,7 +2053,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 self.logger.info(
                     "%s PASS: URND was not disturbed on any of the %d reset edges "
                     "and acknowledged its own beat on %d of them; %d URND words "
-                    "that read 0 on an edge were each the last word acknowledged "
+                    "that changed on an edge were each the last word acknowledged "
                     "to URND before it, and URND was acknowledged again after it; "
                     "KMAC edn_ack was "
                     "0 on every edge. KMAC edn_req was outstanding on %d edges and "
@@ -2049,7 +2061,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     tag,
                     steady + 1,
                     urnd_completions,
-                    zeroed,
+                    popped,
                     kmac_live,
                     kmac_idle,
                 )
@@ -2187,7 +2199,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 if gap_pre is not None and not armed:
                     pops += 1
                     # The KMAC reset is released before this wait.
-                    dist, lat, nxt = await self._require_zeroed_word_acked(
+                    dist, lat, nxt = await self._require_popped_word_acked(
                         tag, f"on attempt {attempt}", edge_pre["cycle"], gap_pre["bus"]
                     )
                     self.logger.info(
