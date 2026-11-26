@@ -2353,7 +2353,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         no_hs = [e.idx for e in self.epochs if e.ifu_ar_hs == 0]
         seen = ",".join(
             f"{'X' if k is None else f'0b{k:04b}'}:{n}"
-            for k, n in sorted(self.ifu_ar_cache.items(), key=lambda kv: (kv[0] is None, kv[0] or 0))
+            for k, n in sorted(
+                self.ifu_ar_cache.items(), key=lambda kv: (kv[0] is None, kv[0] or 0)
+            )
         )
         self._grade(
             "CHK-IFU-AXCACHE",
