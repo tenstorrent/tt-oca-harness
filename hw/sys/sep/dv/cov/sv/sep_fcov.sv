@@ -17779,7 +17779,7 @@ module sep_fcov (
       wildcard illegal_bins held_word_acked_to_other = {3'b1_??};
     }
     // After a TRNG reset the chain produces fresh data only after
-    // reinitialization (hw/sys/sep/doc/trng.adoc:197-199).
+    // reinitialization (hw/sys/sep/doc/trng.adoc:200-202).
     cp_trng_reinit: coverpoint s.tr iff (s.tr_v) {
       bins fresh_seed = {2'd0}; bins fips_lock_restored = {2'd1}; bins pool_pop_okay = {2'd2};
     }
@@ -28913,7 +28913,7 @@ module sep_fcov (
       cxt_gen   <= 1'b0;
     end else if (cxt_arm && mr_ip[5]) begin
       // fresh_seed: a seed after the generators are enabled again; a seed
-      // before that write is not reinitialized data (hw/sys/sep/doc/trng.adoc:198-199).
+      // before that write is not reinitialized data (hw/sys/sep/doc/trng.adoc:201-202).
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_RING_OSC_ENABLE_REG_ADDR) &&
           ((wr_data & ENTROPY_SOURCE_RING_OSC_ENABLE_ENABLE_MASK) != 32'h0)) begin
         cxt_gen <= 1'b1;

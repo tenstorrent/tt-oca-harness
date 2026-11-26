@@ -34,7 +34,9 @@ effective lane), z per lane change (both values, z = 1 at least once), the flush
 lane, its z and the words f before the flush, the words k at the lock moment,
 z of each lock pass, the lane and bits of the sample-clock sequence leg, the
 lane-0 ``LANE_SEL`` value 12 to 15 of the same-lane write, and the bits of the
-overflow sequence.
+overflow sequence. In the overflow sequence bit k is the complement of bit k - 1 at
+each sample edge k that lands on a ``clk_i`` rising edge; the set of these edges
+comes from the window timing and the ``clk_i`` period, not from the seed.
 
 Sample-clock sequence leg (``hw/ip/entropy_source/doc/architecture.adoc:75``: a
 flop on the sampling clock, then a two-stage synchronizer into ``clk_i``). The
@@ -105,12 +107,19 @@ Checkers:
                     observe FIFO empty and nothing popped: the edges driven equal the
                     sequence length, LEVEL is 64, NOISE_OBS_OVERFLOW is 1, 64 words
                     pop, and popped words 1 to 63 equal written words 1 to 63 (the
-                    two last words are the discarded ones). Words are compared at the
-                    one sample offset, 0 or 1, that matches all 63 of them; the
-                    offset and word 0 are the packing, which CHK-OBS-PACK and
-                    CHK-OBS-SEQ grade. Control: for this sequence the kept words at
-                    each offset differ from popped words 1 to 63 of a FIFO that
-                    discards its two oldest words, at each offset.
+                    two last words are the discarded ones). Words are compared at
+                    sample offset 0 (32 LSB-first samples per word,
+                    entropy_source.rdl:1076), so a sample lost or repeated before or
+                    inside the kept words fails the compare. The sample period
+                    walks the sample edges across the clk_i period, and at each edge
+                    k that lands on a clk_i rising edge in the same time step, bit k
+                    is the complement of bit k - 1: a lost or repeated sample at that
+                    edge changes a compared bit on every seed. Controls: for this
+                    sequence the kept words differ from popped words 1 to 63 of a
+                    FIFO that discards its two oldest words; CTRL-OBS-OVF-CLK-EDGE:
+                    the measured sample edges at 0 ps from a clk_i rising edge are
+                    the predicted set, at least one, each inside kept words 1 to 63
+                    and with bit k unequal to bit k - 1.
   CHK-OBS-POP-LEVEL with RAW_ENABLE read back 0 on both observe FIFOs after the overflow
                     leg (capture stops, architecture.adoc:182, :186): each
                     NOISE_OBS_RDATA / BIW_OBS_RDATA pop lowers that FIFO's LEVEL by
@@ -219,9 +228,9 @@ ALL_ONES = 0xFFFF_FFFF
 OBS_FIFO_DEPTH = 64
 # Words of the overflow sequence: two more than the drain bound.
 OVF_SEQ_WORDS = FIFO_DEPTH_MAX + 2
-# Sample offsets of a packed observe word against its 32-sample boundary that the
-# keep check accepts; the packing itself is graded by CHK-OBS-PACK and CHK-OBS-SEQ.
-PACK_OFFSETS = (0, 1)
+# Sample offset of a packed observe word against its 32-sample boundary: a word holds
+# 32 LSB-first samples (hw/ip/entropy_source/regs/entropy_source.rdl:1076).
+PACK_OFFSETS = (0,)
 
 # Sample-clock sequence leg (test parameters).
 SCLK = "entropy_rosc_sample_clk_i"
@@ -302,6 +311,7 @@ class Plan:
     fast: tuple[int, ...]
     same_sel: int
     ovf_seq: tuple[int, ...]
+    ovf_clk_edges: tuple[int, ...]
 
     def describe(self) -> str:
         return (
@@ -309,7 +319,8 @@ class Plan:
             f"flush_z={self.flush_z} f={self.f} k={self.k} z_lock={list(self.z_lock)} "
             f"{describe(self.balanced)} seq_lane={self.seq_lane} "
             f"seq={[f'0x{w:08x}' for w in _words(self.seq)]} "
-            f"fast={[f'0x{w:08x}' for w in _words(self.fast)]} same_sel={self.same_sel}"
+            f"fast={[f'0x{w:08x}' for w in _words(self.fast)]} same_sel={self.same_sel} "
+            f"ovf_clk_edges={list(self.ovf_clk_edges)}"
         )
 
 
@@ -321,16 +332,29 @@ def _words(bits) -> list[int]:
     ]
 
 
-def _draw_seq(rng: SepSeededRng, words: int) -> tuple[int, ...]:
+def _draw_seq(rng: SepSeededRng, words: int, flip: tuple[int, ...] = ()) -> tuple[int, ...]:
     """Seeded bits; bit SEQ_PAIR[1] of each word is the complement of bit SEQ_PAIR[0],
-    and the last bit is the complement of the bit before it."""
+    each bit k in ``flip`` (k >= 1) is the complement of bit k - 1, and the last bit is
+    the complement of the bit before it. Every bit takes one draw."""
     bits: list[int] = []
-    for _ in range(words):
-        word = [rng.getrandbits(1) for _ in range(32)]
-        word[SEQ_PAIR[1]] = 1 - word[SEQ_PAIR[0]]
-        bits += word
+    for w in range(words):
+        for j in range(32):
+            b = rng.getrandbits(1)
+            if j == SEQ_PAIR[1]:
+                b = 1 - bits[32 * w + SEQ_PAIR[0]]
+            elif 32 * w + j in flip:
+                b = 1 - bits[-1]
+            bits.append(b)
     bits[-1] = 1 - bits[-2]
     return tuple(bits)
+
+
+def _clk_edge_samples(n: int, clk_ps: int) -> tuple[int, ...]:
+    """Sample edges k >= 1 of an ``n``-edge sequence window at the period
+    ``SEQ_PERIOD_CLK`` x clk_i + ``SAMPLE_DRIFT_PS`` that land on a clk_i rising edge:
+    edge k lies ``SAMPLE_GUARD_PS`` + k x ``SAMPLE_DRIFT_PS`` after one, mod the
+    clk_i period."""
+    return tuple(k for k in range(1, n) if (SAMPLE_GUARD_PS + SAMPLE_DRIFT_PS * k) % clk_ps == 0)
 
 
 def _offset_words(bits, first: int, count: int, offset: int) -> list[int]:
@@ -382,7 +406,7 @@ def _lane_order(rng: SepSeededRng) -> list[int]:
     return order
 
 
-def draw_plan(seed: int) -> Plan:
+def draw_plan(seed: int, clk_ps: int) -> Plan:
     """Every draw of the leaf, in a fixed order, with no simulator access."""
     rng = SepSeededRng(seed)
     order = _lane_order(rng)
@@ -403,7 +427,8 @@ def draw_plan(seed: int) -> Plan:
     seq = _draw_seq(rng, SEQ_WORDS)
     fast = tuple(rng.getrandbits(1) for _ in range(FAST_BITS))
     same_sel = rng.choice(LANE_SEL_SAME_AS_0[1:])
-    ovf_seq = _draw_seq(rng, OVF_SEQ_WORDS)
+    ovf_clk_edges = _clk_edge_samples(32 * OVF_SEQ_WORDS, clk_ps)
+    ovf_seq = _draw_seq(rng, OVF_SEQ_WORDS, ovf_clk_edges)
     return Plan(
         seed,
         tuple(order),
@@ -419,6 +444,7 @@ def draw_plan(seed: int) -> Plan:
         fast,
         same_sel,
         ovf_seq,
+        ovf_clk_edges,
     )
 
 
@@ -468,7 +494,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
-        plan = draw_plan(seed)
+        plan = draw_plan(seed, self._clk_ps())
         self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
@@ -1328,7 +1354,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         """CHK-OBS-OVF-KEEP: a full noise observe FIFO keeps its oldest words."""
         bits = self.plan.ovf_seq
         await self._wr(ESRC_INTR_STATUS, NOISE_OVF)
-        res = await self._seq_window(lane, bits, SEQ_PERIOD_CLK, depth=False)
+        res = await self._seq_window(lane, bits, SEQ_PERIOD_CLK, depth=False, clk_log=True)
         ovf = int(bool(await self._rd(ESRC_INTR_STATUS) & NOISE_OVF))
         await self._wr(ESRC_INTR_STATUS, NOISE_OVF)
         n = OBS_FIFO_DEPTH - 1
@@ -1340,6 +1366,20 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             all(keep[a] != drop[b] for a in PACK_OFFSETS for b in PACK_OFFSETS),
             lane=lane,
             seq_words=OVF_SEQ_WORDS,
+        )
+        clk = set(res["clk_times"])
+        hit = tuple(k for k, ts in enumerate(res["times"]) if ts in clk)
+        kept = range(32, 32 * OBS_FIFO_DEPTH)
+        self.chk.ctrl(
+            "OBS-OVF-CLK-EDGE",
+            len(hit) > 0
+            and hit == self.plan.ovf_clk_edges
+            and all(k in kept and bits[k] != bits[k - 1] for k in hit),
+            lane=lane,
+            clk_edge_samples=list(hit),
+            expect_clk_edge_samples=list(self.plan.ovf_clk_edges),
+            bits_at=[f"{bits[k - 1]}{bits[k]}" for k in hit],
+            clk_edges=len(res["clk_times"]),
         )
         words = res["words"]
         offset = next((o for o in PACK_OFFSETS if words[1:] == keep[o]), None)
@@ -1372,9 +1412,13 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             **fields,
         )
 
-    async def _seq_window(self, lane: int, bits, period_clk: int, *, depth: bool) -> dict:
+    async def _seq_window(
+        self, lane: int, bits, period_clk: int, *, depth: bool, clk_log: bool = False
+    ) -> dict:
         """Drive ``bits`` on ``lane``, one bit per sample edge, from a stopped sample clock;
-        returns the edges driven, the edge times, the depth samples and the popped words."""
+        returns the edges driven, the edge times, the depth samples and the popped words.
+        ``clk_log`` (with ``depth`` False) records the clk_i rising edge times of the
+        window."""
         dut = cocotb.top
         t = self._clk_ps()
         period = period_clk * t + SAMPLE_DRIFT_PS
@@ -1451,6 +1495,11 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             await NextTimeStep()
             watched.set()
 
+        async def clocks() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                clk_times.append(get_sim_time("ps"))
+
         await RisingEdge(dut.clk_i)
         t_ref = get_sim_time("ps")
         high = self.rd(dut.entropy_rosc_sample_clk_i)
@@ -1459,12 +1508,15 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         phase = lead - period if high else lead
         bound = (n + 2) * (period_clk + 1) + period_clk + 2 * SAMPLE_LEAD_CLK
         watcher = cocotb.start_soon(watch(bound)) if depth else None
+        clocker = cocotb.start_soon(clocks()) if clk_log and not depth else None
         self.restart_clock(SCLK, period_ns, phase)
         driver = cocotb.start_soon(drive())
         await First(done.wait(), ClockCycles(dut.clk_i, bound))
         if not done.is_set():
             driver.cancel()
             self.restart_clock(SCLK, period_ns, SCLK_STOP_PS)
+        if clocker is not None:
+            clocker.cancel()
         if watcher is not None:
             await First(watched.wait(), ClockCycles(dut.clk_i, bound))
         await ClockCycles(dut.clk_i, DRAIN_CLK)
