@@ -20,7 +20,7 @@
 //   * The key manager blocks cover the KM CPU address bits [1:0] and its
 //     AxPROT ties, from u_key_manager_s3c_scan and its CPU through the KM
 //     AXI-Lite crossbar to each KM target: the KPV, KM CSR, mailbox KM side,
-//     DRBG sampler and OTP error slave, and the key CSR blocks of the AES,
+//     DRBG sampler, and the key CSR blocks of the AES,
 //     HMAC, KMAC, OTBN and ABR wrappers.
 //
 // Two rules keep this file honest:

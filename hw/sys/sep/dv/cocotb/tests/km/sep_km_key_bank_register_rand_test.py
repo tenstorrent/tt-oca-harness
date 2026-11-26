@@ -28,7 +28,7 @@ The last leg is the single-share delivery to AES
 (``hw/sys/sep/doc/crypto.adoc:192-196``: both shares are always consumed, a
 single written share delivers V because the unwritten share reads as zero, and
 a Key Manager wipe clears KEY_VALID and both shares;
-``hw/ip/key_manager/doc/architecture.adoc:511-517``: the wipe pulse clears both
+``hw/ip/key_manager/doc/architecture.adoc:509-515``: the wipe pulse clears both
 shares and KEY_VALID of every sideload block). It brings up the
 entropy stack so AES can run, then for share 0 and share 1 (order drawn): the
 image writes both AES shares non-zero and sets KEY_VALID of all eight banks,
@@ -56,8 +56,8 @@ Checks (each anchored on a POKE readback or the POKE handler count):
                    word for word: "``KEY[i]`` holds bytes ``4i`` to ``4i+3`` of
                    the FIPS 203 shared key, in the same order as the engine's own
                    ``MLKEM_SHARED_KEY`` register array."
-                   (``hw/sys/sep/doc/adams_bridge.adoc:155-157``). The delivered
-                   message is ``MLKEM_MSG`` word ``i`` (``adams_bridge.adoc:143-147``),
+                   (``hw/sys/sep/doc/adams_bridge.adoc:156-158``). The delivered
+                   message is ``MLKEM_MSG`` word ``i`` (``adams_bridge.adoc:144-148``),
                    and the staged shares XOR to ``NIST_KEM_ENC_M``
   CHK-BANK-SK-CONSUME  a write of 0 clears key_valid; a software write of 1
                    afterwards leaves it 0; both writes are accepted
@@ -77,7 +77,7 @@ Checks (each anchored on a POKE readback or the POKE handler count):
   CHK-BANK-WIPE    after each single-share wipe, KEY_CTRL.key_valid of all
                    eight sideload banks reads 0 and every read is accepted
                    (``hw/sys/sep/doc/crypto.adoc:196``,
-                   ``hw/ip/key_manager/doc/architecture.adoc:515-518``). Its
+                   ``hw/ip/key_manager/doc/architecture.adoc:513-516``). Its
                    control ``CTRL-BANK-WIPE-LIVE`` requires the key_valid
                    writes to all eight banks accepted and all eight read set
                    right before the wipe. The ML-KEM shared-key KEY_VALID that
@@ -88,7 +88,7 @@ Checks (each anchored on a POKE readback or the POKE handler count):
                    reset the shared-key KEY_CTRL.key_valid and the 8 KEY words
                    also read 0. "Each engine wrapper, ``u_sep_trng`` and the Key
                    Manager crossbar are reset by their ``gated_rst_ni`` bit"
-                   (``hw/sys/sep/doc/reset_controller.adoc:129-131``);
+                   (``hw/sys/sep/doc/reset_controller.adoc:128-130``);
                    ``KEY_VALID`` ``reset = 1'b0`` (``aes_wrapper_key.rdl:75``,
                    the same field in each wrapper), shared-key ``KEY``
                    ``reset = 32'h0`` and ``KEY_VALID`` ``reset = 1'b0``
@@ -102,13 +102,13 @@ Checks (each anchored on a POKE readback or the POKE handler count):
   CHK-BANK-RST-OTHERS after each engine ``SW_RESET_N`` park and release, the
                    banks of every other engine still read KEY_CTRL.key_valid 1:
                    the ``gated_rst_ni`` bit of an engine resets that engine's
-                   wrapper only (``reset_controller.adoc:130-131``)
+                   wrapper only (``reset_controller.adoc:129-130``)
   CHK-KM-PARK      POKE image (``km_rom_poke``, no boot shred): the eight
                    KEY_CTRL.key_valid bits read the same after a KM
                    ``SW_RESET_N`` park and release as before it. The KM warm
                    reset does not list the engine banks
-                   (``hw/ip/key_manager/doc/architecture.adoc:158-176``,
-                   ``reset_controller.adoc:182-186``), and only a rising edge
+                   (``hw/ip/key_manager/doc/architecture.adoc:156-174``,
+                   ``reset_controller.adoc:181-185``), and only a rising edge
                    of ``wipe_state_i`` or a CPU trap clears them
                    (``architecture.adoc:512-518``). Its control
                    ``CTRL-KM-PARK-LIVE`` requires the set writes accepted and
@@ -1243,7 +1243,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                 how=how,
             )
             # The gated_rst_ni bit of an engine resets that engine's wrapper only
-            # (hw/sys/sep/doc/reset_controller.adoc:130-131).
+            # (hw/sys/sep/doc/reset_controller.adoc:129-130).
             others = pl.ALL_BANKS & ~own
             self._grade(
                 "BANK-RST-OTHERS",
@@ -1302,8 +1302,8 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         )
         after = _decode_state(await self._run(_state_ops(words=False)))
         # POKE image: no boot shred runs. The KM warm reset does not list the engine
-        # banks (hw/ip/key_manager/doc/architecture.adoc:158-176,
-        # hw/sys/sep/doc/reset_controller.adoc:182-186); only a rising edge of
+        # banks (hw/ip/key_manager/doc/architecture.adoc:156-174,
+        # hw/sys/sep/doc/reset_controller.adoc:181-185); only a rising edge of
         # wipe_state_i or a CPU trap clears them (architecture.adoc:512-518).
         self._grade(
             "KM-PARK",

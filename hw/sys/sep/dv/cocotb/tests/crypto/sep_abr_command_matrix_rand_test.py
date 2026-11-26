@@ -797,14 +797,14 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             return
         f = self._fields(blk, st)
         if combined:
-            # First STATUS read with VALID: VALID=1 and READY=0 (adams_bridge.adoc:191-195).
+            # First STATUS read with VALID: VALID=1 and READY=0 (adams_bridge.adoc:192-196).
             combo_ok = self._ok(
                 "ABR-COMBO", f["valid"] == 1 and f["ready"] == 0, cell=cell, via=via, **f
             )
             if combo_ok:
                 await self._pass_label(COMBO_PASS, blk)
         else:
-            # The single-step end state parks the same way (adams_bridge.adoc:191-195).
+            # The single-step end state parks the same way (adams_bridge.adoc:192-196).
             self._ok("ABR-SINGLE-STATUS", f["valid"] == 1 and f["ready"] == 0, cell=cell, **f)
 
         # Step 6: result windows.

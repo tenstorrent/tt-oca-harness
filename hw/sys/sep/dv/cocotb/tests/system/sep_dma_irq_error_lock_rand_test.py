@@ -19,7 +19,7 @@ zero-size event sources 9 and 10 are logged when enabled and graded 0 when
 disabled. Single-chunk contract: STATUS.CHUNK_DONE is "Only raised for
 multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``); "Chunk
 completion applies to multi-chunk transfers without hardware handshake; it is
-not a per-trigger interrupt in handshake mode" (``dma.adoc:129-131``); "Since interrupts are implemented as status bits, they are cleared
+not a per-trigger interrupt in handshake mode" (``dma.adoc:131-133``); "Since interrupts are implemented as status bits, they are cleared
 by writing a '1' to the corresponding bit in the STATUS register" (OpenTitan
 DMA ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39``). So every STATUS read of the single-chunk copy
 gives CHUNK_DONE = 0, INTR_STATE.DMA_CHUNK_DONE reads 0 at the end of the trial
@@ -40,7 +40,7 @@ to SIZE_ERROR alone and INTR_STATE.DMA_ERROR, and assert PIC source 11. Each
 kind has one defect only, and the controller reports every detected error in
 ERROR_CODE (OpenTitan DMA ``programmers_guide.md:102-103``). The hash opcode of
 each hash kind is drawn from SHA-256, SHA-384 and SHA-512 ("inline hashing
-requires 4-byte transfers", ``hw/sys/sep/doc/dma.adoc:133``; opcodes 1, 2 and
+requires 4-byte transfers", ``hw/sys/sep/doc/dma.adoc:135``; opcodes 1, 2 and
 3, ``doc/programmer/src/sep-programming.adoc:763-764``). After a write of 1 to
 STATUS.ERROR, with no reset, ERROR and ERROR_CODE read 0 and a legal copy
 completes with the destination equal to the source. Control: the hash of the
@@ -62,7 +62,7 @@ STATUS.ERROR releases the interrupt: "Since interrupts are implemented as
 status bits, they are cleared by writing a '1' to the corresponding bit in the
 STATUS register" (OpenTitan DMA
 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39``); "Status
-completion and error bits are write-one-to-clear" (``dma.adoc:131-132``).
+completion and error bits are write-one-to-clear" (``dma.adoc:133-134``).
 INTR_STATE is read once after that write: DMA_ERROR reads 0 and
 source 11 is low. Its control is INTR_STATE.DMA_ERROR = 1 and source 11 high
 just before the write.
@@ -114,13 +114,13 @@ first, from a cold reset: a copy (OPCODE 0, both ASID 0x7) whose source or desti
 wholly outside BASE..LIMIT, with RANGE_VALID=1, ends with DONE=1, ERROR=0,
 ERROR_CODE.SRC_ADDR_ERROR=0 and DST_ADDR_ERROR=0, and the destination reads back
 equal to the source: "The range does not bound a copy between internal
-addresses." (``hw/sys/sep/doc/dma.adoc:106``). Its control is a zero fill
+addresses." (``hw/sys/sep/doc/dma.adoc:108``). Its control is a zero fill
 (OPCODE 4) from a cold reset with the same range and its destination at the
 same outside region, filled first with a non-zero word: "The fill writes only
 inside the enabled memory range, from ``ENABLED_MEMORY_RANGE_BASE`` to
 ``ENABLED_MEMORY_RANGE_LIMIT`` inclusive, whatever the address spaces. [...]
 The first write that would leave the range is not issued: the fill stops with
-``STATUS.ERROR`` and ``ERROR_CODE.DST_ADDR_ERROR``" (``hw/sys/sep/doc/dma.adoc:98-103``).
+``STATUS.ERROR`` and ``ERROR_CODE.DST_ADDR_ERROR``" (``hw/sys/sep/doc/dma.adoc:100-105``).
 The control reads ERROR=1, DST_ADDR_ERROR=1 and the outside region unchanged,
 so a DMA that ignores the range for every opcode fails the control. A second
 control reads BASE, LIMIT and RANGE_VALID of the copy trial back before GO.
@@ -250,8 +250,8 @@ Checkers:
                     live control of each bit; the line logs their ERROR_CODE.
   INFO-DMA-ERR-PREC  a copy with the drawn reserved opcode from a source in the
                     AXI extension aperture outside the eFuse shim CSR window,
-                    which "leaves SEP on the AXI extension port"
-                    (``hw/sys/sep/doc/fabric.adoc:162-164``), tied to DECERR
+                    which goes "out of SEP on the AXI extension port"
+                    (``hw/sys/sep/doc/fabric.adoc:167-170``), tied to DECERR
                     when unused (``hw/sys/sep/doc/port_table.adoc:125``): the
                     end, STATUS, ERROR_CODE with BUS_ERROR and OPCODE_ERROR and
                     the AR and AW counts, logged. The controller checks the
@@ -1856,7 +1856,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             self._ctrl_missing(
                 "CTRL-DMA-RANGE-OUT", f"CHK-DMA-RANGE-OUT range read-back before GO: {line}"
             )
-        # dma.adoc:106: the range does not bound a copy between internal addresses.
+        # dma.adoc:108: the range does not bound a copy between internal addresses.
         if not (ended and st.done and not st.error and (src_err, dst_err, out_mism) == (0, 0, 0)):
             self._fail("CHK-DMA-RANGE-OUT", line)
         self._pass("CHK-DMA-RANGE-OUT", line)

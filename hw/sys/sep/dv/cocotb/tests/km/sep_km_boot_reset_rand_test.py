@@ -42,7 +42,7 @@ Checks:
                   and rises before the first host read that shows the READY word
   CHK-BOOT-ORDER-WARM
                   at every warm boot COLD_BOOT_DONE reads 1 while the KM is held
-                  and after the READY word (``reset_controller.adoc:96,182``;
+                  and after the READY word (``reset_controller.adoc:95,182``;
                   ``km_csr.rdl:697,701``; ``architecture.adoc:1127``)
   CHK-BOOT-FLUSH  at each warm reset of the warm-reset leg: the FIFOs keep their
                   words while the KM is held (every stale write OKAY, inbound depth
@@ -75,7 +75,7 @@ Checks:
                   it. INFO-RST-AXI-READY logs the readies of the first sample
                   with the reset at 0: no value is graded, because ARREADY,
                   AWREADY and WREADY are not constrained during reset
-                  (``hw/ip/key_manager/doc/architecture.adoc:189-190``)
+                  (``hw/ip/key_manager/doc/architecture.adoc:187-188``)
   CHK-RST-AXI-NORESP
                   at each of the four AXI reset points a request that the reset
                   drops gets no response, during the reset or after the release
@@ -128,9 +128,9 @@ Logged, not graded: INFO-RST-AXI-EXT-RSP (per AXI reset point, with its
 CHK-RST-AXI-NORESP line: the same R and B pairing after the release on the
 crypto engine ports 4-7 and 9, which lead outside the KM
 (``architecture.adoc:180-182`` gives no completion or cancellation guarantee
-for an external transaction), and on port 8, which combines the KM-internal OTP
-error slave and the forwarded eFuse path behind the OTP demux
-(``key_manager.sv:379,400``) that the tap cannot separate; nothing is graded. An unknown tap bit on these ports is logged in ``x_ports``).
+for an external transaction), and on port 8, which the KM forwards to
+``efuse_req_o``, the eFuse controller outside the KM
+(``key_manager.sv:347-353``); nothing is graded. An unknown tap bit on these ports is logged in ``x_ports``).
 
 Controls: CTRL-RST-AXI-PENDING (cold points: the point's valid reads 1 in the
 sample before the KM CPU reset reads 0); CTRL-RST-AXI-HANDSHAKE (warm points:
@@ -232,9 +232,9 @@ AXI_WARM_TRIES = 3  # warm resets per warm point: one to measure, then aimed one
 # to slaves outside the KM: 4-7 and 9 the crypto engines. The warm reset is not
 # a completion or cancellation guarantee for an external transaction
 # (architecture.adoc:180-182), so those ports are logged by INFO-RST-AXI-EXT-RSP
-# and not graded. Port 8 combines the KM-internal OTP error slave and the
-# forwarded eFuse path behind the OTP demux (key_manager.sv:379,400), which the
-# tap cannot separate, so it is logged with them and not graded.
+# and not graded. Port 8 is forwarded to efuse_req_o, the eFuse controller
+# outside the KM (key_manager.sv:347-353), so it is logged with them and not
+# graded.
 KM_PORTS_WARM = 0b00_0000_1111
 KM_PORTS_EXT = 0b11_1111_0000
 KM_PORTS = 10
@@ -944,9 +944,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
     def _boot_order_warm(self, tag: str, cbd_held: int, cbd_ready: int) -> None:
         """CHK-BOOT-ORDER-WARM: a KM warm reset keeps COLD_BOOT_DONE at 1.
 
-        ``hw/sys/sep/doc/reset_controller.adoc:96,182``: SW_RESET_N bit 0 drives the
+        ``hw/sys/sep/doc/reset_controller.adoc:95,182``: SW_RESET_N bit 0 drives the
         KM warm reset; ``hw/ip/key_manager/regs/km_csr.rdl:697,701``: the bit stays
-        set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1127``:
+        set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1125``:
         on a warm reset ``COLD_BOOT_DONE`` already reads 1. The cold-boot reference
         before every warm reset proves the rise (CHK-BOOT-ORDER).
         """

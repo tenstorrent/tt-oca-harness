@@ -5965,8 +5965,8 @@ module sep_fcov (
   logic [2:0] ap_burst;
   // SPI host burst of the System Interface: per read beat before the last,
   // whether the beats inside the 56-byte extent answered OKAY and the beats
-  // past it did not (hw/sys/sep/doc/peripheral_subsystem.adoc, error responder of
-  // sep_io). One read in flight.
+  // past it did not (hw/sys/sep/doc/peripheral_subsystem.adoc:43-45: sep_io
+  // answers the rest of the SPI host page with SLVERR). One read in flight.
   logic [31:0] spb_start_q;
   logic [2:0]  spb_size_q;
   logic [8:0]  spb_beat_q;

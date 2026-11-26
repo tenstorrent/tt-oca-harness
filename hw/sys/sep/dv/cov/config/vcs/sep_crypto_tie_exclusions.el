@@ -4,7 +4,7 @@
 // SEP VCS coverage exclusions -- structural ties in sep_crypto and the eFuse
 // command path: ABR, OTBN, AES, HMAC and KMAC wrappers and their key regblocks,
 // the KV shim, the crypto AXI interconnect, TRNG (entropy_source, DRBG, EDN
-// adapters), key_manager (xbar, mailbox, KPV, CPU, scramblers, OTP error slave),
+// adapters), key_manager (xbar, mailbox, KPV, CPU, scramblers),
 // the eFuse wrapper and controller, sep_lifecycle_ctrl, the eFuse ID converter,
 // sep_crypto top, and the eFuse interface shim of the reference integration.
 // Format Version: 2

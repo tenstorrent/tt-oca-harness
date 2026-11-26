@@ -91,7 +91,7 @@ AXI_ERR_BITS = AXI_SLVERR | AXI_DECERR
 _MAX_KM_CYCLES = 60_000
 _MAX_ISO_CYCLES = 2_000
 
-# Bench isolate stages of the Key Manager domain (reset_controller.adoc:154,
+# Bench isolate stages of the Key Manager domain (reset_controller.adoc:153,
 # "All five key paths and the eFuse path").
 KM_DOMAIN_PATHS = ("km_otbn", "km_aes", "km_hmac", "km_kmac", "km_abr", "km_efuse")
 KM_DOMAIN_MASK = sum(1 << ISO_BENCH.index(p) for p in KM_DOMAIN_PATHS)

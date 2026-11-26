@@ -18,7 +18,7 @@ Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
   ``sep_reset_n``, ``sep_cpu_reset_n``, ``ip_rst_n[6:0]`` (each scan bypass
   mux), ``aon_rst_n``, ``km_cond_rst[1:0]``, ``refcnt_rst[1:0]`` and
   ``sep_wdt_reset_n``. The reset controller section
-  (``reset_controller.adoc:83``) lists all of them except ``refcnt_rst[1:0]``;
+  (``reset_controller.adoc:82``) lists all of them except ``refcnt_rst[1:0]``;
   ``sep_wdt_reset_n`` is the output of the scan bypass
   ``u_sep_wdt_rst_scan_bypass``, and with ``test_en_i`` low it is the 2-flop
   capture of ``wdt_rst_ni``, which ``rst_ni`` resets. ``refcnt_rst[1:0]`` are the

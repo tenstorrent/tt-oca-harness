@@ -1332,7 +1332,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         EXEC runs its entry with every CPU interrupt masked (``km_rom_poke.S``, op
         EXEC), so the illegal instruction takes the PicoRV32 trap state: the CPU
         halts and ``unrecoverable_err_o`` asserts. Golden:
-        ``hw/ip/key_manager/doc/architecture.adoc:781-785`` (illegal instruction
+        ``hw/ip/key_manager/doc/architecture.adoc:779-783`` (illegal instruction
         with its interrupt masked), ``:532-533`` and ``:744-746`` (the trap halts
         the CPU and asserts ``unrecoverable_err_o``), ``:1063-1066`` (custom0
         encodings other than the CRC ones take illegal-instruction handling), and

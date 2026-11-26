@@ -79,8 +79,8 @@ RDL reset of ``ERROR_STATUS``); every beat past the extent answers the code and
 data of its generated memory-map cell (``rr.expected_cell``) and carries none of
 the staged non-zero register values. A write burst lands its in-extent beats,
 answers the B code of the map cell of the first past-extent word, and changes no
-other stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc``:
-the error responder of ``sep_io`` answers only the beats past the extent). The
+other stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc:43-45``:
+``sep_io`` answers the rest of the SPI host page with SLVERR). The
 past-beat codes and data are also logged as ``INFO-ROW-SPI-BURST-CODE``.
 CHK-ROW-SPI-BURST-CONTROL: the same burst shape wholly inside the extent answers
 OKAY on every beat and lands every beat.
@@ -176,7 +176,7 @@ entropy source block (its register extent is 4 mod 8, so the upper half of the
 beat lies past the extent) answer SLVERR on RRESP and on BRESP
 (``hw/sys/sep/doc/memory_map.adoc:78-80``: a generated register block answers
 SLVERR past its last register, "a 64-bit access to the last register of a
-block with 32-bit registers" included; ``doc/trm/src/memory_map.adoc:93-96``).
+block with 32-bit registers" included; ``doc/trm/src/memory_map.adoc:139-146``).
 The leaf derives the cell from the generated register allocation and fails
 when that extent is not 4 mod 8. The 64-bit read data has no stated value and
 is logged on ``INFO-ROW-SIZE3 kind=straddle``, as is an AES straddle read at its
@@ -261,9 +261,9 @@ POOL_WRITE_RESP = RESP_SLVERR
 POOL_UNMAPPED_RESP = RESP_SLVERR
 POOL_UNMAPPED_RDATA = 0x0
 
-# SPI host (hw/sys/sep/doc/peripheral_subsystem.adoc:43-46): the local crossbar
-# sends only the SPI host register extent to sep_io, and the error responder of
-# sep_io answers only the beats of a burst that run past the extent. The extent
+# SPI host (hw/sys/sep/doc/peripheral_subsystem.adoc:43-45): the local crossbar
+# sends the 4 KiB page of the SPI host to sep_io, which passes the SPI host only
+# its register window and answers the rest of the page with SLVERR. The extent
 # is the generated register map size (56 B, regs/gen/adoc/memory_map.adoc:75).
 SPI_BASE = sep_reg.SPI_CONTROLLER_REG_MAP_BASE_ADDR
 SPI_END = SPI_BASE + sep_reg.SPI_CONTROLLER_REG_MAP_SIZE

@@ -87,7 +87,7 @@ Checkers:
                     moved-SMU legs take the same compare, logged under
                     CHK-OUT-SMU-MOVED and CHK-OUT-SMU-FIRST. The predicted
                     address of an AP or STEE capture replaces the address with
-                    the programmed region offset (``fabric.adoc:178-179``): the
+                    the programmed region offset (``fabric.adoc:184-185``): the
                     offset bits above the 512 KiB region granule and the
                     issued address below it
                     (``hw/ip/output_remap/regs/output_remap.rdl:22-25``). An AP
@@ -121,7 +121,7 @@ Checkers:
                     with no PR-OUT capture while an enabled pair covers them.
                     Each such address is at or above 0x4000_0000 and outside
                     every window, so it returns to the peripheral crossbar,
-                    which answers DECERR (fabric.adoc:145-146, :181-182).
+                    which answers DECERR (fabric.adoc:147-149, :187-188).
   CHK-OUT-SMU-FIRST with the SMU window over AP region 0 (valid, offset not
                     the identity), LSU reads and writes of an AP region 0 word
                     leave once on PR-OUT untranslated, with SEP's ID and NS 1.

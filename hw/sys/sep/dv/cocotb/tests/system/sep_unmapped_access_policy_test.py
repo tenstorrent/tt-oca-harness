@@ -82,8 +82,8 @@ register, CLOCK_GATE_CTRL, inside the unit's decoded extent. After the graded
 walk the leaf reads it, writes PROBE_WDATA and reads it again: each access
 completes with OKAY and both reads return 0x0. The golden is the SEP hole
 response, hw/sys/sep/regs/include/sep_memory_map.rdl:13 (OKAY, 0x0 / OKAY,
-defined at :8), and doc/trm/src/memory_map.adoc:80-81 (the Hole in Extent
-column covers an unbacked offset inside the decoded extent) with :114-115 (an
+defined at :8), and doc/trm/src/memory_map.adoc:172-173 (the Hole in Extent
+column covers an unbacked offset inside the decoded extent) with :84-85 (an
 OKAY read returns the listed data and a write has no effect). The word is not
 an in-extent hole probe, so CHK-UNMAPPED-CODE does not grade it.
 

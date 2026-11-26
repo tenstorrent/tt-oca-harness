@@ -96,7 +96,7 @@ _SRC_SEL_PARKED = (_SRC_SEL_RESET | _POOL_STREAM_BIT) & ~0x1
 _FIPS_LOCK_BIT = ENTROPY_SOURCE.fields("FIPS_LOCK")["LOCK"]["bm"]
 _ESRC_CTRL_RSVD0 = ENTROPY_SOURCE.fields("CTRL")["RSVD0"]["bm"]
 # Read data of a new transaction on an isolated path: SLVERR with 0x1501A7ED in
-# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:127-129). No generated
+# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:126-128). No generated
 # constant holds it.
 ISO_DATA = 0x1501_A7ED
 
@@ -451,7 +451,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
             int.from_bytes(bytes(response.data), "little") for response in drain_responses
         ]
         # An accepted read drains OKAY; a read the isolate did not accept gets
-        # the isolated answer (reset_controller.adoc:127-130).
+        # the isolated answer (reset_controller.adoc:126-129).
         refused_data = [
             data for code, data in zip(drain_codes, drain_data, strict=True) if code == RESP_SLVERR
         ]

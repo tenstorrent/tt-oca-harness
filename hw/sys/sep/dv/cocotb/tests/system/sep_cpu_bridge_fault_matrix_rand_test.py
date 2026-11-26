@@ -123,7 +123,7 @@ Checkers:
                   write. These bits also drive dedicated PIC sources.";
                   ``hw/sys/sep/doc/interrupts.adoc:233-234`` source 42 "DMA
                   host-path integrity/bus fault";
-                  ``hw/sys/sep/doc/dma.adoc:131-132`` "Status completion and
+                  ``hw/sys/sep/doc/dma.adoc:133-134`` "Status completion and
                   error bits are write-one-to-clear". Control: the next cell
                   (``cell=host_only`` of CHK-DMA-CLR) writes 1 to
                   DMA_BUS_ERR_CLEAR and needs host_path_err = 0 and source 42

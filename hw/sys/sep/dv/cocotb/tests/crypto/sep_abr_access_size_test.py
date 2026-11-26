@@ -940,7 +940,7 @@ class sep_abr_access_size_test(sep_base_test):
     async def _inmap_holes(self, cfg: SepAbrAccessSizeCfg, primes: dict[int, int]) -> None:
         """In-extent words that no register or memory owns, per [[abr-aperture-decode]]."""
         # --- CHK-ABR-INMAP-HOLE -----------------------------------------------
-        # hw/sys/sep/doc/adams_bridge.adoc:107-108: a malformed ABR register
+        # hw/sys/sep/doc/adams_bridge.adoc:108-109: a malformed ABR register
         # address inside the extent returns no bus error. The response codes
         # and the read data (0x0) are the default hole response of the SEP
         # register description, hw/sys/sep/regs/include/sep_memory_map.rdl (ocah_hole_resp),

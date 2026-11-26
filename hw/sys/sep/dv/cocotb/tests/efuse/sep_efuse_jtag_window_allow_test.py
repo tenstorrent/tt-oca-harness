@@ -22,7 +22,7 @@ written value (CTRL-JTAG-SHIM-WRITE), so a JTAG write that reaches the shim regi
 shows at the read-back. The leaf writes the RDL reset value back.
 
 Only the ``EFUSE_SHIM_SIZE`` bytes of the shim window reach the shim
-(``hw/sys/sep/doc/memory_map.adoc:157-161``; ``hw/ip/efuse/doc/interface.adoc:54-57``:
+(``hw/sys/sep/doc/memory_map.adoc:157-161``; ``hw/ip/efuse/doc/interface.adoc:56-59``:
 the wrapper merges JTAG accesses to the shim window). JTAG writes of the complement of
 the shim register value to the page words above and to 8-byte-aligned addresses outside
 the page and the shim window leave the JTAG read-back of ``EFUSE_BANK_INIT_TIME``

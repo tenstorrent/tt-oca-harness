@@ -158,10 +158,10 @@ Checks:
                   bench responder set to OKAY and once to SLVERR. Each access
                   leaves once on PR-EXT at the issued address (AR with ARLEN 0
                   and ARSIZE 3, or AW and one W beat with the written data and
-                  all strobes) (``hw/sys/sep/doc/fabric.adoc:162-164``), and the
+                  all strobes) (``hw/sys/sep/doc/fabric.adoc:167-170``), and the
                   PR-DBG-SB R or B beat carries the code the port returned, and
                   the R beat its word (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:80``
-                  "Adopter-defined", ``doc/trm/src/memory_map.adoc:111-112``: the
+                  "Adopter-defined", ``doc/trm/src/memory_map.adoc:81-82``: the
                   adopter's implementation answers). ``sberror`` is 0 for OKAY
                   and not 0 for SLVERR; an OKAY read returns the word in
                   ``sbdata``. The reply on PR-EXT-RSP is the bench value (CTL).
@@ -187,7 +187,7 @@ Checks:
                   ``{O[55:19], a[18:0]}`` with AxUSER 0 in all 12 bits (``OTHERS``)
                   and NS 1 (AP) or the inverse of bit 55 of the remapped address
                   (STEE), and the W beat carries the written word
-                  (``hw/sys/sep/doc/fabric.adoc:178-181``, ``:314-315``,
+                  (``hw/sys/sep/doc/fabric.adoc:184-187``, ``:320-321``,
                   ``:320``). The reply on PR-OUT-RSP is the bench outbound
                   responder's (CTRL-DBG-REMAP-RSP: one B beat, or one R beat with
                   ``last`` 1, that answers OKAY).
@@ -199,7 +199,7 @@ Checks:
                   4-byte read and write of HMAC ``MSG_LENGTH_LOWER`` each show
                   one R or B beat on PR-DBG-SB that answers SLVERR, the R beat
                   carries 0x1501A7ED in the 32-bit lane of the access, and
-                  ``sberror`` is not 0 (``hw/sys/sep/doc/reset_controller.adoc:139-141``:
+                  ``sberror`` is not 0 (``hw/sys/sep/doc/reset_controller.adoc:138-140``:
                   new transactions on an isolated path complete with SLVERR and
                   that read data; the HMAC host path is isolated, ``:153``;
                   the debug master reaches ``sep_crypto``,
@@ -220,7 +220,7 @@ Checks:
                   ``onwrite = woset``,
                   ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:22-45``).
                   The debug master reaches the system CSRs and ``sep_crypto``
-                  (``hw/sys/sep/doc/fabric.adoc:139-140``;
+                  (``hw/sys/sep/doc/fabric.adoc:143-144``;
                   ``sep_axi_connectivity.svg:129``, ``:136``).
   CHK-DBG-AXPROT: (entry S) every AR and AW of each debug-master instance on
                   PR-DBG-SB carries AxPROT 0b001
@@ -425,7 +425,7 @@ APPENDED_TARGETS = (
 POOL_STATUS = sym("ENTROPY_POOL_STATUS_REG_ADDR")
 POOL_STATUS_MASK = _POOL.mask("STATUS")
 
-# Extension window above the eFuse shim (hw/sys/sep/doc/fabric.adoc:162-164).
+# Extension window above the eFuse shim (hw/sys/sep/doc/fabric.adoc:167-170).
 EXT_BASE = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR")
 EXT_FIRST = (EXT_BASE + sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE") + 7) & ~7
 EXT_LAST = EXT_BASE + sym("SEP_EXTERNAL_REG_MAP_SIZE") - 8
@@ -448,7 +448,7 @@ HOLE_LAST = 0x108F_FFF8
 DMA_PAST = sym("SECURE_DMA_REG_MAP_BASE_ADDR") + sym("SECURE_DMA_REG_MAP_SIZE")
 HMAC_RST_FIELD = SEP_RESET_CTRL.field_mask("SW_RESET_N", "hmac_sw_rst_n")
 # A new transaction on an isolated path completes SLVERR with this read data in
-# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:139-141).
+# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:138-140).
 ISO_DATA = 0x1501_A7ED
 # Every DEMOTE_2 field is sw=rw with onwrite=woset
 # (hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:22-45), so a
@@ -456,7 +456,7 @@ ISO_DATA = 0x1501_A7ED
 DEMOTE_2 = sym("SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR")
 F_LOCKED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "locked")
 
-# AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:178-181, :314-315).
+# AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:184-187, :320-321).
 REMAP_OFFSET_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "offset"
 )
@@ -464,7 +464,7 @@ REMAP_VALID_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "valid"
 )
 REGION_MASK = (1 << IDX_START) - 1
-ADDR_BITS = 56  # the outbound address width (hw/sys/sep/doc/fabric.adoc:172-173)
+ADDR_BITS = 56  # the outbound address width (hw/sys/sep/doc/fabric.adoc:178-179)
 # (path, region window base, remap CSR base, outbound filter pair)
 REMAP_PATHS = (
     ("ap", AP_REGION_BASE, AP_BASE, (0, 1)),

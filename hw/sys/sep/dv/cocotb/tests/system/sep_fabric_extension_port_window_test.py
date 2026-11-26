@@ -48,7 +48,7 @@ Checks:
   to a seeded lane of the shim word, each between two LSU word reads of that
   word. The read after equals the read before with only that lane replaced by
   the written byte, and no access of the leg leaves on PR-EXT
-  (``hw/sys/sep/doc/memory_map.adoc:156-161``: the shim window is forwarded
+  (``hw/sys/sep/doc/memory_map.adoc:157-162``: the shim window is forwarded
   unchanged to the SHIM). The written byte always differs from the byte it
   replaces, so the change is the positive probe. The two lanes differ, so the
   word after both legs is not the SHIM reset value. The response codes are

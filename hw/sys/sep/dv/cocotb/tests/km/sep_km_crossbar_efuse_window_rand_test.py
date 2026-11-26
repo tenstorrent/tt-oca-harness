@@ -1651,9 +1651,9 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             self.mon_xz,
         )
         # OTP_EFUSE_REMAP_BASE is the address of the eFuse controller
-        # (hw/ip/key_manager/doc/architecture.adoc:68-71, :88-89); the SEP map places
+        # (hw/ip/key_manager/doc/architecture.adoc:68-69, :86-87); the SEP map places
         # the eFuse shadow map, interface controller and MMR in the one 4 KiB page
-        # at 0x1093_0000 (hw/sys/sep/regs/sep.rdl:108, :111, :114).
+        # at 0x1093_0000 (hw/sys/sep/regs/sep.rdl:104, sep_efuse_wrap.rdl:20-22).
         exp = SHADOW_BASE & ~KM_EFUSE_LOW
         self._fail(
             "CHK-REMAP-BASE",

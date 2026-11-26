@@ -75,14 +75,14 @@ model of the staged data and the fabric taps:
 * CHK-DMA-KM-SRC  the DMA copy from the Key Manager mailbox STATUS word: the DMA
                   reaches ``sep_crypto``, which holds the mailbox
                   (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:130``,
-                  ``hw/sys/sep/doc/fabric.adoc:91``), so the run ends DONE with
+                  ``hw/sys/sep/doc/fabric.adoc:94``), so the run ends DONE with
                   no error, raises the DMA interrupt, and the destination holds
                   the STATUS word the CPU read before the GO.
 * CHK-DMA-KM-MBOX a DMA write and a DMA read of the Key Manager mailbox
                   ``SEP_IRQ_ENABLE`` word answer OKAY: the ``sep_crypto`` reach
                   that CHK-DMA-KM-SRC grades for a DMA read of the mailbox
-                  STATUS word (``hw/sys/sep/doc/fabric.adoc:91``, figure
-                  ``sep-axi-connectivity``, ``fabric.adoc:101``). Each run
+                  STATUS word (``hw/sys/sep/doc/fabric.adoc:94``, figure
+                  ``sep-axi-connectivity``, ``fabric.adoc:105``). Each run
                   ends DONE with no error and raises the DMA interrupt. The write
                   leg copies a staged value into the word; the CPU read back
                   equals the written value (fields [4:0] ``sw = rw``,
@@ -1194,7 +1194,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         # Transaction Routing); the AP path sets OTHERS, graded on all AxUSER
         # bits, and the SMU path sets SEP's ID: SepSrcIdGrade grades it as 0xF and
         # one value on every SMU-path beat, with AxUSER[11:4] 0. The SMC
-        # aperture keeps the initiator's source ID (fabric.adoc:316), so the
+        # aperture keeps the initiator's source ID (fabric.adoc:322), so the
         # DMA beats on PR-SMC give the AxUSER the DMA master drives, and the
         # SMU-path beats are graded against that measured value.
         smc = [
@@ -1756,7 +1756,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         """CHK-DMA-KM-SRC: the DMA copies the Key Manager mailbox STATUS word.
 
         The DMA reaches ``sep_crypto`` (hw/sys/sep/doc/assets/sep_axi_connectivity.svg:130),
-        which holds the Key Manager mailbox (hw/sys/sep/doc/fabric.adoc:91), so the
+        which holds the Key Manager mailbox (hw/sys/sep/doc/fabric.adoc:94), so the
         run ends DONE with no error and the destination, staged at the
         complement, holds the word that the CPU read from STATUS before the GO.
         """
@@ -1781,8 +1781,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         """CHK-DMA-KM-MBOX: a DMA write or read of the mailbox SEP_IRQ_ENABLE word answers OKAY.
 
         The DMA reaches ``sep_crypto``, which holds the Key Manager mailbox
-        (hw/sys/sep/doc/fabric.adoc:91, figure sep-axi-connectivity at
-        fabric.adoc:101), so each run ends DONE with no error and a DMA
+        (hw/sys/sep/doc/fabric.adoc:94, figure sep-axi-connectivity at
+        fabric.adoc:105), so each run ends DONE with no error and a DMA
         interrupt. Fields [4:0] of SEP_IRQ_ENABLE are ``sw = rw``
         (hw/ip/key_manager/regs/km_mailbox_sep.rdl:279-332): the write leg reads
         back the written value and the restore gives the value before; the read
