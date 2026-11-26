@@ -9,7 +9,9 @@
 // sbautoincrement of each bus access a bridge's Debug Module starts, and the
 // autoincrements that carry into address bit 32 (cg_j2a_sba_access); the
 // errors each Debug Module records from its bus accesses, and the DMI writes
-// it acts on while it holds one (cg_j2a_sba_error); the READY waits,
+// it acts on while it holds one (cg_j2a_sba_error); the DMI accesses each
+// Debug Module refuses while a bus access is outstanding, with the sbcs
+// polls before them (cg_j2a_busy); the READY waits,
 // response latencies and AW/W order each bridge port sees, and the sbcs reads
 // whose access completes while the read is in flight (cg_j2a_axi_timing);
 // and each bridge's security demultiplexer: the side each request takes
@@ -19,8 +21,9 @@
 // a changed disable while the bridge requests, and the select through and
 // out of system reset (cg_j2a_dbg_disable); and each TAP reset with the
 // state of each bridge, the phase of each bridge's access at the bridge
-// reset, the scans in it, its TCK-side release after TCK stopped, and test
-// mode (cg_j2a_reset).
+// reset, a response held past the poll bound at it, the scans in it, a
+// bridge reset that a read's AR handshake asserts, its TCK-side release
+// after TCK stopped, and test mode (cg_j2a_reset).
 //
 // One instance in the shared tb_top serves both flows. Each bridge's DMI
 // capture and update strobes, its captured status, the DMI value its bridge
@@ -39,6 +42,9 @@
 // one in the cycle a Debug Module records an error, which for a bus error is
 // the cycle of the B or R handshake that ends the access, and one for each
 // DMI write it accepts while sberror is not 0, with the sbcs it then holds.
+// The busy samples are taken on the same clock, one per DMI request a Debug
+// Module receives and refuses while sbbusy is 1, with the sbcs reads it
+// received since its last grant.
 //
 // The port timing samples are taken on the same clock from each bridge
 // port's handshake signals, between the bridge and its responder. A port
@@ -57,8 +63,10 @@
 // The reset samples are taken where each reset acts: on TCK for an entry to
 // Test-Logic-Reset by TMS and for each DMI strobe while the bridge reset is
 // asserted, at each fall of TRST, power-on reset, rst_n_i and scan_rst_ni,
-// and on the system clock for port handshakes in test mode and for each
-// bridge's TCK-side release, from its tdr2axi's synchronized resets. A sample
+// and on the system clock for port handshakes in test mode, for each
+// bridge's TCK-side release, from its tdr2axi's synchronized resets, and for
+// the release of an rst_n_i that fell in the cycle after an AR handshake at a
+// bridge's port. A sample
 // at a fall reads the state from before it, since every flop the reset
 // clears updates after the sample. A bridge's access phase comes from its
 // port's handshakes, its DMI state machine, its Debug Module's sbbusy and
@@ -136,7 +144,9 @@ module dtp_j2a_fcov (
   localparam logic [31:0] SbcsReadOnly = 32'hE020_0FFF;
   localparam logic [6:0] AddrSbcs = 7'h38;
   localparam logic [6:0] AddrSbaddress0 = 7'h39;
+  localparam logic [6:0] AddrSbaddress1 = 7'h3A;
   localparam logic [6:0] AddrSbdata0 = 7'h3C;
+  localparam logic [6:0] AddrSbdata1 = 7'h3D;
   localparam logic [2:0] SberrorBus = 3'd2;
   localparam logic [2:0] SberrorAlign = 3'd3;
   localparam logic [2:0] SberrorSize = 3'd4;
@@ -165,6 +175,8 @@ module dtp_j2a_fcov (
   localparam logic [2:0] KindRstScan = 3'd2;
   localparam logic [2:0] KindRstTckStopped = 3'd3;
   localparam logic [2:0] KindRstTest = 3'd4;
+  localparam logic [2:0] KindRstArmed = 3'd5;
+  localparam logic [2:0] KindRstUnreleased = 3'd6;
   localparam logic [1:0] TapSourceTms = 2'd0;
   localparam logic [1:0] TapSourceTrst = 2'd1;
   localparam logic [1:0] TapSourcePor = 2'd2;
@@ -180,6 +192,8 @@ module dtp_j2a_fcov (
   // the latency up to which a response counts as prompt.
   localparam int unsigned LongCycles = 64;
   localparam int unsigned PromptCycles = 2;
+  // The sbcs polls a bench wait for sbbusy 0 makes at most.
+  localparam int unsigned SbaPolls = 8;
 
   // The status each bridge's last DMI capture presented, which its next DMI
   // update closes the scan of.
@@ -375,6 +389,50 @@ module dtp_j2a_fcov (
     }
   endgroup
 
+  // One sample per DMI request a bridge's Debug Module refuses while sbbusy
+  // is 1, by kind (0 an sbcs write, 1 and 2 sbaddress0 and sbaddress1
+  // writes, 3 and 4 sbdata0 and sbdata1 writes, 5 and 6 sbdata0 and sbdata1
+  // reads), with the op of the outstanding access, whether sbbusyerror is
+  // already set, and the sbcs reads since the access's grant. The poll bins
+  // lie past SbaPolls.
+  covergroup cg_j2a_busy with function sample (
+      logic [1:0] bridge, logic [2:0] kind, logic write, logic sbbusyerror, logic [4:0] polls
+  );
+    option.per_instance = 1;
+    // 16 * bridge + 2 * kind + op of the outstanding access
+    cp_first: coverpoint {
+      bridge, kind, write
+    } iff (!sbbusyerror) {
+      bins smc_axi[] = {[0 : 13]};
+      bins smc_otp[] = {[16 : 29]};
+      bins sep_otp[] = {[32 : 45]};
+      illegal_bins none = {14, 15, 30, 31, 46, 47, [48 : 63]};
+    }
+    // 8 * bridge + kind
+    cp_under_error: coverpoint {
+      bridge, kind
+    } iff (sbbusyerror) {
+      bins smc_axi[] = {[0 : 6]};
+      bins smc_otp[] = {[8 : 14]};
+      bins sep_otp[] = {[16 : 22]};
+      illegal_bins none = {7, 15, 23, [24 : 31]};
+    }
+    // 32 * bridge + polls
+    cp_polls: coverpoint {
+      bridge, polls
+    } {
+      bins smc_axi_9_to_12 = {[9 : 12]};
+      bins smc_axi_13_to_16 = {[13 : 16]};
+      bins smc_otp_9_to_12 = {[41 : 44]};
+      bins smc_otp_13_to_16 = {[45 : 48]};
+      bins sep_otp_9_to_12 = {[73 : 76]};
+      bins sep_otp_13_to_16 = {[77 : 80]};
+      ignore_bins within_bound = {[0 : 8], [32 : 40], [64 : 72]};
+      ignore_bins longer = {[17 : 31], [49 : 63], [81 : 95]};
+      illegal_bins none = {[96 : 127]};
+    }
+  endgroup
+
   // One sample per AW, W or AR handshake on a bridge port with the cycles
   // VALID waited for READY (0 none, 1 short, 2 long), one per first BVALID or
   // RVALID with the cycles since the request's last handshake (0 prompt, 1
@@ -542,10 +600,14 @@ module dtp_j2a_fcov (
   // rst_n_i outside test mode, with the op and phase of its access (0 none,
   // 1 started and not at the port, 2 request pending, 3 write data pending,
   // 4 response pending, 5 completed at the port with no DMI operation since
-  // the one that started it); one per DMI capture, DMI update and dmireset
-  // while the bridge reset is asserted; one per bridge whose TCK-side reset
-  // releases outside test mode after TCK stayed stopped for
-  // TckStoppedCycles past its clk_i-side release; and in test mode one per
+  // the one that started it), and again with its op when the response has
+  // been pending through more than SbaPolls sbcs reads with sbbusy 1; one per
+  // DMI capture, DMI update and dmireset while the bridge reset is asserted;
+  // one per bridge at the release of an rst_n_i that fell outside test mode
+  // in the cycle after an AR handshake at its port, with whether a DMI strobe
+  // came while it was asserted; one per bridge whose TCK-side reset releases
+  // outside test mode after TCK stayed stopped for TckStoppedCycles past its
+  // clk_i-side release; and in test mode one per
   // bridge for each request handshake at its port and each fall of rst_n_i
   // and of scan_rst_ni.
   covergroup cg_j2a_reset with function sample (
@@ -591,6 +653,24 @@ module dtp_j2a_fcov (
       bins sep_otp = {2'd2};
       illegal_bins none = {2'd3};
     }
+    // 2 * bridge + a DMI strobe while asserted
+    cp_armed: coverpoint {
+      bridge, value[0]
+    } iff (kind == KindRstArmed) {
+      bins smc_axi[] = {0, 1};
+      bins smc_otp[] = {2, 3};
+      bins sep_otp[] = {4, 5};
+      illegal_bins none = {6, 7};
+    }
+    // 2 * bridge + op
+    cp_unreleased: coverpoint {
+      bridge, value[0]
+    } iff (kind == KindRstUnreleased) {
+      bins smc_axi[] = {0, 1};
+      bins smc_otp[] = {2, 3};
+      bins sep_otp[] = {4, 5};
+      illegal_bins none = {6, 7};
+    }
     // 4 * bridge + event (0 request handshake, 1 rst_n_i fall, 2 scan_rst_ni
     // fall)
     cp_test_mode: coverpoint {
@@ -607,6 +687,7 @@ module dtp_j2a_fcov (
   cg_j2a_dm_access u_cg_j2a_dm_access = new();
   cg_j2a_sba_access u_cg_j2a_sba_access = new();
   cg_j2a_sba_error u_cg_j2a_sba_error = new();
+  cg_j2a_busy u_cg_j2a_busy = new();
   cg_j2a_axi_timing u_cg_j2a_axi_timing = new();
   cg_j2a_dbg_disable u_cg_j2a_dbg_disable = new();
   cg_j2a_reset u_cg_j2a_reset = new();
@@ -662,9 +743,56 @@ module dtp_j2a_fcov (
     end
   end
 
+  // The kind cg_j2a_busy records for a Debug Module request, with bit 3 set
+  // for the kinds it refuses while sbbusy is 1.
+  function automatic logic [3:0] busy_kind(logic [40:0] dmi);
+    logic read;
+    logic write;
+    read  = dmi[33:32] == DmiOpRead;
+    write = dmi[33:32] == DmiOpWrite;
+    case (dmi[40:34])
+      AddrSbcs: return {write, 3'd0};
+      AddrSbaddress0: return {write, 3'd1};
+      AddrSbaddress1: return {write, 3'd2};
+      AddrSbdata0: return read ? {1'b1, 3'd5} : {write, 3'd3};
+      AddrSbdata1: return read ? {1'b1, 3'd6} : {write, 3'd4};
+      default: return '0;
+    endcase
+  endfunction
+
+  // Per bridge: the sbcs reads its Debug Module received with sbbusy 1 since
+  // its last grant, saturating.
+  logic [Bridges-1:0][4:0] busy_polls_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      busy_polls_q <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (sba_grant_i[b]) busy_polls_q[b] <= '0;
+        else if (dm_req_i[b] && dm_sbbusy_i[b] && dm_req_dmi_i[b][40:34] == AddrSbcs &&
+                 dm_req_dmi_i[b][33:32] == DmiOpRead && busy_polls_q[b] != '1)
+          busy_polls_q[b] <= busy_polls_q[b] + 5'd1;
+      end
+    end
+  end
+
+  // The request each bridge's Debug Module refuses this cycle for sbbusy, as
+  // busy_kind returns it.
+  logic [Bridges-1:0][3:0] busy_req;
+
+  always_comb begin
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      busy_req[b] = dm_req_i[b] && dm_sbbusy_i[b] ? busy_kind(dm_req_dmi_i[b]) : '0;
+    end
+  end
+
   always_ff @(posedge clk_i) begin
     if (rst_ni) begin
       for (int unsigned b = 0; b < Bridges; b++) begin
+        if (busy_req[b][3])
+          u_cg_j2a_busy.sample(2'(b), busy_req[b][2:0], sba_write_q[b], dm_sbcs_i[b][22],
+                               busy_polls_q[b]);
         if (sba_grant_i[b])
           u_cg_j2a_sba_access.sample(2'(b), 1'b0, sba_write_i[b], sba_size_i[b], sba_offset_i[b],
                                      sba_autoinc_i[b]);
@@ -988,6 +1116,11 @@ module dtp_j2a_fcov (
     return '0;
   endfunction
 
+  // Whether bridge b's access has its response pending at the port.
+  function automatic logic response_pending(int unsigned b);
+    return ar_seen_q[b] || (aw_seen_q[b] && w_seen_q[b]);
+  endfunction
+
   always_ff @(posedge tck_i) begin
     if (tap_rst_ni && tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET && !tap_tlr_q)
       sample_tap_reset(TapSourceTms);
@@ -1010,8 +1143,13 @@ module dtp_j2a_fcov (
 
   always @(negedge rst_ni) begin
     for (int unsigned b = 0; b < Bridges; b++) begin
-      if (test_en_i) u_cg_j2a_reset.sample(2'(b), KindRstTest, 4'd1);
-      else u_cg_j2a_reset.sample(2'(b), KindRstBridge, access_phase(b));
+      if (test_en_i) begin
+        u_cg_j2a_reset.sample(2'(b), KindRstTest, 4'd1);
+      end else begin
+        u_cg_j2a_reset.sample(2'(b), KindRstBridge, access_phase(b));
+        if (response_pending(b) && busy_polls_q[b] > SbaPolls)
+          u_cg_j2a_reset.sample(2'(b), KindRstUnreleased, {3'b0, aw_seen_q[b]});
+      end
     end
   end
 
@@ -1027,6 +1165,43 @@ module dtp_j2a_fcov (
         u_cg_j2a_reset.sample(2'(b), KindRstTest, 4'd0);
       if (!test_en_i && arst_tck_ni[b] && !arst_tck_q[b] && tck_stopped_q[b] >= TckStoppedCycles)
         u_cg_j2a_reset.sample(2'(b), KindRstTckStopped, '0);
+    end
+  end
+
+  // Per bridge, on TCK: the DMI strobes while the bridge reset is asserted.
+  logic [Bridges-1:0][7:0] rst_scan_q;
+
+  always_ff @(posedge tck_i or negedge tap_rst_ni) begin
+    if (!tap_rst_ni) begin
+      rst_scan_q <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (!bridge_rst_n && (capture_en_i[b] || update_en_i[b] || dmireset_i[b]))
+          rst_scan_q[b] <= rst_scan_q[b] + 8'd1;
+      end
+    end
+  end
+
+  // On clk_i: rst_n_i and each port's AR handshake at the last edge, and per
+  // bridge whether the rst_n_i assertion in progress fell outside test mode
+  // in the cycle after an AR handshake at its port, with rst_scan_q then.
+  logic                    rst_q;
+  logic [Bridges-1:0]      ar_hs_q;
+  logic [Bridges-1:0]      armed_q;
+  logic [Bridges-1:0][7:0] armed_scan_q;
+
+  always_ff @(posedge clk_i) begin
+    rst_q   <= rst_ni;
+    ar_hs_q <= ar_hs;
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      if (!test_en_i && !rst_ni && rst_q && ar_hs_q[b]) begin
+        armed_q[b]      <= 1'b1;
+        armed_scan_q[b] <= rst_scan_q[b];
+      end else if (rst_ni) begin
+        armed_q[b] <= 1'b0;
+      end
+      if (rst_ni && !rst_q && armed_q[b])
+        u_cg_j2a_reset.sample(2'(b), KindRstArmed, {3'b0, rst_scan_q[b] != armed_scan_q[b]});
     end
   end
 

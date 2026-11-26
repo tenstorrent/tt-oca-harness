@@ -117,6 +117,7 @@ checkers. Toggle and FSM coverage are not collected.
 |JTAG2AXI Debug Module access |`cg_j2a_dm_access` |`dtp_j2a_fcov`
 |JTAG2AXI System Bus Access |`cg_j2a_sba_access` |`dtp_j2a_fcov`
 |JTAG2AXI System Bus Access errors |`cg_j2a_sba_error` |`dtp_j2a_fcov`
+|JTAG2AXI System Bus Access while busy |`cg_j2a_busy` |`dtp_j2a_fcov`
 |JTAG2AXI port timing |`cg_j2a_axi_timing` |`dtp_j2a_fcov`
 |JTAG2AXI debug disables |`cg_j2a_dbg_disable` |`dtp_j2a_fcov`
 |JTAG2AXI TAP and bridge resets |`cg_j2a_reset` |`dtp_j2a_fcov`
@@ -228,15 +229,15 @@ scenarios check the bridges' DTMCS and DMI registers.
 
 ==== `cg_instruction_gate`
 
-*Description*: Covers each instruction whose data register, or the bus port
-behind it, a debug-disable field gates, scanned with that field clear and set.
-A field never gates the decode: the instruction decodes as itself and keeps
-its register on the scan path.
+*Description*: Covers each instruction whose iJTAG network a debug-disable
+field gates, scanned with that field clear and set. A field never gates the
+decode: the instruction decodes as itself and keeps its register on the scan
+path.
 
 [cols=",",options="header",]
 |===
 |Cross |Bins
-|`cx_gate_disabled` |`cp_gate` x `cp_disabled` (`clear`, `set`), where `cp_gate` is the SMC fabric bridge's DTMCS and DMI TDRs (`0x1F` and `0x20`, `smc_axi_tdr`) with `smc_jtag2axi`, the SMC OTP bridge's (`0x1B` and `0x1C`, `smc_otp_tdr`) with `smc_otp_jtag2axi`, the SEP OTP bridge's (`0x1D` and `0x1E`, `sep_otp_tdr`) with `sep_otp_jtag2axi`, SELECT_IJTAG with each of `dft_secure`, `dft_nonsecure`, and `dfd`, and RUNBIST with `dft_nonsecure`
+|`cx_gate_disabled` |`cp_gate` x `cp_disabled` (`clear`, `set`), where `cp_gate` is SELECT_IJTAG with each of `dft_secure`, `dft_nonsecure`, and `dfd`, and RUNBIST with `dft_nonsecure`
 |===
 
 `dtp_fcov` samples every completed DR scan of a gated instruction with the
@@ -246,10 +247,10 @@ RUNBIST control; the SIB gating of the other two fields does not depend on
 which instruction selects the network.
 The STAP fields and `stap_host` gate the STAP chain and its return path,
 which no instruction selects, and `cg_stap_3dcr` and `cg_dbg_disable_scan`
-carry them. The JTAG2AXI reference model predicts what a set bridge field
-does: the bridge answers every bus request with DECERR from its internal error
-slave and issues nothing on its manager port. The iJTAG and debug-disable
-groups cover a SIB held closed under its field.
+carry them. A bridge field gates the bridge's bus requests, not its scans: the
+bridge answers every request with DECERR from its internal error slave and
+issues nothing on its manager port, which `cg_j2a_dbg_disable` covers. The
+iJTAG and debug-disable groups cover a SIB held closed under its field.
 
 ==== `cg_tmp`
 
@@ -553,6 +554,31 @@ is sampled in the cycle the Debug Module accepts it with `dmactive` 1 and
 `dtp_jtag2axi_sba_errors_test` reaches every `cp_code`, `cp_bus`, `cp_size`,
 `cp_held`, and `cp_autoinc` bin in every pass.
 
+==== `cg_j2a_busy`
+
+*Description*: Covers the DMI accesses each JTAG2AXI bridge's Debug Module
+refuses while a bus access is outstanding, and the `sbcs` reads before them
+that return `sbbusy` 1 past the bound of a bench wait for `sbbusy` 0.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_first` |One bin per bridge, kind, and op of the outstanding access for a refusal with `sbbusyerror` clear: an `sbcs` write, `sbaddress0` and `sbaddress1` writes, and `sbdata0` and `sbdata1` writes and reads, each under a read and under a write
+|`cp_under_error` |One bin per bridge and kind for a refusal with `sbbusyerror` already set
+|`cp_polls` |Two bins per bridge for the `sbcs` reads with `sbbusy` 1 since the access's grant at a refusal: 9 to 12, and 13 to 16; up to eight, the bound of a bench wait, and more than 16 are ignored
+|===
+
+`dtp_j2a_fcov` takes the DMI requests each bridge's Debug Module accepts, its
+`sbbusy`, and its `sbcs` from its `tdr2axi` instance, and samples on the
+bridges' system clock in the cycle the Debug Module receives a request it
+refuses for `sbbusy`, with the op of the access the adapter granted last. It
+counts the `sbcs` reads the Debug Module receives with `sbbusy` 1 from each
+grant.
+`dtp_jtag2axi_sba_busy_test` reaches every `cp_under_error` bin in every
+pass and every `cp_first` bin in every two passes, since each pass holds every
+kind under the op the previous pass did not. Its poll counts are seeded, so
+`cp_polls` is closed across the passes and seeds of a run.
+
 ==== `cg_j2a_axi_timing`
 
 *Description*: Covers the READY waits, response latencies, and AW and W
@@ -623,15 +649,18 @@ error-slave transfer open are closed across the passes and seeds of a run.
 *Description*: Covers the TAP resets and the bridge reset on each JTAG2AXI
 bridge: each TAP reset source with the bridge idle, with an access open at its
 port, and with the sticky status set; the phase of the bridge's access at each
-bridge reset; the scans in a bridge reset; the TCK side's release after TCK
-stayed stopped; and test mode.
+bridge reset, and a response held past the poll bound at one; the scans in a
+bridge reset; a bridge reset a read's AR handshake asserts; the TCK side's
+release after TCK stayed stopped; and test mode.
 
 [cols=",",options="header",]
 |===
 |Coverpoint |Bins
 |`cp_tap` |One bin per bridge, TAP reset source, and bridge state: TMS, TRST, and power-on reset, each with the bridge idle, with an access open at its port, and with the sticky DMI status set
 |`cp_bridge` |One bin per bridge, op, and phase of its access at a fall of `rst_n_i` outside test mode: started and not at the port, request pending, write data pending for a write, response pending, and completed at the port with no DMI operation since the one that started it; a bridge with no access is ignored
+|`cp_unreleased` |One bin per bridge and op of an access whose response is pending at a fall of `rst_n_i` outside test mode after more than eight `sbcs` reads with `sbbusy` 1
 |`cp_scan` |One bin per bridge and strobe while the bridge reset is asserted: a DMI capture, a DMI update, and a DTMCS `dmireset`
+|`cp_armed` |One bin per bridge and scan for a release of an `rst_n_i` that fell outside test mode in the `clk_i` cycle after an AR handshake at its port: with no DMI strobe while it was asserted, and with one
 |`cp_tck_stopped` |One bin per bridge whose TCK-side reset releases outside test mode after TCK stayed stopped for at least three `clk_i` cycles past its `clk_i`-side release
 |`cp_test_mode` |One bin per bridge and event with `test_en_i` 1: a request handshake at its port, a fall of `rst_n_i`, and a fall of `scan_rst_ni`
 |===
@@ -646,8 +675,12 @@ sampled with the state before it. The phase comes from the port's handshakes,
 and for an access not at the port from the last DMI operation the bridge
 accepted: one that starts a bus access, with the state machine or `sbbusy`
 busy and no transfer since, is started, and one whose transfer completed since
-is completed. A strobe in reset is sampled on TCK while the reset the bridges
-synchronize is low.
+is completed. The `sbcs` reads of a pending response are counted from its
+access's grant, as in `cg_j2a_busy`. A strobe in reset is sampled on TCK while
+the reset the bridges synchronize is low. A reset an AR handshake asserts is
+recognized on the `clk_i` edge after its fall and sampled on the first
+`clk_i` edge after its release, with whether TCK counted a strobe in reset
+between the two.
 `dtp_jtag2axi_reset_test` reaches every bin in every pass.
 
 ==== `cg_ctp`
@@ -1131,21 +1164,22 @@ review.
 |VPLAN Test / Group |Coverage
 |`dtp_sanity_test` |`cg_tap_state`, `cg_tap_arc`, `cg_tap_smoke` TMS reset and IDCODE bins, `cg_scan_boundary`, `cg_jtag_instruction` Capture-IR pattern bin
 |`basic_jtag` group |`cg_tap_smoke`, `cg_tap_state`, `cg_tap_arc`, `cg_scan_boundary`, `cg_jtag_instruction`, `cg_dr_scan`, `cg_instruction_gate` RUNBIST bins
-|`dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_jtag_instruction` `cp_opcode` `op[31]` and `op[32]`, `cg_instruction_gate` `smc_axi_tdr` with `clear`
+|`dtp_jtag2axi_smc_axi_single_write_read_test` |`cg_jtag_instruction` `cp_opcode` `op[31]` and `op[32]`, `cg_j2a_dbg_disable` `cp_access` port bins of the SMC fabric bridge
 |JTAG instruction scenarios |`cg_jtag_instruction`, `cg_dr_scan`
 |`debug_tdr` group |`cg_tmp`, `cg_ic_reset`, `cg_debug_control`, `cg_clock_stop`, `cg_caps_tdr`, `cg_jtag_instruction`
-|`jtag2axi` group |`cg_jtag_instruction` `cp_opcode` `op[27]` to `op[32]` and `cp_category` `jtag2axi`, `cg_instruction_gate` bridge bins with `clear`
+|`jtag2axi` group |`cg_jtag_instruction` `cp_opcode` `op[27]` to `op[32]` and `cp_category` `jtag2axi`, `cg_j2a_dbg_disable` `cp_access` port bins
 |`dtp_jtag2axi_dmi_status_test` |`cg_j2a_dmi_status` `x_update` and `x_dmireset`
 |`dtp_jtag2axi_dm_regs_test` |`cg_j2a_dm_access` `x_access` and `x_sbcs_ro`
 |`dtp_jtag2axi_sba_sizes_test` |`cg_j2a_sba_access` `x_lane`, `x_autoinc`, and `cp_carry`
 |`dtp_jtag2axi_sba_errors_test` |`cg_j2a_sba_error` `cp_code`, `cp_bus`, `cp_size`, `cp_held`, and `cp_autoinc`
 |`dtp_jtag2axi_backpressure_test` |`cg_j2a_axi_timing` `cp_aw_stall`, `cp_w_stall`, `cp_ar_stall`, `cp_b_delay`, `cp_r_delay`, `cp_w_order`, and `cp_sbcs_race`
-|`dtp_jtag2axi_debug_disable_test` |`cg_j2a_dbg_disable`, `cg_instruction_gate` bridge bins with `set`
-|`dtp_jtag2axi_reset_test` |`cg_j2a_reset` `cp_tap`, `cp_bridge`, `cp_scan`, `cp_tck_stopped`, and `cp_test_mode`
+|`dtp_jtag2axi_debug_disable_test` |`cg_j2a_dbg_disable`
+|`dtp_jtag2axi_sba_busy_test` |`cg_j2a_busy` `cp_first`, `cp_under_error`, and `cp_polls`
+|`dtp_jtag2axi_reset_test` |`cg_j2a_reset` `cp_tap`, `cp_bridge`, `cp_unreleased`, `cp_scan`, `cp_armed`, `cp_tck_stopped`, and `cp_test_mode`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
-|`dbg_disable` group |Complete 16-cell `DtpDbgDisableFcov` closure, `cg_j2a_dbg_disable`, and `cg_instruction_gate` bridge bins with `set`
+|`dbg_disable` group |Complete 16-cell `DtpDbgDisableFcov` closure and `cg_j2a_dbg_disable`
 |CTP / CTM scenarios |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx`, `cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout`
 |XTRIG CSR and AXI-Lite scenarios |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow`
 |===

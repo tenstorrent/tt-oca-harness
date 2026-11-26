@@ -36,6 +36,10 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   localparam int unsigned PortWaitCycles = 200;
   // sbcs reads a bus access has to clear sbbusy in.
   localparam int unsigned SbaPolls = 8;
+  // Fewest and most sbcs reads that find sbbusy 1 under a held response, past
+  // the SbaPolls bound.
+  localparam int unsigned BusyPollsMin = SbaPolls + 1;
+  localparam int unsigned BusyPollsMax = 2 * SbaPolls;
   // Run-Test/Idle TCK cycles after every DTMCS or DMI scan, in which a DMI
   // operation crosses to the Debug Module and back (DtpDmiSettleTck).
   localparam int unsigned DmiIdleTck = 64;
@@ -289,6 +293,38 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     tb_vif.j2a_r_hold[t.reset_arm_bit] = r;
   endfunction
 
+  // The read (`is_read`) or write responses t's response queue holds.
+  function int unsigned held_count(dtp_j2a_target_t t, bit is_read);
+    case (t.reset_arm_bit)
+      0: return is_read ? tb_vif.smc_axi_r_held : tb_vif.smc_axi_b_held;
+      1: return is_read ? tb_vif.smc_otp_r_held : tb_vif.smc_otp_b_held;
+      default: return is_read ? tb_vif.sep_otp_r_held : tb_vif.sep_otp_b_held;
+    endcase
+  endfunction
+
+  // Wait until t's response queue holds more than `above` read (`is_read`) or
+  // write responses; `reached` returns whether it does within PortWaitCycles
+  // system cycles.
+  task wait_response_held(input dtp_j2a_target_t t, input bit is_read, input int unsigned above,
+                          output bit reached);
+    for (int unsigned cycle = 0; cycle < PortWaitCycles; cycle++) begin
+      if (held_count(t, is_read) > above) break;
+      wait_sys_cycles(1);
+    end
+    reached = held_count(t, is_read) > above;
+  endtask
+
+  // Arm one rst_n_i pulse of `cycles` clocks on t's next AR handshake.
+  function void arm_reset_on_read(dtp_j2a_target_t t, int unsigned cycles);
+    tb_vif.sys_rst_on_ar_cycles = 4'(cycles);
+    tb_vif.sys_rst_on_ar_arm    = 3'(1 << t.reset_arm_bit);
+  endfunction
+
+  // Clear the read-armed reset of every bridge.
+  function void disarm_reset_on_read();
+    tb_vif.sys_rst_on_ar_arm = '0;
+  endfunction
+
   task dmi_write(dtp_j2a_target_t t, dtp_dm_reg_e address, bit [31:0] data, string context_s);
     bit [31:0] unused;
     dmi_scan(t, address, data, DTP_DMI_OP_WRITE, context_s, unused);
@@ -329,10 +365,16 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // bound and CHK-J2A-FAULT-STATUS the two error fields.
   task wait_sba_idle(dtp_j2a_target_t t, string context_s, bit exp_sbbusyerror = 1'b0,
                      bit [2:0] exp_sberror = '0);
+    dtp_sbcs_t unused;
+    poll_sba_idle(t, context_s, unused, exp_sbbusyerror, exp_sberror);
+  endtask
+
+  // wait_sba_idle; `sbcs` returns the last sbcs read.
+  task poll_sba_idle(input dtp_j2a_target_t t, input string context_s, output dtp_sbcs_t sbcs,
+                     input bit exp_sbbusyerror = 1'b0, input bit [2:0] exp_sberror = '0);
     ocah_axi_checker        ev = evidence(t);
     realtime                start = $realtime;
     bit              [31:0] value;
-    dtp_sbcs_t              sbcs;
     bit              [63:0] errors;
     bit              [63:0] expected = 64'({exp_sberror, exp_sbbusyerror});
     for (int unsigned poll = 0; poll < SbaPolls; poll++) begin
@@ -355,6 +397,33 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
         $sformatf(
             "%s target=%s (sberror, sbbusyerror)", context_s, t.name)
     ));
+  endtask
+
+  // CHK-J2A-SBA-BUSY on `polls` sbcs reads with the access's response held,
+  // each reading sbbusy 1 with sberror and sbbusyerror 0; `sbcs` returns the
+  // last read. +DTP_J2A_SBA_BUSY_NEGATIVE expects sbbusy 0 at the last poll,
+  // so the run must fail.
+  task poll_while_held(input dtp_j2a_target_t t, input int unsigned polls, input string context_s,
+                       output bit [31:0] sbcs);
+    ocah_axi_checker ev = evidence(t);
+    dtp_sbcs_t       fields;
+    bit              busy;
+    bit              [4:0] observed;
+    bit              [4:0] expected;
+    for (int unsigned poll = 0; poll < polls; poll++) begin
+      busy = !(test_cfg.j2a_sba_busy_negative && poll == polls - 1);
+      dmi_read(t, DTP_DM_SBCS, $sformatf("%s.poll%0d", context_s, poll), sbcs);
+      fields   = dtp_sbcs_t'(sbcs);
+      observed = {fields.sbbusy, fields.sberror, fields.sbbusyerror};
+      expected = {busy, 4'b0000};
+      void'(ev.expect_equal(
+          DtpJ2aSbaBusyCheckId,
+          64'(observed),
+          64'(expected),
+          $sformatf(
+              "%s target=%s poll=%0d (sbbusy, sberror, sbbusyerror)", context_s, t.name, poll)
+      ));
+    end
   endtask
 
   // Write the `size` word `data` at `addr` through System Bus Access and

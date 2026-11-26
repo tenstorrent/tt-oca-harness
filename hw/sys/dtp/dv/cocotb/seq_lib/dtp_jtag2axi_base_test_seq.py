@@ -53,6 +53,7 @@ DTM_CAPTURE_CHECK_ID = "CHK-J2A-DTM-CAPTURE"
 BUS_REQ_CHECK_ID = "CHK-J2A-BUS-REQ"
 AXI_ATTR_CHECK_ID = "CHK-J2A-AXI-ATTR"
 ONE_XFER_CHECK_ID = "CHK-J2A-ONE-XFER"
+SBA_BUSY_CHECK_ID = "CHK-J2A-SBA-BUSY"
 RDATA_CHECK_ID = "CHK-AXI-RDATA"
 WMEM_CHECK_ID = "CHK-AXI-WMEM"
 COMPLETION_CHECK_ID = "CHK-AXI-COMPLETION"
@@ -60,6 +61,7 @@ GEOMETRY_NEGATIVE_KNOB = "DTP_J2A_GEOMETRY_NEGATIVE"
 BUS_REQ_NEGATIVE_KNOB = "DTP_J2A_BUS_REQ_NEGATIVE"
 AXI_ATTR_NEGATIVE_KNOB = "DTP_J2A_AXI_ATTR_NEGATIVE"
 ONE_XFER_NEGATIVE_KNOB = "DTP_J2A_ONE_XFER_NEGATIVE"
+SBA_BUSY_NEGATIVE_KNOB = "DTP_J2A_SBA_BUSY_NEGATIVE"
 # The AxCACHE of every request the AXI4 bridge drives.
 J2A_AXI_CACHE = 0b0010
 # AxBURST INCR.
@@ -70,6 +72,9 @@ DTM_CAPTURE_NEGATIVE_KNOB = "DTP_J2A_DTM_CAPTURE_NEGATIVE"
 PORT_COMPLETION_CYCLES = 200
 # sbcs reads a bus access has to clear sbbusy in.
 SBA_POLLS = 8
+# Fewest and most sbcs reads that find sbbusy 1 under a held response, past the
+# SBA_POLLS bound.
+BUSY_POLLS = (SBA_POLLS + 1, 2 * SBA_POLLS)
 # TCK cycles in Run-Test/Idle after a raw DMI scan, beyond DTP_DMI_SETTLE_TCK,
 # so the next scan finds its operation complete.
 RAW_SCAN_IDLE_TCK = 64
@@ -352,9 +357,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
     async def wait_sba_idle(
         self, target: str, *, context: str, sbbusyerror: int = 0, sberror: int = 0
-    ) -> None:
+    ) -> dict[str, int]:
         """Poll sbcs until sbbusy clears, then require sberror ``sberror`` and
-        sbbusyerror ``sbbusyerror``.
+        sbbusyerror ``sbbusyerror``; returns the last sbcs read.
 
         ``CHK-AXI-COMPLETION`` judges the ``SBA_POLLS`` bound and
         ``CHK-J2A-FAULT-STATUS`` the two error fields.
@@ -377,6 +382,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             (sberror, sbbusyerror),
             context=f"{context} target={target} (sberror, sbbusyerror)",
         )
+        return sbcs
 
     async def sba_write(
         self, target: str, addr: int, data: int, *, size: int, context: str
@@ -728,6 +734,41 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 return True
             await self.wait_sys_cycles(1)
         return history.count(read=read) > above
+
+    async def wait_response_held(self, target: str, *, read: bool, above: int) -> bool:
+        """Wait until ``target``'s held R, or B without ``read``, count exceeds ``above``.
+
+        Returns False when none is held within ``PORT_COMPLETION_CYCLES`` system cycles.
+        """
+        name = f"{target}_{'r' if read else 'b'}_held"
+        tb_if = self.cfg.tb_if
+        for _ in range(PORT_COMPLETION_CYCLES):
+            if tb_if.sample(name) > above:
+                return True
+            await self.wait_sys_cycles(1)
+        return tb_if.sample(name) > above
+
+    async def poll_while_held(self, target: str, polls: int, *, context: str) -> int:
+        """``CHK-J2A-SBA-BUSY`` on ``polls`` sbcs reads with the access's response held, each
+        reading sbbusy 1 with sberror and sbbusyerror 0; returns the last sbcs read.
+
+        ``DTP_J2A_SBA_BUSY_NEGATIVE=1`` expects sbbusy 0 at the last poll, so the run must
+        fail.
+        """
+        negative = OcahKnobs.is_set(SBA_BUSY_NEGATIVE_KNOB)
+        sbcs = 0
+        for poll in range(polls):
+            sbcs = await self.dmi_read(target, DtpDmReg.SBCS, context=f"{context}.poll{poll}")
+            fields = unpack_sbcs(sbcs)
+            busy = 0 if negative and poll == polls - 1 else 1
+            self.check_equal(
+                self.target_evidence(target),
+                SBA_BUSY_CHECK_ID,
+                (fields["sbbusy"], fields["sberror"], fields["sbbusyerror"]),
+                (busy, 0, 0),
+                context=f"{context} target={target} poll={poll} (sbbusy, sberror, sbbusyerror)",
+            )
+        return sbcs
 
     async def expect_bus_request(
         self,

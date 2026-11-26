@@ -37,7 +37,8 @@ class dtp_jtag2axi_reset_test extends dtp_base_test;
                               "CHK-J2A-DTM-CAPTURE",
                               "CHK-J2A-TAP-RESET",
                               "CHK-J2A-BRIDGE-RESET",
-                              "CHK-J2A-RESET-RELEASE"
+                              "CHK-J2A-RESET-RELEASE",
+                              "CHK-J2A-SBA-BUSY"
                           });
     end
   endfunction

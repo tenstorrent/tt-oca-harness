@@ -159,14 +159,10 @@ module dtp_fcov (
     end
   end
 
-  // Instructions whose data register a dbg_disable_t field gates. A gated
-  // instruction decodes as itself and keeps its register on the scan path:
-  // a bridge field completes that bridge's bus accesses with a decode error
-  // and no port transaction, and a SIB field holds its SIB closed in the
-  // iJTAG network that SELECT_IJTAG and RUNBIST select.
-  localparam logic [63:0] SmcJtag2axiOps = 64'h0000_0001_8000_0000;  // 0x1F-0x20
-  localparam logic [63:0] SmcOtpJtag2axiOps = 64'h0000_0000_1800_0000;  // 0x1B-0x1C
-  localparam logic [63:0] SepOtpJtag2axiOps = 64'h0000_0000_6000_0000;  // 0x1D-0x1E
+  // Instructions whose iJTAG network a dbg_disable_t SIB field gates. A gated
+  // instruction decodes as itself and keeps its register on the scan path,
+  // and the field holds its SIB closed in the network SELECT_IJTAG and
+  // RUNBIST select.
   localparam logic [63:0] SelectIjtag = 64'h0000_0000_0400_0000;  // 0x1A
   localparam logic [63:0] Runbist = 64'h0000_0000_0000_0004;  // 0x02
 
@@ -414,20 +410,14 @@ module dtp_fcov (
     }
   endgroup
 
-  localparam logic [2:0] GateSmcAxi = 3'd0;
-  localparam logic [2:0] GateSmcOtp = 3'd1;
-  localparam logic [2:0] GateSepOtp = 3'd2;
-  localparam logic [2:0] GateIjtagDftSecure = 3'd3;
-  localparam logic [2:0] GateIjtagDftNonsecure = 3'd4;
-  localparam logic [2:0] GateIjtagDfd = 3'd5;
-  localparam logic [2:0] GateRunbistDftNonsecure = 3'd6;
+  localparam logic [2:0] GateIjtagDftSecure = 3'd0;
+  localparam logic [2:0] GateIjtagDftNonsecure = 3'd1;
+  localparam logic [2:0] GateIjtagDfd = 3'd2;
+  localparam logic [2:0] GateRunbistDftNonsecure = 3'd3;
 
   covergroup cg_instruction_gate with function sample (logic [2:0] gate, logic disabled);
     option.per_instance = 1;
     cp_gate: coverpoint gate {
-      bins smc_axi_tdr = {GateSmcAxi};
-      bins smc_otp_tdr = {GateSmcOtp};
-      bins sep_otp_tdr = {GateSepOtp};
       bins ijtag_dft_secure = {GateIjtagDftSecure};
       bins ijtag_dft_nonsecure = {GateIjtagDftNonsecure};
       bins ijtag_dfd = {GateIjtagDfd};
@@ -474,15 +464,6 @@ module dtp_fcov (
       end
       if (dr_scan_done && !$isunknown(inst_decoded_i)) begin
         u_cg_dr_scan.sample(opcode_code(inst_decoded_i), stap_select_i);
-        if (|(inst_decoded_i & SmcJtag2axiOps)) begin
-          u_cg_instruction_gate.sample(GateSmcAxi, dbg_disable_i.smc_jtag2axi);
-        end
-        if (|(inst_decoded_i & SmcOtpJtag2axiOps)) begin
-          u_cg_instruction_gate.sample(GateSmcOtp, dbg_disable_i.smc_otp_jtag2axi);
-        end
-        if (|(inst_decoded_i & SepOtpJtag2axiOps)) begin
-          u_cg_instruction_gate.sample(GateSepOtp, dbg_disable_i.sep_otp_jtag2axi);
-        end
         if (|(inst_decoded_i & SelectIjtag)) begin
           u_cg_instruction_gate.sample(GateIjtagDftSecure, dbg_disable_i.dft_secure);
           u_cg_instruction_gate.sample(GateIjtagDftNonsecure, dbg_disable_i.dft_nonsecure);

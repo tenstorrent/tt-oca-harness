@@ -20,16 +20,23 @@
 //   busy status set, which survives it until a dmireset clears it;
 // - bridge_access: on each bridge, the bridge reset in each phase of a read
 //   and of a write: started and not at the port, the request or the write
-//   data held by READY, the response held, and completed on the port before a
-//   scan fetches the result;
+//   data held by READY, a read's address just accepted with the response
+//   owed, once released on the pulse's own clk_i edge and once held for
+//   scans, the response held, and completed on the port before a scan
+//   fetches the result;
 // - scan_in_reset: on each bridge, DMI and DTMCS scans while the bridge reset
 //   is asserted, and the TCK side's release once TCK runs again;
+// - unreleased_hold: on each bridge, a read and a write whose response stays
+//   held, sbbusy reading 1 past the poll bound until the bridge reset drops
+//   the access;
 // - test_mode: test_en set, in which every bridge reaches its port, keeps its
 //   state through an rst_n_i pulse and resets on a scan_rst_ni pulse.
 //
 // Every reset is asserted and released at a seeded time between two clk_i
-// edges, and released while TCK is stopped. The cocotb twin is
-// seq_lib/dtp_jtag2axi_reset_test_seq.py.
+// edges, and released while TCK is stopped, except the read-armed reset: it
+// asserts on the clk_i edge that completes the read's address handshake and,
+// unless the sequence holds it, releases on a clk_i edge with TCK running.
+// The cocotb twin is seq_lib/dtp_jtag2axi_reset_test_seq.py.
 
 class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
   `uvm_object_utils(dtp_jtag2axi_reset_test_seq)
@@ -62,7 +69,13 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
 
   task body();
     string cases[$] = '{
-        "tap_idle", "tap_open", "tap_sticky", "bridge_access", "scan_in_reset", "test_mode"
+        "tap_idle",
+        "tap_open",
+        "tap_sticky",
+        "bridge_access",
+        "scan_in_reset",
+        "unreleased_hold",
+        "test_mode"
     };
     string names[$] = bridge_names();
     string order = "";
@@ -80,6 +93,7 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
         "tap_sticky":    tap_sticky_case();
         "bridge_access": bridge_access_case();
         "scan_in_reset": scan_in_reset_case();
+        "unreleased_hold": unreleased_hold_case();
         default:         test_mode_case();
       endcase
       order = {order, " ", cases[c]};
@@ -194,18 +208,28 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
   // On each bridge, the bridge reset in each phase of a read and of a write,
   // in a seeded order.
   task bridge_access_case();
-    string  phases[9] = '{
-        "launched", "request", "response", "done", "launched", "request", "w", "response", "done"
+    string  phases[11] = '{
+        "launched",
+        "request",
+        "armed",
+        "armed_held",
+        "response",
+        "done",
+        "launched",
+        "request",
+        "w",
+        "response",
+        "done"
     };
     names_t names = bridge_names();
     names.shuffle();
     foreach (names[n]) begin
       dtp_j2a_target_t t = dtp_j2a_target_by_name(names[n]);
       int unsigned     order[$];
-      for (int unsigned i = 0; i < 9; i++) order.push_back(i);
+      for (int unsigned i = 0; i < 11; i++) order.push_back(i);
       order.shuffle();
       foreach (order[i]) begin
-        bit    is_read = order[i] < 4;
+        bit    is_read = order[i] < 6;
         string phase = phases[order[i]];
         string ctx = $sformatf("%s.bridge_access.%s.%s", t.name, pick(is_read, "read", "write"),
                                phase);
@@ -228,26 +252,39 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
     foreach (names[n]) begin
       dtp_j2a_target_t        t = dtp_j2a_target_by_name(names[n]);
       string                  ctx = {t.name, ".scan_in_reset"};
-      string                  in_reset = {ctx, " in_reset"};
       logic            [31:0] j2a_before;
-      bit              [1:0] dmistat;
       bit              [63:0] value;
-      bit              [63:0] sbaddress;
       open_ledger(t);
       activate_dm(t);
       write_sbaddress0(t, ctx, value);
       j2a_before = tb_vif.j2a_rst_assert_count;
       drive_reset(1'b0, 1'b0);
-      read_dmistat(t, Dmireset, in_reset, dmistat);
-      record_field(t, DtpJ2aBridgeResetCheckId, "dmistat", 64'(dmistat), 64'd0, in_reset);
-      dmi_tdr(t, DTP_DM_DMCONTROL, 32'h1, DTP_DMI_OP_WRITE, value);
-      record_field(t, DtpJ2aBridgeResetCheckId, "dmcontrol_capture", value, 64'd0, in_reset);
-      sbaddress = random_target_addr(t);
-      dmi_tdr(t, DTP_DM_SBADDRESS0, sbaddress[31:0], DTP_DMI_OP_WRITE, value);
-      record_field(t, DtpJ2aBridgeResetCheckId, "sbaddress0_capture", value, 64'd0, in_reset);
+      scan_in_reset(t, ctx);
       release_and_check(t, j2a_before, ctx);
       recover(t, ctx);
       close_ledger();
+    end
+  endtask
+
+  // On each bridge, a full-beat read and write in a seeded order, each with
+  // its response held: sbcs reads sbbusy 1 past the poll bound, the bridge
+  // reset lands while the response is held, and the hold is cleared while
+  // the reset is asserted. After the release the bridge reads its reset
+  // state, the held response never reached it, and the next access reaches
+  // the port.
+  task unreleased_hold_case();
+    names_t names = bridge_names();
+    names.shuffle();
+    foreach (names[n]) begin
+      dtp_j2a_target_t t = dtp_j2a_target_by_name(names[n]);
+      bit              first_read = 1'($urandom());
+      for (int unsigned i = 0; i < 2; i++) begin
+        bit    is_read = first_read ^ 1'(i);
+        string ctx = $sformatf("%s.unreleased_hold.%s", t.name, pick(is_read, "read", "write"));
+        open_ledger(t);
+        unreleased_hold(t, is_read, ctx);
+        close_ledger();
+      end
     end
   endtask
 
@@ -440,7 +477,9 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
     int unsigned            port_start;
     int unsigned            moved;
     logic        [31:0]     j2a_before;
+    logic        [31:0]     sys_before;
     bit                     began;
+    bit          [63:0]     valid_cycles;
     activate_dm(t);
     if (is_read) begin
       sba_write(t, addr, data, size, {ctx, ".fill"});
@@ -464,12 +503,15 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
     if (completed && !is_read) target_cfgs[t.name].arm_expected_write(masked, data, wstrb);
     port_start = port_history(t.name).count(is_read);
     j2a_before = tb_vif.j2a_rst_assert_count;
+    sys_before = tb_vif.sys_rst_assert_count;
     if (completed) begin
       dmi_write(t, start_reg, start_value, {ctx, ".start"});
       wait_port_count(t, is_read, port_start);
       began = port_history(t.name).count(is_read) > port_start;
       repeat ($urandom_range(PhaseDelayMax)) @(posedge tb_vif.clk);
       drive_reset(1'b0, 1'b0);
+    end else if (phase == "armed" || phase == "armed_held") begin
+      armed_start(t, start_reg, start_value, sys_before, phase == "armed_held", ctx, began);
     end else begin
       bit asserted = 1'b0;
       fork
@@ -483,12 +525,115 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
     end
     release_port(t);
     moved = port_history(t.name).count(is_read) - port_start;
-    release_and_check(t, j2a_before, ctx);
+    if (phase == "armed") check_released(t, j2a_before, 1'b0, ctx);
+    else release_and_check(t, j2a_before, ctx);
     if (completed)
       expect_bus_request(t, is_read, addr, size, is_read ? '0 : data, is_read ? '0 : wstrb, ctx);
     else expect_no_bus_request(t, ctx);
     record_field(t, DtpJ2aBridgeResetCheckId, "phase_reached", 64'(began), 64'd1, port_ctx);
     record_field(t, DtpJ2aBridgeResetCheckId, "port_transactions", 64'(moved), 64'(completed),
+                 port_ctx);
+    valid_cycles = 64'(response_valid_cycles(t, is_read));
+    record_field(t, DtpJ2aBridgeResetCheckId, "response_valid_cycles", valid_cycles, 64'd0,
+                 port_ctx);
+    recover(t, ctx);
+  endtask
+
+  // Start a read with rst_n_i armed to assert for a seeded number of clk_i
+  // cycles from the edge that completes its AR handshake, so the reset lands
+  // while the responder owes the R; `began` returns whether it asserted since
+  // the rst_n_i assertion counter read `sys_before`. With `held` the sequence
+  // holds the reset from a seeded time before the pulse's first clk_i edge
+  // and scans the bridge in it.
+  task armed_start(input dtp_j2a_target_t t, input dtp_dm_reg_e start_reg,
+                   input bit [31:0] start_value, input logic [31:0] sys_before, input bit held,
+                   input string ctx, output bit began);
+    int unsigned period_ps = tb_vif.clk_period_ns * 1000;
+    int unsigned delay_ps = $urandom_range(period_ps - 1, 1);
+    bit          holding = 1'b0;
+    process      hold;
+    arm_reset_on_read(t, $urandom_range(ResetHoldMax, 1));
+    if (held) begin
+      fork
+        begin
+          hold = process::self();
+          @(negedge tb_vif.rst_n);
+          #(delay_ps * 1ps);
+          tb_vif.sys_rst_n = 1'b0;
+          holding = 1'b1;
+        end
+      join_none
+    end
+    dmi_write(t, start_reg, start_value, {ctx, ".start"});
+    for (int unsigned c = 0; c < PortWaitCycles; c++) begin
+      if (tb_vif.sys_rst_assert_count != sys_before && (held || tb_vif.rst_n === 1'b1)) break;
+      @(posedge tb_vif.clk);
+    end
+    disarm_reset_on_read();
+    began = tb_vif.sys_rst_assert_count != sys_before;
+    if (!held) return;
+    if (!began) begin
+      hold.kill();
+      return;
+    end
+    wait (holding);
+    scan_in_reset(t, ctx);
+  endtask
+
+  // Scans while the bridge reset is asserted: DTMCS with dmireset reads
+  // dmistat 0, and DMI writes of dmactive and of a seeded sbaddress0 capture
+  // 0.
+  task scan_in_reset(dtp_j2a_target_t t, string ctx);
+    string           in_reset = {ctx, " in_reset"};
+    bit       [1:0] dmistat;
+    bit       [63:0] value;
+    bit       [63:0] sbaddress;
+    read_dmistat(t, Dmireset, in_reset, dmistat);
+    record_field(t, DtpJ2aBridgeResetCheckId, "dmistat", 64'(dmistat), 64'd0, in_reset);
+    dmi_tdr(t, DTP_DM_DMCONTROL, 32'h1, DTP_DMI_OP_WRITE, value);
+    record_field(t, DtpJ2aBridgeResetCheckId, "dmcontrol_capture", value, 64'd0, in_reset);
+    sbaddress = random_target_addr(t);
+    dmi_tdr(t, DTP_DM_SBADDRESS0, sbaddress[31:0], DTP_DMI_OP_WRITE, value);
+    record_field(t, DtpJ2aBridgeResetCheckId, "sbaddress0_capture", value, 64'd0, in_reset);
+  endtask
+
+  // A full-beat read or write whose response stays held through
+  // BusyPollsMin to BusyPollsMax sbcs polls and the bridge reset. A read's
+  // slot holds a word written first.
+  task unreleased_hold(dtp_j2a_target_t t, bit is_read, string ctx);
+    int unsigned        size = t.default_size;
+    bit          [63:0] addr = random_target_addr(t);
+    bit          [63:0] data = random_distinct_word(t, memory_word(t, addr, size));
+    string              port_ctx = {ctx, " port"};
+    int unsigned        held;
+    int unsigned        port_start;
+    int unsigned        moved;
+    logic        [31:0] j2a_before;
+    bit                 reached;
+    bit          [31:0] sbcs;
+    bit          [63:0] valid_cycles;
+    activate_dm(t);
+    if (is_read) sba_write(t, addr, data, size, {ctx, ".fill"});
+    held       = held_count(t, is_read);
+    port_start = port_history(t.name).count(is_read);
+    hold_port(t, is_read, 1'b0);
+    sba_setup(t, addr, size, is_read, ctx);
+    if (!is_read) begin
+      if (size == 3) dmi_write(t, DTP_DM_SBDATA1, data[63:32], {ctx, ".sbdata1"});
+      dmi_write(t, DTP_DM_SBDATA0, data[31:0], {ctx, ".sbdata0"});
+    end
+    wait_response_held(t, is_read, held, reached);
+    poll_while_held(t, $urandom_range(BusyPollsMax, BusyPollsMin), {ctx, ".held"}, sbcs);
+    j2a_before = tb_vif.j2a_rst_assert_count;
+    drive_reset(1'b0, 1'b0);
+    release_port(t);
+    moved = port_history(t.name).count(is_read) - port_start;
+    release_and_check(t, j2a_before, ctx);
+    expect_no_bus_request(t, ctx);
+    record_field(t, DtpJ2aBridgeResetCheckId, "held", 64'(reached), 64'd1, port_ctx);
+    record_field(t, DtpJ2aBridgeResetCheckId, "port_transactions", 64'(moved), 64'd0, port_ctx);
+    valid_cycles = 64'(response_valid_cycles(t, is_read));
+    record_field(t, DtpJ2aBridgeResetCheckId, "response_valid_cycles", valid_cycles, 64'd0,
                  port_ctx);
     recover(t, ctx);
   endtask
@@ -527,13 +672,7 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
           default: return tb_vif.sep_otp_axil_w_stall_count;
         endcase
       end
-      "response": begin
-        case (t.reset_arm_bit)
-          0: return is_read ? tb_vif.smc_axi_r_held : tb_vif.smc_axi_b_held;
-          1: return is_read ? tb_vif.smc_otp_r_held : tb_vif.smc_otp_b_held;
-          default: return is_read ? tb_vif.sep_otp_r_held : tb_vif.sep_otp_b_held;
-        endcase
-      end
+      "response": return held_count(t, is_read);
       default: return valid_count(t, is_read);
     endcase
   endfunction
@@ -542,16 +681,24 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
   // after a seeded hold, and judge both releases and the state the bridge
   // then reads.
   task release_and_check(dtp_j2a_target_t t, logic [31:0] j2a_before, string ctx);
+    wait_sys_cycles($urandom_range(ResetHoldMax, 1));
+    drive_reset(1'b0, 1'b1);
+    check_released(t, j2a_before, 1'b1, ctx);
+  endtask
+
+  // Judge the release of the bridge reset asserted since its counter read
+  // `j2a_before` after a seeded number of clk_i cycles: with `tck_stopped`
+  // since the release, the clk_i side has left reset and the TCK side has
+  // not; once scans run TCK both have, and the bridge reads its reset state.
+  task check_released(dtp_j2a_target_t t, logic [31:0] j2a_before, bit tck_stopped, string ctx);
     int unsigned stopped = $urandom_range(
         2 * DtpJ2aResetSyncTck + TckStoppedMax, 2 * DtpJ2aResetSyncTck + 1
     );
     fields_t     state;
     string       reset_ctx = {ctx, " bridge_reset"};
-    wait_sys_cycles($urandom_range(ResetHoldMax, 1));
-    drive_reset(1'b0, 1'b1);
     wait_sys_cycles(stopped);
     check_reset_counted("j2a_rst_assert_count", j2a_before, tb_vif.j2a_rst_assert_count, reset_ctx);
-    check_release(t, 1'b0, 1'b0, $sformatf("%s tck_stopped=%0d", ctx, stopped));
+    if (tck_stopped) check_release(t, 1'b0, 1'b0, $sformatf("%s tck_stopped=%0d", ctx, stopped));
     bridge_state(t, {ctx, ".reset_state"}, state);
     check_release(t, 1'b1, 1'b0, {ctx, " tck_running"});
     check_bridge_state(t, DtpJ2aBridgeResetCheckId, state, reset_state(), ctx);
@@ -632,6 +779,17 @@ class dtp_jtag2axi_reset_test_seq extends dtp_jtag2axi_base_test_seq;
     f["sbaddress"]       = '0;
     f["sbdata"]          = '0;
     return f;
+  endfunction
+
+  // Cycles t's bridge has seen RVALID (`is_read`) or BVALID since rst_n_i
+  // last released.
+  function int unsigned response_valid_cycles(dtp_j2a_target_t t, bit is_read);
+    case (t.reset_arm_bit)
+      0: return is_read ? tb_vif.smc_axi_rvalid_count : tb_vif.smc_axi_bvalid_count;
+      1: return is_read ? tb_vif.smc_otp_axil_rvalid_count : tb_vif.smc_otp_axil_bvalid_count;
+      default:
+      return is_read ? tb_vif.sep_otp_axil_rvalid_count : tb_vif.sep_otp_axil_bvalid_count;
+    endcase
   endfunction
 
   // `expected` dmactive, inverted by +DTP_J2A_BRIDGE_RESET_NEGATIVE.

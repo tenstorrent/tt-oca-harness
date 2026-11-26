@@ -169,6 +169,15 @@ module tb_top
   logic [31:0] sep_otp_axil_wvalid_count;
   logic [31:0] sep_otp_axil_arvalid_count;
 
+  // JTAG2AXI bridge-port response-VALID-high cycle counters since rst_n_i
+  // last released.
+  logic [31:0] smc_axi_bvalid_count;
+  logic [31:0] smc_axi_rvalid_count;
+  logic [31:0] smc_otp_axil_bvalid_count;
+  logic [31:0] smc_otp_axil_rvalid_count;
+  logic [31:0] sep_otp_axil_bvalid_count;
+  logic [31:0] sep_otp_axil_rvalid_count;
+
   // JTAG2AXI bridge-port READY-stall counters: cycles a request VALID waits
   // on a low READY while dtp_tb_if.axi_sva_en is set, the antecedent of the
   // port's ocah_axi_sva VALID_HELD and PAYLOAD_STABLE rules.
@@ -752,6 +761,24 @@ module tb_top
       sep_otp_axil_open_request_count <= sep_otp_axil_open_request_count +
           {31'b0, sep_otp_axil_xfer_open & ~sep_otp_axil_xfer_end &
            (sep_otp_axil_awvalid | sep_otp_axil_arvalid)};
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_n_i) begin
+    if (!rst_n_i) begin
+      smc_axi_bvalid_count      <= '0;
+      smc_axi_rvalid_count      <= '0;
+      smc_otp_axil_bvalid_count <= '0;
+      smc_otp_axil_rvalid_count <= '0;
+      sep_otp_axil_bvalid_count <= '0;
+      sep_otp_axil_rvalid_count <= '0;
+    end else begin
+      smc_axi_bvalid_count      <= smc_axi_bvalid_count + {31'b0, m_axi_bvalid};
+      smc_axi_rvalid_count      <= smc_axi_rvalid_count + {31'b0, m_axi_rvalid};
+      smc_otp_axil_bvalid_count <= smc_otp_axil_bvalid_count + {31'b0, smc_otp_axil_bvalid};
+      smc_otp_axil_rvalid_count <= smc_otp_axil_rvalid_count + {31'b0, smc_otp_axil_rvalid};
+      sep_otp_axil_bvalid_count <= sep_otp_axil_bvalid_count + {31'b0, sep_otp_axil_bvalid};
+      sep_otp_axil_rvalid_count <= sep_otp_axil_rvalid_count + {31'b0, sep_otp_axil_rvalid};
     end
   end
 
@@ -2166,6 +2193,12 @@ module tb_top
   assign u_tb_if.sep_otp_axil_awvalid_count = sep_otp_axil_awvalid_count;
   assign u_tb_if.sep_otp_axil_wvalid_count  = sep_otp_axil_wvalid_count;
   assign u_tb_if.sep_otp_axil_arvalid_count = sep_otp_axil_arvalid_count;
+  assign u_tb_if.smc_axi_bvalid_count       = smc_axi_bvalid_count;
+  assign u_tb_if.smc_axi_rvalid_count       = smc_axi_rvalid_count;
+  assign u_tb_if.smc_otp_axil_bvalid_count  = smc_otp_axil_bvalid_count;
+  assign u_tb_if.smc_otp_axil_rvalid_count  = smc_otp_axil_rvalid_count;
+  assign u_tb_if.sep_otp_axil_bvalid_count  = sep_otp_axil_bvalid_count;
+  assign u_tb_if.sep_otp_axil_rvalid_count  = sep_otp_axil_rvalid_count;
 
   // Bridge-port READY-stall counter mirrors for sequences.
   assign u_tb_if.smc_axi_aw_stall_count      = smc_axi_aw_stall_count;
