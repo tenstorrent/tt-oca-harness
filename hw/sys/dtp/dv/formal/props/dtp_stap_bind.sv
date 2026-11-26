@@ -11,6 +11,7 @@ bind jtag_intf_unit dtp_stap_props #(
   .NUM_DISABLE ($bits(sep_lifecycle_ctrl_pkg::dbg_disable_t))
 ) u_dtp_stap_props (
   .tck_i                (ptap_client_tap_ctrl_i.tck),
+  .clk_i                (clk_i),
   .trst_ni              (ptap_host_tap_ctrl.trst_n),
   .pwr_on_rst_ni        (pwr_on_rst_ni),
   .client_tms_i         (ptap_host_tap_ctrl.tms),
@@ -28,6 +29,9 @@ bind jtag_intf_unit dtp_stap_props #(
                           gen_dbg_disable_sync_n0_scan[1].u_dbg_disable_sync_n0_scan.intq,
                           gen_dbg_disable_sync_n0_scan[0].u_dbg_disable_sync_n0_scan.intq}),
   .dbg_disable_q_i      (dbg_disable_bits_q_n0_scan),
+  .bridge_disable_i     ({u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.security_disable_i,
+                          u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.security_disable_i,
+                          u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.security_disable_i}),
   .stap_disable_i       ({gen_extra_staps.gen_extra_stap[0].u_stap_extra.security_disable_i,
                           gen_stap_sep_dbg.u_stap_sep_dbg.security_disable_i,
                           gen_stap_smc_dbg.u_stap_smc_dbg.security_disable_i,

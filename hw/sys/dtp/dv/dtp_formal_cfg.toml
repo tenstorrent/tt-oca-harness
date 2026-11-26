@@ -84,6 +84,14 @@ cwd = "hw/sys/dtp/dv/formal/fpv/sby"
 script = "dtp.sby"
 args = ["dbgctl_bmc", "dbgctl_cover", "dbgctl_prove"]
 
+# Every bridge assertion proves unbounded, and a bmc run over the three bridges' converters does
+# not reach the block depth in practical time: the item runs cover and prove, and the j2a_bmc task
+# stays in the task file for a counterexample trace by hand.
+[formal.apps.j2a_fpv.sby]
+cwd = "hw/sys/dtp/dv/formal/fpv/sby"
+script = "dtp.sby"
+args = ["j2a_cover", "j2a_prove"]
+
 # The cross-trigger blocks run on their own top, cross_trigger_network, from a task file beside
 # dtp.sby that reads the same filelist.
 [formal.apps.ctn_clkstop_fpv.sby]

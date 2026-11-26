@@ -3,9 +3,10 @@
 //
 // Formal properties for STAP selection and the debug-disable gating of the STAP chain: the PTAP
 // 3DCR select and TDO source, each jtag_stap with its 3DCR and disable mask, the stap_host return
-// path, and the dbg_disable_i synchronizers. Attached to jtag_intf_unit by dtp_stap_bind.sv, which
-// packs the per-STAP signals into vectors in chain order (I/O, SMC, SEP, extra), and checked with
-// dtp as the formal top. Every property body is a boolean over current and one-cycle-past values
+// path, the dbg_disable_i synchronizers, and the route of each JTAG2AXI bridge field to its
+// bridge. Attached to jtag_intf_unit by dtp_stap_bind.sv, which packs the per-STAP signals into
+// vectors in chain order (I/O, SMC, SEP, extra), and checked with dtp as the formal top. Every
+// property body is a boolean over current and one-cycle-past values
 // (hw/common/dv/docs/formal-property-style.adoc).
 //
 // A STAP's disable input is the synchronizer output, a tck posedge flop, so the value sampled at
@@ -23,6 +24,7 @@ module dtp_stap_props
   parameter int unsigned NUM_DISABLE = 11
 ) (
   input logic                   tck_i,               // ptap_client_tap_ctrl_i.tck
+  input logic                   clk_i,
   input logic                   trst_ni,             // ptap_host_tap_ctrl.trst_n, the combined reset
   input logic                   pwr_on_rst_ni,
   input logic                   client_tms_i,        // ptap_host_tap_ctrl.tms
@@ -31,6 +33,8 @@ module dtp_stap_props
   input logic [NUM_DISABLE-1:0] dbg_disable_i,       // dbg_disable_bits
   input logic [NUM_DISABLE-1:0] dbg_disable_stage1_i,// u_dbg_disable_sync_n0_scan.intq
   input logic [NUM_DISABLE-1:0] dbg_disable_q_i,     // dbg_disable_bits_q_n0_scan
+  // security_disable_i of the SMC fabric, SMC OTP and SEP OTP bridges, bits 2 to 0
+  input logic [2:0]             bridge_disable_i,
   // Per-STAP vectors in chain order
   input logic [NUM_STAPS-1:0]   stap_disable_i,      // security_disable_i
   input logic [NUM_STAPS-1:0]   stap_sel_i,          // stap_sel, the masked select
@@ -112,18 +116,56 @@ module dtp_stap_props
                                    !ptap_stap_ctrl_i.shift_en && !ptap_stap_ctrl_i.update_en),
                   tck_i, trst_ni)
 
-  // ---- dbg_disable_i synchronizers: reset to disabled, two tck edges of latency --------------
-  // The check runs through reset, so the first sampled cycle, which has no past sample, takes the
-  // reset clause alone.
+  // ---- dbg_disable_i synchronizers: reset to disabled, two edges of latency -------------------
+  // The three bridge fields synchronize on clk_i and the others on tck. Each check runs through
+  // reset, so the first sampled cycle of its clock, which has no past sample, takes the reset
+  // clause alone.
+  localparam sep_lifecycle_ctrl_pkg::dbg_disable_t SysClkFields = '{
+    smc_jtag2axi: 1'b1,
+    smc_otp_jtag2axi: 1'b1,
+    sep_otp_jtag2axi: 1'b1,
+    default: 1'b0
+  };
+  localparam logic [NUM_DISABLE-1:0] SysClk = SysClkFields;
+
+  sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_q_fields;
+  assign dbg_disable_q_fields = dbg_disable_q_i;
+
   logic past_valid_q = 1'b0;
   always @(posedge tck_i) past_valid_q <= 1'b1;
   `OCAH_FV_ASSERT(ast_dbg_disable_sync_fail_closed,
                   `OCAH_FV_IMPLIES(!pwr_on_rst_ni,
-                                   dbg_disable_q_i == '1 && dbg_disable_stage1_i == '1) &&
+                                   (dbg_disable_q_i | SysClk) == '1 &&
+                                   (dbg_disable_stage1_i | SysClk) == '1) &&
                   `OCAH_FV_IMPLIES(past_valid_q && $past(pwr_on_rst_ni) && pwr_on_rst_ni,
-                                   dbg_disable_stage1_i == $past(dbg_disable_i) &&
-                                   dbg_disable_q_i == $past(dbg_disable_stage1_i)),
+                                   (dbg_disable_stage1_i & ~SysClk) ==
+                                   ($past(dbg_disable_i) & ~SysClk) &&
+                                   (dbg_disable_q_i & ~SysClk) ==
+                                   ($past(dbg_disable_stage1_i) & ~SysClk)),
                   tck_i, 1'b1)
+
+  // The power-on reset is asynchronous to clk_i and can pulse between two clk_i edges.
+  // sys_rst_seen_q is low at a clk_i edge only when the reset has stayed high since the edge before.
+  logic sys_rst_seen_q = 1'b1;
+  always_ff @(posedge clk_i or negedge pwr_on_rst_ni) begin
+    if (!pwr_on_rst_ni) sys_rst_seen_q <= 1'b1;
+    else sys_rst_seen_q <= 1'b0;
+  end
+  `OCAH_FV_ASSERT(ast_dbg_disable_sync_sys_fail_closed,
+                  `OCAH_FV_IMPLIES(!pwr_on_rst_ni,
+                                   (dbg_disable_q_i & SysClk) == SysClk &&
+                                   (dbg_disable_stage1_i & SysClk) == SysClk) &&
+                  `OCAH_FV_IMPLIES(!sys_rst_seen_q && pwr_on_rst_ni,
+                                   (dbg_disable_stage1_i & SysClk) ==
+                                   ($past(dbg_disable_i) & SysClk) &&
+                                   (dbg_disable_q_i & SysClk) ==
+                                   ($past(dbg_disable_stage1_i) & SysClk)),
+                  clk_i, 1'b1)
+  `OCAH_FV_ASSERT(ast_dbg_disable_bridge_fields_route,
+                  bridge_disable_i == {dbg_disable_q_fields.smc_jtag2axi,
+                                       dbg_disable_q_fields.smc_otp_jtag2axi,
+                                       dbg_disable_q_fields.sep_otp_jtag2axi},
+                  clk_i, 1'b1)
 
   // ---- Covers -------------------------------------------------------------------------------
   `OCAH_FV_COVER(cov_stap_host_disabled_during_shift,

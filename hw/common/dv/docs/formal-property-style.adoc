@@ -203,9 +203,8 @@ assumptions instead of assertions. A formal environment binds one instance
 with the design's side asserted and the environment's side assumed, so the
 environment module states only what the protocol leaves open, such as an
 outstanding bound or a single-beat fact, and a property of the design that
-holds only under the protocol, such as the bridge's
-`ast_j2a_resp_only_while_waiting`, is proven against the checker's
-assumptions rather than against a hand-written restatement. The two SVA
+holds only under the protocol is proven against the checker's assumptions
+rather than against a hand-written restatement. The two SVA
 checkers take the same
 two parameters through `OCAH_SVA_RULE` and `OCAH_RULE`
 (`hw/common/assert/ocah_sva_macros.svh`), and their
@@ -217,8 +216,8 @@ The bind of a shared checker is a `props/` file named
 `<dut>_<top>_<protocol>_fv_bind.sv`, for example
 `dtp_ctn_axi_fv_bind.sv` on the `cross_trigger_network` AXI-Lite port with the
 manager's rules assumed and the network's asserted, or
-`dtp_jtag2axi_axi_fv_bind.sv`, which binds `ocah_axi_fv` on the request
-machine's side of the bridge's CDC with the responder's rules assumed. A
+`dtp_axi_fv_bind.sv`, which binds `ocah_axi_fv` on the manager port of each
+JTAG2AXI bridge on the `dtp` top with the responder's rules assumed. A
 rule's path in every report is
 `<instance>.gen_<rule>.ast_<rule>` or `asm_<rule>`, for example
 `u_ocah_axi_fv.gen_axi_aw_valid_held.asm_axi_aw_valid_held`. The checkers
@@ -280,7 +279,7 @@ peer or a configuration bound. An assumption that only some blocks' tasks
 need lives in a second module beside it, `<dut>_<block>_sby_env.sv`, read by
 those tasks only (`dtp_ir_sby_env.sv`, which the `tap` and `ir` tasks read);
 one that only the tasks of one task tag need is
-`<dut>_<top>_<tag>_sby_env.sv` (`dtp_jtag2axi_free_resp_sby_env.sv`). The DTP environments assert the resets up to
+`<dut>_<top>_<tag>_sby_env.sv` (`dtp_ctn_xtrig_sby_env.sv`). The DTP environments assert the resets up to
 the first sampling edge, so each clock domain starts from its reset state,
 and release all of them there for the rest of the trace. Where two sources
 reset one block, as TRST and the power-on reset do the TAP, each may be
@@ -367,8 +366,8 @@ the `bmc` depth is set to the same value.
 `hw/sys/dtp/dv/formal/` holds the reference implementation. The IEEE 1149.1
 TAP controller inside the primary TAP is the block described here, with `dtp`
 as the formal top; the plan section of `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`
-lists the other described blocks over the `dtp`, `jtag2axi` and
-`cross_trigger_network` tops in the same shape.
+lists the other described blocks over the `dtp` and `cross_trigger_network`
+tops in the same shape.
 
 * `props/dtp_tap_props.sv`: assertions and covers on the TAP state register
   and its outputs, all in the boolean subset: one-hot state, the rule that
@@ -382,15 +381,16 @@ lists the other described blocks over the `dtp`, `jtag2axi` and
   the TAP control struct, the state and the scan-control struct members.
 * `props/dtp_jtag_fv_bind.sv`: binds the shared JTAG checker to `dtp` on the
   primary TAP, the host's phase rule assumed and the TAP's rules asserted;
-  `dtp_jtag2axi_axi_fv_bind.sv` and `dtp_ctn_axi_fv_bind.sv` do the same with
-  the shared AXI checker on the other two tops.
+  `dtp_axi_fv_bind.sv` and `dtp_ctn_axi_fv_bind.sv` do the same with the
+  shared AXI checker on the JTAG2AXI bridge ports and on the
+  `cross_trigger_network` top.
 * `fpv/sby/dtp_sby_env.sv`: the open-path reset environment
   (<<formal-style-clocks>>).
 * `fpv/sby/dtp.sby`: one task triple per block on the `dtp` top, selected by
   the block's tag; the TAP triple is `tap_bmc` and `tap_cover` on `smtbmc`
   with yices at depth 30 and `tap_prove` on `abc pdr`, all under
-  `multiclock on`. `dtp_jtag2axi.sby` and `dtp_cross_trigger_network.sby` beside it
-  carry the other two tops.
+  `multiclock on`. `dtp_cross_trigger_network.sby` beside it carries the
+  other top.
 * `dtp_formal_cfg.toml` and `testlists/formal.toml`: the runner launch entry,
   one app table and one item per block. The `flist` stage regenerates the
   filelist and the `formal` stage runs an item's three tasks in one `sby`
