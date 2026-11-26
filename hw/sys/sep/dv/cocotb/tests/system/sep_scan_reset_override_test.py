@@ -14,11 +14,12 @@ Contract (``hw/sys/sep/doc/port_table.adoc``, ``test_en_i``, ``scan_rst_ni``,
 Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
 ``hw/sys/sep/doc/test_mode.adoc``, Entry and Exit):
 
-* While ``test_en_i`` is high, ``scan_rst_ni`` replaces the 15 nets
+* While ``test_en_i`` is high, ``scan_rst_ni`` replaces the 16 nets
   ``sep_reset_n``, ``sep_cpu_reset_n``, ``ip_rst_n[6:0]`` (each scan bypass
-  mux), ``aon_rst_n``, ``km_cond_rst[1:0]``, ``refcnt_rst[1:0]`` and
-  ``sep_wdt_reset_n``. The reset controller section
-  (``reset_controller.adoc:83``) lists all of them except ``refcnt_rst[1:0]``;
+  mux), ``aon_rst_n``, ``km_cond_rst[1:0]``, ``refcnt_rst[1:0]``,
+  ``sep_wdt_reset_n`` and ``efuse_rst_sync``. The reset controller section
+  (``reset_controller.adoc:83``) lists all of them except ``refcnt_rst[1:0]``
+  and ``efuse_rst_sync``;
   ``sep_wdt_reset_n`` is the output of the scan bypass
   ``u_sep_wdt_rst_scan_bypass``, and with ``test_en_i`` low it is the 2-flop
   capture of ``wdt_rst_ni``, which ``rst_ni`` resets. ``refcnt_rst[1:0]`` are the
@@ -27,7 +28,10 @@ Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
   DFT") covers them. Their input reset is ``sep_reset_n``, which the scan
   reset also replaces, so they go low with or without the bypass; without it
   they rise only after their 16-flop synchronizer, which the check after the
-  release catches. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
+  release catches. ``efuse_rst_sync`` is the output of the eFuse interface
+  reset synchronizer; the same port row covers it. With ``test_en_i`` low it
+  is high once fuse sense is done, ``ext_boot_seq_done_i`` is high and
+  ``rst_ni`` is high. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
   edge of their own clock after the ``scan_rst_ni`` rise (the synchronizer is
   not in the path). With ``test_en_i`` low, ``scan_rst_ni`` has no effect.
 * ``test_en_i`` and ``secure_tm_req_i`` are separate ports: ``secure_tm_o``
@@ -39,9 +43,9 @@ falls on a ``clk_i`` edge or on the drawn release point. The hold interval H
 (32 ``clk_i`` cycles, at least two ``clk_wdt_i`` periods) is a test parameter.
 
 Checkers:
-  CHK-SCAN-IDLE     test_en_i=0: the 15 nets stay high on every clk_i edge from
+  CHK-SCAN-IDLE     test_en_i=0: the 16 nets stay high on every clk_i edge from
                     the scan_rst_ni fall to the end of the hold after its rise.
-  CHK-SCAN-REPLACE  test_en_i=1: the 15 nets are low on every clk_i edge
+  CHK-SCAN-REPLACE  test_en_i=1: the 16 nets are low on every clk_i edge
                     while scan_rst_ni is low and high with scan_rst_ni=1;
                     sep_reset_n and aon_rst_n rise before the next clk_i and
                     clk_wdt_i edge. Other rise offsets: INFO-SCAN-OFFSET.
@@ -77,7 +81,7 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_scan_reset_override_test"
 
-# The 15 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
+# The 16 replaced nets and their tb_top taps (bit 0 of km_cond_rst_probe_o is
 # rst_warm_sync_n, bit 1 rst_cold_aasd_n; bit 0 of refcnt_rst_n_probe_o is the
 # clk_i side of the reference counter, bit 1 the clk_ref_i side).
 NETS: tuple[tuple[str, str, int | None], ...] = (
@@ -96,6 +100,7 @@ NETS: tuple[tuple[str, str, int | None], ...] = (
     ("refcnt_rst[0]", "refcnt_rst_n_probe_o", 0),
     ("refcnt_rst[1]", "refcnt_rst_n_probe_o", 1),
     ("sep_wdt_reset_n", "sep_wdt_reset_n_probe_o", None),
+    ("efuse_rst_sync", "efuse_rst_sync_probe_o", None),
 )
 N_NETS = len(NETS)
 
@@ -136,6 +141,11 @@ class sep_scan_reset_override_test(sep_base_test):
 
     def _nets(self) -> list[int]:
         return [self._net(i) for i in range(N_NETS)]
+
+    @staticmethod
+    def _net_names(rows: list[tuple[int, list[str]]]) -> str:
+        """``net=`` field of a FAIL line: every net named in ``rows``."""
+        return "net=" + ",".join(sorted({n for _t, names in rows for n in names}))
 
     async def _wait_tap(self, port: str, bound: int) -> int:
         sig = getattr(cocotb.top, port)
@@ -425,6 +435,9 @@ class sep_scan_reset_override_test(sep_base_test):
             await ReadOnly()
             if self.rd(dut.refcnt_rst_n_probe_o, allow_unknown=True) == 0x3:
                 break
+        # efuse_rst_sync needs fuse sense done, ext_boot_seq_done_i and rst_ni.
+        await self._wait_tap("efuse_rst_sync_probe_o", TAP_BOUND)
+        await ReadOnly()
         base = self._nets()
         assert all(base), (
             f"precondition FAIL: nets before the scan pulses {dict(zip([n[0] for n in NETS], base))}"
@@ -438,8 +451,8 @@ class sep_scan_reset_override_test(sep_base_test):
         low = [(t, [NETS[i][0] for i, v in enumerate(vals) if v != 1]) for t, vals in a["samples"]]
         low = [x for x in low if x[1]]
         assert not low and a["samples"], (
-            f"CHK-SCAN-IDLE FAIL: net(s) low with test_en_i=0 (samples={len(a['samples'])}): "
-            f"{low[:4]}"
+            f"CHK-SCAN-IDLE FAIL {self._net_names(low)}: net(s) low with test_en_i=0 "
+            f"(samples={len(a['samples'])}): {low[:4]}"
         )
         self.logger.info(
             "CHK-SCAN-IDLE PASS: scan_rst_ni low %d cycles test_en_i=0 nets_high=%d/%d samples=%d",
@@ -468,20 +481,20 @@ class sep_scan_reset_override_test(sep_base_test):
         high = [(t, [names[i] for i, v in enumerate(vals) if v != 0]) for t, vals in during]
         high = [x for x in high if x[1]]
         assert len(during) == cfg.w and not high, (
-            f"CHK-SCAN-REPLACE FAIL: net(s) not low with scan_rst_ni=0 test_en_i=1 "
-            f"(edges={len(during)} expected={cfg.w}): {high[:4]}"
+            f"CHK-SCAN-REPLACE FAIL {self._net_names(high)}: net(s) not low with scan_rst_ni=0 "
+            f"test_en_i=1 (edges={len(during)} expected={cfg.w}): {high[:4]}"
         )
         not_low = [names[i] for i, v in enumerate(b["before_release"]) if v != 0]
         assert not not_low, (
-            f"CHK-SCAN-REPLACE FAIL: net(s) not low on the last clk_i edge before the release "
-            f"(t={b['last_edge']} ps): {not_low}"
+            f"CHK-SCAN-REPLACE FAIL net={','.join(not_low)}: net(s) not low on the last clk_i "
+            f"edge before the release (t={b['last_edge']} ps): {not_low}"
         )
         after = [(t, vals) for t, vals in b["samples"] if t > b["t_rise"]]
         bad = [(t, [names[i] for i, v in enumerate(vals) if v != 1]) for t, vals in after]
         bad = [x for x in bad if x[1]]
         assert after and not bad, (
-            f"CHK-SCAN-REPLACE FAIL: net(s) not high with scan_rst_ni=1 test_en_i=1 after the "
-            f"release: {bad[:4]}"
+            f"CHK-SCAN-REPLACE FAIL {self._net_names(bad)}: net(s) not high with scan_rst_ni=1 "
+            f"test_en_i=1 after the release: {bad[:4]}"
         )
         t_rise = b["t_rise"]
         clk_e = [t for t in self.pins_clk.edge_times("clk_i") if t > t_rise]

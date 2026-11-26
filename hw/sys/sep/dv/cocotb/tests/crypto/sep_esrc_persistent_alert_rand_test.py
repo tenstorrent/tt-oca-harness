@@ -36,7 +36,11 @@ the window of each threshold (256 or 512), the clean gap of the
 consecutive leg (2, 3 or 4 windows), the order of the two trips of each
 threshold, the masks and the permutation of ``balanced``, and the two counter
 bits of the ERR leg (two different bits of the 32-bit counter copy), and the
-illegal main-state encoding of the illegal-state leg.
+illegal main-state encoding of the illegal-state leg. A second stream
+(``SepSeededRng(seed ^ CC_TARGET_SALT)``, so the draws above keep their values)
+draws the order of the six target legs of CHK-SM-ERR, and for each target the
+lane (0 to 11, lane targets only), the counter within the target (``slot``)
+and the bit below that counter's width (CC_TARGETS).
 
 Shards (``env/sep_shard.py``): shard 1 is the reset leg and the threshold
 blocks; shard 2 is the reset leg and the ERR leg; shard 3 is the reset leg and
@@ -123,7 +127,28 @@ Checkers:
                   release), and ERR reads 0 and PERSISTENT_FAILURE reads 0.
                   Each line grades the whole ERR field (and the
                   PERSISTENT_FAILURE field where named); the read words are
-                  logged.
+                  logged. The ``leg=set`` line above carries ``target=repcnt``.
+  CHK-SM-ERR ``leg=set target=<t>``  after the sticky leg, one leg per target
+                  ``window``, ``lane_rep``, ``lane_apt``, ``lane_markov``,
+                  ``total`` (APT high/low, Markov high/low totals and the
+                  any-alert fails counter), ``alert`` (the five alert-fails
+                  counters), in the drawn order, each after its own TRNG reset:
+                  the ``leg=set`` grade above with one copy of the drawn counter
+                  of that target held apart from its partner. ERR 0 and
+                  PERSISTENT_FAILURE 0 before the inject, ERR 1 and
+                  PERSISTENT_FAILURE 1 one read after SM_ERR_WAIT_CLKS + 1
+                  clocks (``entropy_source.rdl`` ERR: "health-test counter
+                  integrity error"; ``architecture.adoc:125``: the window counter
+                  is a ``prim_count``). Every counter of the six targets runs on
+                  ``clk_i``, so the legs need no compressor setting. A TRNG reset
+                  after the last target leg clears ERR for the illegal-state leg.
+  CTRL-SM-ERR-TARGET  each target leg: the lane and slot variables read back
+                  the drawn values, ``esrc_cntr_copy_err_o``, the copy mismatch
+                  flag of the selected counter itself, reads 0 before the inject
+                  and 1 at a clock while the inject is held (``err_clk``); the
+                  two copies of that counter are logged (``pri``, ``sec``). It
+                  shows that the inject reached the counter, apart from the
+                  error path that the CHK grades.
   INFO-SM-ERR-CAUSE-W0  the inject is dropped (the copies stay apart), a write
                   of 0 to MAIN_SM_STATUS, then ERR at the next read. Logged, not
                   graded: the integrity error persists, so ERR latches again
@@ -233,7 +258,9 @@ is graded at the end of its trip: its values are taken before the halt and exit
 legs, which it does not grade. The ``cp_sm_err`` cells set and reset_clears are
 held and released by ``ESRC_PA_SM_ERR`` after the CHK-SM-ERR line of that leg
 passes, and the w1c_clears cell after CHK-SM-ERR-W1C passes; the two INFO
-writes of the ERR leg run with the window closed.
+writes of the ERR leg run with the window closed. Each target leg releases its
+``cp_sm_err_target`` cell, and the ``cp_sm_err`` set cell, the same way; a
+CTRL-SM-ERR-TARGET logged absent releases nothing.
 """
 
 from __future__ import annotations
@@ -354,6 +381,40 @@ ILLEGAL_HOLD_CLKS = 2
 # Bits of the counter copy that the inject can flip: REPCNT_TOTAL_FAILS.FAIL_COUNT
 # is 32 bits (entropy_source.adoc:682).
 CNTR_BITS = ENTROPY_SOURCE.mask("REPCNT_TOTAL_FAILS").bit_length()
+# Counter-copy inject targets after REPCNT_TOTAL_FAILS (code 0), selected by
+# esrc_cntr_inject_bit_i[7:5] with the bench variables esrc_cntr_inj_lane and
+# esrc_cntr_inj_slot (docs/SEP_TB_ARCH.adoc): name -> (code, lane target, the
+# counters that the slot selects as (label, width)). The widths are the prim_count
+# widths of the RTL instances, bench values that bound the drawn bit, not goldens:
+# u_window_cntr 16 (entropy_generator_complex.sv), the per-lane test counters 16
+# (entropy_health_test.sv RegWidth, one gen_cntrs entry per bit of the 8-bit lane
+# stream), and the u_entropy_src_cntr_reg_* RegWidth of entropy_source.sv: the
+# totals 32, the any-alert fails 16 and the alert counters 4.
+LANE_SLOTS = 8
+CC_CODE_SHIFT = 5
+CC_TARGET_SALT = 0x5E9C_C7A6
+CC_TARGETS: dict[str, tuple[int, bool, tuple[tuple[str, int], ...]]] = {
+    "window": (1, False, (("u_window_cntr", 16),)),
+    "lane_rep": (2, True, tuple((f"repcnt_cntr{s}", 16) for s in range(LANE_SLOTS))),
+    "lane_apt": (3, True, tuple((f"adaptp_cntr{s}", 16) for s in range(LANE_SLOTS))),
+    "lane_markov": (4, True, tuple((f"markov_cntr{s}", 16) for s in range(LANE_SLOTS))),
+    "total": (
+        5,
+        False,
+        (
+            ("apt_hi", 32),
+            ("apt_lo", 32),
+            ("markov_hi", 32),
+            ("markov_lo", 32),
+            ("any_alert_fails", 16),
+        ),
+    ),
+    "alert": (
+        6,
+        False,
+        tuple((f"{n}_alert", 4) for n in ("repcnt", "apt_hi", "apt_lo", "markov_hi", "markov_lo")),
+    ),
+}
 # A write with no bit set: a write of 0 to ERR (and to ALERT).
 SM_W0 = 0
 THR_FIELDS = ENTROPY_SOURCE.mask("ALERT_THRESHOLD")
@@ -434,6 +495,25 @@ BREAK = [STUCK1] + [
 
 
 @dataclass(frozen=True)
+class CcLeg:
+    """One target leg of CHK-SM-ERR: the target, its lane and counter, and the flipped bit."""
+
+    target: str
+    lane: int
+    slot: int
+    bit: int
+
+    @property
+    def counter(self) -> str:
+        return CC_TARGETS[self.target][2][self.slot][0]
+
+    @property
+    def inject_bits(self) -> int:
+        """esrc_cntr_inject_bit_i: the bit index in [4:0] and the target code in [7:5]."""
+        return self.bit | (CC_TARGETS[self.target][0] << CC_CODE_SHIFT)
+
+
+@dataclass(frozen=True)
 class Plan:
     seed: int
     trip_thr: tuple[int, ...]
@@ -444,6 +524,7 @@ class Plan:
     balanced: tuple[Balanced, ...]
     inj_bits: tuple[int, int]
     illegal_state: int
+    cc_legs: tuple[CcLeg, ...]
 
     def describe(self) -> str:
         blocks = " ".join(
@@ -454,7 +535,8 @@ class Plan:
         return (
             f"trip_thr={','.join(str(t) for t in self.trip_thr)} order={','.join(str(t) for t in self.order)} {blocks} "
             f"{describe(self.balanced)} inj_bits={self.inj_bits[0]},{self.inj_bits[1]} "
-            f"illegal_state=0x{self.illegal_state:03x}"
+            f"illegal_state=0x{self.illegal_state:03x} cc_legs="
+            + ",".join(f"{c.target}:{c.lane}:{c.counter}:{c.bit}" for c in self.cc_legs)
         )
 
 
@@ -489,8 +571,36 @@ def draw_plan(seed: int, shard: int | None = None) -> Plan:
     bit_b = rng.choice([b for b in range(CNTR_BITS) if b != bit_a])
     illegal = rng.choice([v for v in range(1 << STATE_BITS) if v not in MAIN_SM_ENCODINGS])
     return Plan(
-        seed, tuple(trip_thr), tuple(order), window, gap, trips, balanced, (bit_a, bit_b), illegal
+        seed,
+        tuple(trip_thr),
+        tuple(order),
+        window,
+        gap,
+        trips,
+        balanced,
+        (bit_a, bit_b),
+        illegal,
+        draw_cc_legs(seed),
     )
+
+
+def draw_cc_legs(seed: int) -> tuple[CcLeg, ...]:
+    """The target legs of CHK-SM-ERR, from a stream of their own.
+
+    Every target runs once, in a drawn order; the lane (lane targets only), the
+    counter within the target and a bit below its width are drawn per target.
+    """
+    rng = SepSeededRng(seed ^ CC_TARGET_SALT)
+    names = list(CC_TARGETS)
+    rng.shuffle(names)
+    legs = []
+    for name in names:
+        _, per_lane, counters = CC_TARGETS[name]
+        lane = rng.randrange(NUM_LANES) if per_lane else 0
+        slot = rng.randrange(len(counters))
+        bit = rng.randrange(counters[slot][1])
+        legs.append(CcLeg(name, lane, slot, bit))
+    return tuple(legs)
 
 
 def _handle(path: str):
@@ -585,6 +695,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             close_graded_window(self.logger)
         if shard not in (1, 3):
             await self._sm_err_leg()
+            await self._sm_err_target_legs()
             await self._sm_illegal_leg()
         close_graded_window(self.logger)
 
@@ -1714,7 +1825,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         specification makes the forced value an illegal state. The leaf forces the
         drawn encoding on the state flops (MAIN_SM_FLOPS) for ILLEGAL_HOLD_CLKS
         clocks, releases it, waits SM_ERR_WAIT_CLKS clocks and reads ERR once.
-        ERR reads 0 before the force (the ERR leg ends with a write of 1 to ERR). The
+        ERR reads 0 before the force (the target legs end with a TRNG reset). The
         main state machine stays in its error state until a reset, so this leg is
         the last. The leg only logs: under Verilator (the state flop is not public
         to cocotb), with no handle, or with ERR not 0 before the force it logs
@@ -1813,6 +1924,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             err0 == 0 and pf0 == 0 and err1 == 1 and pf1 == 1,
             ESRC_PA_SM_ERR,
             leg="set",
+            target="repcnt",
             inj_bit=bit_a,
             err_before=err0,
             expect_err_before=0,
@@ -1885,6 +1997,117 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             word=f"0x{w5:08x}",
         )
         await self._sm_err_sticky_leg()
+
+    def _inject_drop(self) -> None:
+        cocotb.top.esrc_cntr_inject_i.value = 0
+
+    async def _sm_err_target_legs(self) -> None:
+        """CHK-SM-ERR leg=set target=<t> and CTRL-SM-ERR-TARGET, one leg per target.
+
+        Golden: entropy_source.rdl MAIN_SM_STATUS.ERR ("Latches an illegal state or
+        health-test counter integrity error"), architecture.adoc:125 (the window
+        counter is a prim_count) and :137 (the full entropy-source reset clears
+        ERR). Each leg: a TRNG reset (the previous inject drops before the release,
+        so the copies start equal), INTR_ENABLE all ones, then the ``leg=set``
+        sequence of _sm_err_leg on one copy of the drawn counter. The control reads
+        the copy-mismatch flag of that counter: 0 with the selection written and the
+        inject off, then 1 at a clock of the wait. A TRNG reset after the last leg
+        leaves ERR 0 for the illegal-state leg.
+        """
+        dut = cocotb.top
+        legs = self.plan.cc_legs
+        for i, leg in enumerate(legs):
+            fields = {
+                "leg": "set",
+                "target": leg.target,
+                "lane": leg.lane,
+                "slot": leg.slot,
+                "counter": leg.counter,
+                "inj_bit": leg.bit,
+            }
+            close_graded_window(self.logger)
+            try:
+                await self.setup.trng_reset(before_release=self._inject_drop)
+            except TrialTimeout as exc:
+                self._inject_drop()
+                for rest in legs[i:]:
+                    self._fail(
+                        "SM-ERR",
+                        leg="set",
+                        target=rest.target,
+                        reason=f"timeout:{exc.what}",
+                        bound=exc.bound,
+                    )
+                return
+            await self._wr(ESRC_INTR_ENABLE, INTR_ENABLE_ALL)
+            open_graded_window(TEST, self.logger)
+            err0, w0 = await self._err_read()
+            pf0 = await self._pf_read()
+            dut.esrc_cntr_inj_lane.value = leg.lane
+            dut.esrc_cntr_inj_slot.value = leg.slot
+            self._inject(False, leg.inject_bits)
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            lane_rb = int(dut.esrc_cntr_inj_lane.value)
+            slot_rb = int(dut.esrc_cntr_inj_slot.value)
+            err_o_before = self.rd(dut.esrc_cntr_copy_err_o, mask=1)
+            await RisingEdge(dut.clk_i)
+            self._inject(True, leg.inject_bits)
+            err_clk = None
+            pri = sec = 0
+            for clk in range(1, SM_ERR_WAIT_CLKS + 1):
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if err_clk is None and self.rd(dut.esrc_cntr_copy_err_o, mask=1):
+                    err_clk = clk
+                    pri = self.rd(dut.esrc_cntr_copy_pri_o)
+                    sec = self.rd(dut.esrc_cntr_copy_sec_o)
+            await RisingEdge(dut.clk_i)
+            err1, w1 = await self._err_read()
+            pf1 = await self._pf_read()
+            if err_clk is None:
+                pri = self.rd(dut.esrc_cntr_copy_pri_o)
+                sec = self.rd(dut.esrc_cntr_copy_sec_o)
+            self._ctrl(
+                "SM-ERR-TARGET",
+                lane_rb == leg.lane
+                and slot_rb == leg.slot
+                and err_o_before == 0
+                and err_clk is not None,
+                **fields,
+                inject_bits=f"0x{leg.inject_bits:02x}",
+                lane_rb=lane_rb,
+                slot_rb=slot_rb,
+                err_o_before=err_o_before,
+                expect_err_o_before=0,
+                err_o=int(err_clk is not None),
+                expect_err_o=1,
+                err_clk=err_clk,
+                pri=f"0x{pri:08x}",
+                sec=f"0x{sec:08x}",
+            )
+            await self._grade(
+                "SM-ERR",
+                err0 == 0 and pf0 == 0 and err1 == 1 and pf1 == 1,
+                ESRC_PA_SM_ERR,
+                **fields,
+                err_before=err0,
+                expect_err_before=0,
+                pf_before=pf0,
+                expect_pf_before=0,
+                err=err1,
+                expect_err=1,
+                pf=pf1,
+                expect_pf=1,
+                wait_clk=SM_ERR_WAIT_CLKS + 1,
+                word_before=f"0x{w0:08x}",
+                word=f"0x{w1:08x}",
+            )
+        close_graded_window(self.logger)
+        await self.setup.trng_reset(before_release=self._inject_drop)
+        self._inject(False, 0)
+        dut.esrc_cntr_inj_lane.value = 0
+        dut.esrc_cntr_inj_slot.value = 0
 
     async def _sm_err_sticky_leg(self) -> None:
         """CHK-SM-ERR leg sticky, CHK-SM-ERR-W0 and CHK-SM-ERR-W1C, with the error-output inject.

@@ -262,7 +262,7 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# meip pending map of the driven sources, the FIFO-empty sources, the crypto alert aggregate, the gateway cells and the boundary input. The host patches the seeded orders, masks and gateway assignment into the firmware parameter block.
+# meip pending map of the driven sources, the FIFO-empty sources, the crypto alert aggregate, the gateway cells and the boundary input, then the source 33 hold after an EDN adapter fault, one leg per adapter with a cold reset between. The host patches the seeded orders, masks and gateway assignment into the firmware parameter block.
 name = "sep_pic_pending_map_walk_rand_test"
 module = "cpu.sep_pic_pending_map_walk_rand_test"
 firmware = "pic_pending_map_walk_rand_test"
@@ -271,7 +271,7 @@ reseed = 4
 timeout_sec = 6900
 tags = ["pic", "interrupt", "alert", "gateway", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value", "sep_ras"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense", "+esrc_noise_force"]
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_edn_ack_sm_inject", "+sep_edn_ack_sm_assert_waive"]
 
 [[tests]]
 # WDT bark NMI at the reset vector, through a locked trampoline copy with the PIC in four gate states, and at a free handler address after a cold reset. The host patches the seeded copy, address and cases into the firmware parameter block.

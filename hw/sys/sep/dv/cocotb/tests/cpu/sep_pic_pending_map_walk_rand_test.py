@@ -181,9 +181,33 @@ calls ``dma_alert`` a one-cycle pulse, while the ``sep_ras_t`` field comment it
 delegates to calls it a level while an alert pair fails; the port table wins),
 ``OBS-RAS-DMA_ALERT-INTEG-FALL`` (the fall after the pair release),
 ``OBS-RAS-CRYPTO_ALERT-PAIR`` (the run lengths of the pair window, where two
-pulses can be adjacent) and
-``INFO-RAS-CRYPTO_ALERT-MODE2`` (no crypto alert pair force and no crypto EDN
-adapter fault in this leaf).
+pulses can be adjacent) and ``OBS-RAS-CRYPTO_ALERT-EDN-FAULT`` (the
+``crypto_alert`` high runs of each EDN adapter fault leg below;
+``port_table.adoc:130`` calls ``crypto_alert`` a one-cycle pulse, while the
+``sep_ras_t`` field comment it delegates to calls it a level until reset once
+a crypto EDN adapter faults; the port table wins).
+
+EDN adapter fault legs (the last of the leaf; only ``rst_ni`` ends the fault).
+``+sep_edn_ack_sm_inject`` arms the bench force of one ``edn_ack_sm`` state
+register to an illegal encoding (``edn_ack_sm_inj_sel``); the crypto adapter
+leg forces one seeded endpoint of four, the pool adapter leg its one endpoint.
+A cold reset (``rst_ni``, CPU held off) lies between the two legs, so each
+adapter fault has its own held interval:
+
+* CTRL-EDN-FAULT-INJECT  before the force, source 33 reads 0 with no X and
+                   neither adapter ``err_o`` is set on every clock of the
+                   precondition window (after the cold reset too); the
+                   forced field of ``edn_ack_sm_state_o`` reads the injected
+                   value on the clock after the start, and the adapter's bit
+                   of ``edn_adapter_err_o`` reads 1 there. A failed part
+                   fails the leaf; the ``err_o`` part is judged after
+                   CHK-PIC-CRYPTO-ALERT-HOLD.
+* CHK-PIC-CRYPTO-ALERT-HOLD  source 33 reads 1 with no X on every clock from
+                   the bound after the inject to the end of the leg, also
+                   after the force is released, with ``rst_ni`` high on each
+                   of those clocks (``hw/sys/sep/doc/crypto.adoc``, Crypto
+                   alert source: an adapter's ``err_o`` holds until reset,
+                   keeping the source high; ``interrupts.adoc``, source 33).
 
 Logged, not graded: ``INFO-IDLE-UNSTATED`` (sources 13, 15, 16, 37 and 38,
 masked in every compare; source 39 is masked in the same compares and graded
@@ -210,7 +234,9 @@ holds only the FIFO read side, so the HMAC message cannot complete after it
 
 Every expected value comes from the stimulus model (the drawn sources,
 enables, gateway cells and clear values; ``env/sep_pic_map``) and the PIC
-register text, never from a DUT read. cpu run mode, ``+skip_fuse_sense``.
+register text, never from a DUT read. cpu run mode, ``+skip_fuse_sense``,
+``+sep_edn_ack_sm_inject`` and ``+sep_edn_ack_sm_assert_waive`` (the
+assertions the illegal state trips by construction; four-state simulator only).
 """
 
 from __future__ import annotations
@@ -321,6 +347,22 @@ GAP_MAX = 64
 P_MAGIC_WORD = 0x3A1C9E21
 # Salt of the open-value leg draws, so the draws above keep their seed mapping.
 _LEG_SALT = 0x4F56_4C47 << 32
+# Salt of the EDN adapter fault endpoint draw.
+_EDN_SALT = 0x4544_4E46 << 32
+# The tb_top EDN ack state machine inject hook: edn_ack_sm_inj_sel 1-4 force
+# crypto adapter endpoints 0-3, 5 the pool adapter endpoint; the state of the
+# endpoint of select s is the 9-bit field at 9 * (s - 1) of edn_ack_sm_state_o,
+# and edn_adapter_err_o carries err_o of each adapter.
+EDN_CRYPTO_SELS = (1, 2, 3, 4)
+EDN_POOL_SEL = 5
+EDN_STATE_W = 9
+EDN_ERR_BIT = {"crypto": 0, "pool": 1}
+# Fault leg clocks: the precondition window, the forced clocks, the clocks from
+# the inject to the first graded clock, and the clocks after the release.
+FAULT_PRE_CLK = 64
+FAULT_FORCE_CLK = 16
+FAULT_BOUND = 4
+FAULT_POST_CLK = HOLD_CLK
 # meigwclr race: the pulse clock relative to the write clock, per timed attempt
 # (attempt 0 measures the write clock), and the bound on each attempt.
 RACE_OFFSETS = (0, -1, -2)
@@ -412,6 +454,7 @@ class WalkCfg:
     ext_width: int
     dinj_val: int
     l2e: int
+    edn_sel: int
 
     @classmethod
     def from_seed(cls, seed: int, ext_width: int) -> "WalkCfg":
@@ -445,9 +488,10 @@ class WalkCfg:
         leg = SepSeededRng(seed ^ _LEG_SALT)
         dinj_val = leg.getrandbits(1)
         l2e = GW_SRCS.index(leg.choice(GW_EVENT))
+        edn_sel = SepSeededRng(seed ^ _EDN_SALT).choice(EDN_CRYPTO_SELS)
         return cls(seed, ord1, ord2, gap1, gap2, alert_order, (k1, k2), pair_gap, akind,
                    native_order, mask1, gw_cell, gw_order, clr_x, (b1, b2, b3), ext_width,
-                   dinj_val, l2e)  # fmt: skip
+                   dinj_val, l2e, edn_sel)  # fmt: skip
 
     def enabled(self, src: int, pas: int) -> bool:
         on = bool((self.mask1 >> src) & 1)
@@ -543,6 +587,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         "CHK-GW-NONVAC",
         "CHK-EXT-IN",
         "CHK-GW-L2E",
+        "CHK-PIC-CRYPTO-ALERT-HOLD",
         *(f"CHK-RAS-{f.upper()}-{h}" for f, halves in RAS_HALVES.items() for h in halves),
         f"CHK-RAS-{RAS_POOL_ERR.upper()}-IDLE",
         "CHK-FW-IDENTITY",
@@ -1525,9 +1570,6 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
         _, runs, _ = self._ras_win("pr0", "pr1", "crypto_alert")
         self.ras_chk.obs("RAS-CRYPTO_ALERT-PAIR", run_lengths=[w for _, w in runs] or "none")
-        self.ras_chk.info(
-            "RAS-CRYPTO_ALERT-MODE2", driven=0, pair_force=0, crypto_edn_adapter_fault=0
-        )
         for f, kind in RAS_FATAL_KIND.items():
             k = next(i for i, a in enumerate(ALERTS) if a[:2] == kind)
             idle = [f"aq{k}..aw{k}", *(w for j, w in zip(order, alert_wins) if j != k)]
@@ -1678,6 +1720,155 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 int(recs[i]["after"]),
             )
 
+    # ---- EDN adapter fault legs (last; only rst_ni ends a fault) ----
+    def _edn_fault_sample(self, sel: int) -> dict[str, int]:
+        """One ``clk_i`` sample of the fault leg signals; a bit that reads X or Z counts as 0."""
+        d = self.dut
+        vec, vxm = _value_bits(d.sep_internal_interrupts_probe_o)
+        ras, rxm = _value_bits(d.sep_ras_probe_o)
+        err, exm = _value_bits(d.edn_adapter_err_o)
+        st, sxm = _value_bits(d.edn_ack_sm_state_o)
+        rst, rstx = _value_bits(d.rst_ni)
+        vb, rb, sh = vec_bit(SRC_CRYPTO_ALERT), ras_bit("crypto_alert"), EDN_STATE_W * (sel - 1)
+        smask = (1 << EDN_STATE_W) - 1
+        return {
+            "src33": (vec >> vb) & 1 & ~(vxm >> vb),
+            "src33_x": (vxm >> vb) & 1,
+            "ras": (ras >> rb) & 1 & ~(rxm >> rb),
+            "err": err & ~exm & 0b11,
+            "err_x": exm & 0b11,
+            "state": (st >> sh) & smask,
+            "state_x": int((sxm >> sh) & smask != 0),
+            "rst": rst & ~rstx & 1,
+        }
+
+    async def _edn_fault_leg(self, adapter: str, sel: int) -> None:
+        """Force one ``edn_ack_sm`` of ``adapter`` illegal and grade the hold of source 33.
+
+        Clock 0 is the clock of the start write; clock 1, the clock after it, is
+        the inject clock. The graded interval is clock ``1 + FAULT_BOUND`` to the
+        last clock of the leg; the release write lands on clock
+        ``FAULT_FORCE_CLK + 1``.
+        """
+        dut, clk, seed = self.dut, self.dut.clk_i, self.wc.seed
+        eb = EDN_ERR_BIT[adapter]
+        val, vxm = _value_bits(dut.edn_ack_sm_inj_val)
+        pre = Counter()
+        for _ in range(FAULT_PRE_CLK):
+            await RisingEdge(clk)
+            await ReadOnly()
+            s = self._edn_fault_sample(sel)
+            pre["src33"] += s["src33"]
+            pre["src33_x"] += s["src33_x"]
+            pre["err"] += int(s["err"] != 0 or s["err_x"] != 0)
+        await RisingEdge(clk)
+        dut.edn_ack_sm_inj_sel.value = sel
+        release = FAULT_FORCE_CLK + 1
+        last = release + FAULT_POST_CLK
+        first_graded = 1 + FAULT_BOUND
+        at_inject: dict[str, int] = {}
+        hold = Counter()
+        first_low = first_rise = None
+        runs: list[list] = []
+        ras_prev = 0
+        for n in range(last + 1):
+            if n > 0:
+                await RisingEdge(clk)
+                if n == release:
+                    dut.edn_ack_sm_inj_sel.value = 0
+            await ReadOnly()
+            s = self._edn_fault_sample(sel)
+            if n == 1:
+                at_inject = s
+            if n >= 1 and first_rise is None and s["src33"]:
+                first_rise = n - 1
+            if s["ras"] and not ras_prev:
+                runs.append([n - 1, None])
+            elif ras_prev and not s["ras"]:
+                runs[-1][1] = n - 1 - runs[-1][0]
+            ras_prev = s["ras"]
+            if n < first_graded:
+                continue
+            hold["clk"] += 1
+            hold["after_release"] += int(n > release)
+            hold["high"] += s["src33"]
+            hold["x"] += s["src33_x"]
+            hold["rst_low"] += int(not s["rst"])
+            hold["ras_high"] += s["ras"]
+            hold["err_high"] += (s["err"] >> eb) & 1
+            if first_low is None and not s["src33"]:
+                first_low = n - 1
+        ctrl = (
+            f"seed={seed} adapter={adapter} sel={sel} ep={sel - 1 if adapter == 'crypto' else 0} "
+            f"inj_val=0x{val:03x} pre_clk={FAULT_PRE_CLK} pre_src33_high_clk={pre['src33']} "
+            f"pre_src33_x_clk={pre['src33_x']} pre_err_clk={pre['err']} "
+            f"state_at_inject=0x{at_inject['state']:03x} state_x={at_inject['state_x']} "
+            f"err_at_inject=0b{at_inject['err']:02b} err_x=0b{at_inject['err_x']:02b} "
+            f"force_clk={FAULT_FORCE_CLK} release_clk={release}"
+        )
+        reach = (
+            vxm == 0
+            and pre["src33"] == 0
+            and pre["src33_x"] == 0
+            and pre["err"] == 0
+            and at_inject["state_x"] == 0
+            and at_inject["state"] == val
+        )
+        if not reach:
+            raise AssertionError(f"CTRL-MISSING EDN-FAULT-INJECT {ctrl}")
+        self.logger.info("CTRL-EDN-FAULT-INJECT LOG %s", ctrl)
+        name = "CHK-PIC-CRYPTO-ALERT-HOLD"
+        ok = (
+            hold["clk"] > 0
+            and hold["after_release"] > 0
+            and hold["high"] == hold["clk"]
+            and hold["x"] == 0
+            and hold["rst_low"] == 0
+        )
+        text = (
+            f"adapter={adapter} seed={seed} sel={sel} bound_clk={FAULT_BOUND} "
+            f"graded_clk={hold['clk']} after_release_clk={hold['after_release']} "
+            f"high_clk={hold['high']} x_clk={hold['x']} rst_low_clk={hold['rst_low']} "
+            f"first_low_clk={'none' if first_low is None else first_low} "
+            f"rise_after_inject_clk={'none' if first_rise is None else first_rise}"
+        )
+        assert ok, f"{name} FAIL {text}"
+        self.logger.info("%s PASS %s", name, text)
+        self.n_pass[name] += 1
+        if not (at_inject["err"] >> eb) & 1 or (at_inject["err_x"] >> eb) & 1:
+            raise AssertionError(
+                f"CTRL-MISSING EDN-FAULT-INJECT {ctrl}: err_o of the {adapter} adapter reads 0"
+            )
+        self.ras_chk.obs(
+            "RAS-CRYPTO_ALERT-EDN-FAULT",
+            adapter=adapter,
+            graded_clk=hold["clk"],
+            high_clk=hold["ras_high"],
+            runs=[f"{r}:{'open' if w is None else w}" for r, w in runs] or "none",
+            err_high_clk=hold["err_high"],
+        )
+
+    async def _edn_fault_legs(self) -> None:
+        """The crypto adapter leg, a cold reset with the CPU held off, then the pool adapter leg."""
+        dut = self.dut
+        assert len(dut.edn_ack_sm_state_o) == EDN_STATE_W * EDN_POOL_SEL, (
+            f"edn_ack_sm_state_o is {len(dut.edn_ack_sm_state_o)} bits wide"
+        )
+        await self._edn_fault_leg("crypto", self.wc.edn_sel)
+        retired = self.cpu_trace_mon.trace_count
+        await RisingEdge(dut.clk_i)
+        dut.mpc_reset_run_req.value = 0
+        por = await self.pulse_rst_ni()
+        await self._edn_fault_leg("pool", EDN_POOL_SEL)
+        self.logger.info(
+            "INFO-EDN-FAULT-POR LOG seed=%d cpu_run_after_reset=0 sep_reset_n_at_hold_end=%d "
+            "release_clks=%d retired_after_reset=%d",
+            self.wc.seed,
+            por["sep_reset_n_at_hold_end"],
+            por["release_clks"],
+            self.cpu_trace_mon.trace_count - retired,
+        )
+
     async def _pass_legs(self, legs: tuple[str, ...]) -> None:
         """Raise the FCOV pass label of each leg whose control passed (two clocks each)."""
         clk = self.dut.clk_i
@@ -1712,6 +1903,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.wc = WalkCfg.from_seed(self.random_seed(), width)
         c = self.wc
         self.logger.info("INFO-SEED seed=%d", c.seed)
+        for arg in ("sep_edn_ack_sm_inject", "sep_edn_ack_sm_assert_waive"):
+            if arg not in cocotb.plusargs:
+                raise AssertionError(f"CTRL-MISSING EDN-FAULT-INJECT seed={c.seed} no +{arg}")
         self.logger.info("INFO-DRAW order_pass1=%s", ",".join(str(MAP[i]) for i in c.ord1))
         self.logger.info("INFO-DRAW order_pass2=%s", ",".join(str(MAP[i]) for i in c.ord2))
         self.logger.info("INFO-DRAW gaps_pass1=%s", ",".join(map(str, c.gap1)))
@@ -1739,6 +1933,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.logger.info(
             "INFO-DRAW dma_alert_pair_val=%d level_to_edge_src=%d", c.dinj_val, GW_SRCS[c.l2e]
         )
+        self.logger.info("INFO-DRAW edn_fault_crypto_ep=%d", c.edn_sel - 1)
         patched = os.path.join(os.getcwd(), "sep_dtcm_pic_walk.hex")
         patch_param_block(_DTCM_HEX, patched, P_MAGIC_WORD, c.words())
 
@@ -1894,10 +2089,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             "CHK-GWCLR-VALUE": 1,
             "CHK-GW-NONVAC": 1,
             "CHK-EXT-IN": 2,
+            "CHK-PIC-CRYPTO-ALERT-HOLD": 2,
         }
-        bad = {k: (self.n_pass[k], v) for k, v in want.items() if self.n_pass[k] != v}
-        assert not bad, f"CHK-COUNT FAIL (got, want): {bad}"
-        self.logger.info("INFO-CHK-COUNT LOG %s", " ".join(f"{k}={v}" for k, v in want.items()))
         self._leg_dma_alert_integ()
         self._leg_gw_level_to_edge()
         self._leg_gwclr_race()
@@ -1906,4 +2099,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             raise AssertionError(
                 f"{len(self.ras_chk.fails)} RAS check(s) failed: " + "; ".join(self.ras_chk.fails)
             )
+        await self._edn_fault_legs()
+        bad = {k: (self.n_pass[k], v) for k, v in want.items() if self.n_pass[k] != v}
+        assert not bad, f"CHK-COUNT FAIL (got, want): {bad}"
+        self.logger.info("INFO-CHK-COUNT LOG %s", " ".join(f"{k}={v}" for k, v in want.items()))
         self.result_pass(_TEST, c.seed, len(want) + 1)

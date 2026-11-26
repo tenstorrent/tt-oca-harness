@@ -221,12 +221,25 @@
 `SEP_TB_IN(logic [1:0], esrc_fifo_ptr_sel_i)
 `SEP_TB_IN(logic [2:0], esrc_fifo_ptr_bit_i)
 // ESRC health-test counter-copy inject. Default 0. At the rise of
-// esrc_cntr_inject_i the bench takes the secondary copy of the REPCNT_TOTAL_FAILS
-// counter with bit esrc_cntr_inject_bit_i (0 to 31) inverted, and holds that copy
-// at that value while the input stays 1, so the two copies disagree. Error
-// inject, docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+// esrc_cntr_inject_i the bench takes the secondary copy of one prim_count
+// counter with bit esrc_cntr_inject_bit_i[4:0] inverted, and holds that copy at
+// that value while the input stays 1, so the two copies disagree.
+// esrc_cntr_inject_bit_i[7:5] selects the counter: 0 REPCNT_TOTAL_FAILS,
+// 1 the window counter, 2/3/4 the repetition-count/adaptive-proportion/Markov
+// counter of one lane, 5 a total-fails counter, 6 an alert-fails counter, 7 none.
+// The lane and the counter within a target come from the bench variables
+// esrc_cntr_inj_lane and esrc_cntr_inj_slot (tb_top.sv). A bit index at or above
+// the counter width flips no bit. Error inject, docs/SEP_TB_ARCH.adoc. See the
+// force block in tb_top.sv.
 `SEP_TB_IN(logic, esrc_cntr_inject_i)
-`SEP_TB_IN(logic [4:0], esrc_cntr_inject_bit_i)
+`SEP_TB_IN(logic [7:0], esrc_cntr_inject_bit_i)
+// Readback of the counter that esrc_cntr_inject_bit_i[7:5], esrc_cntr_inj_lane
+// and esrc_cntr_inj_slot select, zero-extended to 32 bits: the primary copy, the
+// secondary copy and the counter's registered copy-mismatch flag (prim_count
+// err_o). All 0 when the selection names no counter. Read-only.
+`SEP_TB_OUT(logic [31:0], esrc_cntr_copy_pri_o)
+`SEP_TB_OUT(logic [31:0], esrc_cntr_copy_sec_o)
+`SEP_TB_OUT(logic, esrc_cntr_copy_err_o)
 // ESRC noise-source stuck-at inject. Default 0. While bit i of
 // esrc_noise_stuck_en_i is 1, the ring-oscillator output of lane i is forced to
 // bit i of esrc_noise_stuck_val_i, upstream of the sampling flop, and the
@@ -1004,6 +1017,13 @@
 // output is accepted.
 `SEP_TB_OUT(logic [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0], edn_crypto_arb_req_o)
 `SEP_TB_OUT(logic [sep_crypto_pkg::SepCryptoAxisEdnClientCount-1:0], edn_crypto_arb_gnt_o)
+// EDN adapter ack state machines (gen_ep[i].u_edn_ack_sm.state_q), 9 bits per
+// endpoint: [9*i +: 9] endpoint i of the crypto adapter (u_axis_edn_crypto_s3c_scan,
+// i 0 to 3), [44:36] endpoint 0 of the pool adapter (u_axis_edn_pool_s3c_scan);
+// and err_o of the two adapters, [0] crypto, [1] pool. Readback of the
+// +sep_edn_ack_sm_inject hook in tb_top.sv. Read-only.
+`SEP_TB_OUT(logic [44:0], edn_ack_sm_state_o)
+`SEP_TB_OUT(logic [1:0], edn_adapter_err_o)
 // Client side of the EDN synchronizer (prim_sync_reqack_data, data from DST to
 // SRC) inside each native crypto client, same client index as crypto_edn_*_o.
 // The client takes data_o on the clock with src_req_i && src_ack_o.
@@ -1141,10 +1161,17 @@
 // The two Key Manager reset conditioner outputs: bit 1 rst_cold_aasd_n, bit 0
 // rst_warm_sync_n (u_key_manager_s3c_scan).
 `SEP_TB_OUT(logic [1:0], km_cond_rst_probe_o)
+// ML-KEM shared-key interrupt input of the Key Manager
+// (u_key_manager_s3c_scan.abr_mlkem_sharedkey_irq_i), in every build. Read-only.
+`SEP_TB_OUT(logic, km_abr_sk_irq_in_probe_o)
 // The two synchronized resets of the reference counter: bit 1 the clk_ref_i
 // side, bit 0 the clk_i side
 // (u_sep_system_csr.u_reference_counter_counter.prstb_synced_rd/_write).
 `SEP_TB_OUT(logic [1:0], refcnt_rst_n_probe_o)
+// Output of the eFuse interface reset synchronizer
+// (u_efuse_interface_controller.u_reset_n_sync.q_o), the source of
+// sep_intermediate_reset_n. Read-only.
+`SEP_TB_OUT(logic, efuse_rst_sync_probe_o)
 // IP-interrupt aggregator: observation-only mirror of the NUM_INTERNAL_IRQS-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
