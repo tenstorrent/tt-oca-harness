@@ -161,7 +161,7 @@ Checks:
                   all strobes) (``hw/sys/sep/doc/fabric.adoc:167-170``), and the
                   PR-DBG-SB R or B beat carries the code the port returned, and
                   the R beat its word (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:80``
-                  "Adopter-defined", ``doc/trm/src/memory_map.adoc:81-82``: the
+                  "Adopter-defined", ``doc/trm/src/memory_map.adoc:188``: the
                   adopter's implementation answers). ``sberror`` is 0 for OKAY
                   and not 0 for SLVERR; an OKAY read returns the word in
                   ``sbdata``. The reply on PR-EXT-RSP is the bench value (CTL).

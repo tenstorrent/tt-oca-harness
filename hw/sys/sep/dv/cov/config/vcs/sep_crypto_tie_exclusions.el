@@ -32,7 +32,7 @@
 //==================================================
 
 CHECKSUM: "3163693320 1642766038"
-ANNOTATION: "SEP-KVSHIM-HWIF-DEFAULT: sep_abr_kv_shim drives hwif_o to '{default: 0} and assigns only KEY[*].data.next/we, KEY_CTRL.key_valid.hwset and IRQ_STATUS.key_valid.hwset; KEY[*].data.hwclr and IRQ_STATUS.key_valid.next are never assigned and hold 0. The wrapper wires hwif_o straight into abr_wrapper_key_reg hwif_in. hw/sys/sep/rtl/sep_abr_kv_shim.sv:156-166, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:242,265-272"
+ANNOTATION: "SEP-KVSHIM-HWIF-DEFAULT: sep_abr_kv_shim drives hwif_o to '{default: 0} and assigns only KEY[*].data.next/we, KEY_CTRL.key_valid.hwset and IRQ_STATUS.key_valid.hwset; KEY[*].data.hwclr and IRQ_STATUS.key_valid.next are never assigned and hold 0. The wrapper wires hwif_o straight into abr_wrapper_key_reg hwif_in. hw/sys/sep/rtl/sep_abr_kv_shim.sv:156-166, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:276,299-306"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_sep_abr_kv_shim
 Toggle hwif_o.MLKEM_SHARED_KEY.KEY[0].data.hwclr "logic hwif_o.MLKEM_SHARED_KEY.KEY[0].data.hwclr"
 Toggle hwif_o.MLKEM_SHARED_KEY.KEY[1].data.hwclr "logic hwif_o.MLKEM_SHARED_KEY.KEY[1].data.hwclr"
@@ -45,7 +45,7 @@ Toggle hwif_o.MLKEM_SHARED_KEY.KEY[7].data.hwclr "logic hwif_o.MLKEM_SHARED_KEY.
 Toggle hwif_o.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.next "logic hwif_o.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.next"
 
 CHECKSUM: "3163693320 1642766038"
-ANNOTATION: "SEP-KVSHIM-WRRESP-TIE: kv_wr_resp is the constant '{error: 1'b0}. hw/sys/sep/rtl/sep_abr_kv_shim.sv:169, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:271"
+ANNOTATION: "SEP-KVSHIM-WRRESP-TIE: kv_wr_resp is the constant '{error: 1'b0}. hw/sys/sep/rtl/sep_abr_kv_shim.sv:169, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:305"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_sep_abr_kv_shim
 Toggle kv_wr_resp_o.error "logic kv_wr_resp_o.error"
 
@@ -57,7 +57,7 @@ Toggle kv_read_i[2].read_offset [3] "logic kv_read_i[2].read_offset[3:0]"
 Toggle kv_write_i.write_offset [3] "logic kv_write_i.write_offset[3:0]"
 
 CHECKSUM: "692244178 3042302331"
-ANNOTATION: "SEP-KVSHIM-HWIF-DEFAULT: sep_abr_kv_shim drives hwif_o to '{default: 0} and assigns only KEY[*].data.next/we, KEY_CTRL.key_valid.hwset and IRQ_STATUS.key_valid.hwset; KEY[*].data.hwclr and IRQ_STATUS.key_valid.next are never assigned and hold 0. The wrapper wires hwif_o straight into abr_wrapper_key_reg hwif_in. hw/sys/sep/rtl/sep_abr_kv_shim.sv:156-166, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:242,265-272"
+ANNOTATION: "SEP-KVSHIM-HWIF-DEFAULT: sep_abr_kv_shim drives hwif_o to '{default: 0} and assigns only KEY[*].data.next/we, KEY_CTRL.key_valid.hwset and IRQ_STATUS.key_valid.hwset; KEY[*].data.hwclr and IRQ_STATUS.key_valid.next are never assigned and hold 0. The wrapper wires hwif_o straight into abr_wrapper_key_reg hwif_in. hw/sys/sep/rtl/sep_abr_kv_shim.sv:156-166, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:276,299-306"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan
 Toggle abr_key_hwif_in.MLKEM_SHARED_KEY.KEY[0].data.hwclr "logic abr_key_hwif_in.MLKEM_SHARED_KEY.KEY[0].data.hwclr"
 Toggle abr_key_hwif_in.MLKEM_SHARED_KEY.KEY[1].data.hwclr "logic abr_key_hwif_in.MLKEM_SHARED_KEY.KEY[1].data.hwclr"
@@ -70,7 +70,7 @@ Toggle abr_key_hwif_in.MLKEM_SHARED_KEY.KEY[7].data.hwclr "logic abr_key_hwif_in
 Toggle abr_key_hwif_in.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.next "logic abr_key_hwif_in.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.next"
 
 CHECKSUM: "692244178 3042302331"
-ANNOTATION: "SEP-KVSHIM-WRRESP-TIE: kv_wr_resp is the constant '{error: 1'b0}. hw/sys/sep/rtl/sep_abr_kv_shim.sv:169, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:271"
+ANNOTATION: "SEP-KVSHIM-WRRESP-TIE: kv_wr_resp is the constant '{error: 1'b0}. hw/sys/sep/rtl/sep_abr_kv_shim.sv:169, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:305"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan
 Toggle ab_kv_wr_resp.error "logic ab_kv_wr_resp.error"
 
@@ -97,13 +97,13 @@ Toggle abr_axil_resp.r.resp [0] "logic abr_axil_resp.r.resp[1:0]"
 Toggle abr_axil_resp.b.resp [0] "logic abr_axil_resp.b.resp[1:0]"
 
 CHECKSUM: "692244178 3042302331"
-ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:227,239"
+ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:261,273"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan
 Toggle abr_key_axil_resp_o.r.resp [0] "logic abr_key_axil_resp_o.r.resp[1:0]"
 Toggle abr_key_axil_resp_o.b.resp [0] "logic abr_key_axil_resp_o.b.resp[1:0]"
 
 CHECKSUM: "692244178 3042302331"
-ANNOTATION: "SEP-ABR-MEM-ADDR-PAD: the ABR INST0 address is $clog2(832)=10 bits and INST1 is $clog2(64)=6 bits; the wrapper casts both to SEP_CRYPTO_ABR_INST2_ADDR_W=11, so INST0 bit 10 and INST1 bits 10:6 hold 0. hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:297-312,321-337, hw/sys/sep/rtl/sep_crypto_pkg.sv:238-240, vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_params_pkg.sv:64-68"
+ANNOTATION: "SEP-ABR-MEM-ADDR-PAD: the ABR INST0 address is $clog2(832)=10 bits and INST1 is $clog2(64)=6 bits; the wrapper casts both to SEP_CRYPTO_ABR_INST2_ADDR_W=11, so INST0 bit 10 and INST1 bits 10:6 hold 0. hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:331-346,355-371, hw/sys/sep/rtl/sep_crypto_pkg.sv:262-264, vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_params_pkg.sv:64-68"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan
 Toggle abr_mem_req_o.mem_inst0_bank0.waddr [10] "logic abr_mem_req_o.mem_inst0_bank0.waddr[10:0]"
 Toggle abr_mem_req_o.mem_inst0_bank0.raddr [10] "logic abr_mem_req_o.mem_inst0_bank0.raddr[10:0]"
@@ -119,7 +119,7 @@ Toggle abr_mem_req_o.mem_inst1_masked.waddr [10:6] "logic abr_mem_req_o.mem_inst
 Toggle abr_mem_req_o.mem_inst1_masked.raddr [10:6] "logic abr_mem_req_o.mem_inst1_masked.raddr[10:0]"
 
 CHECKSUM: "2662093143 2179785762"
-ANNOTATION: "SEP-KVSHIM-HWIF-DEFAULT: sep_abr_kv_shim drives hwif_o to '{default: 0} and assigns only KEY[*].data.next/we, KEY_CTRL.key_valid.hwset and IRQ_STATUS.key_valid.hwset; KEY[*].data.hwclr and IRQ_STATUS.key_valid.next are never assigned and hold 0. The wrapper wires hwif_o straight into abr_wrapper_key_reg hwif_in. hw/sys/sep/rtl/sep_abr_kv_shim.sv:156-166, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:242,265-272"
+ANNOTATION: "SEP-KVSHIM-HWIF-DEFAULT: sep_abr_kv_shim drives hwif_o to '{default: 0} and assigns only KEY[*].data.next/we, KEY_CTRL.key_valid.hwset and IRQ_STATUS.key_valid.hwset; KEY[*].data.hwclr and IRQ_STATUS.key_valid.next are never assigned and hold 0. The wrapper wires hwif_o straight into abr_wrapper_key_reg hwif_in. hw/sys/sep/rtl/sep_abr_kv_shim.sv:156-166, hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:276,299-306"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_key_csr
 Toggle hwif_in.MLKEM_SHARED_KEY.KEY[0].data.hwclr "logic hwif_in.MLKEM_SHARED_KEY.KEY[0].data.hwclr"
 Toggle hwif_in.MLKEM_SHARED_KEY.KEY[1].data.hwclr "logic hwif_in.MLKEM_SHARED_KEY.KEY[1].data.hwclr"
@@ -132,7 +132,7 @@ Toggle hwif_in.MLKEM_SHARED_KEY.KEY[7].data.hwclr "logic hwif_in.MLKEM_SHARED_KE
 Toggle hwif_in.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.next "logic hwif_in.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.next"
 
 CHECKSUM: "2662093143 2179785762"
-ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:227,239"
+ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:261,273"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_key_csr
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
@@ -169,19 +169,19 @@ Toggle hwif_in.SEP_IRQ_STATUS.outbound_underflow.next "logic hwif_in.SEP_IRQ_STA
 Toggle hwif_in.SEP_IRQ_STATUS.flushed_by_km.next "logic hwif_in.SEP_IRQ_STATUS.flushed_by_km.next"
 
 CHECKSUM: "2772866781 740540854"
-ANNOTATION: "SEP-MBOX-DEPTH-PAD: the depth fields are {(8-FIFO_DEPTH_W) zeros, depth} with FIFO_DEPTH_W=$clog2(MAILBOX_DEPTH+1)=$clog2(17)=5, so bits 7:5 hold 0. hw/ip/key_manager/rtl/km_mailbox.sv:33,78,413-414; MAILBOX_DEPTH=16 is set at hw/sys/sep/rtl/sep_crypto.sv:1026 and passed to km_mailbox at hw/ip/key_manager/rtl/key_manager.sv:479"
+ANNOTATION: "SEP-MBOX-DEPTH-PAD: the depth fields are {(8-FIFO_DEPTH_W) zeros, depth} with FIFO_DEPTH_W=$clog2(MAILBOX_DEPTH+1)=$clog2(17)=5, so bits 7:5 hold 0. hw/ip/key_manager/rtl/km_mailbox.sv:33,78,413-414; MAILBOX_DEPTH=16 is set at hw/sys/sep/rtl/sep_crypto.sv:961 and passed to km_mailbox at hw/ip/key_manager/rtl/key_manager.sv:417"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_mailbox.u_sep_regs
 Toggle hwif_in.SEP_STATUS.inbound_depth.next [7:5] "logic hwif_in.SEP_STATUS.inbound_depth.next[7:0]"
 Toggle hwif_in.SEP_STATUS.outbound_depth.next [7:5] "logic hwif_in.SEP_STATUS.outbound_depth.next[7:0]"
 
 CHECKSUM: "2772866781 740540854"
-ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:227,239"
+ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:261,273"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_mailbox.u_sep_regs
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "3854019001 2705449490"
-ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
+ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:288-303; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
 Toggle alert_rx_i[0].ping_p "logic alert_rx_i[0].ping_p"
 Toggle alert_rx_i[0].ping_n "logic alert_rx_i[0].ping_n"
@@ -222,7 +222,7 @@ Toggle otbn_key_axil_resp_o.r.resp [0] "logic otbn_key_axil_resp_o.r.resp[1:0]"
 Toggle otbn_key_axil_resp_o.b.resp [0] "logic otbn_key_axil_resp_o.b.resp[1:0]"
 
 CHECKSUM: "3313930772 2110593416"
-ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:227,239"
+ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:261,273"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn_wrapper_key_reg
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
@@ -276,7 +276,7 @@ Toggle axi_lite_rsp_o.r.resp [0] "logic axi_lite_rsp_o.r.resp[1:0]"
 Toggle axi_lite_rsp_o.b.resp [0] "logic axi_lite_rsp_o.b.resp[1:0]"
 
 CHECKSUM: "2550488390 2486335419"
-ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
+ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:288-303; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng
 Toggle csrng_alert_rx_i[0].ping_p "logic csrng_alert_rx_i[0].ping_p"
 Toggle csrng_alert_rx_i[0].ping_n "logic csrng_alert_rx_i[0].ping_n"
@@ -288,7 +288,7 @@ Toggle edn_alert_rx_i[1].ping_p "logic edn_alert_rx_i[1].ping_p"
 Toggle edn_alert_rx_i[1].ping_n "logic edn_alert_rx_i[1].ping_n"
 
 CHECKSUM: "2550488390 2486335419"
-ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:453"
+ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:454"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng
 Toggle drbg_axis_req_o[0].tstrb "logic drbg_axis_req_o[0].tstrb[3:0]"
 Toggle drbg_axis_req_o[1].tstrb "logic drbg_axis_req_o[1].tstrb[3:0]"
@@ -303,7 +303,7 @@ Toggle edn_axil_resp_o.r.resp [0] "logic edn_axil_resp_o.r.resp[1:0]"
 Toggle edn_axil_resp_o.b.resp [0] "logic edn_axil_resp_o.b.resp[1:0]"
 
 CHECKSUM: "251540385 1629975084"
-ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
+ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:288-303; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
 Toggle csrng_alert_rx_i[0].ping_p "logic csrng_alert_rx_i[0].ping_p"
 Toggle csrng_alert_rx_i[0].ping_n "logic csrng_alert_rx_i[0].ping_n"
@@ -315,7 +315,7 @@ Toggle edn_alert_rx_i[1].ping_p "logic edn_alert_rx_i[1].ping_p"
 Toggle edn_alert_rx_i[1].ping_n "logic edn_alert_rx_i[1].ping_n"
 
 CHECKSUM: "251540385 1629975084"
-ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:453"
+ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:454"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
 Toggle edn_axis_o[0].tstrb "logic edn_axis_o[0].tstrb[3:0]"
 Toggle edn_axis_o[1].tstrb "logic edn_axis_o[1].tstrb[3:0]"
@@ -383,14 +383,14 @@ Toggle resp_code_q [0] "logic resp_code_q[1:0]"
 Toggle resp_code_d [0] "logic resp_code_d[1:0]"
 
 CHECKSUM: "3888234644 481058055"
-ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:453"
+ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:454"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan.u_edn_axis_adapter
 Toggle edn_axis_o[0].tstrb "logic edn_axis_o[0].tstrb[3:0]"
 Toggle edn_axis_o[1].tstrb "logic edn_axis_o[1].tstrb[3:0]"
 Toggle edn_axis_o[2].tstrb "logic edn_axis_o[2].tstrb[3:0]"
 
 CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
+ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:288-303; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
 Toggle crypto_alert_rx[0].ping_p "logic crypto_alert_rx[0].ping_p"
 Toggle crypto_alert_rx[0].ping_n "logic crypto_alert_rx[0].ping_n"
@@ -416,14 +416,14 @@ Toggle crypto_alert_rx[10].ping_p "logic crypto_alert_rx[10].ping_p"
 Toggle crypto_alert_rx[10].ping_n "logic crypto_alert_rx[10].ping_n"
 
 CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:453"
+ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:454"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
 Toggle drbg_int_axis_req[0].tstrb "logic drbg_int_axis_req[0].tstrb[3:0]"
 Toggle drbg_int_axis_req[1].tstrb "logic drbg_int_axis_req[1].tstrb[3:0]"
 Toggle drbg_int_axis_req[2].tstrb "logic drbg_int_axis_req[2].tstrb[3:0]"
 
 CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-ABR-MEM-ADDR-PAD: the ABR INST0 address is $clog2(832)=10 bits and INST1 is $clog2(64)=6 bits; the wrapper casts both to SEP_CRYPTO_ABR_INST2_ADDR_W=11, so INST0 bit 10 and INST1 bits 10:6 hold 0. hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:297-312,321-337, hw/sys/sep/rtl/sep_crypto_pkg.sv:238-240, vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_params_pkg.sv:64-68"
+ANNOTATION: "SEP-ABR-MEM-ADDR-PAD: the ABR INST0 address is $clog2(832)=10 bits and INST1 is $clog2(64)=6 bits; the wrapper casts both to SEP_CRYPTO_ABR_INST2_ADDR_W=11, so INST0 bit 10 and INST1 bits 10:6 hold 0. hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:331-346,355-371, hw/sys/sep/rtl/sep_crypto_pkg.sv:262-264, vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_params_pkg.sv:64-68"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
 Toggle abr_mem_req_o.mem_inst0_bank0.waddr [10] "logic abr_mem_req_o.mem_inst0_bank0.waddr[10:0]"
 Toggle abr_mem_req_o.mem_inst0_bank0.raddr [10] "logic abr_mem_req_o.mem_inst0_bank0.raddr[10:0]"
@@ -453,7 +453,7 @@ Toggle otbn_axil_isolated_resp.r.resp [0] "logic otbn_axil_isolated_resp.r.resp[
 Toggle otbn_axil_isolated_resp.b.resp [0] "logic otbn_axil_isolated_resp.b.resp[1:0]"
 
 CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:227,239 and hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv:128,138, into hw/sys/sep/rtl/sep_crypto.sv:618 (abr_key) and :508 (otbn_key)"
+ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:261,273 and hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv:128,138, into hw/sys/sep/rtl/sep_crypto.sv:620 (abr_key) and :509 (otbn_key)"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
 Toggle otbn_key_axil_isolated_resp.r.resp [0] "logic otbn_key_axil_isolated_resp.r.resp[1:0]"
 Toggle otbn_key_axil_isolated_resp.b.resp [0] "logic otbn_key_axil_isolated_resp.b.resp[1:0]"
@@ -463,7 +463,7 @@ Toggle abr_key_axil_isolated_resp.b.resp [0] "logic abr_key_axil_isolated_resp.b
 
 CHECKSUM: "2906880031 2552262841"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul
-ANNOTATION: "SEP-TLUL-A-CONST: axi_lite_to_tlul starts tl_o from '0 and then sets only a_size=2 and a_user.instr_type=MuBi4False for these fields; nothing else writes a_source, a_param, a_size, a_user.instr_type or a_user.rsvd, and the wrapper passes the struct through unchanged. hw/common/axi/axi_lite_to_tlul.sv:132-134, hw/sys/sep/rtl/aes_wrapper.sv:72. NOT waived: a_address, a_data, a_mask, a_opcode, a_valid and the integrity fields."
+ANNOTATION: "SEP-TLUL-A-CONST: axi_lite_to_tlul starts tl_o from '0 and then sets only a_size=2 and a_user.instr_type=MuBi4False for these fields; nothing else writes a_source, a_param, a_size, a_user.instr_type or a_user.rsvd, and the wrapper passes the struct through unchanged. hw/common/axi/axi_lite_to_tlul.sv:132-134, hw/sys/sep/rtl/aes_wrapper.sv:109, :195. NOT waived: a_address, a_data, a_mask, a_opcode, a_valid and the integrity fields."
 Toggle tl_o.a_source "logic tl_o.a_source[7:0]"
 Toggle tl_o.a_param "logic tl_o.a_param[2:0]"
 Toggle tl_o.a_size "logic tl_o.a_size[1:0]"
@@ -472,7 +472,7 @@ Toggle tl_o.a_user.rsvd "logic tl_o.a_user.rsvd[9:0]"
 
 CHECKSUM: "3682768782 1232921383"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan
-ANNOTATION: "SEP-TLUL-A-CONST: axi_lite_to_tlul starts tl_o from '0 and then sets only a_size=2 and a_user.instr_type=MuBi4False for these fields; nothing else writes a_source, a_param, a_size, a_user.instr_type or a_user.rsvd, and the wrapper passes the struct through unchanged. hw/common/axi/axi_lite_to_tlul.sv:132-134, hw/sys/sep/rtl/aes_wrapper.sv:72. NOT waived: a_address, a_data, a_mask, a_opcode, a_valid and the integrity fields."
+ANNOTATION: "SEP-TLUL-A-CONST: axi_lite_to_tlul starts tl_o from '0 and then sets only a_size=2 and a_user.instr_type=MuBi4False for these fields; nothing else writes a_source, a_param, a_size, a_user.instr_type or a_user.rsvd, and the wrapper passes the struct through unchanged. hw/common/axi/axi_lite_to_tlul.sv:132-134, hw/sys/sep/rtl/aes_wrapper.sv:109, :195. NOT waived: a_address, a_data, a_mask, a_opcode, a_valid and the integrity fields."
 Toggle tl_req.a_source "logic tl_req.a_source[7:0]"
 Toggle tl_req.a_param "logic tl_req.a_param[2:0]"
 Toggle tl_req.a_size "logic tl_req.a_size[1:0]"
@@ -549,7 +549,7 @@ Toggle tl_o.a_address [31:12] "logic tl_o.a_address[31:0]"
 
 CHECKSUM: "3979590709 1976754700"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle otbn_key_axil_req.aw.prot "logic otbn_key_axil_req.aw.prot[2:0]"
 Toggle otbn_key_axil_req.ar.prot [1:0] "logic otbn_key_axil_req.ar.prot[2:0]"
 Toggle otbn_key_axil_isolated_req.aw.prot "logic otbn_key_axil_isolated_req.aw.prot[2:0]"
@@ -573,7 +573,7 @@ Toggle abr_key_axil_isolated_req.ar.prot [1:0] "logic abr_key_axil_isolated_req.
 
 CHECKSUM: "2442059366 127789342"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle otbn_key_axil_req_i.aw.prot "logic otbn_key_axil_req_i.aw.prot[2:0]"
 Toggle otbn_key_axil_req_i.ar.prot [1:0] "logic otbn_key_axil_req_i.ar.prot[2:0]"
 Toggle otbn_key_axil_isolated_req_o.aw.prot "logic otbn_key_axil_isolated_req_o.aw.prot[2:0]"
@@ -597,73 +597,73 @@ Toggle abr_key_axil_isolated_req_o.ar.prot [1:0] "logic abr_key_axil_isolated_re
 
 CHECKSUM: "3682768782 1232921383"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle aes_key_axil_req_i.aw.prot "logic aes_key_axil_req_i.aw.prot[2:0]"
 Toggle aes_key_axil_req_i.ar.prot [1:0] "logic aes_key_axil_req_i.ar.prot[2:0]"
 
 CHECKSUM: "2867756884 1126145373"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_hmac_wrapper_s3c_scan
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle hmac_key_axil_req_i.aw.prot "logic hmac_key_axil_req_i.aw.prot[2:0]"
 Toggle hmac_key_axil_req_i.ar.prot [1:0] "logic hmac_key_axil_req_i.ar.prot[2:0]"
 
 CHECKSUM: "641139231 197321661"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_kmac_wrapper_s3c_scan
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle kmac_key_axil_req_i.aw.prot "logic kmac_key_axil_req_i.aw.prot[2:0]"
 Toggle kmac_key_axil_req_i.ar.prot [1:0] "logic kmac_key_axil_req_i.ar.prot[2:0]"
 
 CHECKSUM: "276042385 2705449490"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle otbn_key_axil_req_i.aw.prot "logic otbn_key_axil_req_i.aw.prot[2:0]"
 Toggle otbn_key_axil_req_i.ar.prot [1:0] "logic otbn_key_axil_req_i.ar.prot[2:0]"
 
 CHECKSUM: "414353316 3042302331"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle abr_key_axil_req_i.aw.prot "logic abr_key_axil_req_i.aw.prot[2:0]"
 Toggle abr_key_axil_req_i.ar.prot [1:0] "logic abr_key_axil_req_i.ar.prot[2:0]"
 
 CHECKSUM: "2825384411 1425039785"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_wrapper_key_reg
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_arprot [1:0] "net s_axil_arprot[2:0]"
 
 CHECKSUM: "1498279216 1425039785"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_hmac_wrapper_key_reg
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_arprot [1:0] "net s_axil_arprot[2:0]"
 
 CHECKSUM: "1014206092 1425039785"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_kmac_wrapper_s3c_scan.u_kmac_wrapper_key_reg
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_arprot [1:0] "net s_axil_arprot[2:0]"
 
 CHECKSUM: "3313930772 2110593416"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn_wrapper_key_reg
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_arprot [1:0] "net s_axil_arprot[2:0]"
 
 CHECKSUM: "2662093143 2179785762"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_key_csr
-ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:325; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:262-437; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-653. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
+ANNOTATION: "SEP-KEY-AXIL-PROT-TIE: the only master of the key-register path is the KM picorv32 AXI adapter, which drives awprot=3'b000 and arprot[1:0]=2'b00; the KM crossbar and the sep_crypto interconnect isolate pass prot unchanged to every key port. vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi_adapter.sv:54,58; hw/ip/key_manager/rtl/picorv32_wrapper.sv:670,686; hw/ip/key_manager/rtl/key_manager.sv:315; hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:261-436; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-680. NOT waived: ar.prot[2] (set on an instruction fetch), and every non-key AXI-Lite prot."
 Toggle s_axil_awprot "net s_axil_awprot[2:0]"
 Toggle s_axil_arprot [1:0] "net s_axil_arprot[2:0]"
 
 CHECKSUM: "414353316 3042302331"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan
-ANNOTATION: "SEP-ABR-CACHE-MODIFIABLE: the ABR wrapper ORs the literal axi_pkg::CACHE_MODIFIABLE into AW and AR cache, so cache bit 1 holds 1. hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:96-97. NOT waived: cache bits 0, 2 and 3, which follow the ABR master."
+ANNOTATION: "SEP-ABR-CACHE-MODIFIABLE: the ABR wrapper ORs the literal axi_pkg::CACHE_MODIFIABLE into AW and AR cache, so cache bit 1 holds 1. hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:104-105. NOT waived: cache bits 0, 2 and 3, which follow the ABR master."
 Toggle abr_axi_req_cache_forced.aw.cache [1] "logic abr_axi_req_cache_forced.aw.cache[3:0]"
 Toggle abr_axi_req_cache_forced.ar.cache [1] "logic abr_axi_req_cache_forced.ar.cache[3:0]"
 
 CHECKSUM: "3682768782 1232921383"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan
-ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:296,490,514,538,562; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
+ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:297,491,515,539,564; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
 Toggle alert_rx_i[0].ping_p "logic alert_rx_i[0].ping_p"
 Toggle alert_rx_i[0].ping_n "logic alert_rx_i[0].ping_n"
 Toggle alert_rx_i[1].ping_p "logic alert_rx_i[1].ping_p"
@@ -671,7 +671,7 @@ Toggle alert_rx_i[1].ping_n "logic alert_rx_i[1].ping_n"
 
 CHECKSUM: "641139231 197321661"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_kmac_wrapper_s3c_scan
-ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:296,490,514,538,562; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
+ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:297,491,515,539,564; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
 Toggle alert_rx_i[0].ping_p "logic alert_rx_i[0].ping_p"
 Toggle alert_rx_i[0].ping_n "logic alert_rx_i[0].ping_n"
 Toggle alert_rx_i[1].ping_p "logic alert_rx_i[1].ping_p"
@@ -679,7 +679,7 @@ Toggle alert_rx_i[1].ping_n "logic alert_rx_i[1].ping_n"
 
 CHECKSUM: "2867756884 1126145373"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_hmac_wrapper_s3c_scan
-ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:296,490,514,538,562; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
+ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:297,491,515,539,564; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
 Toggle alert_rx_i[0].ping_p "logic alert_rx_i[0].ping_p"
 Toggle alert_rx_i[0].ping_n "logic alert_rx_i[0].ping_n"
 
@@ -774,12 +774,12 @@ Toggle unused_arb_data_o "logic unused_arb_data_o[0:0]"
 
 CHECKSUM: "3497888529 1638301416"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_pool_s3c_scan
-ANNOTATION: "SEP-EDN-POOL-CANCEL-TIE: sep_crypto ties endpoint_cancel_i of the pool EDN adapter to '0, so this input port holds 0. hw/sys/sep/rtl/sep_crypto.sv:1005; hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:166. NOT waived: clear_i, and the crypto EDN adapter cancel input, which is live (hw/sys/sep/rtl/sep_crypto.sv:981)."
+ANNOTATION: "SEP-EDN-POOL-CANCEL-TIE: sep_crypto ties endpoint_cancel_i of the pool EDN adapter to '0, so this input port holds 0. hw/sys/sep/rtl/sep_crypto.sv:940; hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:166. NOT waived: clear_i, and the crypto EDN adapter cancel input, which is live (hw/sys/sep/rtl/sep_crypto.sv:916)."
 Toggle endpoint_cancel_i "net endpoint_cancel_i[0:0]"
 
 CHECKSUM: "3937190293 4128385299"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:694, :775) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
 Toggle efuse_field_map_i[0].end_addr "logic efuse_field_map_i[0].end_addr[31:0]"
 Toggle efuse_field_map_i[0].start_addr "logic efuse_field_map_i[0].start_addr[31:0]"
 Toggle efuse_field_map_i[0].lock "logic efuse_field_map_i[0].lock[3:0]"
@@ -951,7 +951,7 @@ Toggle efuse_field_map_i[41].idx "logic efuse_field_map_i[41].idx[5:0]"
 
 CHECKSUM: "486751003 4222255782"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_guard
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:694, :775) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
 Toggle efuse_field_map_i[0].end_addr "logic efuse_field_map_i[0].end_addr[31:0]"
 Toggle efuse_field_map_i[0].start_addr "logic efuse_field_map_i[0].start_addr[31:0]"
 Toggle efuse_field_map_i[0].lock "logic efuse_field_map_i[0].lock[3:0]"
@@ -1123,7 +1123,7 @@ Toggle efuse_field_map_i[41].idx "logic efuse_field_map_i[41].idx[5:0]"
 
 CHECKSUM: "171941408 2841630040"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:694, :775) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
 Toggle efuse_field_map_i[0].end_addr "logic efuse_field_map_i[0].end_addr[31:0]"
 Toggle efuse_field_map_i[0].start_addr "logic efuse_field_map_i[0].start_addr[31:0]"
 Toggle efuse_field_map_i[0].lock "logic efuse_field_map_i[0].lock[3:0]"
@@ -1295,7 +1295,7 @@ Toggle efuse_field_map_i[41].idx "logic efuse_field_map_i[41].idx[5:0]"
 
 CHECKSUM: "3595078827 4037587957"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:694, :775) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
 Toggle efuse_field_map_i[0].end_addr "logic efuse_field_map_i[0].end_addr[31:0]"
 Toggle efuse_field_map_i[0].start_addr "logic efuse_field_map_i[0].start_addr[31:0]"
 Toggle efuse_field_map_i[0].lock "logic efuse_field_map_i[0].lock[3:0]"
@@ -1467,17 +1467,17 @@ Toggle efuse_field_map_i[41].idx "logic efuse_field_map_i[41].idx[5:0]"
 
 CHECKSUM: "3595078827 3812065443"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). No entry of the constant map has an out-of-range idx, so the statement at hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:111 never executes. NOT waived: the other statements of field_map_idx_in_range at :107-114."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:694, :775) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). No entry of the constant map has an out-of-range idx, so the statement at hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:111 never executes. NOT waived: the other statements of field_map_idx_in_range at :107-114."
 Block 3 "301284989" "in_range = 1'b0;"
 
 CHECKSUM: "3595078827 4037587957"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-AC-PADDR-ZEXT: hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:185, :215 zero-extend apb_req_paddr_i, which is EFUSE_ADDR_WIDTH = $clog2(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIZE=0x400) = 10 bits wide (hw/ip/efuse/rtl/efuse_interface_controller.sv:55), so paddr[31:10] is always 0. NOT waived: apb_req_from_ac_o.paddr[9:0] and the other APB request fields."
+ANNOTATION: "SEP-EFUSE-AC-PADDR-ZEXT: hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:185, :215 zero-extend apb_req_paddr_i, which is EFUSE_ADDR_WIDTH = $clog2(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIZE=0x400) = 10 bits wide (hw/ip/efuse/rtl/efuse_interface_controller.sv:64), so paddr[31:10] is always 0. NOT waived: apb_req_from_ac_o.paddr[9:0] and the other APB request fields."
 Toggle apb_req_from_ac_o.paddr [31:10] "logic apb_req_from_ac_o.paddr[31:0]"
 
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
-ANNOTATION: "SEP-KM-EFUSE-ADDR-BASE: hw/ip/key_manager/rtl/key_manager.sv:393-396 force addr[31:12] to OTP_EFUSE_REMAP_BASE & ~OtpPageMask (hw/sys/sep/rtl/sep_crypto.sv:1028 = 0x1093_0000; hw/ip/key_manager/rtl/km_intf_pkg.sv:171-174), and axi_lite_isolate u_km_efuse_isolate (hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:736-752) passes the address or drives 0 (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:298, :307, :363, :372). The bits where the base is 0 are always 0. NOT waived: addr bits 28, 23, 20, 17, 16 and [11:0]."
+ANNOTATION: "SEP-KM-EFUSE-ADDR-BASE: hw/ip/key_manager/rtl/key_manager.sv:393-396 force addr[31:12] to OTP_EFUSE_REMAP_BASE & ~OtpPageMask (hw/sys/sep/rtl/sep_crypto.sv:963 = 0x1093_0000; hw/ip/key_manager/rtl/km_intf_pkg.sv:171-174), and axi_lite_isolate u_km_efuse_isolate (hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:763-779) passes the address or drives 0 (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:298, :307, :363, :372). The bits where the base is 0 are always 0. NOT waived: addr bits 28, 23, 20, 17, 16 and [11:0]."
 Toggle km_efuse_axil_req_i.aw.addr [31:29] "logic km_efuse_axil_req_i.aw.addr[31:0]"
 Toggle km_efuse_axil_req_i.aw.addr [27:24] "logic km_efuse_axil_req_i.aw.addr[31:0]"
 Toggle km_efuse_axil_req_i.aw.addr [22:21] "logic km_efuse_axil_req_i.aw.addr[31:0]"
@@ -1491,84 +1491,84 @@ Toggle km_efuse_axil_req_i.ar.addr [15:12] "logic km_efuse_axil_req_i.ar.addr[31
 
 CHECKSUM: "3745466316 3980218801"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_read_interface
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:175), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:183; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_o.read_word_count [8:1] "logic fuse_command_req_o.read_word_count[8:0]"
 Toggle fuse_command_req_o.command "logic fuse_command_req_o.command[0:0]"
 
 CHECKSUM: "3430079472 3537418050"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_program_interface
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:175), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:183; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_o.read_word_count "logic fuse_command_req_o.read_word_count[8:0]"
 
 CHECKSUM: "1114570247 1982245252"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:175), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:183; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_o.read_word_count [7:0] "logic fuse_command_req_o.read_word_count[8:0]"
 Toggle fuse_command_req_o.command "logic fuse_command_req_o.command[0:0]"
 Toggle fuse_command_req_o.address "logic fuse_command_req_o.address[12:0]"
 
 CHECKSUM: "4190772824 3761755012"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:175), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:183; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_o.read_word_count [7:1] "logic fuse_command_req_o.read_word_count[8:0]"
 
 CHECKSUM: "4174874567 1684014548"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:175), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:183; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle efuse_shim_command_req_o.read_word_count [7:1] "logic efuse_shim_command_req_o.read_word_count[8:0]"
 
 CHECKSUM: "3716421305 1669649961"
 INSTANCE: sep_uvm_top.u_dut.u_sep_ip_integration.u_efuse_interface_shim
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:175), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:183; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_i.read_word_count [7:1] "logic fuse_command_req_i.read_word_count[8:0]"
 
 CHECKSUM: "605737996 1433459033"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing.u_triple_redundant_comparator_sec_disable_token
-ANNOTATION: "SEP-SEC-DIS-TOKEN-RAILS: hw/ip/efuse/rtl/efuse_token_processing.sv:268-289 build each bit of token_expected_i from a generate-selected prim_rev_cell lo_o/hi_o rail with literal src_low_i(1'b0)/src_high_i(1'b1), chosen by the elaborated SEP_SEC_DISABLE_TOKEN, so every bit is constant for any parameter value. NOT waived: the token input under comparison and the match_p/match_n outputs."
+ANNOTATION: "SEP-SEC-DIS-TOKEN-RAILS: hw/ip/efuse/rtl/efuse_token_processing.sv:269-290 build each bit of token_expected_i from a generate-selected prim_rev_cell lo_o/hi_o rail with literal src_low_i(1'b0)/src_high_i(1'b1), chosen by the elaborated SEP_SEC_DISABLE_TOKEN, so every bit is constant for any parameter value. NOT waived: the token input under comparison and the match_p/match_n outputs."
 Toggle token_expected_i "logic token_expected_i[255:0]"
 
 CHECKSUM: "3465746162 377165109"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing.u_triple_redundant_comparator_sec_disable_token.gen_token_digest_comparators[0].u_token_digest_comparator
-ANNOTATION: "SEP-SEC-DIS-TOKEN-RAILS: hw/ip/efuse/rtl/efuse_token_processing.sv:268-289 build each bit of token_expected_i from a generate-selected prim_rev_cell lo_o/hi_o rail with literal src_low_i(1'b0)/src_high_i(1'b1), chosen by the elaborated SEP_SEC_DISABLE_TOKEN, so every bit is constant for any parameter value. NOT waived: the token input under comparison and the match_p/match_n outputs."
+ANNOTATION: "SEP-SEC-DIS-TOKEN-RAILS: hw/ip/efuse/rtl/efuse_token_processing.sv:269-290 build each bit of token_expected_i from a generate-selected prim_rev_cell lo_o/hi_o rail with literal src_low_i(1'b0)/src_high_i(1'b1), chosen by the elaborated SEP_SEC_DISABLE_TOKEN, so every bit is constant for any parameter value. NOT waived: the token input under comparison and the match_p/match_n outputs."
 Toggle token_expected_i "logic token_expected_i[255:0]"
 
 CHECKSUM: "3465746162 377165109"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing.u_triple_redundant_comparator_sec_disable_token.gen_token_digest_comparators[1].u_token_digest_comparator
-ANNOTATION: "SEP-SEC-DIS-TOKEN-RAILS: hw/ip/efuse/rtl/efuse_token_processing.sv:268-289 build each bit of token_expected_i from a generate-selected prim_rev_cell lo_o/hi_o rail with literal src_low_i(1'b0)/src_high_i(1'b1), chosen by the elaborated SEP_SEC_DISABLE_TOKEN, so every bit is constant for any parameter value. NOT waived: the token input under comparison and the match_p/match_n outputs."
+ANNOTATION: "SEP-SEC-DIS-TOKEN-RAILS: hw/ip/efuse/rtl/efuse_token_processing.sv:269-290 build each bit of token_expected_i from a generate-selected prim_rev_cell lo_o/hi_o rail with literal src_low_i(1'b0)/src_high_i(1'b1), chosen by the elaborated SEP_SEC_DISABLE_TOKEN, so every bit is constant for any parameter value. NOT waived: the token input under comparison and the match_p/match_n outputs."
 Toggle token_expected_i "logic token_expected_i[255:0]"
 
 CHECKSUM: "3465746162 377165109"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing.u_triple_redundant_comparator_sec_disable_token.gen_token_digest_comparators[2].u_token_digest_comparator
-ANNOTATION: "SEP-SEC-DIS-TOKEN-RAILS: hw/ip/efuse/rtl/efuse_token_processing.sv:268-289 build each bit of token_expected_i from a generate-selected prim_rev_cell lo_o/hi_o rail with literal src_low_i(1'b0)/src_high_i(1'b1), chosen by the elaborated SEP_SEC_DISABLE_TOKEN, so every bit is constant for any parameter value. NOT waived: the token input under comparison and the match_p/match_n outputs."
+ANNOTATION: "SEP-SEC-DIS-TOKEN-RAILS: hw/ip/efuse/rtl/efuse_token_processing.sv:269-290 build each bit of token_expected_i from a generate-selected prim_rev_cell lo_o/hi_o rail with literal src_low_i(1'b0)/src_high_i(1'b1), chosen by the elaborated SEP_SEC_DISABLE_TOKEN, so every bit is constant for any parameter value. NOT waived: the token input under comparison and the match_p/match_n outputs."
 Toggle token_expected_i "logic token_expected_i[255:0]"
 
 CHECKSUM: "2359978137 4237387935"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_lifecycle_ctrl
-ANNOTATION: "SEP-LC-OTP-JTAG2AXI-TIED: hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:264-265 assign dbg_disable_o.smc_otp_jtag2axi and dbg_disable_o.sep_otp_jtag2axi to 1'b0. NOT waived: the other dbg_disable_o fields, which follow the lifecycle state."
+ANNOTATION: "SEP-LC-OTP-JTAG2AXI-TIED: hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:267-268 assign dbg_disable_o.smc_otp_jtag2axi and dbg_disable_o.sep_otp_jtag2axi to 1'b0. NOT waived: the other dbg_disable_o fields, which follow the lifecycle state."
 Toggle dbg_disable_o.smc_otp_jtag2axi "logic dbg_disable_o.smc_otp_jtag2axi"
 Toggle dbg_disable_o.sep_otp_jtag2axi "logic dbg_disable_o.sep_otp_jtag2axi"
 
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
-ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:169-187, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
+ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:202-220, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
 Toggle sep_efuse_axi_resp_o.b.user "logic sep_efuse_axi_resp_o.b.user[11:0]"
 Toggle sep_efuse_axi_resp_o.r.user "logic sep_efuse_axi_resp_o.r.user[11:0]"
 
 CHECKSUM: "2359978137 4237387935"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_lifecycle_ctrl
-ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:169-187, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
+ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:202-220, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
 Toggle lifecycle_axi_resp_o.b.user "logic lifecycle_axi_resp_o.b.user[11:0]"
 Toggle lifecycle_axi_resp_o.r.user "logic lifecycle_axi_resp_o.r.user[11:0]"
 
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
-ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:747), and hw/sys/sep/rtl/sep_crypto.sv:755, :785 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
+ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:747), and hw/sys/sep/rtl/sep_crypto.sv:755, :718 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
 Toggle sep_efuse_axi_req_i.aw.id [5:4] "logic sep_efuse_axi_req_i.aw.id[5:0]"
 Toggle sep_efuse_axi_req_i.ar.id [5:4] "logic sep_efuse_axi_req_i.ar.id[5:0]"
 
 CHECKSUM: "2671987447 2027082395"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle kpv_resp.r.resp [0] "logic kpv_resp.r.resp[1:0]"
 Toggle kmcsr_resp.r.resp [0] "logic kmcsr_resp.r.resp[1:0]"
 Toggle mbox_resp.r.resp [0] "logic mbox_resp.r.resp[1:0]"
@@ -1590,7 +1590,7 @@ Toggle abr_resp_i.b.resp [0] "logic abr_resp_i.b.resp[1:0]"
 
 CHECKSUM: "483690867 2125790319"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_xbar
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle xbar_mst_resp[0].r.resp [0] "logic xbar_mst_resp[0].r.resp[1:0]"
 Toggle xbar_mst_resp[1].r.resp [0] "logic xbar_mst_resp[1].r.resp[1:0]"
 Toggle xbar_mst_resp[2].r.resp [0] "logic xbar_mst_resp[2].r.resp[1:0]"
@@ -1612,7 +1612,7 @@ Toggle xbar_mst_resp[9].b.resp [0] "logic xbar_mst_resp[9].b.resp[1:0]"
 
 CHECKSUM: "1607058474 2173378080"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_kpv
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle km_axil_resp_o.r.resp [0] "logic km_axil_resp_o.r.resp[1:0]"
 Toggle km_axil_resp_o.b.resp [0] "logic km_axil_resp_o.b.resp[1:0]"
 Toggle km_reg_bresp [0] "logic km_reg_bresp[1:0]"
@@ -1620,7 +1620,7 @@ Toggle km_reg_rresp [0] "logic km_reg_rresp[1:0]"
 
 CHECKSUM: "3890016258 1119924657"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_mailbox
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle km_axil_resp_o.r.resp [0] "logic km_axil_resp_o.r.resp[1:0]"
 Toggle km_axil_resp_o.b.resp [0] "logic km_axil_resp_o.b.resp[1:0]"
 Toggle km_reg_bresp [0] "logic km_reg_bresp[1:0]"
@@ -1628,7 +1628,7 @@ Toggle km_reg_rresp [0] "logic km_reg_rresp[1:0]"
 
 CHECKSUM: "2236317760 3042067072"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_drbg_sampler
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle slot_rresp [0] "logic slot_rresp[1:0]"
 Toggle data_read_rresp [0] "logic data_read_rresp[1:0]"
 Toggle reg_bresp [0] "logic reg_bresp[1:0]"
@@ -1636,43 +1636,43 @@ Toggle reg_rresp [0] "logic reg_rresp[1:0]"
 
 CHECKSUM: "4135600620 423229379"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_kpv.u_km_kpv_reg
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "3447392668 4110010268"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_kmcsr.u_km_csr_reg
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "661860948 937785337"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_mailbox.u_km_regs
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "1463142815 47713360"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_drbg_sampler.u_reg
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "2825384411 1425039785"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_wrapper_key_reg
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "1498279216 1425039785"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_hmac_wrapper_key_reg
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "1014206092 1425039785"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_kmac_wrapper_s3c_scan.u_kmac_wrapper_key_reg
-ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:636-731). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
+ANNOTATION: "SEP-KM-RESP-NO-EXOKAY: every driver of these AXI-Lite response fields is 2'b00 (OKAY) or 2'b10 (SLVERR), so bit [0] holds 0: the PeakRDL readback response (hw/ip/key_manager/regs/gen/sv/km_csr_reg.sv:209-215, the same template in each listed regblock), the KPV and mailbox overrides (hw/ip/key_manager/rtl/km_kpv.sv:479-481,490-492; hw/ip/key_manager/rtl/km_mailbox.sv:674-675,684-685), the DRBG sampler slot response (hw/ip/key_manager/rtl/km_drbg_sampler.sv:128-146), and on the engine key paths the isolate error response RESP_SLVERR (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:168,171; hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:663-758). NOT waived: response bit [1], the CPU-side responses (cpu_axil_resp, xbar_slv_resp, slv_resp_o) and the OTP port response."
 Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
@@ -1698,7 +1698,7 @@ Toggle s_axil_rdata [31:1] "logic s_axil_rdata[31:0]"
 
 CHECKSUM: "2671987447 2027082395"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan
-ANNOTATION: "SEP-KM-KEYBUS-RDATA-ZERO: these r.data bits are 0 in both words the OTBN, AES, KMAC and HMAC key buses can return: the key regblock readback, which drives only bit [0] (hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg.sv:402 and the same line in aes/kmac/hmac_wrapper_key_reg.sv), and the isolate error word 32'h1501A7ED (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:154,172; TerminateTransaction 1 at hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:638). NOT waived: bits [0], [3:2], [10:5], [13], [16:15], [24], [26], [28], which the isolate word sets, and the ABR key bus."
+ANNOTATION: "SEP-KM-KEYBUS-RDATA-ZERO: these r.data bits are 0 in both words the OTBN, AES, KMAC and HMAC key buses can return: the key regblock readback, which drives only bit [0] (hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg.sv:402 and the same line in aes/kmac/hmac_wrapper_key_reg.sv), and the isolate error word 32'h1501A7ED (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:154,172; TerminateTransaction 1 at hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:665). NOT waived: bits [0], [3:2], [10:5], [13], [16:15], [24], [26], [28], which the isolate word sets, and the ABR key bus."
 Toggle otbn_resp_i.r.data [31:29] "logic otbn_resp_i.r.data[31:0]"
 Toggle otbn_resp_i.r.data [27] "logic otbn_resp_i.r.data[31:0]"
 Toggle otbn_resp_i.r.data [25] "logic otbn_resp_i.r.data[31:0]"
@@ -1734,7 +1734,7 @@ Toggle hmac_resp_i.r.data [1] "logic hmac_resp_i.r.data[31:0]"
 
 CHECKSUM: "483690867 2125790319"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_xbar
-ANNOTATION: "SEP-KM-KEYBUS-RDATA-ZERO: these r.data bits are 0 in both words the OTBN, AES, KMAC and HMAC key buses can return: the key regblock readback, which drives only bit [0] (hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg.sv:402 and the same line in aes/kmac/hmac_wrapper_key_reg.sv), and the isolate error word 32'h1501A7ED (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:154,172; TerminateTransaction 1 at hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:638). NOT waived: bits [0], [3:2], [10:5], [13], [16:15], [24], [26], [28], which the isolate word sets, and the ABR key bus."
+ANNOTATION: "SEP-KM-KEYBUS-RDATA-ZERO: these r.data bits are 0 in both words the OTBN, AES, KMAC and HMAC key buses can return: the key regblock readback, which drives only bit [0] (hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg.sv:402 and the same line in aes/kmac/hmac_wrapper_key_reg.sv), and the isolate error word 32'h1501A7ED (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:154,172; TerminateTransaction 1 at hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:665). NOT waived: bits [0], [3:2], [10:5], [13], [16:15], [24], [26], [28], which the isolate word sets, and the ABR key bus."
 Toggle xbar_mst_resp[4].r.data [31:29] "logic xbar_mst_resp[4].r.data[31:0]"
 Toggle xbar_mst_resp[4].r.data [27] "logic xbar_mst_resp[4].r.data[31:0]"
 Toggle xbar_mst_resp[4].r.data [25] "logic xbar_mst_resp[4].r.data[31:0]"
@@ -1800,7 +1800,7 @@ Toggle s_axil_rdata [31:26] "logic s_axil_rdata[31:0]"
 
 CHECKSUM: "2671987447 2027082395"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan
-ANNOTATION: "SEP-KM-EFUSE-REMAP-BASE: efuse_req_o address bits [31:12] come from OTP_EFUSE_REMAP_BASE (hw/ip/key_manager/rtl/key_manager.sv:393-396, OtpPageMask at hw/ip/key_manager/rtl/km_intf_pkg.sv:172-174), bound to a package constant at hw/sys/sep/rtl/sep_crypto.sv:1028. NOT waived: page-offset bits [11:2]."
+ANNOTATION: "SEP-KM-EFUSE-REMAP-BASE: efuse_req_o address bits [31:12] come from OTP_EFUSE_REMAP_BASE (hw/ip/key_manager/rtl/key_manager.sv:393-396, OtpPageMask at hw/ip/key_manager/rtl/km_intf_pkg.sv:172-174), bound to a package constant at hw/sys/sep/rtl/sep_crypto.sv:963. NOT waived: page-offset bits [11:2]."
 Toggle efuse_req_o.aw.addr [31:12] "logic efuse_req_o.aw.addr[31:0]"
 Toggle efuse_req_o.ar.addr [31:12] "logic efuse_req_o.ar.addr[31:0]"
 

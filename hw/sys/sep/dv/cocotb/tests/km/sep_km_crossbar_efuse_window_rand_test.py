@@ -258,11 +258,11 @@ _KEY_PORT = {
     "main:abr_wrapper_key": 4,
 }
 _SHARE_ZERO_CONTRACT = (
-    "key_manager/doc/architecture.adoc:290-291(Key_Delivery),"
+    "key_manager/doc/architecture.adoc:288-289(Key_Delivery),"
     "{aes,otbn,kmac,hmac}_wrapper_key.rdl:37,abr_wrapper_key.rdl:44(KEY_SHARE0)"
 )
 _SRAM_TOP_CONTRACT = (
-    "key_manager/doc/architecture.adoc:90(Parameters),key_manager.rdl:62(SRAM_Region)"
+    "key_manager/doc/architecture.adoc:88(Parameters),key_manager.rdl:62(SRAM_Region)"
 )
 
 KM_ROM_BASE = _ROW["main:rom"]["base"]
@@ -928,7 +928,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         A write-lock blocks shadow writes, and a write to a locked field
         completes with SLVERR and leaves the shadow unchanged
         (``otp_fuse_controller.adoc:110-114``); the KM eFuse path honors the
-        same per-field locks (``key_manager/doc/architecture.adoc:924-928``).
+        same per-field locks (``key_manager/doc/architecture.adoc:922-926``).
         The control writes a SW-writable spare word that is not a plan target
         (read-write, ``otp_fuse_controller.adoc:385-401,471-474``), so a KM path
         that drops every write fails the control first. A second control writes

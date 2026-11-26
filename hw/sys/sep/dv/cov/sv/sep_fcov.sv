@@ -1594,7 +1594,7 @@ module sep_fcov (
   wire [3:0] dma_opcode_w = (wr_data & SECURE_DMA_CONTROL_OPCODE_MASK) >>
       SECURE_DMA_CONTROL_OPCODE_SHIFT;
   // The engine takes OPCODE at the first start of a transfer and keeps it for
-  // its later chunks (hw/sys/sep/doc/dma.adoc:81-82). A GO with
+  // its later chunks (hw/sys/sep/doc/dma.adoc:83-84). A GO with
   // INITIAL_TRANSFER 0 carries the opcode of the last GO with INITIAL_TRANSFER
   // 1 since reset (its own opcode when there was none).
   wire dma_go_init = dma_go && ((wr_data & SECURE_DMA_CONTROL_INITIAL_TRANSFER_MASK) != 32'h0);
@@ -4501,7 +4501,7 @@ module sep_fcov (
   // 11 km_kmac and 12 km_abr of iso_ack_i and of the iso_slv_* taps carry the
   // Key Manager paths (hw/sys/sep/doc/crypto.adoc:93-95). A store terminates
   // when the B response of its stage is SLVERR while the stage reports
-  // isolated (hw/sys/sep/doc/reset_controller.adoc:127-128: new transactions
+  // isolated (hw/sys/sep/doc/reset_controller.adoc:126-127: new transactions
   // on an isolated path complete with SLVERR). Destination code: 0 aes,
   // 1 kmac, 2 otbn, 3 abr.
   wire kiso_own = (graded_owner == FcovOwnSepKmIsolateTerminationTest);
@@ -4532,7 +4532,7 @@ module sep_fcov (
   // (sep_reset_n high, Key Manager override off) while an engine domain is out
   // of reset. It may fall only when the five Key Manager key paths and the
   // eFuse path (stages 8 to 13) report isolated
-  // (hw/sys/sep/doc/reset_controller.adoc:131, :142).
+  // (hw/sys/sep/doc/reset_controller.adoc:130, :141).
   logic kiso_km_rst_q;
   always_ff @(posedge clk_i) kiso_km_rst_q <= (ip_rst_n_i[0] !== 1'b0);
   wire kiso_km_fall = !in_reset && kiso_km_rst_q && (ip_rst_n_i[0] === 1'b0) &&
@@ -7432,7 +7432,7 @@ module sep_fcov (
     cp_lane_refuse: coverpoint x.lr iff (x.lr_v) {
       bins csrng_narrow_wr = {1'b0}; bins edn_narrow_wr = {1'b1};
     }
-    // ABR access rules (hw/sys/sep/doc/adams_bridge.adoc:59-108).
+    // ABR access rules (hw/sys/sep/doc/adams_bridge.adoc:60-109).
     x_abr_access: coverpoint x.aa iff (x.aa_v) {
       bins rd32 = {4'd0};
       bins wr32 = {4'd1};
@@ -7466,7 +7466,7 @@ module sep_fcov (
       bins csrng = {1'b0}; bins edn = {1'b1};
     }
     // Concurrent ABR traffic of the CPU-LSU and the SMN-inbound masters
-    // (adams_bridge.adoc:76-78).
+    // (adams_bridge.adoc:77-79).
     x_abr_concurrent: coverpoint x.ac iff (x.ac_v) {
       bins two_masters_rd_2 = {3'b00_0};
       bins two_masters_rd_3_to_6 = {3'b00_1};
@@ -17838,7 +17838,7 @@ module sep_fcov (
     // with the client's request live on the last released clock, no
     // acknowledge on that clock and through the reset, and a committed word is
     // not acknowledged to any client afterwards
-    // (hw/sys/sep/doc/reset_controller.adoc:149-153). No text states the bus
+    // (hw/sys/sep/doc/reset_controller.adoc:148-152). No text states the bus
     // of a cancelled endpoint, so the cell does not read it.
     cp_sw_rst_edn_cancel: coverpoint s.ec iff (s.ec_v) {
       bins aes = {3'b0_00};
@@ -24933,7 +24933,7 @@ module sep_fcov (
       bins modified_signature_z = {2'd3};
     }
     // A command written while VALID 1 and READY 0 leaves VALID 1 and READY 0
-    // (hw/sys/sep/doc/adams_bridge.adoc:186-190; integration/rdl/sep/abr_reg.rdl:77).
+    // (hw/sys/sep/doc/adams_bridge.adoc:187-191; integration/rdl/sep/abr_reg.rdl:77).
     cp_parked_cmd: coverpoint s.pk iff (s.pk_v) {
       bins mldsa_ignored = {1'b0}; bins mlkem_ignored = {1'b1};
     }
@@ -40157,7 +40157,7 @@ module sep_fcov (
   localparam logic [31:0] KmHmacBase =
       32'(key_manager_addrmap_pkg::KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR);
   localparam logic [31:0] KmAbrBase = 32'(key_manager_addrmap_pkg::KEY_MANAGER_ABR_WRAPPER_KEY_BASE_ADDR);
-  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:682-683).
+  // VROM window base (hw/ip/key_manager/doc/architecture.adoc:680-681).
   localparam logic [31:0] KmVromBase = 32'h1000_0000;
   // KMCSR registers.
   localparam logic [31:0] KmCsrVersion =
@@ -43869,7 +43869,7 @@ module sep_fcov (
         if ((km_wp_in_d != 5'd0) && (km_mbx_in_depth_i === km_wp_in_d))
           u_sep_km_vault_wipe_cg.sample(5'd3, 16'd2);
         // The pulse clears KEY_VALID of every accelerator sideload register
-        // block (hw/ip/key_manager/doc/architecture.adoc:514-518): at least
+        // block (hw/ip/key_manager/doc/architecture.adoc:512-516): at least
         // one KEY_VALID bit set before the wipe, and every bit 0 after it.
         if ((km_wp_valid != 8'h00) && !$isunknown(km_wp_valid) && (km_key_valid_i === 8'h00))
           u_sep_km_vault_wipe_cg.sample(5'd3, 16'd3);

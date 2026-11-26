@@ -64,7 +64,7 @@ Checkers:
                   held, PREFETCH_DATA reads it three times, DATA returns it
                   without a COUNT_GOOD count, and a handshake refills it;
                   PREFETCH 0 clears PREFETCHED and PREFETCH_DATA
-                  (architecture.adoc:830-834). Controls: a stalled active read
+                  (architecture.adoc:828-832). Controls: a stalled active read
                   at timeout 8 times out; each fed read pair takes a handshake;
                   DRBG_READY reads 1 while the held word blocks the stream.
   CHK-SMP-PRE-WITHDRAW
@@ -74,12 +74,12 @@ Checkers:
                   rises by exactly 1 plus TIMEOUT_ERR after the span, which
                   reads 0 before it (the span includes the DATA read that
                   gives the withdrawal its TREADY-low clock, which can time
-                  out; architecture.adoc:845, 847), DRBG_ERR changes from 0
+                  out; architecture.adoc:843, 845), DRBG_ERR changes from 0
                   before the withdrawal to 1 and PREFETCHED reads 0
                   (PREFETCHED also 0 after the partial beat); the next DATA read returns the first live beat
                   and the next prefetched word (PREFETCH_DATA and DATA) is the
                   second live beat, with no byte of the partial beat
-                  (architecture.adoc:859-863, 824-828, 833; trng.adoc:120 for
+                  (architecture.adoc:857-861, 822-826, 831; trng.adoc:120 for
                   the full live beats). The check does not show whether the
                   withdrawal or the start of the DATA read drops the partial
                   byte; CHK-SMP-PRE-PARTIAL grades PREFETCHED after the same
@@ -90,7 +90,7 @@ Checkers:
                   with PREFETCH 1, PREFETCHED 0 and a DATA read waiting on the
                   stalled stream (timeout off), the first live beat goes to the
                   read: OKAY, data equal to the first handshaken beat on
-                  KM-ENTROPY, COUNT_GOOD + 1 (architecture.adoc:889-890, 881-884,
+                  KM-ENTROPY, COUNT_GOOD + 1 (architecture.adoc:887-888, 879-882,
                   848). Controls: CFG reads PREFETCH 1 and timeout 0, STATUS reads
                   PREFETCHED 0 before the read, TREADY is high before the read
                   and the read start shows a TREADY-low stretch (length logged,
@@ -576,7 +576,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
 
         Before the read the prefetch path requests (TREADY 1). A DATA read that
         starts stops the prefetch path, and the read path enters its request
-        state (architecture.adoc:881, 889-890), so the read start shows a
+        state (architecture.adoc:879, 887-888), so the read start shows a
         TREADY-low stretch and then TREADY high with the read waiting. The text
         gives no length for the stretch, so its length is logged.
         The entropy initialization starts after that clock. A handshake is a
@@ -2148,7 +2148,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 )
                 fields.update(
                     contract=(
-                        "key_manager/doc/architecture.adoc:886-887,891-893(Errors_and_reset)"
+                        "key_manager/doc/architecture.adoc:884-885,889-891(Errors_and_reset)"
                     ),
                     cfg_rd=_h(cfg_rd),
                     cfg_want=_h(pl.cfg(t, 0)),
