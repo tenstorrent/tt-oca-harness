@@ -45991,6 +45991,7 @@ module sep_fcov (
   localparam int unsigned RasPbeCsrng = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_CSRNG;
   localparam int unsigned RasPbeEdn = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_EDN;
   localparam int unsigned RasPbeWdt = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_WDT;
+  localparam int unsigned RasPbeSpi = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_SPI;
   if (RasW != RasLcSigintErr + 1) begin : g_ras_width_check
     $fatal(1, "sep_ras_t is %0d bits, the sep_ras_cg map has %0d", RasW, RasLcSigintErr + 1);
   end
@@ -46016,6 +46017,7 @@ module sep_fcov (
       bins periph_bus_err_kmac = {RasPbeKmac};
       bins periph_bus_err_otbn = {RasPbeOtbn};
       bins periph_bus_err_wdt = {RasPbeWdt};
+      bins periph_bus_err_spi = {RasPbeSpi};
       bins csrng_fatal = {RasCsrngFatal};
       bins edn_fatal = {RasEdnFatal};
       bins crypto_alert = {RasCryptoAlert};
@@ -46047,6 +46049,7 @@ module sep_fcov (
       RasDmaRegBusErr, RasPbeAes, RasPbeHmac, RasPbeKmac, RasPbeOtbn, RasPbeWdt:
       return graded_owner == FcovOwnSepCpuBridgeFaultMatrixRandTest;
       RasDmaHostIntgErr: return graded_owner == FcovOwnSepDmaBasicTest;
+      RasPbeSpi: return graded_owner == FcovOwnSepSpiOtHostCsrIrqRandTest;
       RasCsrngFatal, RasEdnFatal:
       return (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) ||
           (graded_owner == FcovOwnSepPicPendingMapWalkRandTest);

@@ -105,7 +105,7 @@ from env.sep_fcov_gate import (
     open_graded_window,
     set_dma_basic_pass,
 )
-from env.sep_ras_map import PERIPH_BUS_ERR_BLOCKS, RasChkLines, check_tap_width, ras_bit
+from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -141,10 +141,12 @@ _CLASS_CHECKS = (
 _RAS = "RAS-DMA_HOST_INTG_ERR"
 _RAS_HALVES = ("IDLE", "RISE", "SHAPE", "CLEAR")
 # sep_cpu_ctrl_err_pulse_probe_o (tb/sep_tb_signal_list.svh): the low half holds the set
-# term of each bridge-fault latch in periph_bus_err_e order, then DMA reg_path_err and
-# host_path_err; the high half holds the clear pulse of the same latches.
-_PULSE_HOST_SET = len(PERIPH_BUS_ERR_BLOCKS) + 1
-_PULSE_HOST_CLR = _PULSE_HOST_SET + len(PERIPH_BUS_ERR_BLOCKS) + 2
+# term of each bridge-fault latch the probe taps, then DMA reg_path_err and host_path_err;
+# the high half holds the clear pulse of the same latches. The probe has its own latch
+# list, so host_path_err is the top bit of each half, not an offset from the block count.
+_PULSE_HALF = 9
+_PULSE_HOST_SET = _PULSE_HALF - 1
+_PULSE_HOST_CLR = 2 * _PULSE_HALF - 1
 
 
 @dataclass(frozen=True)

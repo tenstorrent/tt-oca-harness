@@ -240,7 +240,8 @@ Cleared by the same `DMA_BUS_ERR_CLEAR.clr` write.
 |`43`
 |Peripheral register-bridge fault
 |The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
-CSRNG, EDN and the watchdog timer. `PERIPH_BUS_ERR_STATUS` identifies the
+CSRNG, EDN, the watchdog timer and the SPI host; the SPI host bit also carries
+its fatal alert. `PERIPH_BUS_ERR_STATUS` identifies the
 block, and `PERIPH_BUS_ERR_CLEAR` clears one block's bit at a time, so
 acknowledging one cannot discard another block's fault. See
 ifdef::backend-html5[]

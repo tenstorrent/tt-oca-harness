@@ -157,7 +157,7 @@ AES, KMAC, OTBN, CSRNG, and EDN convert isolated AXI4-Lite to TL-UL through
 `axi_lite_to_tlul`; each bridge's sticky `err_o` is that wrapper's `bus_err_o`,
 visible as one bit in `PERIPH_BUS_ERR_STATUS` and cleared with the matching
 `PERIPH_BUS_ERR_CLEAR` bit. The Peripheral register-bridge fault source is the OR
-of those bits and the watchdog timer's bridge fault. Acknowledging one STATUS
+of those bits and the watchdog timer's and SPI host's bits. Acknowledging one STATUS
 bit cannot discard another.
 
 The crypto complex uses whole-instance Class 2 scan boundaries so all
