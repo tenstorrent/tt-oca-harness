@@ -42,13 +42,14 @@ illegal state itself issues a request; the error term carries that check.
 
 The leaf also grades the read-error lifecycle on the same interface:
 
-* a successful read clears read_error_o, a read with the timeout enabled at
-  its reset count completes without error and returns the sensed word, a read
-  that outlives a short EFUSE_READ_REQ_TIMEOUT retires with the error set, and
-  the next legal read, of a different spare word staged with a different
-  value, completes with no error and that word's sensed value, not the
-  timed-out word (CHK-READ-ERR-CLEAR-SUCCESS, -TIMEOUT-ARMED, -TIMEOUT,
-  -CLEAR-REQUEST);
+* a read with the timeout enabled at its reset count completes without error
+  and returns the sensed word, a read that outlives a short
+  EFUSE_READ_REQ_TIMEOUT retires with the error set, and the next legal read,
+  of a different spare word staged with a different value, completes with no
+  error and that word's sensed value, not the timed-out word; a second
+  timed-out read sets the error again (CTRL-READ-ERR-SET), and a retry of the
+  timed-out word completes with no error and its sensed value
+  (CHK-READ-ERR-TIMEOUT-ARMED, -TIMEOUT, -CLEAR-REQUEST, -CLEAR-SUCCESS);
 * with secure_tm latched, a read retires with the error set and zero data
   (CHK-READ-ERR-BLOCKED).
 
@@ -233,72 +234,25 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         raise AssertionError(f"the read interface never asserted read_done within {limit} cycles")
 
     async def _read_error_lifecycle(self) -> None:
-        """read_error_o is set by a timed-out read; the next legal read completes cleanly."""
-        # 1. A successful read leaves the error flag clear.
-        await self.start_seq(sep_efuse_direct_read_seq(self._control_word))
-        done, busy, err, _ = await self._read_probe()
-        assert (done, busy, err) == (1, 0, 0), (
-            f"CHK-READ-ERR-CLEAR-SUCCESS FAIL: a successful read reported done={done} "
-            f"busy={busy} error={err}, expected 1/0/0"
-        )
-        self.logger.info(
-            "CHK-READ-ERR-CLEAR-SUCCESS PASS: a completed read reports done, not busy, no error"
-        )
+        """read_error_o is set by a timed-out read; the next legal read clears it.
 
-        # 2. With the timeout enabled at its reset count, a read completes
-        #    without error and returns the sensed word.
+        Two timed-out reads each set the error. The read after the first is of
+        a different word (CHK-READ-ERR-CLEAR-REQUEST); the read after the
+        second retries the timed-out word (CHK-READ-ERR-CLEAR-SUCCESS). Both
+        enter with the error at 1, so each fails on RTL that keeps it.
+        """
+        # With the timeout enabled at its reset count, a read completes
+        # without error and returns the sensed word.
         await self._read_with_reset_timeout()
 
-        # 3. A read that outlives its timeout budget retires with the error set
-        #    (efuse_interface_ctrl.rdl:133; smc-programming.adoc:1690-1692). The
-        #    budget is short enough that the SHIM cannot answer inside it, and
-        #    the read must present its bank command, so the timeout decides the
-        #    outcome.
-        timeout = (
-            _place(
-                EFUSE_INTERFACE_CTRL,
-                "EFUSE_READ_REQ_TIMEOUT",
-                "read_req_timeout_cycles",
-                _TIMEOUT_CYCLES,
-            )
-            | _TIMEOUT_EN
-        )
-        await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, timeout)
-        timeout_rb = await self._csr(SepAxiOp.READ, _READ_TIMEOUT)
-        assert timeout_rb == timeout, (
-            f"test bug: EFUSE_READ_REQ_TIMEOUT reads {timeout_rb:#010x} after writing "
-            f"{timeout:#010x}, so the short timeout is not armed"
-        )
-        held = await self._kick_and_catch("read", self._control_word * 32)
-        assert held, (
-            "CHK-READ-ERR-TIMEOUT FAIL: the read interface presented no bank command, "
-            "so the read was not accepted and an error could not come from the timeout"
-        )
-        done, busy, err, data = await self._await_read_done()
-        ctrl = await self._csr(SepAxiOp.READ, _READ_CTRL)
-        rd_data = await self._csr(SepAxiOp.READ, _READ_DATA)
-        rd_done = int(bool(ctrl & _RD_DONE))
-        rd_busy = int(bool(ctrl & _RD_BUSY))
-        rd_status = int(bool(ctrl & _RD_STATUS))
-        fields = (
-            f"t_cycles={_TIMEOUT_CYCLES:#x} t_reg={timeout_rb:#010x} done={done} busy={busy} "
-            f"err={err} read_done={rd_done} read_busy={rd_busy} read_status={rd_status} "
-            f"data={data:#010x} read_data={rd_data:#010x}"
-        )
-        ok = (done, busy, err) == (1, 0, 1) and (rd_done, rd_busy, rd_status) == (1, 0, 1)
-        assert ok, (
-            "CHK-READ-ERR-TIMEOUT FAIL: a read that outlived its timeout budget did not "
-            f"retire with done and the error set: {fields}"
-        )
-        self.logger.info("CHK-READ-ERR-TIMEOUT PASS: %s", fields)
+        await self._timed_out_read("CHK-READ-ERR-TIMEOUT")
 
-        # 4. The next legal read after the timed-out one completes with no
-        #    error and the sensed word of its own address
-        #    (architecture.adoc:102-107; efuse_interface_ctrl.rdl:127, :133;
-        #    smc-programming.adoc:1725-1729). It reads the recovery word, not
-        #    the timed-out control word, so the two expected words differ. The
-        #    error from leg 3 is the precondition. When the flag clears is not
-        #    stated; it is logged.
+        # The next legal read after the timed-out one completes with no error
+        # and the sensed word of its own address (architecture.adoc:102-107;
+        # efuse_interface_ctrl.rdl:127, :133; smc-programming.adoc:1725-1729).
+        # It reads the recovery word, not the timed-out control word, so the
+        # two expected words differ. The error of the timed-out read is the
+        # precondition. When the flag clears is not stated; it is logged.
         await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, 0)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
         _, _, err_after_cleanup, _ = await self._read_probe()
@@ -334,6 +288,83 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"complete with no error and the sensed word: {fields}"
         )
         self.logger.info("CHK-READ-ERR-CLEAR-REQUEST PASS: %s", fields)
+
+        # Set the error again, then retry the timed-out word with the timeout
+        # disabled: the successful read must clear the error and return the
+        # sensed word of the address that timed out.
+        await self._timed_out_read("CTRL-READ-ERR-SET")
+        await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, 0)
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        held = await self._kick_and_catch("read", self._control_word * 32)
+        assert held, (
+            "CHK-READ-ERR-CLEAR-SUCCESS FAIL: the read interface presented no bank "
+            "command for the retry of the timed-out word"
+        )
+        done, busy, err, data = await self._await_read_done()
+        ctrl = await self._csr(SepAxiOp.READ, _READ_CTRL)
+        rd_data = await self._csr(SepAxiOp.READ, _READ_DATA)
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        sensed = self._sensed_control_word
+        rd_done = int(bool(ctrl & _RD_DONE))
+        rd_busy = int(bool(ctrl & _RD_BUSY))
+        rd_status = int(bool(ctrl & _RD_STATUS))
+        fields = (
+            f"addr={self._control_word * 32:#x} err_before=1 done={done} busy={busy} "
+            f"err={err} read_done={rd_done} read_busy={rd_busy} read_status={rd_status} "
+            f"data={data:#010x} read_data={rd_data:#010x} exp={sensed:#010x}"
+        )
+        ok = (done, busy, err) == (1, 0, 0) and (rd_done, rd_busy, rd_status) == (1, 0, 0)
+        assert ok and data == sensed and rd_data == sensed, (
+            "CHK-READ-ERR-CLEAR-SUCCESS FAIL: a successful retry of the timed-out word "
+            f"did not clear the error and return the sensed word: {fields}"
+        )
+        self.logger.info("CHK-READ-ERR-CLEAR-SUCCESS PASS: %s", fields)
+
+    async def _timed_out_read(self, tag: str) -> None:
+        """A read of the control word that outlives its timeout budget sets the error.
+
+        It retires with done and the error set (efuse_interface_ctrl.rdl:133;
+        smc-programming.adoc:1690-1692). The budget is short enough that the
+        SHIM cannot answer inside it, and the read must present its bank
+        command, so the timeout decides the outcome.
+        """
+        timeout = (
+            _place(
+                EFUSE_INTERFACE_CTRL,
+                "EFUSE_READ_REQ_TIMEOUT",
+                "read_req_timeout_cycles",
+                _TIMEOUT_CYCLES,
+            )
+            | _TIMEOUT_EN
+        )
+        await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, timeout)
+        timeout_rb = await self._csr(SepAxiOp.READ, _READ_TIMEOUT)
+        assert timeout_rb == timeout, (
+            f"test bug: EFUSE_READ_REQ_TIMEOUT reads {timeout_rb:#010x} after writing "
+            f"{timeout:#010x}, so the short timeout is not armed"
+        )
+        held = await self._kick_and_catch("read", self._control_word * 32)
+        assert held, (
+            f"{tag} FAIL: the read interface presented no bank command, "
+            "so the read was not accepted and an error could not come from the timeout"
+        )
+        done, busy, err, data = await self._await_read_done()
+        ctrl = await self._csr(SepAxiOp.READ, _READ_CTRL)
+        rd_data = await self._csr(SepAxiOp.READ, _READ_DATA)
+        rd_done = int(bool(ctrl & _RD_DONE))
+        rd_busy = int(bool(ctrl & _RD_BUSY))
+        rd_status = int(bool(ctrl & _RD_STATUS))
+        fields = (
+            f"t_cycles={_TIMEOUT_CYCLES:#x} t_reg={timeout_rb:#010x} done={done} busy={busy} "
+            f"err={err} read_done={rd_done} read_busy={rd_busy} read_status={rd_status} "
+            f"data={data:#010x} read_data={rd_data:#010x}"
+        )
+        ok = (done, busy, err) == (1, 0, 1) and (rd_done, rd_busy, rd_status) == (1, 0, 1)
+        assert ok, (
+            f"{tag} FAIL: a read that outlived its timeout budget did not "
+            f"retire with done and the error set: {fields}"
+        )
+        self.logger.info("%s PASS: %s", tag, fields)
 
     async def _read_with_reset_timeout(self) -> None:
         """A read with the timeout armed at its reset count completes cleanly.
