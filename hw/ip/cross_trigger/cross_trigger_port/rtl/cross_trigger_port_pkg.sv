@@ -20,6 +20,15 @@ package cross_trigger_port_pkg;
     MODE_TOGGLE         = 2'b10
   } ctp_mode_e;
 
+  // Static configuration of one port core without CSRs, such as an internal port of the cross
+  // trigger network. stretch_mult is the wire-OR pulse stretch and the toggle-mode hold.
+  typedef struct packed {
+    ctp_mode_e   mode;
+    logic [15:0] stretch_mult;
+  } ctp_int_cfg_t;
+
+  localparam ctp_int_cfg_t CtpIntCfgDefault = '{mode: MODE_WIRE_OR, stretch_mult: 16'h0001};
+
   // AXI-Lite Parameters
   localparam int unsigned AxiLiteAddrWidth = 32;
   localparam int unsigned AxiLiteDataWidth = 32;

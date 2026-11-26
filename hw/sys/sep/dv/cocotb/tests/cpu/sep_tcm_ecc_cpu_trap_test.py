@@ -57,7 +57,7 @@ records, the trace events, the pulse counts and the field record:
                   trap, with mcause 0x1 (instruction access fault) and mscause
                   1, and no NMI; the ``iccm_ue`` window holds one trace
                   exception event with ecause 1
-                  (``hw/sys/sep/doc/interrupts.adoc:378-389`` and ``:405-406``;
+                  (``hw/sys/sep/doc/interrupts.adoc:379-390`` and ``:405-406``;
                   ``sep_cpu_ctrl.rdl``, ``SEP_NMI_VEC``: an uncorrectable ICCM
                   fetch error raises an instruction access fault through
                   mtvec, not the NMI).

@@ -397,7 +397,8 @@ addrmap sep_cpu_ctrl {
                 (an unmapped offset, or a partial write: a byte strobe that misses a byte the
                 register owns), and is held until the matching PERIPH_BUS_ERR_CLEAR bit is
                 written. The faulting access also received SLVERR synchronously. A narrow
-                read inside a register returns OKAY.
+                read inside a register returns OKAY. The spi bit also latches the SPI host
+                fatal alert.
 
                 All bits OR together into a single PIC source, so read this register to
                 identify which block faulted.
@@ -447,6 +448,15 @@ addrmap sep_cpu_ctrl {
             hw = w;
             desc = "Watchdog timer register bridge error.";
         } wdt [6:6] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "SPI host register bridge error, or the SPI host fatal_fault alert (a
+                    register-bus integrity fault, or a write of ALERT_TEST.fatal_fault). A
+                    real integrity fault repeats the alert until the SEP reset, so clearing
+                    this bit does not keep it clear.";
+        } spi [7:7] = 0x0;
     };
 
     reg PERIPH_BUS_ERR_CLEAR {
@@ -508,6 +518,13 @@ addrmap sep_cpu_ctrl {
             singlepulse = true;
             desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.";
         } wdt [6:6] = 0x0;
+
+        field {
+            sw = w;
+            hw = r;
+            singlepulse = true;
+            desc = "Write 1 to clear PERIPH_BUS_ERR_STATUS.spi. Always reads 0.";
+        } spi [7:7] = 0x0;
     };
 
     // ----------------------------------------------

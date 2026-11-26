@@ -278,7 +278,7 @@ interface dtp_tb_if;
   logic [7:0]  cfg_num_ctp          = 8'(dtp_dv_cfg_pkg::NumCtp);
   logic [7:0]  cfg_num_int_ct       = 8'(dtp_dv_cfg_pkg::NumIntCt);
   logic [7:0]  cfg_num_clk_stop_req = 8'(dtp_dv_cfg_pkg::NumClkStopReq);
-  logic [31:0] cfg_int_ct_mode      = 32'(dtp_dv_cfg_pkg::IntCtMode);
+  logic [31:0] cfg_int_ct_mode      = 32'(dtp_dv_cfg_pkg::IntCtP2pMask);
   logic [7:0]  cfg_num_extra_staps  = 8'(dtp_dv_cfg_pkg::NumExtraStaps);
   logic [7:0]  cfg_num_smc_ic_reset = 8'(dtp_dv_cfg_pkg::NumSmcIcReset);
   logic [7:0]  cfg_num_sep_ic_reset = 8'(dtp_dv_cfg_pkg::NumSepIcReset);

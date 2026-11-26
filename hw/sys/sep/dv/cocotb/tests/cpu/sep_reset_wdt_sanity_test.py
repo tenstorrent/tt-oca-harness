@@ -103,7 +103,7 @@ from env.sep_fabric_tap import SepFabricTap, TapBeat
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from sep_base_test import sep_base_test
-from sep_reg_meta import OTBN, SEP_RESET_CTRL, sym
+from sep_reg_meta import OTBN, SEP_RESET_CTRL, sep_reg, sym
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -123,6 +123,7 @@ _RESET_WIRE_IPS = ("otbn", "aes", "hmac", "kmac", "abr", "esrc", "csrng", "edn")
 _RESET_DOMAIN = {ip: ("trng" if ip in ("esrc", "csrng", "edn") else ip) for ip in _RESET_WIRE_IPS}
 # Each reset-wire line ends with the count of other-domain probes the firmware
 # found unchanged after the pulse.
+_ABR_PROBE_RE = re.compile(r"CTRL-SWRST-ABR-PROBE REC wr=0x([0-9a-f]{8}) rst=0x([0-9a-f]{8})")
 _WIRE_LINE_RE = re.compile(
     r"(\w+) reset wire OK, writable after release, other-domain probes unchanged 0x([0-9a-f]{8})"
 )
@@ -269,6 +270,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             raise AssertionError(f"CHK-BADADDR FAIL: {line}")
         self.logger.info("CHK-BADADDR PASS: %s", line)
         self._grade_store_responses(console, lsu_tap)
+        self._check_abr_probe(console)
         wired = [ip for ip in _RESET_WIRE_IPS if f"{ip} reset wire OK" in console]
         assert len(wired) == len(_RESET_WIRE_IPS), (
             f"firmware console reports a reset wire for {sorted(wired)}, expected all "
@@ -624,6 +626,31 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             + ("none" if b is None else ("X" if b.resp is None else f"0b{b.resp:02b}"))
             for aw, b in pairs
         )
+
+    def _check_abr_probe(self, console: str) -> None:
+        """The hand-typed ABR probe values match the RDL fields of GLOBAL_INTR_EN.
+
+        No C header is generated for the Adams Bridge register block, so the
+        firmware types its write and reset values by hand. ``sep_reg`` is
+        generated from the same RDL through ``sep.rdl``: the write value must set
+        every RW field and the reset value must equal the register default, or
+        a vendor change to the register leaves the reset-wire probe stale.
+        """
+        m = _ABR_PROBE_RE.search(console)
+        assert m, f"CTRL-SWRST-ABR-PROBE FAIL: no probe line on the console:\n{console}"
+        wr, rst = int(m.group(1), 16), int(m.group(2), 16)
+        fields = sep_reg.INTR_BLOCK_T_GLOBAL_INTR_EN_T_REG_FIELDS
+        want_wr = 0
+        for name, lsb, msb, access, *_ in fields:
+            assert access == "rw", (
+                f"CTRL-SWRST-ABR-PROBE FAIL: GLOBAL_INTR_EN.{name} is {access}, "
+                "so a write/readback probe cannot use it"
+            )
+            want_wr |= ((1 << (msb - lsb + 1)) - 1) << lsb
+        want_rst = sep_reg.INTR_BLOCK_T_GLOBAL_INTR_EN_T_REG_DEFAULT
+        line = f"wr=0x{wr:08x} rst=0x{rst:08x} rdl_wr=0x{want_wr:08x} rdl_rst=0x{want_rst:08x}"
+        assert wr == want_wr and rst == want_rst, f"CTRL-SWRST-ABR-PROBE FAIL: {line}"
+        self.logger.info("CTRL-SWRST-ABR-PROBE PASS: %s", line)
 
     def _grade_store_responses(self, console: str, tap: SepFabricTap) -> None:
         """Grade the firmware store-response records and the bus B responses."""

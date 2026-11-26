@@ -95,9 +95,9 @@ endif::backend-html5[]
 |`axil_xtrig_resp_o` |`xtrig_axil_resp_t` |Out |- |Cross trigger CSR AXI-Lite response to SMC. |SMC `axil_dtp_csr_resp_i`
 
 |`xtrig_ctm_src_req_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests from CTM to destination sinks. |Cross trigger sinks
-|`xtrig_ctm_src_ack_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). Default: tie to '0 in pulse-sync mode. |Cross trigger sinks
+|`xtrig_ctm_src_ack_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Used only by point-to-point lanes; unused in wire-OR and toggle mode. Default: tie to '0 on wire-OR and toggle lanes. |Cross trigger sinks
 |`xtrig_ctm_dst_req_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests from source generators. Default: tie to '0 if unused. |Cross trigger sources
-|`xtrig_ctm_dst_ack_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger sources
+|`xtrig_ctm_dst_ack_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Used only by point-to-point lanes; low in wire-OR and toggle mode. |Cross trigger sources
 
 |`xtrig_clk_stop_req_i` |`logic` |In |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests from CLAs or other devices in the chiplet. Default: Tie to '0 if unused. |Clock stop requesters
 

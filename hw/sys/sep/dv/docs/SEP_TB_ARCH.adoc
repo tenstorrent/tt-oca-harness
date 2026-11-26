@@ -636,8 +636,8 @@ Observation probe groups:
   which reads `spi_tx_qd_probe_o` and `dma_busy_probe_o`).
 * SPI host alert tap (`spi_alert_tx_probe_o[1:0]`): the `fatal_fault` alert
   sender output of the OpenTitan SPI host (`u_spi_host.alert_tx_o[0]`), bit 1
-  `alert_p` and bit 0 `alert_n`. `sep_ot_spi_wrap` leaves the alert port open,
-  so no CSR or port shows the alert. Monitor only: it drives nothing and adds
+  `alert_p` and bit 0 `alert_n`. `sep_ot_spi_wrap` terminates the alert in a
+  `prim_alert_receiver` that sets `PERIPH_BUS_ERR_STATUS.spi`. Monitor only: it drives nothing and adds
   no force. Owner: `sep_spi_ot_host_csr_irq_rand_test` (CTRL-SPI-ALERT-REACH).
 * `SEP_TEST_CTRL` read decode tap (`sep_test_ctrl_rd_probe_o`): the read
   strobe of `SEP_TEST_CTRL` in the CPU control register block
@@ -1079,7 +1079,7 @@ Exceptions (a closed set):
   drive one lane together.
 * *ESRC noise-source stuck-at inject* — while bit i of `esrc_noise_stuck_en_i`
   is 1, the output of the noise ring oscillator of lane i
-  (`u_noise_source.noise_async`, upstream of the sampling flop) is forced to
+  (`u_noise_sampler.noise_async_i`, the input of the sampling flop) is forced to
   bit i of `esrc_noise_stuck_val_i`, and the ESRC noise force of that lane is
   released. The value passes the sampling flop and the synchronizer, so it
   reaches the noise observe FIFO and the decorrelator of the lane. Software
@@ -1395,6 +1395,14 @@ Exceptions (a closed set):
   asserts on the next DMA command. Software cannot emit a broken command
   user code. The force targets that input only. `DMA_BUS_ERR_STATUS` and
   the interrupt aggregate stay frontdoor. Owner: `sep_dma_basic_test`.
+* *SPI host command-integrity inject* — `spi_host_intg_inject_i` forces the
+  command-integrity checker input of the SPI host register block
+  (`u_spi_host.u_reg.u_chk.u_chk.data_i`) to 0 so the checker asserts on the
+  next register access. The bridge of `sep_ot_spi_wrap` always emits a
+  matching command user code, so no access can raise the error. The force
+  targets that input only. `PERIPH_BUS_ERR_STATUS`, `sep_ras_o` and the
+  interrupt aggregate stay frontdoor or probes. Owner:
+  `sep_spi_ot_host_csr_irq_rand_test`.
 * *Mailbox WRITE_DATA unstrobed-lane inject* — while
   `mbox_lane_inject_arm_i` is 1, a W beat with WSTRB 0x0F or 0xF0 to the
   outbound `WRITE_DATA` of a mailbox selected in `mbox_lane_inject_mbx_i`

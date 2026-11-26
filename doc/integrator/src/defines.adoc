@@ -147,7 +147,8 @@ top of this chapter; without it, PULP assertions follow `SYNTHESIS` and
 `ASSERTS_OFF` instead.
 
 In the emulation view the entropy source ring oscillator is a zero-delay
-combinational loop. The emulator compile must break or model it.
+combinational loop. The emulator compile must break or model it, or build with
+the `entropy_rosc_stub` Bender target, which replaces the rings.
 
 The emulation view has no testbench preloads. `OCAH4CORECluster_rom_ext` is a
 `prim_rom` with an empty `MemInitFile`, so load the SMC CPU ROM image through

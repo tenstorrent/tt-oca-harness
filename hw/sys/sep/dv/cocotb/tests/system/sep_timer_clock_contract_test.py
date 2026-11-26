@@ -2127,7 +2127,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         "SEP ties ``wdt_debug_sleep_mode_i`` low, so the timer keeps counting while
         the CPU is halted in debug and ``WDOG_CTRL.pause_in_sleep`` has no effect."
         (``hw/sys/sep/doc/watchdog.adoc:23``; also
-        ``doc/programmer/src/sep-programming.adoc:673-675``). With enable and
+        ``doc/programmer/src/sep-programming.adoc:675-677``). With enable and
         ``pause_in_sleep`` both 1, the count advance between two reads lies in
         ``[E_min - A, E_max + A]``, where ``E_min`` and ``E_max`` are the
         ``clk_wdt_i`` edges inside and around the two reads. The graded window

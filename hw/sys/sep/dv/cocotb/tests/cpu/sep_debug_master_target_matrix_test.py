@@ -120,7 +120,7 @@ Checks:
                   ``clk_wdt_i`` falling edges, HALT_TICKS apart
                   (``hw/sys/sep/doc/watchdog.adoc:23``: the timer keeps counting
                   while the CPU is halted in debug and ``pause_in_sleep`` has no
-                  effect; ``doc/programmer/src/sep-programming.adoc:673-675``;
+                  effect; ``doc/programmer/src/sep-programming.adoc:675-677``;
                   ``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:52``:
                   one increment per AON clock tick). Controls: CTRL-WDT-HALT-CTRL
                   (``WDOG_CTRL`` reads back enable and ``pause_in_sleep``, every
@@ -2207,7 +2207,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         CHK-WDT-HALT-COUNT. "SEP ties ``wdt_debug_sleep_mode_i`` low, so the timer
         keeps counting while the CPU is halted in debug and
         ``WDOG_CTRL.pause_in_sleep`` has no effect." (``hw/sys/sep/doc/watchdog.adoc:23``;
-        also ``doc/programmer/src/sep-programming.adoc:673-675``). "Once the timer
+        also ``doc/programmer/src/sep-programming.adoc:675-677``). "Once the timer
         is enabled, it increments on every tick of the AON clock."
         (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:52``). The
         debug master writes both thresholds to WDOG_FAR and ``WDOG_CTRL`` to

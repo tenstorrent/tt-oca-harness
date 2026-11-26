@@ -13,8 +13,8 @@ hardware writes when the pair they belong to captures a snapshot of the debug
 signals. A pair whose action field is never driven never acts, and the halves
 of the snapshot the capture writes stay at their reset.
 
-Which action code requests a capture is published by no RDL, generated header
-or MMR specification, so this sequence names none. It walks the node chain the
+``dfd.adoc`` Action Codes lists the action codes and none of them requests a
+snapshot capture, so this sequence names none. It walks the node chain the
 way ``smc_dfd_cla_node_eap_sweep_test`` does, and on each node drives every
 pair's action field over its whole declared range with a relation that
 activates the pair. Every snapshot register is read at its reset first, so a

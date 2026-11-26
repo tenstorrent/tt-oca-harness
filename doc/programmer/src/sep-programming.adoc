@@ -243,7 +243,9 @@ Read `TOKEN_MATCH_FAULT` to identify the token, then mask the source; an
 unmasked handler re-enters.
 |41, 42, DMA register-path and host-path faults |Write `DMA_BUS_ERR_CLEAR.clr`.
 |43, peripheral register-bridge fault |Read `PERIPH_BUS_ERR_STATUS` to identify
-the block, then clear that block's bit in `PERIPH_BUS_ERR_CLEAR`.
+the block, then clear that block's bit in `PERIPH_BUS_ERR_CLEAR`. An SPI host
+register-bus integrity fault repeats until the SEP reset, so
+`PERIPH_BUS_ERR_STATUS.spi` sets again after its clear; mask the source.
 |===
 
 .PIC example C definitions.
@@ -827,7 +829,9 @@ apart:
   `EVENT_ENABLE`; service the event condition or change `EVENT_ENABLE`.
 
 `INTR_ENABLE` gates only the interrupt line, so both state bits can be polled
-with it clear. Activity is reported only by `STATUS.ACTIVE`. Access the
+with it clear. The core's `fatal_fault` alert, raised by a register-bus
+integrity fault or by `ALERT_TEST`, sets `PERIPH_BUS_ERR_STATUS.spi` rather
+than `INTR_STATE`. Activity is reported only by `STATUS.ACTIVE`. Access the
 registers with 32-bit accesses: the 64-bit peripheral bus splits an 8-byte write
 into two 4-byte register writes.
 
