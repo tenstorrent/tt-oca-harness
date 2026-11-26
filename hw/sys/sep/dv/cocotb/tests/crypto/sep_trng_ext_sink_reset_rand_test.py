@@ -1418,12 +1418,15 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             ack_period=_na(pr["ack_period"]), acks_before_clear=pr["acks_before_clear"],
             golden_ok=int(res.get("golden_ok", False)),
         )  # fmt: skip
+        # An OTBN client completes with no error only when its run ends with ERR_BITS 0.
+        err_bits = res.get("err_bits")
         hold_ok = bool(
             pr["clear_seen"]
             and pr["armed_handshakes"] >= 1
             and not pr["bad"]
             and pr["xz"] == 0
             and "error" not in res
+            and (client == "kmac" or err_bits == 0)
         )
         fields = {
             "client": client, "d": d, "phase": _na(phase), "clear_seen": pr["clear_seen"],
@@ -1432,6 +1435,8 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             "unmatched": pr["unmatched"], "xz": pr["xz"],
             "first_bad": pr["bad"][0] if pr["bad"] else "none",
         }  # fmt: skip
+        if client != "kmac":
+            fields["err_bits"] = _hx(err_bits)
         if "error" in res:
             fields["reason"] = f"client_error:{res['error']}"
         self.chk.ok("ADAPTER-CLEAR-HOLD", hold_ok, **fields)
