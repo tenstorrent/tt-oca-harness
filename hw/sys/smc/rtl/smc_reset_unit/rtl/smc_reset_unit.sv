@@ -276,7 +276,6 @@ module smc_reset_unit (
   smc_cool_reset_wrap u_smc_cool_reset_wrap (
     .clk_ref_i              (clk_ref_i),
     .rst_cold_ref_ni        (rst_cold_ref_n),
-    .rst_primary_ref_ni     (rst_primary_ref_clk_no),
     .clk_smc_i              (clk_smc_i),
     .rst_cold_smc_ni        (rst_cold_smc_n),
 

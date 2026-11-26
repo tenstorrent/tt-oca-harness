@@ -21,8 +21,6 @@ module smc_cool_reset_wrap (
                                                                    // synchronized to clk_ref_i;
                                                                    // resets the reset timeout counters and
                                                                    // releases rst_cool_no.
-  input  logic                                   rst_primary_ref_ni,  // Primary reset, active-low,
-                                                                      // synchronized to clk_ref_i.
 
   input  logic                                   clk_smc_i,  // SMC core clock for the ISOLATE_REQ_*
                                                              // registers and input synchronizers.
@@ -242,7 +240,7 @@ module smc_cool_reset_wrap (
   ) u_isolate_req_ack_sync_ref (
     .clk_i (clk_ref_i),
     .d_i   (isolate_req_ack_i),
-    .rst_ni(rst_primary_ref_ni),
+    .rst_ni(rst_cold_ref_ni),
     .q_o   (isolate_req_ack_sync_ref)
   );
 
