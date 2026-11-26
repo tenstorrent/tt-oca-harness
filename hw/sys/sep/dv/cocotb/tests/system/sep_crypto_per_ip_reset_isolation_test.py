@@ -1920,7 +1920,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             ):
                 # The KMAC reset stays asserted during this wait.
                 dist, lat, nxt = await self._require_popped_word_acked(
-                    tag, where_txt, snap["ack_cycle"], pre_u["bus"], cur_u["bus"]
+                    tag, where, snap["ack_cycle"], pre_u["bus"], cur_u["bus"]
                 )
                 popped += 1
                 self.logger.info(
