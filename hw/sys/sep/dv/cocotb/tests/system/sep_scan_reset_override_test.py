@@ -34,6 +34,11 @@ Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
   ``rst_ni`` is high. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
   edge of their own clock after the ``scan_rst_ni`` rise (the synchronizer is
   not in the path). With ``test_en_i`` low, ``scan_rst_ni`` has no effect.
+* "Replaces" and "selects" (``reset_controller.adoc:82-84``,
+  ``clk_rst.adoc:78-79``) make each net equal ``scan_rst_ni`` whatever its
+  functional reset is, so with ``scan_rst_ni`` = 1 and ``test_en_i`` = 1 the 16
+  nets stay high while ``rst_ni``, which is in the functional cone of every one
+  of them, is low.
 * ``test_en_i`` and ``secure_tm_req_i`` are separate ports: ``secure_tm_o``
   does not follow ``test_en_i``.
 
@@ -51,6 +56,15 @@ Checkers:
                     clk_wdt_i edge. Other rise offsets: INFO-SCAN-OFFSET.
   CHK-STRAP-INDEP   secure_tm_o does not move across the test_en_i toggles, at
                     strap 1 and at strap 0.
+  CHK-SCAN-OVERRIDE test_en_i=1 and scan_rst_ni=1: the 16 nets are high on every
+                    clk_i edge from the rst_ni fall to the end of the hold
+                    after its rise.
+
+Each stimulus has a CTRL line read at the ``u_dut`` input ports: CTRL-STRAP-INDEP
+(the ``test_en_i`` values seen across each toggle sequence), CTRL-SCAN-IDLE and
+CTRL-SCAN-REPLACE (the ``scan_rst_ni`` low edges, ``test_en_i`` and ``rst_ni``
+on every sample of the pulse) and CTRL-SCAN-OVERRIDE (the ``rst_ni`` low edges,
+``test_en_i`` and ``scan_rst_ni`` on every sample of the pulse).
 
 ``sep_test_en_pin_reach_test`` grades the clock-gater and AXI cell test
 inputs that ``test_en_i`` reaches. This leaf runs the same read-only walk
@@ -60,8 +74,9 @@ inputs that ``test_en_i`` reaches. This leaf runs the same read-only walk
 (the walked pins that move across the strap toggles).
 
 The graded window (owner code of this test) is open from the first test_en_i
-toggle to the end of leg B, and closed for the rst_ni pulse of the strap-0 boot
-and for the Key Manager release.
+toggle to the end of leg B, and closed for the rst_ni pulse of the strap-0 boot,
+for the Key Manager release and for leg C. After leg C the leaf lowers
+test_en_i and takes a cold reset, so it ends in functional mode.
 """
 
 from __future__ import annotations
@@ -105,6 +120,9 @@ NETS: tuple[tuple[str, str, int | None], ...] = (
 N_NETS = len(NETS)
 
 H = 32  # hold interval in clk_i cycles (at least two clk_wdt_i periods)
+TEST_EN_SEQ = (0, 1, 0)  # test_en_i values of each toggle sequence
+# The tb_top drive of each pulsed reset input.
+DRIVE_PORT = {"scan_rst_ni": "scan_rst_ni_i", "rst_ni": "rst_ni"}
 P_W = 8  # clk_wdt_i period in clk_i periods
 WDT_PHASE_PCT = 5  # clk_wdt_i rising edge, percent of a clk_i period after clk_i
 TAP_BOUND = 2_000  # clk_i cycles for a reset tap to read 1
@@ -128,6 +146,7 @@ class sep_scan_reset_override_test(sep_base_test):
         "CHK-SCAN-IDLE",
         "CHK-SCAN-REPLACE",
         "CHK-STRAP-INDEP",
+        "CHK-SCAN-OVERRIDE",
     )
 
     # -- taps -------------------------------------------------------------------
@@ -182,33 +201,43 @@ class sep_scan_reset_override_test(sep_base_test):
     def _pins(self) -> list[tuple[str, int | None]]:
         return [(p, pin_value(pin)) for pins in self.walk.values() for p, pin in pins]
 
-    async def _set_test_en(self, v: int) -> None:
+    async def _set_test_en(self, v: int) -> int:
         """Drive test_en_i, wait up to PIN_BOUND cycles for every walked pin to
-        equal it, and record the pins that do not (INFO-TEST-EN-PINS)."""
+        equal it, and record the pins that do not (INFO-TEST-EN-PINS). Returns
+        ``u_dut.test_en_i`` on the first edge after the drive."""
         dut = cocotb.top
         await RisingEdge(dut.clk_i)
         dut.test_en_i.value = v
+        port = None
         for _ in range(PIN_BOUND):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
+            if port is None:
+                port = self.rd(dut.u_dut.test_en_i)
             bad = [p for p, x in self._pins() if x != v]
             if not bad:
                 break
         self.pin_stuck.update(bad)
         await RisingEdge(dut.clk_i)
+        return port
 
     async def _toggle_test_en(self, strap: int) -> None:
-        """test_en_i 0, 1, 0, each held H cycles; secure_tm_o sampled every edge."""
+        """test_en_i 0, 1, 0, each held H cycles; secure_tm_o and u_dut.test_en_i
+        sampled every edge."""
         dut = cocotb.top
         tm0 = self.tm_expect
         moved = []
         seen = {"n": 0, "last": 0}
+        runs: list[int] = []  # u_dut.test_en_i, one entry per run of equal samples
 
         async def _watch(stop: dict) -> None:
             while not stop["v"]:
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
                 tm = self.rd(dut.secure_tm_o)
+                te = self.rd(dut.u_dut.test_en_i)
+                if not runs or runs[-1] != te:
+                    runs.append(te)
                 seen["n"] += 1
                 seen["last"] = int(get_sim_time("ps"))
                 if tm != tm0:
@@ -216,15 +245,28 @@ class sep_scan_reset_override_test(sep_base_test):
 
         stop = {"v": False}
         task = cocotb.start_soon(_watch(stop))
-        for v in (0, 1, 0):
-            await self._set_test_en(v)
+        toggles = 0
+        for v in TEST_EN_SEQ:
+            port = await self._set_test_en(v)
+            toggles += port == v
             await ClockCycles(dut.clk_i, H)
-            self.test_en_toggles += 1
         t_end = int(get_sim_time("ps"))
         stop["v"] = True
         await task
         # The watcher ends in ReadOnly; leave it before the caller drives or samples.
         await RisingEdge(dut.clk_i)
+        observed = ",".join(map(str, runs))
+        assert toggles == len(TEST_EN_SEQ) and runs == list(TEST_EN_SEQ), (
+            f"CTRL-STRAP-INDEP FAIL: strap={strap} u_dut.test_en_i observed={observed} "
+            f"toggles={toggles} expected={','.join(map(str, TEST_EN_SEQ))}"
+        )
+        self.logger.info(
+            "CTRL-STRAP-INDEP: strap=%d u_dut.test_en_i observed=%s toggles=%d",
+            strap,
+            observed,
+            toggles,
+        )
+        self.test_en_toggles[strap] = toggles
         assert seen["n"] and seen["last"] >= t_end, (
             f"CHK-STRAP-INDEP FAIL: secure_tm_o watcher did not sample through the toggles "
             f"(samples={seen['n']} last={seen['last']} ps end={t_end} ps)"
@@ -239,28 +281,45 @@ class sep_scan_reset_override_test(sep_base_test):
             tm0,
         )
 
-    # -- scan pulse -------------------------------------------------------------------
+    # -- reset pulse ------------------------------------------------------------------
 
-    async def _scan_pulse(self, test_en: int, chk: str) -> dict:
-        """scan_rst_ni low for w cycles, released at the drawn phase; nets sampled
-        on every clk_i rising edge to the end of the hold after the rise."""
+    async def _reset_pulse(self, pin: str, test_en: int, chk: str) -> dict:
+        """``pin`` (scan_rst_ni or rst_ni) low for w cycles, released at the drawn
+        phase; nets and the u_dut reset and test_en_i inputs sampled on every
+        clk_i rising edge to the end of the hold after the rise.
+
+        The CTRL line of ``chk`` requires ``u_dut.<pin>`` low on exactly w of
+        the edges after the fall, ``u_dut.test_en_i`` equal to ``test_en`` and
+        the other reset input high on every one of them.
+        """
         dut = cocotb.top
+        u = dut.u_dut
         cfg = self.tcfg
         period_ps = self.sys_ps
+        drive = getattr(dut, DRIVE_PORT[pin])
+        other = next(p for p in DRIVE_PORT if p != pin)
         samples: list[tuple[int, list[int]]] = []
+        ports: list[tuple[int, dict[str, int]]] = []
         stop = {"v": False}
 
         async def _sample() -> None:
             while not stop["v"]:
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
-                samples.append((int(get_sim_time("ps")), self._nets()))
+                t = int(get_sim_time("ps"))
+                samples.append((t, self._nets()))
+                ports.append(
+                    (
+                        t,
+                        {p: self.rd(getattr(u, p)) for p in (*DRIVE_PORT, "test_en_i")},
+                    )
+                )
 
         timers = [SepEdgeTimer(getattr(dut, port), name=name).start() for name, port, _b in NETS]
         task = cocotb.start_soon(_sample())
         await RisingEdge(dut.clk_i)
         await Timer(cfg.phase * period_ps // 100, units="ps")
-        dut.scan_rst_ni_i.value = 0
+        drive.value = 0
         t_fall = int(get_sim_time("ps"))
         for _ in range(cfg.w):
             await RisingEdge(dut.clk_i)
@@ -268,7 +327,7 @@ class sep_scan_reset_override_test(sep_base_test):
         last_edge = int(get_sim_time("ps"))
         before_release = self._nets()
         await Timer(cfg.phase * period_ps // 100, units="ps")
-        dut.scan_rst_ni_i.value = 1
+        drive.value = 1
         t_rise = int(get_sim_time("ps"))
         await ClockCycles(dut.clk_i, H)
         await ReadOnly()
@@ -281,6 +340,19 @@ class sep_scan_reset_override_test(sep_base_test):
         for t in timers:
             await t.stop()
         await RisingEdge(dut.clk_i)
+        graded = [p for t, p in ports if t > t_fall]
+        low_edges = sum(p[pin] == 0 for p in graded)
+        te_bad = sum(p["test_en_i"] != test_en for p in graded)
+        other_low = sum(p[other] != 1 for p in graded)
+        ctrl = chk.replace("CHK-", "CTRL-")
+        line = (
+            f"u_dut.{pin} low_edges={low_edges}/{cfg.w} u_dut.test_en_i={test_en} "
+            f"u_dut.{other}=1 samples={len(graded)}"
+        )
+        assert graded and low_edges == cfg.w and not te_bad and not other_low, (
+            f"{ctrl} FAIL: {line} test_en_i_mismatch={te_bad} {other}_low={other_low}"
+        )
+        self.logger.info("%s: %s", ctrl, line)
         rises = {}
         for (name, _p, bit), t in zip(NETS, timers):
             r = t.rises(t_rise, until_ps=t_end, bit=bit or 0)
@@ -293,6 +365,7 @@ class sep_scan_reset_override_test(sep_base_test):
             "before_release": before_release,
             "rises": rises,
             "test_en": test_en,
+            "low_edges": low_edges,
         }
 
     # -- leaf -----------------------------------------------------------------------
@@ -330,7 +403,7 @@ class sep_scan_reset_override_test(sep_base_test):
         self.cfg.wdt_clk_period_ns = P_W * self.cfg.sys_clk_period_ns
         self.clock_phases_ps = {"clk_wdt_i": WDT_PHASE_PCT * self.sys_ps // 100}
         self.pins_clk = SepPinEdgeCounter(("clk_i", "clk_wdt_i"), keep=1 << 14).start()
-        self.test_en_toggles = 0
+        self.test_en_toggles: dict[int, int] = {}
         self.strap_toggles = 0
         self.pin_stuck: set[str] = set()
 
@@ -411,8 +484,8 @@ class sep_scan_reset_override_test(sep_base_test):
         self.logger.info(
             "CHK-STRAP-INDEP PASS: secure_tm_o=1 unchanged across %d test_en_i toggles at strap=1 "
             "and secure_tm_o=0 unchanged across %d at strap=0",
-            3,
-            3,
+            self.test_en_toggles[1],
+            self.test_en_toggles[0],
         )
 
         # Step 7: release the Key Manager (set-up, window closed).
@@ -447,7 +520,7 @@ class sep_scan_reset_override_test(sep_base_test):
 
         # Step 8: control A, test_en_i = 0.
         open_graded_window(TEST, self.logger)
-        a = await self._scan_pulse(0, "CHK-SCAN-IDLE")
+        a = await self._reset_pulse("scan_rst_ni", 0, "CHK-SCAN-IDLE")
         low = [(t, [NETS[i][0] for i, v in enumerate(vals) if v != 1]) for t, vals in a["samples"]]
         low = [x for x in low if x[1]]
         assert not low and a["samples"], (
@@ -456,7 +529,7 @@ class sep_scan_reset_override_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SCAN-IDLE PASS: scan_rst_ni low %d cycles test_en_i=0 nets_high=%d/%d samples=%d",
-            cfg.w,
+            a["low_edges"],
             N_NETS,
             N_NETS,
             len(a["samples"]),
@@ -473,7 +546,7 @@ class sep_scan_reset_override_test(sep_base_test):
         bad = [v for v in hold if not all(v)]
         assert not bad, f"CHK-SCAN-REPLACE FAIL: a net low with scan_rst_ni=1 test_en_i=1: {bad[0]}"
         await RisingEdge(dut.clk_i)
-        b = await self._scan_pulse(1, "CHK-SCAN-REPLACE")
+        b = await self._reset_pulse("scan_rst_ni", 1, "CHK-SCAN-REPLACE")
         close_graded_window(self.logger)
         names = [n[0] for n in NETS]
         # Every clk_i edge from the scan_rst_ni fall to the last edge before the release.
@@ -520,4 +593,32 @@ class sep_scan_reset_override_test(sep_base_test):
                 None if r is None else r - t_rise,
             )
         self.logger.info("CHK-SCAN-REPLACE PASS: %s", line)
-        self.result_pass(TEST, seed, 3)
+
+        # Step 10: leg C, rst_ni low with test_en_i = 1 and scan_rst_ni = 1 (window
+        # closed). Every net stays high on every edge.
+        c = await self._reset_pulse("rst_ni", 1, "CHK-SCAN-OVERRIDE")
+        low = [(t, [names[i] for i, v in enumerate(vals) if v != 1]) for t, vals in c["samples"]]
+        low = [x for x in low if x[1]]
+        assert c["samples"] and not low, (
+            f"CHK-SCAN-OVERRIDE FAIL {self._net_names(low)}: net(s) not high with rst_ni low "
+            f"test_en_i=1 scan_rst_ni=1 (samples={len(c['samples'])}): {low[:4]}"
+        )
+        nets_high = sum(all(vals[i] for _t, vals in c["samples"]) for i in range(N_NETS))
+        self.logger.info(
+            "CHK-SCAN-OVERRIDE PASS: rst_ni low %d cycles test_en_i=1 scan_rst_ni=1 "
+            "nets_high=%d/%d samples=%d",
+            c["low_edges"],
+            nets_high,
+            N_NETS,
+            len(c["samples"]),
+        )
+
+        # Step 11: back to functional mode: test_en_i low, then a cold reset (not graded).
+        await RisingEdge(dut.clk_i)
+        dut.test_en_i.value = 0
+        await self.pulse_rst_ni(
+            hold_cycles=RST_PULSE, release_bound=TAP_BOUND, max_sense_cycles=SENSE_BOUND
+        )
+        for port in ("dbg_sep_reset_n_o", "sep_cpu_reset_n_o"):
+            await self._wait_tap(port, TAP_BOUND)
+        self.result_pass(TEST, seed, len(self.required_evidence))

@@ -30,7 +30,8 @@ inject is released at each set-up and at the end of the leaf.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the order of the 16 ``LANE_SEL`` values (every write changes the
-effective lane), z per lane change (both values, z = 1 at least once), the flush
+effective lane), z per lane change (both values; drawn for every change and set
+to 1 at the changes to 12 to 15), the flush
 lane, its z and the words f before the flush, the words k at the lock moment,
 z of each lock pass, the lane and bits of the sample-clock sequence leg, the
 lane-0 ``LANE_SEL`` value 12 to 15 of the same-lane write, and the bits of the
@@ -422,6 +423,8 @@ def draw_plan(seed: int, clk_ps: int) -> Plan:
     z_lane: list[int] = []
     for _ in range(DRAW_TRIES):
         z_lane = [rng.getrandbits(1) for _ in range(LANE_SEL_VALUES)]
+        # At 12 to 15 lane 0 carries 1, so a select that reads 0 there fails.
+        z_lane = [1 if v >= NUM_LANES else z for v, z in zip(order, z_lane)]
         if 0 in z_lane and 1 in z_lane:
             break
     else:
