@@ -371,6 +371,12 @@ localparam string DtpJ2aOneXferCheckId = "CHK-J2A-ONE-XFER";
 // sbaddress reads and refused accesses it takes then, and the sbbusyerror a
 // refusal sets until a write of 1 clears it.
 localparam string DtpJ2aSbaBusyCheckId = "CHK-J2A-SBA-BUSY";
+// Each bridge instruction's DR: the selected bridge's own capture, and TDI
+// past the register's length.
+localparam string DtpJ2aDecodeCheckId = "CHK-J2A-DECODE";
+// A bridge's DMI cells, dmistat, Debug Module registers and port counts
+// across scans of other instructions and accesses on the other bridges.
+localparam string DtpJ2aIsolationCheckId = "CHK-J2A-ISOLATION";
 // An access of a disabled bridge, ended by the error slave, and the registers
 // that stay live while the bridge is disabled.
 localparam string DtpJ2aDbgDisableCheckId = "CHK-J2A-DBG-DISABLE";

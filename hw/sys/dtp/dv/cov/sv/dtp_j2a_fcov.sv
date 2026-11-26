@@ -23,7 +23,9 @@
 // state of each bridge, the phase of each bridge's access at the bridge
 // reset, a response held past the poll bound at it, the scans in it, a
 // bridge reset that a read's AR handshake asserts, its TCK-side release
-// after TCK stopped, and test mode (cg_j2a_reset).
+// after TCK stopped, and test mode (cg_j2a_reset); and the length of each
+// scan of a bridge register, and each DR update of another register and IR
+// update with the state of each bridge then (cg_j2a_isolation).
 //
 // One instance in the shared tb_top serves both flows. Each bridge's DMI
 // capture and update strobes, its captured status, the DMI value its bridge
@@ -71,6 +73,13 @@
 // clears updates after the sample. A bridge's access phase comes from its
 // port's handshakes, its DMI state machine, its Debug Module's sbbusy and
 // the last DMI operation its bridge accepted.
+//
+// The isolation samples are taken on TCK from each bridge's DTMCS and DMI
+// scan selects and the TAP state: on the edge that leaves Update-DR, a scan
+// of a bridge's own register with the Shift-DR edges it took, and every
+// other DR update, for each bridge it did not select, with the bridge's
+// Debug Module sbbusy; and on the edge that leaves Update-IR, the same for
+// every bridge.
 //
 // Covergroups follow the cross rules dtp_fcov.sv states.
 //
@@ -136,7 +145,10 @@ module dtp_j2a_fcov (
   // Each bridge's DMI state machine is not idle, and its sticky DMI status is
   // not 0.
   input wire [2:0]      fsm_busy_i,
-  input wire [2:0]      sticky_i
+  input wire [2:0]      sticky_i,
+  // Each bridge's DTMCS and DMI DR-scan selects.
+  input wire [2:0]      dtmcs_select_i,
+  input wire [2:0]      dmi_select_i
 );
 
   localparam int unsigned Bridges = 3;
@@ -185,6 +197,18 @@ module dtp_j2a_fcov (
   localparam logic [2:0] PhaseW = 3'd3;
   localparam logic [2:0] PhaseResponse = 3'd4;
   localparam logic [2:0] PhaseDone = 3'd5;
+  // cg_j2a_isolation sample kinds, scan lengths and disturbing scans.
+  localparam logic KindIsoLength = 1'b0;
+  localparam logic KindIsoDisturb = 1'b1;
+  localparam logic [1:0] LengthShort = 2'd0;
+  localparam logic [1:0] LengthExact = 2'd1;
+  localparam logic [1:0] LengthLonger = 2'd2;
+  localparam logic [1:0] SourceOtherDmi = 2'd0;
+  localparam logic [1:0] SourceOtherDtmcs = 2'd1;
+  localparam logic [1:0] SourceNonBridge = 2'd2;
+  localparam logic [1:0] SourceIr = 2'd3;
+  localparam int unsigned DtmcsLen = 32;
+  localparam int unsigned DmiLen = 41;
   // The synchronizer depth: clk_i cycles of a TCK-side release with TCK
   // stopped from which it counts as one.
   localparam int unsigned TckStoppedCycles = 3;
@@ -683,6 +707,31 @@ module dtp_j2a_fcov (
     }
   endgroup
 
+  covergroup cg_j2a_isolation with function sample (
+      logic kind, logic [1:0] bridge, logic [2:0] value
+  );
+    option.per_instance = 1;
+    // 8 * bridge + 4 * DTMCS + length against the register's
+    cp_length: coverpoint {
+      bridge, value
+    } iff (kind == KindIsoLength) {
+      bins smc_axi[] = {1, 2, 5, 6};
+      bins smc_otp[] = {9, 10, 13, 14};
+      bins sep_otp[] = {17, 18, 21, 22};
+      ignore_bins shorter = {0, 4, 8, 12, 16, 20};
+      illegal_bins none = {3, 7, 11, 15, 19, 23, [24 : 31]};
+    }
+    // 8 * bridge + 2 * source + sbbusy
+    cp_disturb: coverpoint {
+      bridge, value
+    } iff (kind == KindIsoDisturb) {
+      bins smc_axi[] = {[0 : 7]};
+      bins smc_otp[] = {[8 : 15]};
+      bins sep_otp[] = {[16 : 23]};
+      illegal_bins none = {[24 : 31]};
+    }
+  endgroup
+
   cg_j2a_dmi_status u_cg_j2a_dmi_status = new();
   cg_j2a_dm_access u_cg_j2a_dm_access = new();
   cg_j2a_sba_access u_cg_j2a_sba_access = new();
@@ -691,6 +740,7 @@ module dtp_j2a_fcov (
   cg_j2a_axi_timing u_cg_j2a_axi_timing = new();
   cg_j2a_dbg_disable u_cg_j2a_dbg_disable = new();
   cg_j2a_reset u_cg_j2a_reset = new();
+  cg_j2a_isolation u_cg_j2a_isolation = new();
 
   always_ff @(posedge tck_i) begin
     if (tap_rst_ni) begin
@@ -1202,6 +1252,53 @@ module dtp_j2a_fcov (
       end
       if (rst_ni && !rst_q && armed_q[b])
         u_cg_j2a_reset.sample(2'(b), KindRstArmed, {3'b0, rst_scan_q[b] != armed_scan_q[b]});
+    end
+  end
+
+  // Per bridge, the Shift-DR edges the scan in progress of its selected
+  // register has taken, saturating.
+  logic [Bridges-1:0][7:0] shift_count_q;
+
+  always_ff @(posedge tck_i or negedge tap_rst_ni) begin
+    if (!tap_rst_ni) begin
+      shift_count_q <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (tap_state_i == jtag_tap_pkg::CAPTURE_DR) shift_count_q[b] <= '0;
+        else if (tap_state_i == jtag_tap_pkg::SHIFT_DR && (dtmcs_select_i[b] || dmi_select_i[b]) &&
+                 shift_count_q[b] != '1)
+          shift_count_q[b] <= shift_count_q[b] + 8'd1;
+      end
+    end
+  end
+
+  // The length class cp_length records for bridge b's selected register.
+  function automatic logic [1:0] scan_length(int unsigned b);
+    int unsigned length = dtmcs_select_i[b] ? DtmcsLen : DmiLen;
+    if (shift_count_q[b] < length) return LengthShort;
+    return shift_count_q[b] == length ? LengthExact : LengthLonger;
+  endfunction
+
+  // The source cp_disturb records for bridge b at a DR update it did not
+  // select.
+  function automatic logic [1:0] dr_source(int unsigned b);
+    logic [Bridges-1:0] others = ~(Bridges'(1) << b);
+    if ((dmi_select_i & others) != '0) return SourceOtherDmi;
+    if ((dtmcs_select_i & others) != '0) return SourceOtherDtmcs;
+    return SourceNonBridge;
+  endfunction
+
+  always_ff @(posedge tck_i) begin
+    if (tap_rst_ni) begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (tap_state_i == jtag_tap_pkg::UPDATE_DR) begin
+          if (dtmcs_select_i[b] || dmi_select_i[b])
+            u_cg_j2a_isolation.sample(KindIsoLength, 2'(b), {dtmcs_select_i[b], scan_length(b)});
+          else u_cg_j2a_isolation.sample(KindIsoDisturb, 2'(b), {dr_source(b), dm_sbbusy_i[b]});
+        end else if (tap_state_i == jtag_tap_pkg::UPDATE_IR) begin
+          u_cg_j2a_isolation.sample(KindIsoDisturb, 2'(b), {SourceIr, dm_sbbusy_i[b]});
+        end
+      end
     end
   end
 
