@@ -6,7 +6,7 @@
 // On a rising edge of isolate_sequence_trigger_i, counts down ISOLATE_REQ_FLR_COUNTER_VALUE
 // reference clock cycles, then holds rst_cool_no low while counting down
 // ISOLATE_REQ_FLR_RESET_COUNTER_VALUE cycles; no sequence starts while the reset count is
-// zero. The first count ends early once isolate_req_ack_i is high for every subsystem
+// zero, and an edge that arrives before the hold ends is ignored. The first count ends early once isolate_req_ack_i is high for every subsystem
 // enabled in ISOLATE_REQ_SMCEN_REG and at least one is enabled.
 // Records the cause of each cool reset and, for a sequence, the acknowledges it saw, in
 // ISOLATE_REQ_VIS and ISOLATE_REQ_ACK_CAPTURE. Those and the ISOLATE_REQ_* registers are
@@ -430,8 +430,10 @@ module smc_cool_reset_wrap (
     case (flr_counter_state)
       IDLE: begin
 
-        // Do not start counting down if the reset assertion duration has not been set
-        if (isolate_sequence_trigger_sync_ref_posedge && (flr_reset_set_cnt_ref_clk != '0)) begin
+        // Do not start counting down if the reset assertion duration has not been set, or
+        // while a cool reset hold is still running: an edge during the hold is dropped.
+        if (isolate_sequence_trigger_sync_ref_posedge && (flr_reset_set_cnt_ref_clk != '0) &&
+            (flr_reset_counter_state == IDLE)) begin
 
           // Check if counter value is set to 0 already, go to EQUAL_ZERO
           if (flr_set_cnt_ref_clk == '0) begin
