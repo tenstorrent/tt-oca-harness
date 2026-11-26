@@ -1222,7 +1222,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         check grades the valid level, which a handshake on that edge also
         clears. INFO-RST-AXI-HANDSHAKE logs whether the request and its ready
         are both 1 in the first sample with the reset at 0, the dropped-request
-        case of ``architecture.adoc:185-189``; READY is not constrained in
+        case of ``architecture.adoc:183-187``; READY is not constrained in
         reset, so that is not graded. At that sample the point starts its
         CHK-RST-AXI-NORESP watcher, which runs on past the return: the KM stays
         held until the next release.
