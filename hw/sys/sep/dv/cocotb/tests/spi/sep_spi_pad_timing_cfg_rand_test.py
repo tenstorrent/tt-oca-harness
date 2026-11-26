@@ -32,11 +32,11 @@ driven lane never changing on a sample edge or between a sample edge and the
 next shift edge, the data lane output enables, and no X/Z (``CHK-SPI-WIRE``,
 both cells' modes with graded frames).
 
-Data (OpenTitan SPI_HOST "Input and Output Byte Ordering"): each TXDATA and
-RXDATA word carries its bytes in one in-word byte order, the same order for
-every word of the leaf (``SepSpiByteOrder`` of
-``env/sep_spi_lane_responder.py``); which of the two orders the words use is
-not graded, and one INFO-SPI-BYTEORDER line per leaf logs it. Most significant
+Data (OpenTitan SPI_HOST "Input and Output Byte Ordering"): SEP sets
+ByteOrder = 1 (``spi_controller.rdl:124-127``), so the first wire byte of each
+TXDATA and RXDATA word is bits 7:0. Every data word is graded in that order
+(``SepSpiByteOrder`` of ``env/sep_spi_lane_responder.py``), and one
+CHK-SPI-BYTEORDER line per leaf grades the word counts and STATUS.BYTEORDER = 1. Most significant
 bits first; in x2 and x4 the least significant bit of each pair or nibble is
 on ``sd[0]``; in x1 the host sends on ``sd[0]`` and receives on ``sd[1]``. Tx data is seeded; the first two bytes of each Tx
 segment hold lane 0 at 1, 0, 1, 0 on successive clocks, so the data-edge check
@@ -54,7 +54,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:222-224``
   (CONTROL.OUTPUT_EN): "Enable the SPI host output buffers for the sck, csb,
   and sd lines." Control: before the bring-up CONTROL write sets OUTPUT_EN,
-  both enables read 0 (``doc/integrator/src/smu-sep.adoc:291-292``: the host
+  both enables read 0 (``doc/integrator/src/smu-sep.adoc:352-353``: the host
   "drives no pad until software sets its ``CONTROL.OUTPUT_EN``"), else
   CTRL-MISSING.
 * CHK-SPI-PERIOD: every sck period of the graded pair is 2*(CLKDIV+1) clocks.
@@ -80,7 +80,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   15), first at CPHA 0 and then at CPHA 1, an Rx segment from a late responder
   (each beat one core clock after its sample edge) reads the seeded bytes with
   FULLCYC = 1: the host samples a full cycle after its shift edge (RXDATA
-  words read in the leaf's in-word byte order). Source
+  words read in the ByteOrder = 1 order). Source
   ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:373-380``
   (CONFIGOPTS.FULLCYC): "Rather than sampling the SD bus a half cycle after
   shifting out data, the data is sampled a full cycle after shifting data out.
@@ -289,6 +289,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         "CHK-SPI-RX-WORDS",
         "CHK-SPI-FULLCYC",
         "CHK-SPI-CTRL-OE",
+        "CHK-SPI-BYTEORDER",
     )
 
     def _plan(self, seed: int) -> list[Cell]:
@@ -767,7 +768,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
     ):
         """One Rx segment of ``data`` from the late responder; return the RXDATA bytes.
 
-        The RXDATA words are read in the leaf's in-word byte order against
+        The RXDATA words are read in the ByteOrder = 1 order against
         ``expect``, the bytes the host should sample at this FULLCYC.
         """
         ops, pads = self.ops, self.pads
@@ -914,6 +915,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
                 self.logger, seed=self.seed, modes=[(c.cpol, c.cpha) for c in cells]
             )
             self.order.log_info(self.logger, self.seed, status_byteorder=self.status_byteorder)
+            self.ran.add("CHK-SPI-BYTEORDER")
         finally:
             close_graded_window()
             if getattr(self, "rsp", None) is not None:

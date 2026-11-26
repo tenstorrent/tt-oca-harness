@@ -18,7 +18,7 @@ endif::backend-html5[]
 |===
 |Interface Name |Type |Direction |Width |Description |Connection |Default value (if applicable)
 
-|`clk_i` |`logic` |Input |1 |Primary SEP clock. All SEP internal logic operates synchronously to this clock. |System clock |N/A
+|`clk_i` |`logic` |Input |1 |Primary SEP clock for the fabric, CPU, cryptographic subsystem and register interfaces. The reference-counter, watchdog-timer, entropy-sample and JTAG clock domains are listed in clk_rst.adoc. |System clock |N/A
 |`clk_wdt_i` |`logic` |Input |1 |200 kHz clock for watchdog timer. |Low-frequency clock source |N/A
 |`rst_ni` |`logic` |Input |1 |Primary reset (active low). Asynchronous assertion, synchronous deassertion. |System reset |N/A
 |`dbg_rstb_i` |`logic` |Input |1 |EL2 debugger reset (active low). |JTAG debug infrastructure |N/A
@@ -89,7 +89,7 @@ endif::backend-html5[]
 |`ext_trng_axil_resp_i` |`sep_32_32_axil_resp_t` |Input |- |External TRNG AXI-Lite passthrough response. |External TRNG shim |N/A
 |`ext_trng_axis_req_i` |`ext_trng_axis_req_t` |Input |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream request array (from `sep_ip_integration`). |External TRNG shim |N/A
 |`ext_trng_axis_rsp_o` |`ext_trng_axis_rsp_t` |Output |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream response array. |External TRNG shim |N/A
-|`ext_trng_irq_i` |`logic` |Input |1 |External TRNG interrupt (routed to PIC). |External TRNG shim |Tie to '0 if unused
+|`ext_trng_irq_i` |`logic` |Input |1 |External TRNG interrupt, PIC source 17. Asynchronous; resynchronized inside SEP. Hold for at least two SEP clock cycles, or until serviced if firmware uses a level gateway. |External TRNG shim |Tie to '0 if unused
 
 |`km_rom_mem_req_o` |`km_intf_pkg::km_rom_mem_req_t` |Output |- |Key Manager ROM memory request. |ROM macro |N/A
 |`km_rom_mem_rsp_i` |`km_intf_pkg::km_rom_mem_rsp_t` |Input |- |Key Manager ROM memory response. |ROM macro |N/A
@@ -127,7 +127,7 @@ endif::backend-html5[]
 |`smc_global_base_addr_i` |`logic` |Input |`[55:0]` |SMC global base address for outbound address translation. |System configuration |N/A
 |`smc_region_size_i` |`logic` |Input |`[55:0]` |SMC region size for outbound address translation. |SMC `smc_region_size_o` |N/A
 
-|`sep_ras_o` |`sep_pkg::sep_ras_t` |Output |- |SEP RAS indications on the SEP clock: eFuse lifecycle differential-encoding error, CPU lockstep corruption, watchdog bark and bite (the bite synchronized from `clk_wdt_i`), ICCM and DCCM single- and double-bit ECC, Key Manager trap and recoverable faults, DMA alert and sticky register-bridge and host-integrity faults, the per-block sticky register-bridge faults, whose SPI bit also latches the SPI host fatal alert (`periph_bus_err`, indexed by `periph_bus_err_e`), CSRNG and EDN fatal alerts, the aggregated crypto alert, entropy-pool fill stall and integrity error, and the token comparator redundancy fault. `iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue`, `dma_alert`, `csrng_fatal`, `edn_fatal` and `crypto_alert` are one-cycle pulses, which a consumer on another clock must stretch or pulse-synchronize; the other fields are levels. The `sep_pkg::sep_ras_t` field comments state how each one is held and cleared. |Chip-level RAS aggregation; SMU `lc_sigint_err_o` |N/A
+|`sep_ras_o` |`sep_pkg::sep_ras_t` |Output |- |SEP RAS indications on the SEP clock: eFuse lifecycle differential-encoding error, CPU lockstep corruption, watchdog bark and bite (the bite synchronized from `clk_wdt_i`), ICCM and DCCM single- and double-bit ECC, Key Manager trap and recoverable faults, DMA alert and sticky register-bridge and host-integrity faults, the per-block sticky register-bridge faults, whose SPI bit also latches the SPI host fatal alert (`periph_bus_err`, indexed by `periph_bus_err_e`), CSRNG and EDN fatal alerts, the aggregated crypto alert, entropy-pool fill stall and integrity error, and the token comparator redundancy fault. `iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue`, `csrng_fatal` and `edn_fatal` are one-cycle pulses, one per event; after a fatal CSRNG or EDN error the pulse repeats every few cycles until reset. `dma_alert` and `crypto_alert` combine pulses and levels: each alert handshake gives a one-cycle pulse, repeating until reset after a fatal alert, and the field is a level for as long as an alert pair fails its integrity check. `crypto_alert` is also held high from a crypto or pool EDN adapter fault until reset. A consumer on another clock must stretch or pulse-synchronize the pulse fields. The other fields are levels. The `sep_pkg::sep_ras_t` field comments state how each one is held and cleared. |Chip-level RAS aggregation; SMU `lc_sigint_err_o` |N/A
 
 |`ext_debug_bus_o` |`logic` |Output |`[383:0]` |External debug observation bus, 24 lanes of 16 bits; unused lanes are 0. |Debug infrastructure |N/A
 |===

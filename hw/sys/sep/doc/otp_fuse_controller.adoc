@@ -111,7 +111,8 @@ A write-lock blocks fuse programming and shadow writes; a read-lock blocks
 software and JTAG reads of both the fuse field and its shadow. The sensing FSM
 can still read locked fuses to populate the shadows. A shadow write or read
 that a lock blocks completes with SLVERR and read data `0xBADCAB1E`, leaves
-the shadow unchanged, and raises the locked-field access interrupt.
+the shadow unchanged, and pulses the locked-field access interrupt (PIC source
+34) for one clock.
 
 There are two exceptions: the `LOCKS` and `LOCKS_SPARE` registers have no lock
 slot of their own, and `LC_STATE` ignores its assigned lock bits. Lifecycle

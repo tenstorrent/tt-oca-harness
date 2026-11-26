@@ -499,8 +499,8 @@ SEP_ROM_MUX_NUM_PORTS
     logic km_uncorrectable;    // Level while the Key Manager CPU is in its trap state; held until
                                // the Key Manager is reset.
     logic km_correctable;      // Level of the firmware-written Key Manager RECOVERABLE_ERR bit.
-    logic dma_alert;           // Pulse per DMA fatal alert; a level while an alert pair fails its
-                               // integrity check.
+    logic dma_alert;           // Pulse per DMA fatal alert handshake, repeated until reset; a level
+                               // while an alert pair fails its integrity check.
     logic dma_reg_bus_err;     // DMA register-bridge fault; sticky until DMA_BUS_ERR_CLEAR.
     logic dma_host_intg_err;   // DMA host integrity fault; sticky until DMA_BUS_ERR_CLEAR.
     logic [NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err;  // Register-bridge faults indexed by

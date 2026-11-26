@@ -35,7 +35,7 @@
 <tr><td>0x140</td><td><a href="#SMC_FUSE_SENSE_STATUS">SMC_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x150</td><td><a href="#SEP_FUSE_SENSE_STATUS">SEP_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x178</td><td><a href="#SEP_SW_DEBUG">SEP_SW_DEBUG</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x180</td><td><a href="#SEP_NMI_VEC">SEP_NMI_VEC</a></td><td>RW</td><td>NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI<br>interrupt is used for the WDT Bark interrupt.<br><br>WARNING: the reset value is a placeholder, not a usable handler. Firmware must<br>program this register with the address of its own NMI handler, and then set<br>SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).<br>If a bark arrives while the reset value is still in place, the CPU jumps to<br>0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if<br>the loaded image covers that location, or an uncorrectable ICCM ECC error<br>(which itself re-raises NMI) if it does not.</td></tr>
+<tr><td>0x180</td><td><a href="#SEP_NMI_VEC">SEP_NMI_VEC</a></td><td>RW</td><td>NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI<br>interrupt is used for the WDT Bark interrupt.<br><br>WARNING: the reset value is a placeholder, not a usable handler. Firmware must<br>program this register with the address of its own NMI handler, and then set<br>SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).<br>If a bark arrives while the reset value is still in place, the CPU jumps to<br>0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if<br>the loaded image covers that location, or, if the fetch takes an<br>uncorrectable ICCM ECC error, an instruction access fault (mcause 0x1)<br>through mtvec.</td></tr>
 <tr><td>0x188</td><td><a href="#SEP_NMI_VEC_LOCK">SEP_NMI_VEC_LOCK</a></td><td>RW</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The<br>NMI interrupt is used for the WDT Bark interrupt.</td></tr>
 <tr><td>0x190</td><td><a href="#EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</a></td><td>RW</td><td>Per-stream external TRNG source selection for crypto subsystem entropy muxes.</td></tr>
 <tr><td>0x198</td><td><a href="#EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</a></td><td>RW</td><td>Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.</td></tr>
@@ -56,7 +56,7 @@
 <h3 id="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,<br>then poll this register until the readback reflects the written value before<br>writing again. The counter keeps advancing, so the readback is at or just<br>above the written value rather than equal to it.</td></tr>
+<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of the boot-qualified SEP<br>reset. Write once, then poll this register until the readback reflects the<br>written value before writing again. The counter keeps advancing, so the<br>readback is at or just above the written value rather than equal to it.</td></tr>
 </table>
 <h3 id="TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</h3>
 <table>
@@ -159,7 +159,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>55:0</td><td>addr</td><td>RW</td><td>0xD0000000</td><td>-</td></tr>
+<tr><td>55:0</td><td>addr</td><td>RW</td><td>0xD0000000</td><td>Base of the local alias window, which CPU and secure DMA accesses reach as<br>0x1000_0000 onwards. Only bits [31:0] are used;<br>bits [55:32] are ignored. Legal values are 0xD000_0000 to 0xFFFF_FFFF; other<br>values overlap fixed SEP regions and are not supported. Keeping the reset value<br>is recommended. The window ends at 0xFFFF_FFFF and does not wrap, so a higher<br>base shortens it. An address outside the window is not translated.</td></tr>
 </table>
 <h3 id="SEP_REGION_SIZE">SEP_REGION_SIZE</h3>
 <table>

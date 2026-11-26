@@ -43,8 +43,9 @@ program this register with the address of its own NMI handler, and then set
 SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).
 If a bark arrives while the reset value is still in place, the CPU jumps to
 0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if
-the loaded image covers that location, or an uncorrectable ICCM ECC error
-(which itself re-raises NMI) if it does not.
+the loaded image covers that location, or, if the fetch takes an
+uncorrectable ICCM ECC error, an instruction access fault (mcause 0x1)
+through mtvec.
 | 0x188 | <<reg-{regmap-instance}-sep_cpu_ctrl-SEP_NMI_VEC_LOCK,SEP_NMI_VEC_LOCK>> | RW a| Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The
 NMI interrupt is used for the WDT Bark interrupt.
 | 0x190 | <<reg-{regmap-instance}-sep_cpu_ctrl-EXT_TRNG_SRC_SEL,EXT_TRNG_SRC_SEL>> | RW a| Per-stream external TRNG source selection for crypto subsystem entropy muxes.
@@ -99,10 +100,10 @@ latches.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `rc` | RW | 0x0 a| SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
-then poll this register until the readback reflects the written value before
-writing again. The counter keeps advancing, so the readback is at or just
-above the written value rather than equal to it.
+| 63:0 | `rc` | RW | 0x0 a| SEP REFERENCE COUNTER, counting after deassert of the boot-qualified SEP
+reset. Write once, then poll this register until the readback reflects the
+written value before writing again. The counter keeps advancing, so the
+readback is at or just above the written value rather than equal to it.
 |===
 
 [#reg-{regmap-instance}-sep_cpu_ctrl-TIMEOUT_INTERRUPT]
@@ -269,7 +270,12 @@ above the written value rather than equal to it.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
-| 55:0 | `addr` | RW | 0xD0000000 a| -
+| 55:0 | `addr` | RW | 0xD0000000 a| Base of the local alias window, which CPU and secure DMA accesses reach as
+0x1000_0000 onwards. Only bits [31:0] are used;
+bits [55:32] are ignored. Legal values are 0xD000_0000 to 0xFFFF_FFFF; other
+values overlap fixed SEP regions and are not supported. Keeping the reset value
+is recommended. The window ends at 0xFFFF_FFFF and does not wrap, so a higher
+base shortens it. An address outside the window is not translated.
 |===
 
 [#reg-{regmap-instance}-sep_cpu_ctrl-SEP_REGION_SIZE]
