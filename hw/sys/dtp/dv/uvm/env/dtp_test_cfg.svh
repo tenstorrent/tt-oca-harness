@@ -55,6 +55,7 @@ class dtp_test_cfg extends ocah_test_cfg;
   bit j2a_sba_error_negative;  // +DTP_J2A_SBA_ERROR_NEGATIVE
   bit j2a_axi_attr_negative;  // +DTP_J2A_AXI_ATTR_NEGATIVE
   bit j2a_one_xfer_negative;  // +DTP_J2A_ONE_XFER_NEGATIVE
+  bit j2a_sba_busy_negative;  // +DTP_J2A_SBA_BUSY_NEGATIVE
   bit j2a_dbg_disable_negative;  // +DTP_J2A_DBG_DISABLE_NEGATIVE
   bit j2a_dbg_switch_negative;  // +DTP_J2A_DBG_SWITCH_NEGATIVE
   bit j2a_tap_reset_negative;  // +DTP_J2A_TAP_RESET_NEGATIVE
@@ -106,6 +107,7 @@ class dtp_test_cfg extends ocah_test_cfg;
     j2a_sba_error_negative = ocah_knobs::is_set("DTP_J2A_SBA_ERROR_NEGATIVE");
     j2a_axi_attr_negative = ocah_knobs::is_set("DTP_J2A_AXI_ATTR_NEGATIVE");
     j2a_one_xfer_negative = ocah_knobs::is_set("DTP_J2A_ONE_XFER_NEGATIVE");
+    j2a_sba_busy_negative = ocah_knobs::is_set("DTP_J2A_SBA_BUSY_NEGATIVE");
     j2a_dbg_disable_negative = ocah_knobs::is_set("DTP_J2A_DBG_DISABLE_NEGATIVE");
     j2a_dbg_switch_negative = ocah_knobs::is_set("DTP_J2A_DBG_SWITCH_NEGATIVE");
     j2a_tap_reset_negative = ocah_knobs::is_set("DTP_J2A_TAP_RESET_NEGATIVE");

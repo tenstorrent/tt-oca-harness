@@ -12,9 +12,9 @@ from seq_lib.dtp_jtag2axi_reset_test_seq import dtp_jtag2axi_reset_test_seq
 @pyuvm.test()
 class dtp_jtag2axi_reset_test(dtp_base_test):
     """A TAP reset leaves every bridge, its sticky status and an access it holds unchanged;
-    the bridge reset in any phase of an access, during scans and in test mode returns every
-    bridge to its reset state, and its release reaches each clock after the synchronizer's
-    depth of edges."""
+    the bridge reset in any phase of an access, with a response held past the poll bound,
+    during scans and in test mode returns every bridge to its reset state, and its release
+    reaches each clock after the synchronizer's depth of edges."""
 
     use_axi_scoreboard = True
     axi_checker_required_ids = (
@@ -32,6 +32,7 @@ class dtp_jtag2axi_reset_test(dtp_base_test):
         "CHK-J2A-TAP-RESET",
         "CHK-J2A-BRIDGE-RESET",
         "CHK-J2A-RESET-RELEASE",
+        "CHK-J2A-SBA-BUSY",
         "CHK-J2A-FAULT-STATUS",
         "CHK-J2A-GEOMETRY",
         "CHK-J2A-DTM-CAPTURE",

@@ -367,6 +367,10 @@ localparam string DtpJ2aSbaErrorCheckId = "CHK-J2A-SBA-ERROR";
 localparam string DtpJ2aAxiAttrCheckId = "CHK-J2A-AXI-ATTR";
 // The bus requests a bridge presents while one of its transfers is open.
 localparam string DtpJ2aOneXferCheckId = "CHK-J2A-ONE-XFER";
+// The sbcs a bridge reads while it holds an outstanding access, the
+// sbaddress reads and refused accesses it takes then, and the sbbusyerror a
+// refusal sets until a write of 1 clears it.
+localparam string DtpJ2aSbaBusyCheckId = "CHK-J2A-SBA-BUSY";
 // An access of a disabled bridge, ended by the error slave, and the registers
 // that stay live while the bridge is disabled.
 localparam string DtpJ2aDbgDisableCheckId = "CHK-J2A-DBG-DISABLE";

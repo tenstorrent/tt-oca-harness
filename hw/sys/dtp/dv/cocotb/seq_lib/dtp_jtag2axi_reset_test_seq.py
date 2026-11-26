@@ -20,15 +20,21 @@ in a seeded order:
   busy status set, which survives it until a dmireset clears it;
 * bridge_access: on each bridge, the bridge reset in each phase of a read and
   of a write: started and not at the port, the request or the write data held
-  by READY, the response held, and completed on the port before a scan
-  fetches the result;
+  by READY, a read's address just accepted with the response owed, once
+  released on the pulse's own clk_i edge and once held for scans, the
+  response held, and completed on the port before a scan fetches the result;
 * scan_in_reset: on each bridge, DMI and DTMCS scans while the bridge reset
   is asserted, and the TCK side's release once TCK runs again;
+* unreleased_hold: on each bridge, a read and a write whose response stays
+  held, sbbusy reading 1 past the poll bound until the bridge reset drops the
+  access;
 * test_mode: test_en set, in which every bridge reaches its port, keeps its
   state through an rst_n_i pulse and resets on a scan_rst_ni pulse.
 
 Every reset is asserted and released at a seeded time between two clk_i
-edges, and released while TCK is stopped.
+edges, and released while TCK is stopped, except the read-armed reset: it
+asserts on the clk_i edge that completes the read's address handshake and,
+unless the sequence holds it, releases on a clk_i edge with TCK running.
 """
 
 from __future__ import annotations
@@ -38,7 +44,7 @@ from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import FallingEdge, RisingEdge, Timer
 from env.dtp_types import (
     DTP_J2A_RESET_SYNC_TCK,
     JTAG2AXI_TARGETS,
@@ -54,6 +60,7 @@ from ocah_axi_vip import OcahAxiDelays
 from ocah_lib import OcahKnobs
 
 from .dtp_jtag2axi_base_test_seq import (
+    BUSY_POLLS,
     DTMCS_DMIRESET,
     PORT_COMPLETION_CYCLES,
     dtp_jtag2axi_base_test_seq,
@@ -65,10 +72,19 @@ RESET_RELEASE_CHECK_ID = "CHK-J2A-RESET-RELEASE"
 TAP_RESET_NEGATIVE_KNOB = "DTP_J2A_TAP_RESET_NEGATIVE"
 BRIDGE_RESET_NEGATIVE_KNOB = "DTP_J2A_BRIDGE_RESET_NEGATIVE"
 RESET_RELEASE_NEGATIVE_KNOB = "DTP_J2A_RESET_RELEASE_NEGATIVE"
-CASES = ("tap_idle", "tap_open", "tap_sticky", "bridge_access", "scan_in_reset", "test_mode")
+CASES = (
+    "tap_idle",
+    "tap_open",
+    "tap_sticky",
+    "bridge_access",
+    "scan_in_reset",
+    "unreleased_hold",
+    "test_mode",
+)
 TAP_SOURCES = ("tlr", "trst", "por")
-# The phases of an access the bridge reset lands in; a read has no "w".
-PHASES = ("launched", "request", "w", "response", "done")
+# The phases of a read and of a write the bridge reset lands in.
+READ_PHASES = ("launched", "request", "armed", "armed_held", "response", "done")
+WRITE_PHASES = ("launched", "request", "w", "response", "done")
 # READY low for longer than any held access lasts; the case releases it.
 READY_HOLD_CYCLES = 1 << 20
 # Most clk_i cycles a reset stays asserted, and that the bridge reset lands
@@ -182,8 +198,8 @@ class dtp_jtag2axi_reset_test_seq(dtp_jtag2axi_base_test_seq):
         """On each bridge, the bridge reset in each phase of a read and of a write, in a seeded
         order."""
         for target in self.shuffled(JTAG2AXI_TARGETS, rng):
-            subcases = [(True, phase) for phase in PHASES if phase != "w"]
-            subcases += [(False, phase) for phase in PHASES]
+            subcases = [(True, phase) for phase in READ_PHASES]
+            subcases += [(False, phase) for phase in WRITE_PHASES]
             rng.shuffle(subcases)
             for read, phase in subcases:
                 ctx = f"{target}.bridge_access.{'read' if read else 'write'}.{phase}"
@@ -197,26 +213,27 @@ class dtp_jtag2axi_reset_test_seq(dtp_jtag2axi_base_test_seq):
         stopped for a seeded number of clk_i cycles after the release, in which the clk_i side
         leaves reset and the TCK side does not."""
         for target in self.shuffled(JTAG2AXI_TARGETS, rng):
-            cfg = self.target_cfg(target)
             ctx = f"{target}.scan_in_reset"
             with self.ledgered(target):
                 await self.activate_dm(target)
                 await self.write_sbaddress0(target, rng, ctx=ctx)
                 before = self.reset_counts()
                 await self.drive_reset("sys_rst_n", 0, rng)
-                dmistat = await self.read_dmistat(target, DTMCS_DMIRESET, ctx=f"{ctx} in_reset")
-                fields = [("dmistat", dmistat, 0)]
-                for address, data in (
-                    (DtpDmReg.DMCONTROL, 0x1),
-                    (DtpDmReg.SBADDRESS0, self.random_target_addr(target, rng) & _WORD),
-                ):
-                    captured = await self.read_tdr(
-                        cfg.dmi_reg, pack_dmi(int(address), data, DtpDmiOp.WRITE)
-                    )
-                    fields.append((f"{address.name.lower()}_capture", captured, 0))
-                self.record_fields(target, BRIDGE_RESET_CHECK_ID, fields, context=f"{ctx} in_reset")
+                await self.scan_in_reset(target, rng, ctx=ctx)
                 await self.release_and_check(target, rng, before, ctx=ctx)
                 await self.recover(target, rng, ctx=ctx)
+
+    async def unreleased_hold_case(self, rng: random.Random) -> None:
+        """On each bridge, a full-beat read and write in a seeded order, each with its response
+        held: sbcs reads sbbusy 1 past the poll bound, the bridge reset lands while the response
+        is held, and the hold is cleared while the reset is asserted. After the release the
+        bridge reads its reset state, the held response never reached it, and the next access
+        reaches the port."""
+        for target in self.shuffled(JTAG2AXI_TARGETS, rng):
+            for read in rng.sample((False, True), 2):
+                ctx = f"{target}.unreleased_hold.{'read' if read else 'write'}"
+                with self.ledgered(target):
+                    await self.unreleased_hold(target, rng, read=read, ctx=ctx)
 
     async def test_mode_case(self, rng: random.Random) -> None:
         """With test_en 1: every bridge reaches its port; an rst_n_i pulse with the bridges idle
@@ -413,13 +430,20 @@ class dtp_jtag2axi_reset_test_seq(dtp_jtag2axi_base_test_seq):
             began = await self.wait_port_completion(target, read=read, above=before[int(read)])
             await self.wait_cycles(rng.randint(0, PHASE_DELAY_MAX))
             await self.drive_reset("sys_rst_n", 0, rng)
+        elif phase in ("armed", "armed_held"):
+            began = await self.armed_start(
+                target, rng, start, counts, held=phase == "armed_held", ctx=ctx
+            )
         else:
             trigger = cocotb.start_soon(self.reset_in_phase(target, rng, read=read, phase=phase))
             await self.dmi_write(target, *start, context=f"{ctx}.start")
             began = await trigger
         self.release_port(target)
         moved = self.port_counts(target)[int(read)] - before[int(read)]
-        await self.release_and_check(target, rng, counts, ctx=ctx)
+        if phase == "armed":
+            await self.check_released(target, rng, counts, tck_stopped=False, ctx=ctx)
+        else:
+            await self.release_and_check(target, rng, counts, ctx=ctx)
         if completed:
             await self.expect_bus_request(
                 target,
@@ -432,7 +456,106 @@ class dtp_jtag2axi_reset_test_seq(dtp_jtag2axi_base_test_seq):
             )
         else:
             self.expect_no_bus_request(target, context=ctx)
-        fields = [("phase_reached", int(began), 1), ("port_transactions", moved, completed)]
+        fields = [
+            ("phase_reached", int(began), 1),
+            ("port_transactions", moved, completed),
+            ("response_valid_cycles", self.response_valid_cycles(target, read=read), 0),
+        ]
+        self.record_fields(target, BRIDGE_RESET_CHECK_ID, fields, context=f"{ctx} port")
+        await self.recover(target, rng, ctx=ctx)
+
+    async def armed_start(
+        self,
+        target: str,
+        rng: random.Random,
+        start: tuple[DtpDmReg, int],
+        counts: tuple[int, int],
+        *,
+        held: bool,
+        ctx: str,
+    ) -> bool:
+        """Start a read with rst_n_i armed to assert for a seeded number of clk_i cycles from
+        the edge that completes its AR handshake, so the reset lands while the responder owes
+        the R; returns whether it asserted. With ``held`` the sequence holds the reset from a
+        seeded time before the pulse's first clk_i edge and scans the bridge in it."""
+        tb_if = self.cfg.tb_if
+        period_ps = round(self.cfg.sys_clk_period_ns * 1000)
+        hold = None
+        tb_if.arm_reset_on_read(target, cycles=rng.randint(1, RESET_HOLD_MAX))
+        if held:
+            hold = cocotb.start_soon(self.hold_armed_reset(rng.randint(1, period_ps - 1)))
+        await self.dmi_write(target, *start, context=f"{ctx}.start")
+        for _ in range(PORT_COMPLETION_CYCLES):
+            if self.reset_counts()[0] > counts[0] and (held or tb_if.sample("rst_n")):
+                break
+            await self.wait_sys_cycles(1)
+        tb_if.disarm_reset_on_read()
+        began = self.reset_counts()[0] > counts[0]
+        if hold is not None:
+            if began:
+                await hold
+                await self.scan_in_reset(target, rng, ctx=ctx)
+            else:
+                hold.cancel()
+        return began
+
+    async def hold_armed_reset(self, delay_ps: int) -> None:
+        """Drive sys_rst_n low ``delay_ps`` after rst_n_i next falls."""
+        tb_if = self.cfg.tb_if
+        await FallingEdge(tb_if.rst_n)
+        await Timer(delay_ps, unit="ps")
+        tb_if.handle("sys_rst_n").value = 0
+
+    async def scan_in_reset(self, target: str, rng: random.Random, *, ctx: str) -> None:
+        """Scans while the bridge reset is asserted: DTMCS with dmireset reads dmistat 0, and DMI
+        writes of dmactive and of a seeded sbaddress0 capture 0."""
+        cfg = self.target_cfg(target)
+        dmistat = await self.read_dmistat(target, DTMCS_DMIRESET, ctx=f"{ctx} in_reset")
+        fields = [("dmistat", dmistat, 0)]
+        for address, data in (
+            (DtpDmReg.DMCONTROL, 0x1),
+            (DtpDmReg.SBADDRESS0, self.random_target_addr(target, rng) & _WORD),
+        ):
+            captured = await self.read_tdr(
+                cfg.dmi_reg, pack_dmi(int(address), data, DtpDmiOp.WRITE)
+            )
+            fields.append((f"{address.name.lower()}_capture", captured, 0))
+        self.record_fields(target, BRIDGE_RESET_CHECK_ID, fields, context=f"{ctx} in_reset")
+
+    async def unreleased_hold(
+        self, target: str, rng: random.Random, *, read: bool, ctx: str
+    ) -> None:
+        """A full-beat read or write whose response stays held through ``BUSY_POLLS`` sbcs
+        polls and the bridge reset. A read's slot holds a word written first."""
+        cfg = self.target_cfg(target)
+        tb_if = self.cfg.tb_if
+        size = cfg.data_size
+        addr = self.random_target_addr(target, rng)
+        data = self.random_distinct_word(rng, target, self.memory_word(target, addr, size))
+        await self.activate_dm(target)
+        if read:
+            await self.sba_write(target, addr, data, size=size, context=f"{ctx}.fill")
+        held = tb_if.sample(f"{target}_{'r' if read else 'b'}_held")
+        before = self.port_counts(target)
+        self.hold_port(target, read=read, request=False)
+        await self.sba_setup(target, addr, size, read=read, context=ctx)
+        if not read:
+            if size == 3:
+                await self.dmi_write(target, DtpDmReg.SBDATA1, data >> 32, context=f"{ctx}.sbdata1")
+            await self.dmi_write(target, DtpDmReg.SBDATA0, data & _WORD, context=f"{ctx}.sbdata0")
+        reached = await self.wait_response_held(target, read=read, above=held)
+        await self.poll_while_held(target, rng.randint(*BUSY_POLLS), context=f"{ctx}.held")
+        counts = self.reset_counts()
+        await self.drive_reset("sys_rst_n", 0, rng)
+        self.release_port(target)
+        moved = self.port_counts(target)[int(read)] - before[int(read)]
+        await self.release_and_check(target, rng, counts, ctx=ctx)
+        self.expect_no_bus_request(target, context=ctx)
+        fields = [
+            ("held", int(reached), 1),
+            ("port_transactions", moved, 0),
+            ("response_valid_cycles", self.response_valid_cycles(target, read=read), 0),
+        ]
         self.record_fields(target, BRIDGE_RESET_CHECK_ID, fields, context=f"{ctx} port")
         await self.recover(target, rng, ctx=ctx)
 
@@ -477,6 +600,21 @@ class dtp_jtag2axi_reset_test_seq(dtp_jtag2axi_base_test_seq):
         and judge both releases and the state the bridge then reads."""
         await self.wait_sys_cycles(rng.randint(1, RESET_HOLD_MAX))
         await self.drive_reset("sys_rst_n", 1, rng)
+        await self.check_released(target, rng, before, tck_stopped=True, ctx=ctx)
+
+    async def check_released(
+        self,
+        target: str,
+        rng: random.Random,
+        before: tuple[int, int],
+        *,
+        tck_stopped: bool,
+        ctx: str,
+    ) -> None:
+        """Judge the release of the bridge reset asserted since the counts ``before`` after a
+        seeded number of clk_i cycles: with ``tck_stopped`` since the release, the clk_i side
+        has left reset and the TCK side has not; once scans run TCK both have, and the bridge
+        reads its reset state."""
         stopped = rng.randint(
             2 * DTP_J2A_RESET_SYNC_TCK + 1, 2 * DTP_J2A_RESET_SYNC_TCK + TCK_STOPPED_MAX
         )
@@ -484,12 +622,13 @@ class dtp_jtag2axi_reset_test_seq(dtp_jtag2axi_base_test_seq):
         self.check_reset_counted(
             "j2a_rst_assert_count", before[1], self.reset_counts()[1], f"{ctx} bridge_reset"
         )
-        self.record_fields(
-            target,
-            RESET_RELEASE_CHECK_ID,
-            self.release_fields(tck_released=False, test_mode=False),
-            context=f"{ctx} tck_stopped={stopped}",
-        )
+        if tck_stopped:
+            self.record_fields(
+                target,
+                RESET_RELEASE_CHECK_ID,
+                self.release_fields(tck_released=False, test_mode=False),
+                context=f"{ctx} tck_stopped={stopped}",
+            )
         state = await self.bridge_state(target, ctx=f"{ctx}.reset_state")
         self.record_fields(
             target,
@@ -625,6 +764,12 @@ class dtp_jtag2axi_reset_test_seq(dtp_jtag2axi_base_test_seq):
         )
         await self.dmi_write(target, DtpDmReg.SBADDRESS0, sbaddress, context=f"{ctx}.sbaddress0")
         return sbaddress
+
+    def response_valid_cycles(self, target: str, *, read: bool) -> int:
+        """Cycles ``target`` has seen RVALID, or BVALID without ``read``, since rst_n_i last
+        released."""
+        prefix = self.target_cfg(target).activity_prefix
+        return self.cfg.tb_if.sample(f"{prefix}_{'r' if read else 'b'}valid_count")
 
     def reset_counts(self) -> tuple[int, int]:
         """(rst_n_i assertions, bridge reset assertions)."""

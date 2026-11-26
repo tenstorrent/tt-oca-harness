@@ -175,6 +175,15 @@ interface dtp_tb_if;
   logic [31:0] xtrig_axil_awvalid_count;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
+  // JTAG2AXI bridge-port response-VALID-high cycle counters (driven by
+  // tb_top): cycles with BVALID or RVALID high at the bridge since rst_n
+  // last released.
+  logic [31:0] smc_axi_bvalid_count;
+  logic [31:0] smc_axi_rvalid_count;
+  logic [31:0] smc_otp_axil_bvalid_count;
+  logic [31:0] smc_otp_axil_rvalid_count;
+  logic [31:0] sep_otp_axil_bvalid_count;
+  logic [31:0] sep_otp_axil_rvalid_count;
   // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID,
   // ARVALID, and WVALID held while the CSR port keeps the matching READY low.
   logic [31:0] xtrig_axil_aw_stall_count;
