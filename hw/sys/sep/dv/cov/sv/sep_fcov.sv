@@ -24677,7 +24677,7 @@ module sep_fcov (
       bins illegal_bus_access = {1'b1};
     }
     // An RND read with a FIPS-tagged word raises no RND error
-    // (hw/sys/sep/doc/otbn.adoc:66-69).
+    // (hw/sys/sep/doc/otbn.adoc:78-81).
     cp_rnd_clean: coverpoint s.rc_v iff (s.rc_v) {
       bins rnd_read_err0 = {1'b1};
     }

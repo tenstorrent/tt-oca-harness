@@ -184,7 +184,7 @@ Checkers:
                        register is set to indicate either a successful execution
                        (value 0), or to indicate the error that was observed"
                        (ToO:137); the program ends with ``ecall`` and the FIPS
-                       tag is tied high (``otbn.adoc`` :67-69). Bit 6 is set when
+                       tag is tied high (``otbn.adoc`` :79-81). Bit 6 is set when
                        two EDN words are equal (ToO:246-251), a chance outcome,
                        so it is logged only.
   CHK-OTBN-INSNCNT-BUSYWR  the ``INSN_CNT`` write at 0x01 during the nested-loop
@@ -258,7 +258,7 @@ Checkers:
                        between the ``CMD`` write and IDLE, and ``ERR_BITS`` reads 0
                        in every bit except ``rnd_rep_chk_fail`` (bit 6). ToO:137;
                        "A high tag prevents a FIPS-tag failure for that response"
-                       (``otbn.adoc`` :68-69).
+                       (``otbn.adoc`` :80-81).
   CHK-OTBN-SWERR-KIND  the program of the drawn error reads
                        ``software_errs_fatal`` = 0 and ``done`` = 0 before the
                        ``CMD`` write, ends at IDLE (never 0xFF) with ``done`` = 1,
