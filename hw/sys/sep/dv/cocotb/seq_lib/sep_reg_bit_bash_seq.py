@@ -131,8 +131,8 @@ WRITE_EXCLUDE: dict[tuple[str, str | None], str] = {
 }
 
 # Registers whose write has a side effect beyond its own storage: it moves
-# the LSU, changes the fabric window, re-selects the entropy source, fires a
-# key wipe, or is not storage at all (read-only / write-once-set). No write
+# the LSU, changes the fabric window, re-selects the entropy source, changes the
+# OTBN clock, fires a key wipe, or is not storage at all (read-only / write-once-set). No write
 # path may touch one, so write_reason and the masked storage touch both gate
 # on this table through side_effect_reason.
 SIDE_EFFECT_EXCLUDE: dict[tuple[str, str | None], str] = {
@@ -146,6 +146,7 @@ SIDE_EFFECT_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("SEP_CPU_CTRL", "EXT_TRNG_SRC_SEL"): "side-effect: entropy mux",
     ("SEP_CPU_CTRL", "EXT_TRNG_SRC_SEL_LOCK"): "woset lock",
     ("SEP_CPU_CTRL", "KM_WIPE_CTRL"): "trigger",
+    ("SEP_CPU_CTRL", "PKA_CLK_DIV"): "side-effect: OTBN clock ratio, changed only while OTBN is idle",
     ("SEP_CPU_CTRL", "SEP_VERSION_ID"): "read-only",
     ("SEP_CPU_CTRL", "SEP_SW_DEBUG"): "side-effect: debug",
 }
