@@ -36,7 +36,8 @@
 //   CHK-WIDTH      : copy integrity for 1B/2B/4B transfer widths.
 //   CHK-DONE-RW1C  : STATUS.done observed -> W1C -> reads back 0 (polled status).
 //   CHK-ERR-OPCODE : an invalid opcode raises opcode_error alone and STATUS.error;
-//                    W1C clear; a subsequent good copy recovers.
+//                    after the W1C, STATUS reads error=0 before the next GO;
+//                    a subsequent good copy recovers.
 //   CHK-ERR-ADDR   : four misaligned descriptors each raise STATUS.error and
 //                    the ERROR_CODE bit of the misaligned side, no non-address
 //                    bit and no STATUS.done; a subsequent good copy recovers.
@@ -44,8 +45,10 @@
 //                    source and destination differ in alignment, and no text
 //                    names the bit that the same-alignment rule raises.
 //   CHK-ERR-ASID   : an unencoded ASID on src and on dst each raise asid_error
-//                    exclusively; a subsequent good copy recovers.
+//                    exclusively; after each W1C, STATUS reads error=0 before
+//                    the next GO; a subsequent good copy recovers.
 //   CHK-ERR-SIZE   : an unencoded transfer width raises size_error exclusively;
+//                    after the W1C, STATUS reads error=0 before the next GO;
 //                    a subsequent good copy recovers.
 //   CHK-ICCM       : SRAM->ICCM->SRAM round trip through the DMA returns every
 //                    word over a sentinel pre-fill (every other copy here stays
@@ -165,6 +168,25 @@ static void chunk_done_w1c(void) {
         chunk_obs.w1c_held++;
         chunk_obs.w1c_st = st;
     }
+}
+
+// Write 1 to the STATUS RW1C bits after an error leg and read STATUS back
+// before the next GO, because GO also clears STATUS.error. STATUS.error is
+// write-one-to-clear (hw/sys/sep/doc/dma.adoc:131-132;
+// vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:308-315),
+// so the readback must show ERROR = 0. Returns the readback.
+static uint32_t error_w1c(const char *chk, int *e) {
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    uint32_t st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    if (st & SECURE_DMA__STATUS__ERROR_bm) {
+        sep_mbx_puts("FAIL: ");
+        sep_mbx_puts(chk);
+        sep_mbx_puts(" STATUS.error still set after its write of 1, STATUS ");
+        sep_mbx_puthex(st);
+        sep_mbx_putc('\n');
+        (*e)++;
+    }
+    return st;
 }
 
 // Multi-chunk transfer (chunk < total). In pure memory-to-memory mode the Secure
@@ -846,7 +868,7 @@ static int chk_err_opcode(void) {
         sep_mbx_puts("FAIL: CHK-ERR-OPCODE STATUS.done set on an errored transfer\n");
         e++;
     }
-    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C); // clear error
+    const uint32_t w1c_st = error_w1c("CHK-ERR-OPCODE", &e);
 
     // Recovery: a subsequent good COPY succeeds with no error.
     clear_dst_words(nwords + 1, SENT);
@@ -879,7 +901,9 @@ static int chk_err_opcode(void) {
     wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-ERR-OPCODE PASS: opcode 0xF -> opcode_error EXCLUSIVE + "
-                     "STATUS.error, W1C clear, recovery copy matches source\n");
+                     "STATUS.error, STATUS after W1C ");
+        sep_mbx_puthex(w1c_st);
+        sep_mbx_puts(" (error=0), recovery copy matches source\n");
     }
     return e;
 }
@@ -1115,6 +1139,7 @@ static int chk_err_asid(void) {
         {"dst asid unencoded", SEP_DMA_ASID_PAIR(SEP_DMA_ASID_OT, ASID_BAD)},
     };
     const uint32_t ncells = (uint32_t)(sizeof(cells) / sizeof(cells[0]));
+    uint32_t w1c_st[sizeof(cells) / sizeof(cells[0])];
 
     for (uint32_t c = 0; c < ncells; c++) {
         uint32_t st =
@@ -1138,7 +1163,7 @@ static int chk_err_asid(void) {
             sep_mbx_puts("FAIL: CHK-ERR-ASID STATUS.done set on an errored transfer\n");
             e++;
         }
-        wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+        w1c_st[c] = error_w1c("CHK-ERR-ASID", &e);
     }
 
     // Recovery: a good COPY at the legal ASID still succeeds.
@@ -1168,8 +1193,11 @@ static int chk_err_asid(void) {
     wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-ERR-ASID PASS: unencoded src and dst ASID each raised "
-                     "asid_error EXCLUSIVE + STATUS.error, W1C clear, recovery copy "
-                     "matches source\n");
+                     "asid_error EXCLUSIVE + STATUS.error, STATUS after W1C src ");
+        sep_mbx_puthex(w1c_st[0]);
+        sep_mbx_puts(" dst ");
+        sep_mbx_puthex(w1c_st[1]);
+        sep_mbx_puts(" (error=0), recovery copy matches source\n");
     }
     return e;
 }
@@ -1202,7 +1230,7 @@ static int chk_err_size(void) {
         sep_mbx_puts("FAIL: CHK-ERR-SIZE STATUS.done set on an errored transfer\n");
         e++;
     }
-    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    const uint32_t w1c_st = error_w1c("CHK-ERR-SIZE", &e);
 
     clear_dst_words(nwords + 1, SENT);
     st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
@@ -1228,7 +1256,9 @@ static int chk_err_size(void) {
     wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-ERR-SIZE PASS: transfer width 0x3 -> size_error EXCLUSIVE + "
-                     "STATUS.error, W1C clear, recovery copy matches source\n");
+                     "STATUS.error, STATUS after W1C ");
+        sep_mbx_puthex(w1c_st);
+        sep_mbx_puts(" (error=0), recovery copy matches source\n");
     }
     return e;
 }

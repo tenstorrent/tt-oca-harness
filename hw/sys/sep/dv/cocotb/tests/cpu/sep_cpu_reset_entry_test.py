@@ -108,13 +108,16 @@ Checks:
                        ``dmcontrol.ndmreset``: "except for the DM"). Reach line
                        CTRL-NDMRESET-SET: the ``ndmreset`` bit reads 1 after
                        the first write and 0 after the second.
-  OBS-NDMRESET-SCOPE : logged, not graded: for the four registers the routine
-                       arms (scratch cold and warm word 0, ``WKUP_THOLD_LO``,
-                       ``SEP_SW_DEBUG``), the value written before the pulse,
-                       which the last routine pass before it compared true, and
-                       the entry value the restarted routine reads. Open
-                       question: no specification states which SEP state
-                       outside the core the core's ``ndmreset`` resets.
+  CHK-NDMRESET-SCOPE : after the ``ndmreset`` restart, the restarted routine
+                       reads each of the four registers it arms (scratch cold
+                       and warm word 0, ``WKUP_THOLD_LO``, ``SEP_SW_DEBUG``)
+                       at the value it wrote before the pulse. ``ndmreset``
+                       resets the core complex only; the system and scratch
+                       registers and the watchdog keep their state
+                       (cpu.adoc:281-289). Control CTRL-NDMRESET-SCOPE-ARMED:
+                       the last routine pass before the pulse compared all
+                       four true, and each written value differs from the RDL
+                       reset value of its register.
   CHK-NO-EARLY-RETIRE: no trace beat while the ``sep_cpu_reset_n`` tap is low,
                        in every cold reset and every CPU reset of the leaf.
                        The ``ndmreset`` hold is not a reset of this record; it
@@ -146,6 +149,11 @@ Checks:
                        or RRESP code of these accesses, so the codes are logged
                        (INFO-WDT-STORE-RESP) and not graded.
                        Graded last, after every other check.
+  CHK-IFU-AXCACHE    : every AR handshake on the PR-IFU tap (the IFU port of
+                       the core, ``arvalid`` and ``arready`` high) in the whole
+                       leaf carries ARCACHE ``0b1111``: instruction fetches
+                       carry ``0b1111`` (cpu.adoc:122). Control: at least one
+                       handshake per reset epoch.
   CHK-DBG-AXBURST, CHK-DBG-AXLOCK, CHK-DBG-AXQOS, CHK-DBG-AXCACHE:
                        every AW and AR that the debug-module system bus issues
                        in the (a) accesses carries the side-band value that the
@@ -349,13 +357,10 @@ DBG_ATTR = (
     ("CHK-DBG-AXQOS", "qos", 4, 0b0000, 0b0000),
     ("CHK-DBG-AXCACHE", "cache", 4, 0b1111, 0b0000),
 )
+# hw/sys/sep/doc/cpu.adoc:122: "Instruction fetches carry `0b1111`".
+IFU_ARCACHE = 0b1111
 DBG_ATTR_CITE = "EL2 PRM core complex signals, sb_axi_aw*/sb_axi_ar* hardwired (cpu.adoc:23)"
-# The open question that OBS-NDMRESET-SCOPE logs.
-NDM_SCOPE_OPEN = (
-    "open question: no specification states which SEP state outside the core the core's "
-    "ndmreset resets (RISC-V Debug 0.13.2: every part of the system except the DM; "
-    "EL2 PRM: the hart); logged, not graded"
-)
+NDM_SCOPE_CITE = "cpu.adoc:281-289, ndmreset resets the core complex only"
 
 # The mailbox address has bit 55 clear, so the SMU path delivers it non-secure.
 FILTER_CFG_OPEN = (
@@ -632,6 +637,8 @@ class _Epoch:
     retired_in_window: int = 0
     early_retire: list = field(default_factory=list)
     early_fetch: list = field(default_factory=list)
+    # PR-IFU AR handshakes in this epoch (CHK-IFU-AXCACHE control).
+    ifu_ar_hs: int = 0
     first_rom_fetch_clk: int | None = None
     first_ifu_fetch_clk: int | None = None
     # The first PR-IFU AR request after the tap rise: (clk, addr, len, size);
@@ -909,6 +916,13 @@ class sep_cpu_reset_entry_test(sep_base_test):
             pc = self.rd(dut.cpu_trace_addr_o) if tv else None
             rom_req = self.rd(dut.pr_rom_req_o)
             ifu_req = self.rd(dut.pr_ifu_arvalid_o)
+            if ifu_req and self._rd_or_none(dut.pr_ifu_arready_o) == 1:
+                cache = self._rd_or_none(dut.pr_ifu_arcache_o)
+                self.ifu_ar_cache[cache] = self.ifu_ar_cache.get(cache, 0) + 1
+                if self.epochs:
+                    self.epochs[-1].ifu_ar_hs += 1
+                if cache != IFU_ARCACHE and len(self.ifu_ar_bad) < 8:
+                    self.ifu_ar_bad.append((self.clk, self._rd_or_none(dut.pr_ifu_araddr_o), cache))
             if self.leg is not None:
                 lw = self.leg
                 lw.samples += 1
@@ -1768,14 +1782,22 @@ class sep_cpu_reset_entry_test(sep_base_test):
             _WDT.reset("WKUP_THOLD_LO"),
             _CPU_CTRL.reset("SEP_SW_DEBUG"),
         )
-        self.logger.info(
-            "OBS-NDMRESET-SCOPE LOG before_pass=%s %s; %s",
-            "none" if before is None else before.val,
-            " ".join(
-                f"{n}={h(v)}->{h(a)}(rdl_reset={h(rv & 0xFFFF_FFFF)})"
-                for (n, _a, _m, v), a, rv in zip(ARMED, entry, resets)
-            ),
-            NDM_SCOPE_OPEN,
+        regs = " ".join(
+            f"{n}={h(v)}->{h(a)}(rdl_reset={h(rv & 0xFFFF_FFFF)})"
+            for (n, _a, _m, v), a, rv in zip(ARMED, entry, resets)
+        )
+        before_txt = "none" if before is None else before.val
+        armed_ok = before is not None and all(
+            v != rv & 0xFFFF_FFFF for (_n, _a, _m, v), rv in zip(ARMED, resets)
+        )
+        tag = "CTRL-NDMRESET-SCOPE-ARMED" if armed_ok else "CTRL-MISSING NDMRESET-SCOPE-ARMED"
+        self.logger.info("%s: before_pass=%s %s", tag, before_txt, regs)
+        if not armed_ok:
+            self._fail(f"{tag}: before_pass={before_txt} {regs}")
+        self._grade(
+            "CHK-NDMRESET-SCOPE",
+            marker is not None and all(a == v for (_n, _a, _m, v), a in zip(ARMED, entry)),
+            f"marker={name or 'none'} {regs} expect entry=written ({NDM_SCOPE_CITE})",
         )
 
     def _grade_dbg_attr(self) -> None:
@@ -1842,6 +1864,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.clk = 0
         self._stop = False
         self.epochs: list[_Epoch] = []
+        # PR-IFU AR handshakes: ARCACHE value -> count, and the first mismatches.
+        self.ifu_ar_cache: dict[int | None, int] = {}
+        self.ifu_ar_bad: list[tuple] = []
         self.scope: _Scope | None = None
         self.tapw: _TapWatch | None = None
         self.leg: _LegWatch | None = None
@@ -1861,6 +1886,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-RSTVEC-DEFAULT",
             "CHK-NO-EARLY-RETIRE",
             "CHK-NO-EARLY-FETCH",
+            "CHK-IFU-AXCACHE",
             "CHK-RSTVEC",
             "CHK-RSTVEC-PERSIST",
             "CHK-RSTVEC-PERSIST-DBG",
@@ -1869,6 +1895,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-TRST-SCOPE",
             "CHK-NDMRESET-RESTART",
             "CHK-NDMRESET-DM",
+            "CHK-NDMRESET-SCOPE",
             "CHK-TDOEN-SHIFT",
             "CHK-DBG-AXBURST",
             "CHK-DBG-AXLOCK",
@@ -1904,6 +1931,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             ),
         )
         self._grade_no_early()
+        self._grade_ifu_axcache()
         self._grade_memif_wdt_rst()
         self._grade_tdoen()
         self._grade_dbg_attr()
@@ -2318,6 +2346,23 @@ class sep_cpu_reset_entry_test(sep_base_test):
             bool(cpu) and not bad and bool(ctl),
             f"cpu_resets={len(cpu)} wdt_low_clk={','.join(str(e.rst_clk) for e in cpu)} "
             f"memif_not_1(epoch,sram,rom)={bad} control_cold_memif_low={ctl}",
+        )
+
+    def _grade_ifu_axcache(self) -> None:
+        total = sum(self.ifu_ar_cache.values())
+        no_hs = [e.idx for e in self.epochs if e.ifu_ar_hs == 0]
+        seen = ",".join(
+            f"{'X' if k is None else f'0b{k:04b}'}:{n}"
+            for k, n in sorted(
+                self.ifu_ar_cache.items(), key=lambda kv: (kv[0] is None, kv[0] or 0)
+            )
+        )
+        self._grade(
+            "CHK-IFU-AXCACHE",
+            bool(self.epochs) and not no_hs and not self.ifu_ar_bad,
+            f"expect=0b{IFU_ARCACHE:04b} handshakes={total} arcache_counts={seen or '-'} "
+            f"epochs={len(self.epochs)} epochs_without_handshake={no_hs} "
+            f"first_mismatch(clk,addr,cache)={self.ifu_ar_bad[:4]}",
         )
 
     def _grade_no_early(self) -> None:

@@ -23,10 +23,9 @@ converts the CPU memory request into the request, 64-bit word address, and
 read-data signals used by the ROM macro. Stores receive a response but are not
 forwarded to the macro and do not modify the ROM.
 
-The open integration instantiates a 16K-by-64-bit generic ROM, a physical
-128 KiB array. The generated SEP address map and production linker expose only
-the first 64 KiB. The unused physical capacity is not part of the BL0 software
-address contract.
+The open integration instantiates an 8192-by-64-bit generic ROM, a 64 KiB
+array sized from the SEP address map, so the physical array is exactly the
+64 KiB aperture.
 
 The ROM stores executable code, immutable metadata, read-only data, and the
 initial image of writable data; writable data, the stack and the BL0-to-BL1

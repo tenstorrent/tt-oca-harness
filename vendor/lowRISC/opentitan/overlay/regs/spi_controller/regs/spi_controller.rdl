@@ -115,14 +115,16 @@ addrmap spi_controller {
         field {
             sw = r;
             hw = w;
-            desc = "If high, the number of 32-bits in the RX FIFO now exceeds the
-               !!CONTROL.RX_WATERMARK entries (32b each).";
+            desc = "If high, the number of 32-bit words in the RX FIFO is greater
+               than or equal to !!CONTROL.RX_WATERMARK.";
         } RXWM[20:20] = 0x0;
         field {
             sw = r;
             hw = w;
             desc = "The value of the ByteOrder parameter, provided so that firmware
-               can confirm proper IP configuration.";
+               can confirm proper IP configuration. Reads 1 in SEP (ByteOrder = 1);
+               the listed reset value of 0 holds only for the first clock after
+               reset.";
         } BYTEORDER[22:22] = 0x0;
         field {
             sw = r;
@@ -399,7 +401,7 @@ addrmap spi_controller {
             sw = rw;
             hw = r;
             desc = "Assert to send a spi_event interrupt whenever the number of 32-bit words in
-               the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+               the RX FIFO is greater than or equal to !!CONTROL.RX_WATERMARK. To prevent the
                reassertion of this interrupt, read more data from the RX FIFO, or
                increase !!CONTROL.RX_WATERMARK.";
         } RXWM[2:2] = 0x0;

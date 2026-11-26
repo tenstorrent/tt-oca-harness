@@ -17047,23 +17047,17 @@ class SEP_EFUSE_MAP_STATUS_RPT_reg_u(Union):
 
 SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT = 0x00000000
 SEP_EFUSE_MAP_ROM_CTL_REG_FIELD_ACCESS = (
-    ('rom_endianness_ctrl', 'rw', '', '', False),
-    ('rom_swap_ctrl', 'rw', '', '', False),
     ('reserved', 'rw', '', '', False),
 )
 
 SEP_EFUSE_MAP_ROM_CTL_REG_WIDTH = 32
 SEP_EFUSE_MAP_ROM_CTL_REG_FIELDS = (
-    ('rom_endianness_ctrl', 0, 0, 'rw', 'rw', '', '', False, True, 0),
-    ('rom_swap_ctrl', 1, 5, 'rw', 'rw', '', '', False, True, 0),
-    ('reserved', 6, 31, 'rw', 'rw', '', '', False, True, 0),
+    ('reserved', 0, 31, 'rw', 'rw', '', '', False, True, 0),
 )
 
 class SEP_EFUSE_MAP_ROM_CTL_reg_t(Structure):
     _fields_ = [
-        ('rom_endianness_ctrl', c_uint32, 1),
-        ('rom_swap_ctrl', c_uint32, 5),
-        ('reserved', c_uint32, 26),
+        ('reserved', c_uint32, 32),
     ]
 
 SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT = 0x00000000
@@ -20326,6 +20320,7 @@ SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_FIELD_ACCESS = (
     ('csrng', 'r', '', '', False),
     ('edn', 'r', '', '', False),
     ('wdt', 'r', '', '', False),
+    ('spi', 'r', '', '', False),
 )
 
 SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_WIDTH = 64
@@ -20337,6 +20332,7 @@ SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_FIELDS = (
     ('csrng', 4, 4, 'r', 'w', '', '', False, True, 0),
     ('edn', 5, 5, 'r', 'w', '', '', False, True, 0),
     ('wdt', 6, 6, 'r', 'w', '', '', False, True, 0),
+    ('spi', 7, 7, 'r', 'w', '', '', False, True, 0),
 )
 
 class SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_reg_t(Structure):
@@ -20348,6 +20344,7 @@ class SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_reg_t(Structure):
         ('csrng', c_uint8, 1),
         ('edn', c_uint8, 1),
         ('wdt', c_uint8, 1),
+        ('spi', c_uint8, 1),
     ]
 
 SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_REG_DEFAULT = 0x0000000000000000
@@ -20381,6 +20378,7 @@ SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_FIELD_ACCESS = (
     ('csrng', 'w', '', '', True),
     ('edn', 'w', '', '', True),
     ('wdt', 'w', '', '', True),
+    ('spi', 'w', '', '', True),
 )
 
 SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_WIDTH = 64
@@ -20392,6 +20390,7 @@ SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_FIELDS = (
     ('csrng', 4, 4, 'w', 'r', '', '', True, True, 0),
     ('edn', 5, 5, 'w', 'r', '', '', True, True, 0),
     ('wdt', 6, 6, 'w', 'r', '', '', True, True, 0),
+    ('spi', 7, 7, 'w', 'r', '', '', True, True, 0),
 )
 
 class SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_reg_t(Structure):
@@ -20403,6 +20402,7 @@ class SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_reg_t(Structure):
         ('csrng', c_uint8, 1),
         ('edn', c_uint8, 1),
         ('wdt', c_uint8, 1),
+        ('spi', c_uint8, 1),
     ]
 
 SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_REG_DEFAULT = 0x0000000000000000

@@ -34922,7 +34922,6 @@ module sep_fcov (
   localparam int unsigned EfWBl1 = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET / 4;
   localparam int unsigned EfWBl2 = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET / 4;
   localparam int unsigned EfWStatusRpt = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET / 4;
-  localparam int unsigned EfWRomCtl = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET / 4;
   localparam int unsigned EfWSysclk = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET / 4;
   localparam int unsigned EfWSigners = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET / 4;
   localparam int unsigned EfWAlgs = SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET / 4;
@@ -35181,7 +35180,6 @@ module sep_fcov (
       bins transient_rma_en = {4'd2};
       bins chiplet_pubk_revoke = {4'd3};
       bins status_rpt = {4'd4};
-      bins rom_ctl = {4'd5};
       bins sysclk_freq_mhz = {4'd6};
       bins required_signers = {4'd7};
       bins required_algs = {4'd8};
@@ -35237,8 +35235,6 @@ module sep_fcov (
     logic al_v;  // x_algs_owner_value: owner * 4 + value
     logic [1:0] sr;
     logic sr_v;  // cp_status_rpt
-    logic [3:0] rc;
-    logic rc_v;  // cp_rom_ctl: {0, endianness} or {1, swap class}
     logic [1:0] sc;
     logic sc_v;  // cp_sysclk_class: 0 one, 1 middle, 2 max
     logic [1:0] rv;
@@ -35259,15 +35255,6 @@ module sep_fcov (
       bins system[] = {[4'd8 : 4'd11]};
     }
     cp_status_rpt: coverpoint s.sr iff (s.sr_v) {bins value[] = {[2'd0 : 2'd3]};}
-    // Swap class: 0 zero, 1 to 5 the single bit 1 to 5, 6 all five, 7 other.
-    cp_rom_ctl: coverpoint s.rc iff (s.rc_v) {
-      bins endian_0 = {4'b0_000};
-      bins endian_1 = {4'b0_001};
-      bins swap_zero = {4'b1_000};
-      bins swap_single[] = {[4'b1_001 : 4'b1_101]};
-      bins swap_all = {4'b1_110};
-      bins swap_other = {4'b1_111};
-    }
     // Value 0 is "ignored" and is not drawn, so it has no bin.
     cp_sysclk_class: coverpoint s.sc iff (s.sc_v) {
       bins one = {2'd0}; bins middle = {2'd1}; bins max = {2'd2};
@@ -37119,7 +37106,6 @@ module sep_fcov (
         SEP_EFUSE_WRAP_SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR: ef_geo(3, 6'd2);
         SEP_EFUSE_WRAP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR: ef_geo(3, 6'd3);
         SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR: ef_geo(3, 6'd4);
-        SEP_EFUSE_WRAP_SEP_EFUSE_MAP_ROM_CTL_REG_ADDR: ef_geo(3, 6'd5);
         SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_ADDR: ef_geo(3, 6'd6);
         SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_ADDR: ef_geo(3, 6'd7);
         SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REQUIRED_ALGS_REG_ADDR: ef_geo(3, 6'd8);
@@ -37158,7 +37144,6 @@ module sep_fcov (
   always @(posedge clk_i) begin
     ef_fld_t e;
     logic [31:0] w;
-    logic [4:0] sw;
     logic [10:0] clk;
     logic [511:0] cur, gain;
     if (ef_cmd_pg) ef_vb_prog <= 1'b1;
@@ -37177,17 +37162,6 @@ module sep_fcov (
         clk = efuse_shadow_i[32*EfWSysclk+:11];
         e.sc = (clk == 11'd1) ? 2'd0 : (clk == 11'h7FF) ? 2'd2 : 2'd1;
         e.sc_v = (clk != 11'd0);
-        w = efuse_shadow_i[32*EfWRomCtl+:32];
-        e.rc = {1'b0, 2'b00, w[0]};
-        e.rc_v = 1'b1;
-        ef_put_fld(e);
-        sw = w[5:1];
-        e = '0;
-        e.rc = (sw == 5'd0) ? 4'b1_000 : (sw == 5'h1F) ? 4'b1_110 : 4'b1_111;
-        for (int i = 0; i < 5; i++) begin
-          if (sw == (5'd1 << i)) e.rc = {1'b1, 3'(i + 1)};
-        end
-        e.rc_v = 1'b1;
         ef_put_fld(e);
         w = efuse_shadow_i[32*EfWAlgs+:32];
         for (int o = 0; o < 3; o++) begin
@@ -46081,6 +46055,7 @@ module sep_fcov (
   localparam int unsigned RasPbeCsrng = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_CSRNG;
   localparam int unsigned RasPbeEdn = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_EDN;
   localparam int unsigned RasPbeWdt = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_WDT;
+  localparam int unsigned RasPbeSpi = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_SPI;
   if (RasW != RasLcSigintErr + 1) begin : g_ras_width_check
     $fatal(1, "sep_ras_t is %0d bits, the sep_ras_cg map has %0d", RasW, RasLcSigintErr + 1);
   end
@@ -46108,6 +46083,7 @@ module sep_fcov (
       bins periph_bus_err_wdt = {RasPbeWdt};
       bins periph_bus_err_csrng = {RasPbeCsrng};
       bins periph_bus_err_edn = {RasPbeEdn};
+      bins periph_bus_err_spi = {RasPbeSpi};
       bins csrng_fatal = {RasCsrngFatal};
       bins edn_fatal = {RasEdnFatal};
       bins crypto_alert = {RasCryptoAlert};
@@ -46136,6 +46112,7 @@ module sep_fcov (
       return graded_owner == FcovOwnSepCpuBridgeFaultMatrixRandTest;
       RasPbeCsrng, RasPbeEdn: return graded_owner == FcovOwnSepIrqIpToAggregatorTest;
       RasDmaHostIntgErr: return graded_owner == FcovOwnSepDmaBasicTest;
+      RasPbeSpi: return graded_owner == FcovOwnSepSpiOtHostCsrIrqRandTest;
       RasCsrngFatal, RasEdnFatal:
       return (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) ||
           (graded_owner == FcovOwnSepPicPendingMapWalkRandTest);

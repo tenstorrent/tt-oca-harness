@@ -34,12 +34,12 @@ segment; Tx words are seeded. The shared SPI monitor
 (``env/sep_spi_wire_monitor.py``) decodes every frame from the pad taps, and
 the scoreboard (``env/sep_spi_scoreboard.py``) grades each frame of each leg
 at its width: Tx bytes queued against the wire decode; Rx bytes driven against
-the wire decode and the RXDATA words the DUT delivered. No SEP text states the
-in-word byte order of TXDATA and RXDATA (``theory_of_operation.md:415-419``
-names two), so one ``SepSpiByteOrder`` (``env/sep_spi_lane_responder.py``)
-grades every Tx and Rx data word of the leaf in one order, the same order for
-every word; the order seen is logged once on INFO-SPI-BYTEORDER with
-STATUS.BYTEORDER, not graded. Each width also runs one Tx and one Rx data
+the wire decode and the RXDATA words the DUT delivered. SEP sets
+``ByteOrder = 1`` (``spi_controller.rdl:124-127``), so the first wire byte is
+bits 7:0 of a TXDATA or RXDATA word (``theory_of_operation.md:415-419``); one
+``SepSpiByteOrder`` (``env/sep_spi_lane_responder.py``) grades every Tx and Rx
+data word of the leaf in that order, and CHK-SPI-BYTEORDER grades it once per
+leaf with STATUS.BYTEORDER = 1. Each width also runs one Tx and one Rx data
 frame of seeded length.
 
 Monitor sessions. The monitor runs from the first segment to the end, except
@@ -76,7 +76,10 @@ Checkers:
                    per width): the RX watermark is reached at a depth of
                    RX_WATERMARK words
                    (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:60-62``),
-                   so RXWM sets at RXQD >= RX_WATERMARK. One PASS line per
+                   and STATUS.RXWM is high when the RX FIFO holds "greater
+                   than or equal to" RX_WATERMARK words
+                   (``spi_controller.rdl:118-119``), so RXWM sets at RXQD >=
+                   RX_WATERMARK. One PASS line per
                    watermark; a drain that never reaches RXQD = RX_WATERMARK
                    fails. INFO-SPI-WM logs the same read.
   CHK-SPI-QD       With ACTIVE=0 each RXDATA read lowers RXQD by 1. TXFULL is
@@ -168,7 +171,7 @@ Checkers:
                    buffers for the sck, csb, and sd lines."
                    (spi_host.hjson:222). Control: one pad sample before the
                    first CONTROL write that sets OUTPUT_EN reads cs_oe =
-                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:291-292``:
+                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:352-353``:
                    the host "drives no pad until software sets its
                    ``CONTROL.OUTPUT_EN``"), else CTRL-MISSING. One clean
                    frame (Tx then Rx, CSAAT) at the same width follows and is
@@ -238,8 +241,7 @@ Not graded: TXQD while ACTIVE=1 (logged with INFO-SPI-QD and INFO-SPI-TXQD-ACTIV
 RXQD while ACTIVE=1 outside the RX stall drain (INFO-SPI-QD), the CMDQD at which
 READY stays 0 and the head-segment count of CMDQD (logged with
 INFO-SPI-CMDQD-FULL), RX_WATERMARK 0x7F
-against the reset value, the in-word byte order (INFO-SPI-BYTEORDER), overflow
-and underflow.
+against the reset value, overflow and underflow.
 
 Run mode: no_cpu (target ``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+sep_spi_four_lane``, no ``rst_ni`` pulse. Every draw comes from
@@ -398,6 +400,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         "CHK-SPI-SB-FRAME",
         "CHK-SPI-LANE-DATA",
         "CHK-SPI-SESSION-FRAMES",
+        "CHK-SPI-BYTEORDER",
     )
 
     # ------------------------------------------------------------------

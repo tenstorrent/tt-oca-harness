@@ -46,6 +46,10 @@ the reuse mailbox.
 Checkers:
   CTRL-OP-INFLIGHT   request handshake before the ``rst_ni`` fall, no B or R
                     handshake after it; else ``CTRL-MISSING``.
+  CHK-PRE-LINES     before the reset, probe bits [7:0] equal the model inbound
+                    lines and the SMC port equals the model outbound mask: the
+                    outbound port of mailbox m drives bit m
+                    (``hw/sys/sep/doc/mailbox.adoc:31-35``).
   CHK-PRE-NONZERO   pre-state differs from the reset state (per mailbox).
   CHK-RESET-STATE   16 apertures read the reset values (VCS: no X bit).
   CHK-RESET-LINES   probe bits [7:0] and the SMC port read 0x00.
@@ -187,6 +191,7 @@ class sep_mailbox_reset_clear_test(sep_base_test):
     """Reset mid-operation: all apertures, lines and the ISS source ID clear; reuse works."""
 
     required_evidence = (
+        "CHK-PRE-LINES",
         "CHK-PRE-NONZERO",
         "CHK-RESET-STATE",
         "CHK-RESET-LINES",
@@ -322,14 +327,11 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, QUIET)
         probe, smc = await self._lines()
         self.pre_probe, self.pre_smc = probe, smc
-        self.logger.info(
-            "INFO-PRE-LINES LOG seed=%d probe=0x%02x smc=0x%02x model_in=0x%02x model_out_count=%d",
-            c.seed,
-            probe,
-            smc,
-            self.model.in_lines(),
-            self.model.out_count(),
-        )
+        exp_probe, exp_smc = self.model.in_lines(), self.model.out_mask()
+        line = f"probe=0x{probe:02x} exp_probe=0x{exp_probe:02x} smc=0x{smc:02x} exp_smc=0x{exp_smc:02x}"
+        if probe != exp_probe or smc != exp_smc:
+            self._fail("CHK-PRE-LINES", line)
+        self._pass("CHK-PRE-LINES", line)
         for m in range(MAILBOX_COUNT):
             vals = {}
             for p in PORTS:
@@ -578,7 +580,8 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         ext = SepMboxPortOps(self, c.filt_m, in_prot1=0, in_user=FILTER_SRC)
         ext_resp = await ext.push("in", c.filt_word)
         line = (
-            f"pre_cfg=0x{self.pre_cfg:016x} pre_src_id={self.pre_src} src_id=0x{src:x} "
+            f"pre_cfg=0x{self.pre_cfg:016x} pre_src_id={self.pre_src} "
+            f"pre_ext_write={resp_name(self.pre_ext_resp)} src_id=0x{src:x} "
             f"src_field[{fc.fields()}]"
         )
         if not fc.ok:

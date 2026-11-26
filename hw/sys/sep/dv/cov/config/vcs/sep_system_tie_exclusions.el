@@ -3475,11 +3475,6 @@ INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
 ANNOTATION: "SEP-DMA-RSP-INTG-CONST: host_tl_h_i carries the response of u_tlul_to_axi_lite_dma. hw/common/axi/tlul_to_axi_lite.sv:285-290 and vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_pkg.sv:1316 make rsp_intg bit 6 = d_opcode[1], and d_opcode is only ACCESS_ACK or ACCESS_ACK_DATA (tlul_to_axi_lite.sv:262,264), so bit 6 is 0. The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the whole host_tl_h_i struct to '0, the same value. NOT waived: host_tl_h_i.d_user.rsp_intg[5:0]; SEP-DMA-HOST-TL-TIED lists the other host_tl_h_i ties."
 Toggle host_tl_h_i.d_user.rsp_intg [6] "logic host_tl_h_i.d_user.rsp_intg[6:0]"
 
-CHECKSUM: "2906880031 2552262841"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-SPI-A2T-ERRCLR-TIED: hw/sys/sep/rtl/sep_ot_spi_wrap.sv:126 ties .err_clr_i to 1'b0; that literal is the only driver. NOT waived: sticky_err_q and every other input of this instance."
-Toggle err_clr_i "logic err_clr_i"
-
 CHECKSUM: "3037710887 3972236298"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
 ANNOTATION: "SEP-DMA-ADDR-WORD-ALIGNED: hw/common/tlul/rtl/tlul_adapter_host.sv:115 drives a_address[1:0] to 0 (vendor/lowRISC/opentitan/upstream/hw/ip/dma/rtl/secure_dma.sv:240); hw/common/axi/tlul_to_axi_lite.sv:174,197,220 copy it (reset :101); vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:41,58 copy it with burst FIXED (:44,61) and cache 0 (hw/sys/sep/rtl/sep_dma_wrap.sv:319-320), so vendor/pulp-platform/axi/upstream/src/axi_dw_upsizer.sv:380,518,643,693 hold the address unchanged (reset '0 at :366,674). NOT waived: address bits [31:2], and dma_req_o.Ax.addr, which the sw-writable SEP_LOCAL_BASE_ADDR moves through the remap."

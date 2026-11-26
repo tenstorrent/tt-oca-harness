@@ -8789,14 +8789,8 @@ localparam int unsigned SEP_EFUSE_MAP_STATUS_RPT_RPT_SHIFT                      
 localparam int unsigned SEP_EFUSE_MAP_STATUS_RPT_RESERVED_MASK                                                    = 32'hFFFFFFFC;
 localparam int unsigned SEP_EFUSE_MAP_STATUS_RPT_RESERVED_SHIFT                                                   = 2;
 
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_ROM_ENDIANNESS_CTRL_MASK                                            = 32'h1;
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_ROM_ENDIANNESS_CTRL_SHIFT                                           = 0;
-
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_ROM_SWAP_CTRL_MASK                                                  = 32'h3E;
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_ROM_SWAP_CTRL_SHIFT                                                 = 1;
-
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_RESERVED_MASK                                                       = 32'hFFFFFFC0;
-localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_RESERVED_SHIFT                                                      = 6;
+localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_RESERVED_MASK                                                       = 32'hFFFFFFFF;
+localparam int unsigned SEP_EFUSE_MAP_ROM_CTL_RESERVED_SHIFT                                                      = 0;
 
 localparam int unsigned SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_SYSCLK_FREQ_MHZ_MASK                                        = 32'h7FF;
 localparam int unsigned SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_SYSCLK_FREQ_MHZ_SHIFT                                       = 0;
@@ -9281,6 +9275,9 @@ localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_EDN_SHIFT        
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_WDT_MASK                                           = 64'h40;
 localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_WDT_SHIFT                                          = 6;
 
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_SPI_MASK                                           = 64'h80;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_STATUS_SPI_SHIFT                                          = 7;
+
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_AES_MASK                                            = 64'h1;
 localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_AES_SHIFT                                           = 0;
 
@@ -9301,6 +9298,9 @@ localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_EDN_SHIFT         
 
 localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_MASK                                            = 64'h40;
 localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_WDT_SHIFT                                           = 6;
+
+localparam longint unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_SPI_MASK                                            = 64'h80;
+localparam     int unsigned SEP_CPU_CTRL_PERIPH_BUS_ERR_CLEAR_SPI_SHIFT                                           = 7;
 
 localparam longint unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_MASK                                           = 64'hFFFFFFFF;
 localparam     int unsigned SEP_CPU_CTRL_SEP_VERSION_ID_VERSION_ID_SHIFT                                          = 0;
@@ -11901,9 +11901,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [25:0]   reserved ;
-    logic [4:0]   rom_swap_ctrl ;
-    logic [0:0]   rom_endianness_ctrl ;
+    logic [31:0]   reserved ;
 } sep_efuse_map_rom_ctl_reg_t;
 
 
@@ -12504,6 +12502,7 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   spi ;
     logic [0:0]   wdt ;
     logic [0:0]   edn ;
     logic [0:0]   csrng ;
@@ -12516,6 +12515,7 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   spi ;
     logic [0:0]   wdt ;
     logic [0:0]   edn ;
     logic [0:0]   csrng ;

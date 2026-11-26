@@ -60,9 +60,19 @@ DECERR on RRESP
 (``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions"). The ARID is
 drawn from 1 to 62 (ARID 63 is the pre-sense read), so an RID that drops
 to 0 fails.
-OBS-SI-PRESENSE-READ runs last: after an ``rst_ni`` pulse, one external
-read with ARID 63 is sent while fuse sensing runs and is watched for 256
-clocks after ``sep_reset_n`` releases. It grades nothing.
+CHK-SI-PRESENSE-READ runs last: after an ``rst_ni`` pulse, one external
+read of SRAM word 0 with ARID 63 is sent while fuse sensing runs. While
+``sep_reset_n`` is low the port accepts AR beats and discards them without a
+response (``hw/sys/sep/doc/fabric.adoc:339-342``;
+``doc/integrator/src/smu-sep.adoc:72-76``). The check needs the AR handshake
+on the m_axi pins with ``dbg_sep_reset_n_o`` 0, and no R beat with RID 63 from
+then until 256 clocks after ``sep_reset_n`` releases, nor during the control
+read that follows. CTRL-SI-POSTRELEASE-READ sends the same read with ARID 62
+after that window: it must get its R beat, RID 62 and RLAST 1, within 256
+clocks of its AR handshake, and DECERR, since after the release the filter
+answers every request with DECERR until firmware enables an entry and the
+``rst_ni`` pulse left none enabled (``fabric.adoc:342-344``). So the window of
+the check is at least the time the released port takes to answer that read.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
@@ -159,7 +169,10 @@ RSVD_RDATA = 0xBADC_AB1E
 # ARID of the read sent before fuse sensing ends; no other read of this leaf uses it,
 # so an R beat that never comes leaves no later read of that ID to pair with.
 _PRESENSE_ARID = 63
-# clk_i cycles the pre-sense read is watched after sep_reset_n releases.
+# ARID of the control read after the release; the denied-burst ARIDs are done by then.
+_POSTRELEASE_ARID = 62
+# clk_i cycles the pre-sense read is watched after sep_reset_n releases, and the
+# bound on the control read's AR-to-R latency.
 _PRESENSE_WAIT = 256
 # clk_i cycles rst_ni is held low before the pre-sense read.
 _PRESENSE_RST_HOLD = 20
@@ -805,28 +818,38 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
 
     def _presense_si_read_start(self):
-        """Send one SI read of SRAM word 0 before fuse sensing ends; watch its handshakes."""
+        """Send one SI read of SRAM word 0 before fuse sensing ends; watch its handshakes.
+
+        The watch records, per ARID, the clock and ``dbg_sep_reset_n_o`` of the
+        first AR handshake, and every R beat as (clock, RID, RRESP, RLAST).
+        """
         dut = cocotb.top
         addr = sym("SEP_SRAM_MEM_BASE_ADDR")
-        rec: dict = {"stop": False}
+        rec: dict = {"stop": False, "clk": 0, "ar": {}, "r": []}
 
         async def _watch() -> None:
             while not rec["stop"]:
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
-                if (
-                    "ar" not in rec
-                    and dut.m_axi_arvalid.value == 1
-                    and dut.m_axi_arready.value == 1
-                    and int(dut.m_axi_arid.value) == _PRESENSE_ARID
-                ):
-                    rec["ar"] = self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True)
-                if (
-                    dut.m_axi_rvalid.value == 1
-                    and dut.m_axi_rready.value == 1
-                    and int(dut.m_axi_rid.value) == _PRESENSE_ARID
-                ):
-                    rec["r"] = int(dut.m_axi_rresp.value)
+                rec["clk"] += 1
+                if self.rd(dut.m_axi_arvalid) == 1 and self.rd(dut.m_axi_arready) == 1:
+                    arid = int(dut.m_axi_arid.value)
+                    if arid in (_PRESENSE_ARID, _POSTRELEASE_ARID) and arid not in rec["ar"]:
+                        rec["ar"][arid] = (
+                            rec["clk"],
+                            self.rd(dut.dbg_sep_reset_n_o),
+                        )
+                if self.rd(dut.m_axi_rvalid) == 1 and self.rd(dut.m_axi_rready) == 1:
+                    rid = int(dut.m_axi_rid.value)
+                    if rid in (_PRESENSE_ARID, _POSTRELEASE_ARID):
+                        rec["r"].append(
+                            (
+                                rec["clk"],
+                                rid,
+                                int(dut.m_axi_rresp.value),
+                                int(dut.m_axi_rlast.value),
+                            )
+                        )
 
         watch = cocotb.start_soon(_watch())
         vip = self.env.ext_axi_agent.driver.axi
@@ -858,7 +881,18 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self._presense_si_read_log(*pre_sense)
 
     async def _presense_si_read_log(self, addr: int, rec: dict, watch, read) -> None:
-        """OBS-SI-PRESENSE-READ: no line states what an SI read before sensing ends gets."""
+        """CHK-SI-PRESENSE-READ and its control CTRL-SI-POSTRELEASE-READ.
+
+        ``hw/sys/sep/doc/fabric.adoc:339-344``: while ``sep_reset_n`` is low the
+        port accepts AR beats and discards them without a response; after the
+        release the filter answers DECERR until firmware enables an entry.
+
+        The control read runs outside every coverage window, while the ARID 63
+        read stays outstanding. The System Interface tracker samples a read
+        completion only with one read outstanding (``si_rd_done`` in
+        ``cov/sv/sep_fcov.sv``), so the control completion is never paired
+        with the ARID 63 read.
+        """
         dut = cocotb.top
         for _ in range(_MAX_SENSE_CYCLES):
             if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
@@ -869,21 +903,50 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                 f"CTRL-MISSING PRESENSE-RELEASE: sep_reset_n stayed low {_MAX_SENSE_CYCLES} "
                 "clocks after fuse sense ended"
             )
+        release_clk = rec["clk"]
         await ClockCycles(dut.clk_i, _PRESENSE_WAIT)
+        window_end_clk = rec["clk"]
+        vip = self.env.ext_axi_agent.driver.axi
+        ctrl = await vip.read_bytes_result(
+            addr, 4, size=2, id=_POSTRELEASE_ARID, check_response=False, allow_timeout=True
+        )
+        await ClockCycles(dut.clk_i, 2)
         rec["stop"] = True
         await watch
         self.env.ext_axi_monitor.forget_pending_reads(_PRESENSE_ARID)
-        self.logger.info(
-            "OBS-SI-PRESENSE-READ addr=0x%08x arid=%d accepted=%s sep_reset_n_at_accept=%s "
-            "response=%s rresp=%s window_clk_after_release=%d vip_done=%d",
-            addr,
-            _PRESENSE_ARID,
-            "y" if "ar" in rec else "n",
-            rec.get("ar", "na"),
-            "y" if "r" in rec else "n",
-            rec.get("r", "na"),
-            _PRESENSE_WAIT,
-            int(read.done()),
+        pre_ar = rec["ar"].get(_PRESENSE_ARID)
+        pre_r = [b for b in rec["r"] if b[1] == _PRESENSE_ARID]
+        ctl_ar = rec["ar"].get(_POSTRELEASE_ARID)
+        ctl_r = [b for b in rec["r"] if b[1] == _POSTRELEASE_ARID]
+        ctl_lat = ctl_r[0][0] - ctl_ar[0] if ctl_ar and ctl_r else None
+        ctl_ok = (
+            ctl_ar is not None
+            and ctl_ar[0] > window_end_clk
+            and ctl_ar[1] == 1
+            and len(ctl_r) == 1
+            and ctl_r[0][2:] == (RESP_DECERR, 1)
+            and ctl_lat is not None
+            and 0 < ctl_lat <= _PRESENSE_WAIT
+        )
+        self._grade(
+            "CTRL-SI-POSTRELEASE-READ",
+            ctl_ok,
+            f"addr=0x{addr:08x} arid={_POSTRELEASE_ARID} ar_clk={ctl_ar[0] if ctl_ar else 'na'} "
+            f"sep_reset_n_at_accept={ctl_ar[1] if ctl_ar else 'na'} "
+            f"window_end_clk={window_end_clk} r_beats={len(ctl_r)} "
+            f"rresp={ctl_r[0][2] if ctl_r else 'na'} rlast={ctl_r[0][3] if ctl_r else 'na'} "
+            f"vip_resp={ctrl.resp} latency_clk={ctl_lat if ctl_lat is not None else 'na'} "
+            f"expect_rresp={RESP_DECERR} expect_latency<={_PRESENSE_WAIT}",
+        )
+        self._grade(
+            "CHK-SI-PRESENSE-READ",
+            pre_ar is not None and pre_ar[1] == 0 and not pre_r,
+            f"addr=0x{addr:08x} arid={_PRESENSE_ARID} accepted={'y' if pre_ar else 'n'} "
+            f"ar_clk={pre_ar[0] if pre_ar else 'na'} "
+            f"sep_reset_n_at_accept={pre_ar[1] if pre_ar else 'na'} release_clk={release_clk} "
+            f"watch_end_clk={rec['clk']} r_beats={len(pre_r)} "
+            f"r={' '.join(f'{c}:{rr_}/{last}' for c, _, rr_, last in pre_r) or '-'} "
+            f"vip_done={int(read.done())} expect=accepted_in_reset,no_r",
         )
 
     async def _reserved_si_read(self, seed: int) -> None:

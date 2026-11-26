@@ -57,12 +57,12 @@ Checks:
   CHK-SPI-SB-FRAME (``env/sep_spi_scoreboard.py``, one scoreboard per midseg
                    trial): the clean dummy command has LEN+1 sample edges, and
                    the clean Tx command at the width of the trial puts its
-                   queued bytes on the wire in one in-word byte order, the
-                   same order for every TXDATA word of the leaf (most
-                   significant bits first; in x2 and x4 the least significant
-                   bit of each pair or nibble on ``sd[0]``). Which order the
-                   words use is not graded: one INFO-SPI-BYTEORDER line per
-                   leaf logs it (``env/sep_spi_lane_responder.py``,
+                   queued bytes on the wire in the ByteOrder = 1 order, bits
+                   7:0 of each TXDATA word first (``spi_controller.rdl:124-127``;
+                   most significant bits first; in x2 and x4 the least
+                   significant bit of each pair or nibble on ``sd[0]``). One
+                   CHK-SPI-BYTEORDER line per leaf grades the word counts
+                   (``env/sep_spi_lane_responder.py``,
                    ``SepSpiByteOrder``). The shared SPI monitor
                    (``env/sep_spi_wire_monitor.py``) runs only from the first
                    CONTROL write after the release to the end of the clean
@@ -237,7 +237,12 @@ class _ResetOeWindow:
 class sep_spi_cold_reset_values_rand_test(sep_base_test):
     """Every readable SPI host register returns to reset after rst_ni, idle and mid-segment."""
 
-    required_evidence = ("CHK-SPI-COLDRST", "CHK-SPI-OE-RESET", "CHK-SPI-SB-FRAME")
+    required_evidence = (
+        "CHK-SPI-COLDRST",
+        "CHK-SPI-OE-RESET",
+        "CHK-SPI-SB-FRAME",
+        "CHK-SPI-BYTEORDER",
+    )
 
     async def run_scenario(self) -> None:
         self.seed = self.random_seed()

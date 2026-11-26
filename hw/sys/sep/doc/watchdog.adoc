@@ -20,11 +20,11 @@ The `sep_wdt_wrap` module integrates the OpenTitan `aon_timer` IP as the watchdo
 
 == Clock, Reset, and Debug Behavior
 
-The register path described above is reset by cold reset (`rst_ni`), like the crossbar that drives it. The `aon_timer`, including its registers, and its alert receivers are reset by the SEP watchdog reset (`rst_wdt_ni`, driven by `sep_wdt_reset_no` of the SEP Reset Controller), which asserts on cold reset and on every watchdog reset. A `prim_sync_reset` synchronizes it to the dedicated watchdog clock (`clk_wdt_i`) to produce the `rst_aon_ni` reset for the timer domain. The `wdt_debug_sleep_mode_i` input controls whether the timer continues to count during debug halt. Life-cycle escalation is tied to its inactive state. Alert receivers are initialized to the idle encoding to avoid spurious integrity errors; alert outputs are left unconnected since the SEP aggregates watchdog events through the interrupt path.
+The register path described above is reset by cold reset (`rst_ni`), like the crossbar that drives it. The `aon_timer`, including its registers, and its alert receivers are reset by the SEP watchdog reset (`rst_wdt_ni`, driven by `sep_wdt_reset_no` of the SEP Reset Controller), which asserts on cold reset and on every watchdog reset. A `prim_sync_reset` synchronizes it to the dedicated watchdog clock (`clk_wdt_i`) to produce the `rst_aon_ni` reset for the timer domain. SEP ties `wdt_debug_sleep_mode_i` low, so the timer keeps counting while the CPU is halted in debug and `WDOG_CTRL.pause_in_sleep` has no effect. Life-cycle escalation is tied to its inactive state. Alert receivers are initialized to the idle encoding to avoid spurious integrity errors. Their alert pulses and integrity failures are ORed into `wdt_alert_o`, which drives PIC source 13.
 
 == Bark Interrupt and Bite Reset
 
-The wrapper exports two signals: `intr_wdog_timer_bark_o`, the watchdog bark interrupt that fires when the first timeout stage expires, and `wdt_timer_rst_req_o`, the bite reset request that fires when the second timeout stage expires and the system failed to respond to the bark.
+The wrapper exports two signals: `intr_wdog_timer_bark_o`, the watchdog bark interrupt, and `wdt_timer_rst_req_o`, the bite reset request. The bark and bite thresholds are independent: each fires once the watchdog count reaches its own threshold, whether or not the other has fired. Clearing the bark does not stop the bite; only resetting the watchdog count does.
 
 The SMC reset unit turns the bite into the shared watchdog reset, which returns to the SEP on `wdt_rst_ni`. It restarts the SEP CPU and resets the watchdog, which clears the bite. The
 ifdef::backend-html5[]

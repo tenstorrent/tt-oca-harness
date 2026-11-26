@@ -7,7 +7,6 @@
 // axi_lite_to_tlul presenting the 32-bit AXI4-Lite bus from sep_io.
 // Addresses are rebased by the SPI controller base and masked to the 6-bit spi_host window.
 // Writes with all byte strobes low complete locally with OKAY and never reach the core.
-// The bridge's sticky fault output is left unconnected.
 //
 // The upstream REGGEN block is authoritative for the register map:
 //
@@ -19,8 +18,10 @@
 // through. There is no busy output; activity is STATUS.ACTIVE over the register interface.
 //
 // RACL is compiled out (EnableRacl = 0) with inactive policies. The spi_device passthrough
-// is held inactive. The single fatal alert (bus integrity) is terminated here because
-// sep_io has no alert path.
+// is held inactive. The single fatal alert (bus integrity) ends at a local
+// prim_alert_receiver. bus_err_o is the OR of the bridge's sticky fault and a latch of that
+// receiver's alert pulse and integrity fail; bus_err_clr_i clears both, and a fault in the
+// same cycle still latches.
 //
 // Supports:
 //
@@ -28,6 +29,8 @@
 // - Up to Quad SPI.
 // - Single transfer rate only (no DTR/DDR).
 // - Software-driven command sequences without memory-mapped XIP flash access.
+
+`include "ocah_registers.svh"
 
 module sep_ot_spi_wrap #(
   parameter int unsigned NUM_CS = 1  // Number of SPI chip selects.
@@ -57,7 +60,12 @@ module sep_ot_spi_wrap #(
 
   output logic              irq_o,            // SPI interrupt: OR of the spi_host error and
                                               // spi_event interrupts.
-  output logic              lsio_trigger_o    // spi_host DMA trigger, passed through.
+  output logic              lsio_trigger_o,   // spi_host DMA trigger, passed through.
+
+  output logic              bus_err_o,        // Register-bridge TL-UL error response or fatal
+                                              // alert; sticky until bus_err_clr_i.
+  input  logic              bus_err_clr_i     // Single-cycle clear for bus_err_o, pulsed by
+                                              // PERIPH_BUS_ERR_CLEAR.spi in sep.
 );
 
   logic unused_test_en;
@@ -107,6 +115,7 @@ module sep_ot_spi_wrap #(
 
   tlul_pkg::tl_h2d_t tl_req;
   tlul_pkg::tl_d2h_t tl_resp;
+  logic              bridge_err;
 
   axi_lite_to_tlul #(
     .AXI_ADDR_WIDTH        (sep_io_pkg::AddrWidth),
@@ -121,21 +130,29 @@ module sep_ot_spi_wrap #(
     .axi_lite_rsp_o (axil_resp_o),
     .tl_o           (tl_req),
     .tl_i           (tl_resp),
-    // Sticky bridge fault. Held until reset; no consumer in sep_io today.
-    .err_o          (),
-    .err_clr_i      (1'b0)
+    .err_o          (bridge_err),
+    .err_clr_i      (bus_err_clr_i)
   );
 
   /////////////////////////////////////////////////////////////////////////////
   // OpenTitan SPI Host core (unmodified upstream, TL-UL)
   /////////////////////////////////////////////////////////////////////////////
 
+  localparam int unsigned NumAlerts = spi_host_reg_pkg::NumAlerts;
+
   logic intr_error;
   logic intr_spi_event;
 
+  prim_alert_pkg::alert_tx_t [NumAlerts-1:0] alert_tx;
+  prim_alert_pkg::alert_rx_t [NumAlerts-1:0] alert_rx;
+  logic [NumAlerts-1:0]                      alert_pulse;
+  logic [NumAlerts-1:0]                      alert_integ_fail;
+
   spi_host #(
-    .NumCS      (NUM_CS),
-    .EnableRacl (1'b0)
+    .AlertAsyncOn    ({NumAlerts{1'b0}}),
+    .AlertSkewCycles (1),
+    .NumCS           (NUM_CS),
+    .EnableRacl      (1'b0)
   ) u_spi_host (
     .clk_i            (clk_i),
     .rst_ni           (rst_ni),
@@ -144,9 +161,8 @@ module sep_ot_spi_wrap #(
     .tl_i             (tl_req),
     .tl_o             (tl_resp),
 
-    // Alerts: terminated, see header
-    .alert_rx_i       ({spi_host_reg_pkg::NumAlerts{prim_alert_pkg::ALERT_RX_DEFAULT}}),
-    .alert_tx_o       (),
+    .alert_rx_i       (alert_rx),
+    .alert_tx_o       (alert_tx),
 
     // RACL: compiled out
     .racl_policies_i  ('0),
@@ -173,9 +189,32 @@ module sep_ot_spi_wrap #(
     .intr_spi_event_o (intr_spi_event)
   );
 
+  for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_receivers
+    prim_alert_receiver #(
+      .AsyncOn   (1'b0),
+      .SkewCycles(1)
+    ) u_alert_receiver (
+      .clk_i,
+      .rst_ni,
+      .init_trig_i  (prim_mubi_pkg::MuBi4False),
+      .ping_req_i   (1'b0),
+      .ping_ok_o    (),
+      .integ_fail_o (alert_integ_fail[i]),
+      .alert_o      (alert_pulse[i]),
+      .alert_rx_o   (alert_rx[i]),
+      .alert_tx_i   (alert_tx[i])
+    );
+  end
+
   /////////////////////////////////////////////////////////////////////////////
   // Outputs
   /////////////////////////////////////////////////////////////////////////////
+
+  logic alert_err_q;
+  `OCAH_FF(alert_err_q, (alert_err_q & ~bus_err_clr_i) | (|alert_pulse) | (|alert_integ_fail),
+           1'b0, clk_i, rst_ni)
+
+  assign bus_err_o = bridge_err | alert_err_q;
 
   // One line into the SEP interrupt controller, as before. Software reads
   // INTR_STATE to tell the two sources apart.

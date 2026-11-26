@@ -196,11 +196,7 @@ package sep_efuse_pkg;
 
 
 
-  typedef struct packed {
-    logic [25:0]   reserved ;
-    logic [4:0]    rom_swap_ctrl ;
-    logic [0:0]    rom_endianness_ctrl ;
-  } sep_efuse_map_rom_ctl_reg_t;
+  typedef struct packed {logic [31:0] reserved;} sep_efuse_map_rom_ctl_reg_t;
 
 
 

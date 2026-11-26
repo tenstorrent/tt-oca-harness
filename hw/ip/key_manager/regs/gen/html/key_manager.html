@@ -10,9 +10,9 @@
 <p>Complete memory map for the Key Manager subsystem, including ROM, SRAM,<br>control/status registers, mailbox, and external crypto engine ports.<br>This address map is from the perspective of the KM CPU (PicoRV32).</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>RMA_SIP_TOKEN_I[8]</strong>: 8 registers, base 0x11400, stride 0x4</li>
-<li><strong>RMA_CHIPLET_TOKEN_I[8]</strong>: 8 registers, base 0x11420, stride 0x4</li>
-<li><strong>SEC_DISABLE_TOKEN_I[8]</strong>: 8 registers, base 0x11440, stride 0x4</li>
+<li><strong>RMA_SIP_TOKEN_I[8]</strong>: 8 registers, base 0x11500, stride 0x4</li>
+<li><strong>RMA_CHIPLET_TOKEN_I[8]</strong>: 8 registers, base 0x11520, stride 0x4</li>
+<li><strong>SEC_DISABLE_TOKEN_I[8]</strong>: 8 registers, base 0x11540, stride 0x4</li>
 <li><strong>KEY_ENTRY[64].WORD[16]</strong>: 1024 registers, base 0x12000 (KEY_ENTRY x64 stride 0x40, WORD x16 stride 0x4)</li>
 <li><strong>CTRL[64]</strong>: 64 registers, base 0x13000, stride 0x4</li>
 <li><strong>KEY_SHARE0[12]</strong>: 12 registers, base 0x18000, stride 0x4</li>
@@ -43,66 +43,66 @@
 <tr><td>0x10010</td><td><a href="#KM_IRQ_STATUS">KM_IRQ_STATUS</a></td><td>RW</td><td>Interrupt status register</td></tr>
 <tr><td>0x10014</td><td><a href="#KM_IRQ_ENABLE">KM_IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable register for KM CPU</td></tr>
 <tr><td>0x10018</td><td><a href="#KM_CTRL">KM_CTRL</a></td><td>RW</td><td>Control register for mailbox behavior configuration</td></tr>
-<tr><td>0x11000</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
-<tr><td>0x11004</td><td><a href="#EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.</td></tr>
-<tr><td>0x11008</td><td><a href="#EFUSE_READ_CTRL">EFUSE_READ_CTRL</a></td><td>RW</td><td>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</td></tr>
-<tr><td>0x1100C</td><td><a href="#EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</a></td><td>R</td><td>Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.</td></tr>
-<tr><td>0x11010</td><td><a href="#EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data returned through the eFuse read interface.</td></tr>
-<tr><td>0x11014</td><td><a href="#EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</a></td><td>RW</td><td>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</td></tr>
-<tr><td>0x11018</td><td><a href="#EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</a></td><td>RW</td><td>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</td></tr>
-<tr><td>0x1101C</td><td><a href="#EFUSE_PROGRAM_ADDR">EFUSE_PROGRAM_ADDR</a></td><td>RW</td><td>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</td></tr>
-<tr><td>0x11020</td><td><a href="#EFUSE_READ_ADDR">EFUSE_READ_ADDR</a></td><td>RW</td><td>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</td></tr>
-<tr><td>0x11400 - 0x1141C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
-<tr><td>0x11420 - 0x1143C</td><td><a href="#RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
-<tr><td>0x11440 - 0x1145C</td><td><a href="#SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.</td></tr>
-<tr><td>0x11460</td><td><a href="#TOKEN_EOP">TOKEN_EOP</a></td><td>W</td><td>Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.</td></tr>
-<tr><td>0x11464</td><td><a href="#RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
-<tr><td>0x11468</td><td><a href="#RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
-<tr><td>0x1146C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
-<tr><td>0x11470</td><td><a href="#TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
-<tr><td>0x11800</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11808</td><td><a href="#LOCKS_SPARE">LOCKS_SPARE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1180C</td><td><a href="#LC_STATE">LC_STATE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11810</td><td><a href="#SBOOT_DIS">SBOOT_DIS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11814</td><td><a href="#TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11818</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
-<tr><td>0x11820</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
-<tr><td>0x11828</td><td><a href="#RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11848</td><td><a href="#RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11868</td><td><a href="#CLASS_KEY">CLASS_KEY</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11888</td><td><a href="#CHIPLET_PUBK_REVOKE">CHIPLET_PUBK_REVOKE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1188C</td><td><a href="#BL1_VERSION">BL1_VERSION</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x118AC</td><td><a href="#BL2_VERSION">BL2_VERSION</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x118CC</td><td><a href="#CHIPLET_UID">CHIPLET_UID</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x118EC</td><td><a href="#SIP_PUBK_HASH0">SIP_PUBK_HASH0</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1190C</td><td><a href="#SIP_UID">SIP_UID</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1192C</td><td><a href="#SYS_PUBK_HASH">SYS_PUBK_HASH</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1194C</td><td><a href="#SYS_UID">SYS_UID</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1196C</td><td><a href="#STATUS_RPT">STATUS_RPT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11970</td><td><a href="#ROM_CTL">ROM_CTL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11974</td><td><a href="#SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11978</td><td><a href="#CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11998</td><td><a href="#CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x119B8</td><td><a href="#REQUIRED_SIGNERS">REQUIRED_SIGNERS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x119BC</td><td><a href="#REQUIRED_ALGS">REQUIRED_ALGS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x119C0</td><td><a href="#CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x119E0</td><td><a href="#CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11A00</td><td><a href="#SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11A20</td><td><a href="#SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11A40</td><td><a href="#SIP_PUBK_HASH1">SIP_PUBK_HASH1</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11A60</td><td><a href="#SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11A80</td><td><a href="#SEP_CHIPLET_ID">SEP_CHIPLET_ID</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11AA0</td><td><a href="#SEP_SIP_ID">SEP_SIP_ID</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11AC0</td><td><a href="#SEP_SYS_ID">SEP_SYS_ID</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11AE0</td><td><a href="#spare0">spare0</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11B00</td><td><a href="#spare1">spare1</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11B20</td><td><a href="#spare2">spare2</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11B40</td><td><a href="#spare3">spare3</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11B60</td><td><a href="#spare4">spare4</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11B80</td><td><a href="#spare5">spare5</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11BA0</td><td><a href="#spare6">spare6</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11BC0</td><td><a href="#spare7">spare7</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x11BE0</td><td><a href="#spare8">spare8</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11000</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11008</td><td><a href="#LOCKS_SPARE">LOCKS_SPARE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1100C</td><td><a href="#LC_STATE">LC_STATE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11010</td><td><a href="#SBOOT_DIS">SBOOT_DIS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11014</td><td><a href="#TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11018</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
+<tr><td>0x11020</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
+<tr><td>0x11028</td><td><a href="#RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11048</td><td><a href="#RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11068</td><td><a href="#CLASS_KEY">CLASS_KEY</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11088</td><td><a href="#CHIPLET_PUBK_REVOKE">CHIPLET_PUBK_REVOKE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1108C</td><td><a href="#BL1_VERSION">BL1_VERSION</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x110AC</td><td><a href="#BL2_VERSION">BL2_VERSION</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x110CC</td><td><a href="#CHIPLET_UID">CHIPLET_UID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x110EC</td><td><a href="#SIP_PUBK_HASH0">SIP_PUBK_HASH0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1110C</td><td><a href="#SIP_UID">SIP_UID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1112C</td><td><a href="#SYS_PUBK_HASH">SYS_PUBK_HASH</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1114C</td><td><a href="#SYS_UID">SYS_UID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1116C</td><td><a href="#STATUS_RPT">STATUS_RPT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11170</td><td><a href="#ROM_CTL">ROM_CTL</a></td><td>RW</td><td>Reserved.</td></tr>
+<tr><td>0x11174</td><td><a href="#SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11178</td><td><a href="#CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11198</td><td><a href="#CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x111B8</td><td><a href="#REQUIRED_SIGNERS">REQUIRED_SIGNERS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x111BC</td><td><a href="#REQUIRED_ALGS">REQUIRED_ALGS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x111C0</td><td><a href="#CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x111E0</td><td><a href="#CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11200</td><td><a href="#SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11220</td><td><a href="#SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11240</td><td><a href="#SIP_PUBK_HASH1">SIP_PUBK_HASH1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11260</td><td><a href="#SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11280</td><td><a href="#SEP_CHIPLET_ID">SEP_CHIPLET_ID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x112A0</td><td><a href="#SEP_SIP_ID">SEP_SIP_ID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x112C0</td><td><a href="#SEP_SYS_ID">SEP_SYS_ID</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x112E0</td><td><a href="#spare0">spare0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11300</td><td><a href="#spare1">spare1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11320</td><td><a href="#spare2">spare2</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11340</td><td><a href="#spare3">spare3</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11360</td><td><a href="#spare4">spare4</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11380</td><td><a href="#spare5">spare5</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x113A0</td><td><a href="#spare6">spare6</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x113C0</td><td><a href="#spare7">spare7</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x113E0</td><td><a href="#spare8">spare8</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11400</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
+<tr><td>0x11404</td><td><a href="#EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.</td></tr>
+<tr><td>0x11408</td><td><a href="#EFUSE_READ_CTRL">EFUSE_READ_CTRL</a></td><td>RW</td><td>eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.</td></tr>
+<tr><td>0x1140C</td><td><a href="#EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</a></td><td>R</td><td>Data the adopter SHIM returned with the last successful program, for example a read-back word. Held until the next successful program and not valid after an error. Hardware debug only.</td></tr>
+<tr><td>0x11410</td><td><a href="#EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</a></td><td>R</td><td>Read data returned through the eFuse read interface.</td></tr>
+<tr><td>0x11414</td><td><a href="#EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</a></td><td>RW</td><td>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</td></tr>
+<tr><td>0x11418</td><td><a href="#EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</a></td><td>RW</td><td>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</td></tr>
+<tr><td>0x1141C</td><td><a href="#EFUSE_PROGRAM_ADDR">EFUSE_PROGRAM_ADDR</a></td><td>RW</td><td>Bit address for the next program. Set it before EFUSE_PROGRAM_CTRL.efuse_program_go.</td></tr>
+<tr><td>0x11420</td><td><a href="#EFUSE_READ_ADDR">EFUSE_READ_ADDR</a></td><td>RW</td><td>Bit address for the next read. Set it before EFUSE_READ_CTRL.efuse_read_go.</td></tr>
+<tr><td>0x11500 - 0x1151C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
+<tr><td>0x11520 - 0x1153C</td><td><a href="#RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
+<tr><td>0x11540 - 0x1155C</td><td><a href="#SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable security-disable token word. The assembled token is hashed and compared against the post-silicon injected value to authorize security_disable.</td></tr>
+<tr><td>0x11560</td><td><a href="#TOKEN_EOP">TOKEN_EOP</a></td><td>W</td><td>Token end-of-packet control. Writing the per-token go bit signals that all token words have been written and triggers a pulse to begin token hashing.</td></tr>
+<tr><td>0x11564</td><td><a href="#RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x11568</td><td><a href="#RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x1156C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x11570</td><td><a href="#TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
 <tr><td>0x12000 - 0x12FFC</td><td><a href="#KEY_ENTRY_64_.WORD_16_">KEY_ENTRY[64].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
 <tr><td>0x13000 - 0x130FC</td><td><a href="#CTRL_64_">CTRL[64]</a></td><td>RW</td><td>Per-slot control: lock bits (W1S) and the erase trigger</td></tr>
 <tr><td>0x13100</td><td><a href="#KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.</td></tr>
@@ -346,133 +346,6 @@
 <tr><td>1</td><td>inbound_underflow_resp</td><td>RW</td><td>0x0</td><td>Response type for inbound FIFO underflow: 0=SLVERR (default), 1=OKAY</td></tr>
 <tr><td>0</td><td>outbound_overflow_resp</td><td>RW</td><td>0x0</td><td>Response type for outbound FIFO overflow: 0=SLVERR (default), 1=OKAY</td></tr>
 </table>
-<h3 id="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10</td><td>efuse_read_addr_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</td></tr>
-<tr><td>9</td><td>efuse_program_addr_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</td></tr>
-<tr><td>8</td><td>efuse_req_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the blocked request error bit in efuse_ctrl_status</td></tr>
-<tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>efuse_read_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.</td></tr>
-<tr><td>5</td><td>efuse_program_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.</td></tr>
-<tr><td>4</td><td>efuse_req_error</td><td>R</td><td>0x0</td><td>Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register</td></tr>
-<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>efuse_sense_done</td><td>R</td><td>-</td><td>Indicates if the eFuse state machine has completed</td></tr>
-</table>
-<h3 id="EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>27</td><td>program_enable</td><td>RW</td><td>0x0</td><td>When set, enables the program request</td></tr>
-<tr><td>26</td><td>program_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error</td></tr>
-<tr><td>25</td><td>program_done</td><td>R</td><td>0x0</td><td>When set, the program has completed, the status of which is in program_status</td></tr>
-<tr><td>24</td><td>program_busy</td><td>R</td><td>0x0</td><td>When set, the program is in progress</td></tr>
-<tr><td>23:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>17</td><td>efuse_program_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
-<tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, the program request will be ignored</td></tr>
-<tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-</table>
-<h3 id="EFUSE_READ_CTRL">EFUSE_READ_CTRL</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28</td><td>read_enable</td><td>RW</td><td>0x0</td><td>When set, enables the read request</td></tr>
-<tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</td></tr>
-<tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status</td></tr>
-<tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
-<tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>efuse_read_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
-<tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-</table>
-<h3 id="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dout</td><td>R</td><td>0x0</td><td>Program response data from the adopter SHIM; its meaning is adopter-defined.</td></tr>
-</table>
-<h3 id="EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dout</td><td>R</td><td>0x0</td><td>Read Data from eFuse through READ interface.</td></tr>
-</table>
-<h3 id="EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28</td><td>read_req_timout_enable</td><td>RW</td><td>0x0</td><td>Enable timeout on read interface</td></tr>
-<tr><td>27:0</td><td>read_req_timeout_cycles</td><td>RW</td><td>0x800000</td><td>Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</td></tr>
-</table>
-<h3 id="EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28</td><td>program_req_timeout_enable</td><td>RW</td><td>0x0</td><td>Enable timeout on program interface.</td></tr>
-<tr><td>27:0</td><td>program_req_timeout_cycles</td><td>RW</td><td>0x800000</td><td>Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</td></tr>
-</table>
-<h3 id="EFUSE_PROGRAM_ADDR">EFUSE_PROGRAM_ADDR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</td></tr>
-</table>
-<h3 id="EFUSE_READ_ADDR">EFUSE_READ_ADDR</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</td></tr>
-</table>
-<h3 id="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
-</table>
-<h3 id="RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
-</table>
-<h3 id="SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.</td></tr>
-</table>
-<h3 id="TOKEN_EOP">TOKEN_EOP</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>secure_disable_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
-<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>rma_chiplet_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
-<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>rma_sip_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
-</table>
-<h3 id="RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
-</table>
-<h3 id="RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
-</table>
-<h3 id="SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
-</table>
-<h3 id="TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>secure_disable_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.</td></tr>
-<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>rma_chiplet_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.</td></tr>
-<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>rma_sip_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</td></tr>
-</table>
 <h3 id="LOCKS">LOCKS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -670,9 +543,7 @@
 <h3 id="ROM_CTL">ROM_CTL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:6</td><td>reserved</td><td>RW</td><td>0x0</td><td>reserved</td></tr>
-<tr><td>5:1</td><td>rom_swap_ctrl</td><td>RW</td><td>0x0</td><td>controls how the rom slices are swapped</td></tr>
-<tr><td>0</td><td>rom_endianness_ctrl</td><td>RW</td><td>0x0</td><td>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</td></tr>
+<tr><td>31:0</td><td>reserved</td><td>RW</td><td>0x0</td><td>reserved</td></tr>
 </table>
 <h3 id="SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</h3>
 <table>
@@ -793,6 +664,133 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>255:0</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<h3 id="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10</td><td>efuse_read_addr_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the read out of bounds error bit (efuse_read_addr_error) in efuse_ctrl_status</td></tr>
+<tr><td>9</td><td>efuse_program_addr_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the program out of bounds error bit (efuse_program_addr_error) in efuse_ctrl_status</td></tr>
+<tr><td>8</td><td>efuse_req_error_clear</td><td>W 1P</td><td>0x0</td><td>Clears the blocked request error bit in efuse_ctrl_status</td></tr>
+<tr><td>7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>efuse_read_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse read address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_read_addr_error_clear.</td></tr>
+<tr><td>5</td><td>efuse_program_addr_error</td><td>R</td><td>0x0</td><td>Indicates that an invalid eFuse program address was used (address exceeds the implemented eFuse size). The error must be cleared by writing 1 to efuse_program_addr_error_clear.</td></tr>
+<tr><td>4</td><td>efuse_req_error</td><td>R</td><td>0x0</td><td>Indicates that the eFuse was blocked because of either read or a program lock.  The error must be cleared by writing 1 to efuse_req_error_clear to this register</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>efuse_sense_done</td><td>R</td><td>-</td><td>Indicates if the eFuse state machine has completed</td></tr>
+</table>
+<h3 id="EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>27</td><td>program_enable</td><td>RW</td><td>0x0</td><td>When set, enables the program request</td></tr>
+<tr><td>26</td><td>program_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error</td></tr>
+<tr><td>25</td><td>program_done</td><td>R</td><td>0x0</td><td>When set, the program has completed, the status of which is in program_status</td></tr>
+<tr><td>24</td><td>program_busy</td><td>R</td><td>0x0</td><td>When set, the program is in progress</td></tr>
+<tr><td>23:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>17</td><td>efuse_program_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
+<tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, the program request will be ignored</td></tr>
+<tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="EFUSE_READ_CTRL">EFUSE_READ_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>read_enable</td><td>RW</td><td>0x0</td><td>When set, enables the read request</td></tr>
+<tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</td></tr>
+<tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status</td></tr>
+<tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
+<tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>efuse_read_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
+<tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dout</td><td>R</td><td>0x0</td><td>Program response data from the adopter SHIM; its meaning is adopter-defined.</td></tr>
+</table>
+<h3 id="EFUSE_READ_INTERFACE_READ_DATA">EFUSE_READ_INTERFACE_READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>dout</td><td>R</td><td>0x0</td><td>Read Data from eFuse through READ interface.</td></tr>
+</table>
+<h3 id="EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>read_req_timout_enable</td><td>RW</td><td>0x0</td><td>Enable timeout on read interface</td></tr>
+<tr><td>27:0</td><td>read_req_timeout_cycles</td><td>RW</td><td>0x800000</td><td>Number of cycles the read interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</td></tr>
+</table>
+<h3 id="EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>program_req_timeout_enable</td><td>RW</td><td>0x0</td><td>Enable timeout on program interface.</td></tr>
+<tr><td>27:0</td><td>program_req_timeout_cycles</td><td>RW</td><td>0x800000</td><td>Number of cycles the program interface will wait for a response from the shim. At 100MHz this can count ~= 2.5 seconds.</td></tr>
+</table>
+<h3 id="EFUSE_PROGRAM_ADDR">EFUSE_PROGRAM_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address to program. Writing this register does not check the address; a program started with an address at or beyond the implemented eFuse size is not issued and sets efuse_program_addr_error.</td></tr>
+</table>
+<h3 id="EFUSE_READ_ADDR">EFUSE_READ_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>efuse_addr</td><td>RW</td><td>0x0</td><td>Bit address of the word to read. Writing this register does not check the address; a read started with an address at or beyond the implemented eFuse size is not issued and sets efuse_read_addr_error.</td></tr>
+</table>
+<h3 id="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
+</table>
+<h3 id="RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.</td></tr>
+</table>
+<h3 id="SEC_DISABLE_TOKEN_I_8_">SEC_DISABLE_TOKEN_I[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>token</td><td>RW</td><td>-</td><td>Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.</td></tr>
+</table>
+<h3 id="TOKEN_EOP">TOKEN_EOP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>secure_disable_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>rma_chiplet_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>rma_sip_token_go</td><td>W 1P</td><td>0x0</td><td>Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.</td></tr>
+</table>
+<h3 id="RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>secure_disable_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>rma_chiplet_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>rma_sip_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</td></tr>
 </table>
 <h3 id="KEY_ENTRY_64_.WORD_16_">KEY_ENTRY[64].WORD[16]</h3>
 <table>

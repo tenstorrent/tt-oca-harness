@@ -56,6 +56,23 @@ core and its buses run on the SEP clock. `mpc_reset_run_req_i` passes a two-flop
 synchronizer in `sep_cpu`; the core synchronizes the NMI, timer, software
 interrupt and the other halt and run requests itself.
 
+Firmware can move the alias window by writing `SEP_LOCAL_BASE_ADDR`; keeping
+its reset value, `0xD000_0000`, is recommended. The legal values are
+`0xD000_0000` to `0xFFFF_FFFF`; a value outside that range makes the window
+overlap a fixed SEP region and is not supported. The remaps use bits [31:0] of
+the register and ignore bits [55:32]. The window starts at
+`SEP_LOCAL_BASE_ADDR` and ends at `0xFFFF_FFFF`; it does not wrap to
+`0x0000_0000`. A base above `0xD000_0000` therefore shortens the window, and
+the top of the direct range `0x1000_0000` to `0x3FFF_FFFF` has no alias.
+
+An address outside the current window passes the remap unchanged. Nothing else
+decodes `0xD000_0000` to `0xFFFF_FFFF`, so after the window moves, an address
+there that the new window does not cover reaches no target. The local crossbar
+answers a load, store or secure DMA access to it with DECERR, which the CPU
+reports as a bus-error NMI (`mcause` `0xF000_0000` for a store,
+`0xF000_0001` for a load), and the IFU demux answers an instruction fetch with
+DECERR, which the CPU takes as an instruction access fault.
+
 Every SEP bus master drives a fixed AxPROT, shown in
 <<sep-cpu-axprot-table>>. The value does not follow the hart's privilege mode,
 so a U-mode load still issues as privileged. The upstream VeeR EL2 port
@@ -99,6 +116,14 @@ not be assumed to be present merely because the core supports them.
 |Dual Core Lock Step (DCLS)
 |Disabled in the checked-in SEP configuration. The integration exposes lockstep controls and status for builds that enable it; this does not establish functional-safety compliance.
 |===
+
+The LSU drives AxCACHE `0b0000` on loads and stores to a region whose `mrac`
+side-effect bit is set and `0b1111` otherwise; the `mrac` cacheable bit does not
+affect AxCACHE. Instruction fetches carry `0b1111`; debug system-bus writes
+carry `0b1111` and reads `0b0000`. AxREGION carries bits [31:28] of the address
+the core issued, before the local alias remap. SEP forwards AxCACHE unchanged,
+except that a hit in an outbound alias-remap region replaces it with that
+region's `REGION_ATTRS.cacheable` field.
 
 The Interrupts chapter owns the source-by-source PIC mapping:
 ifdef::backend-html5[]
@@ -265,6 +290,16 @@ core's JTAG TAP. TAP access is already gated by lifecycle state, so the DMI
 core aperture is left enabled at the SMU and does not take a second lifecycle
 check. The DMI uncore aperture is unused: the debug module's AXI master already
 reaches the rest of the SEP fabric.
+
+A debugger write of `dmcontrol.ndmreset` = 1 resets the VeeR EL2 core complex
+only: the hart and its CSRs, the PIC, the PMP, the core DMA slave port and the
+ICCM and DCCM controllers. In the debug module it only sets the have-reset
+status in `dmstatus` and returns the abstract-command engine to idle; the other
+debug module registers keep their values. It does not reset the ICCM and DCCM
+contents or any SEP state outside `sep_cpu`: the system and
+scratch registers, the secure DMA, the cryptographic engines, the Key Manager,
+the watchdog and their locks keep their state. Transactions the core had in
+flight on its AXI masters are not drained.
 
 [[alarm-aggregation-processor-agp-alarm-aggregation-processor-agp]]
 == Alarm Aggregation Processor (AGP)

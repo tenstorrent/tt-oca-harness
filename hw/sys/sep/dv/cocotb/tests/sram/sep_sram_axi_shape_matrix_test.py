@@ -95,6 +95,15 @@ Checkers:
                         write. Each written word then reads back on both masters
                         (AMBA AXI, IHI 0022, transaction identifiers and ordering;
                         ``hw/sys/sep/doc/fabric.adoc``, SRAM target).
+  CHK-SRAM-FLIP         one drawn bit of a written word flipped in the SRAM
+                        macro array: an 8-byte inbound read of the word answers
+                        OKAY and returns the stored word, with the drawn bit
+                        flipped. The scratch SRAM path has no parity, ECC or
+                        scrambling and no error return
+                        (``doc/integrator/src/smu-sep.adoc``, lines 100-104;
+                        ``hw/sys/sep/doc/attack_countermeasures.adoc``, lines
+                        15-16 and 23-24). The read data of the PR-SRAM tap is
+                        logged.
 Controls (not counted): CTRL-SRAM-FILTER (inbound filter entry readback),
 CTRL-SRAM-REACH (both masters write and read back the first and last word, each
 of the 15 word-address bits and 128 drawn words), CTRL-SRAM-OTF-REFUSE (before
@@ -113,13 +122,10 @@ least one ``clk_i`` cycle a request of each master is outstanding (from its
 request handshake to its last R or B beat, on the ``s_axi`` and ``m_axi``
 channel monitors), and on each port two requests with one ID are outstanding
 together, so the same-ID order grade compares requests in flight at once.
+CTRL-SRAM-FLIP: the macro array holds the written word before the flip and the
+word with the drawn bit flipped after it.
 
-Open-value leg (logged, not graded): no specification or RDL states the result.
-  OBS-SRAM-FLIP  one drawn bit of a written word flipped in the SRAM macro array:
-                 the response and data of an 8-byte inbound read of the word and
-                 the read data of the PR-SRAM tap. Control CTRL-SRAM-FLIP: the
-                 macro array holds the written word before the flip and the word
-                 with the drawn bit flipped after it.
+Logged, not graded: no specification or RDL states the result.
   INFO-SRAM-XOUT-DEPTH  the peak count of outstanding requests on each port and on
                  both ports together during CHK-SRAM-XOUT, the overlap clocks and
                  the IDs seen per port; no SEP document states an outstanding
@@ -479,7 +485,7 @@ class _Cfg:
         # Strobe legs on the inbound master, each over a word written in full: every
         # WSTRB 0x00-0x0F in a seeded order, then the drawn 8-bit sparse strobe.
         # Each new value differs from the stored one in every byte, so each lane
-        # shows which value it holds. The stored-bit flip is an open-value leg.
+        # shows which value it holds.
         leg = SepSeededRng(seed ^ LEG_SALT)
         a_sparse, a_flip = (SRAM_BASE + w * WORD for w in leg.sample(range(N_WORDS), 2))
         sparse = [s for s in range(1, 0xFF) if not contiguous(s)]
@@ -718,6 +724,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         "CHK-SRAM-STRB",
         "CHK-SRAM-STREAM",
         "CHK-SRAM-XOUT",
+        "CHK-SRAM-FLIP",
     )
 
     # ---- access primitives ---------------------------------------------------
@@ -1754,7 +1761,6 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             self.logger.error(msg)
             raise AssertionError(msg)
         self.logger.info("CTRL-SRAM-FLIP seen: %s", fields)
-        await self._leg_pass("sram_macro_bit_flip")
         tap_mark = self.sram_tap.mark()
         code, rd = await self._single("inbound", "R", addr, WORD, axi_id=axi_id)
         await ClockCycles(clk, 2)
@@ -1762,21 +1768,19 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         memif = [
             "X" if b.rdata is None else _w(b.rdata) for b in self.sram_tap.since(tap_mark, "rsp")
         ]
-        self.logger.info(
-            "OBS-SRAM-FLIP seed=%d @0x%08x bit=%d written=%s stored=%s resp=%s rdata=%s "
-            "rdata_flipped=%d rdata_written=%d memif_rdata=[%s]",
-            seed,
-            addr,
-            f["bit"],
-            _w(value),
-            _w(after),
-            RESP_NAME.get(code, code),
-            "none" if rdata is None else _w(rdata),
-            int(rdata == value ^ mask),
-            int(rdata == value),
-            ",".join(memif),
+        line = (
+            f"seed={seed} @0x{addr:08x} bit={f['bit']} written={_w(value)} stored={_w(after)} "
+            f"resp={RESP_NAME.get(code, code)} rdata={'none' if rdata is None else _w(rdata)} "
+            f"expect={_w(value ^ mask)} memif_rdata=[{','.join(memif)}]"
         )
         await self._write_word("inbound", addr, value, WORD, axi_id)
+        if code != OKAY or rdata != value ^ mask:
+            msg = f"CHK-SRAM-FLIP FAIL: {line}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CHK-SRAM-FLIP PASS: %s", line)
+        self.n_checks += 1
+        await self._leg_pass("sram_macro_bit_flip")
 
     # ---- long mixed stream ------------------------------------------------------------
     async def _stream(self) -> None:
