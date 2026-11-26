@@ -343,6 +343,14 @@ package sep_cpu_ctrl_reg_pkg;
     } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__out_t;
 
     typedef struct {
+        logic [7:0] value;
+    } sep_cpu_ctrl__PKA_CLK_DIV__div__out_t;
+
+    typedef struct {
+        sep_cpu_ctrl__PKA_CLK_DIV__div__out_t div;
+    } sep_cpu_ctrl__PKA_CLK_DIV__out_t;
+
+    typedef struct {
         sep_cpu_ctrl__CLOCK_GATE_CTRL__out_t CLOCK_GATE_CTRL;
         sep_cpu_ctrl__REFERENCE_COUNTER__out_t REFERENCE_COUNTER;
         sep_cpu_ctrl__PKA_CTRL__out_t PKA_CTRL;
@@ -370,5 +378,6 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__KM_WIPE_CTRL__out_t KM_WIPE_CTRL;
         sep_cpu_ctrl__DMA_BUS_ERR_CLEAR__out_t DMA_BUS_ERR_CLEAR;
         sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__out_t PERIPH_BUS_ERR_CLEAR;
+        sep_cpu_ctrl__PKA_CLK_DIV__out_t PKA_CLK_DIV;
     } sep_cpu_ctrl__out_t;
 endpackage

@@ -34,11 +34,18 @@ if {[cdc_is_block_top]} {
     create_clock -add -name JTAG_TCK          -period $clock_periods(JTAG_TCK_PERIOD)              [get_ports "jtag_tck_i"]
 }
 
+# OTBN runs on clk_i divided by SEP_CPU_CTRL.PKA_CLK_DIV. These constraints time its reset
+# ratio of 2; a ratio below 2 bypasses the divider and is not covered.
+set sep_pka_clk_pin [get_pins [cdc_inst u_sep_crypto/u_sep_crypto_otbn_wrapper_s3c_scan/u_otbn_clk_div/clk_o]]
+create_generated_clock $sep_pka_clk_pin -name SEPCLK_PKA -master_clock [cdc_clk SEPCLK] -divide_by 2 -source [cdc_port_or_pin "clk_i"]
+
 # OTBN PKA, CPU TCM (ICCM/DCCM), SRAM, boot ROM, Adams Bridge and Key Manager memories (have clock output in request struct).
 # Level-independent: the master maps through cdc_clk and the source is the block clock
-# port at SEP top, or the u_sep/clk_i instance pin under a parent.
-create_generated_clock [get_ports sep_crypto_pka_imem_sram_req_o*clk] -name SEPCLK_PKA_IMEM -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
-create_generated_clock [get_ports sep_crypto_pka_dmem_sram_req_o*clk] -name SEPCLK_PKA_DMEM -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
+# port at SEP top, or the u_sep/clk_i instance pin under a parent. The PKA memories follow
+# the divided OTBN clock.
+create_generated_clock [get_ports sep_crypto_pka_imem_sram_req_o*clk] -name SEPCLK_PKA_IMEM -master_clock SEPCLK_PKA -divide_by 1 -source $sep_pka_clk_pin -combinational
+create_generated_clock [get_ports sep_crypto_pka_dmem_sram_req_o*clk] -name SEPCLK_PKA_DMEM -master_clock SEPCLK_PKA -divide_by 1 -source $sep_pka_clk_pin -combinational
+unset sep_pka_clk_pin
 create_generated_clock [get_ports sep_cpu_tcm_req_o*clk]              -name SEPCLK_CPU_TCM  -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
 create_generated_clock [get_ports sep_sram_req_o*clk]                 -name SEPCLK_SRAM     -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational
 create_generated_clock [get_ports sep_boot_rom_req_o*clk]             -name SEPCLK_BOOT_ROM -master_clock [cdc_clk SEPCLK] -divide_by 1 -source [cdc_port_or_pin "clk_i"] -combinational

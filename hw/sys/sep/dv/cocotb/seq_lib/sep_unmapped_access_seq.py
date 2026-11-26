@@ -613,13 +613,13 @@ class SepUnmappedCfg:
         out0 = "AXIL_MAILBOX_OUTBOUND_MAILBOX_0"
         out0_end = sym(f"{out0}_REG_MAP_BASE_ADDR") + block_size(out0)
         in0_base = sym("AXIL_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")
-        clr = SEP_CPU_CTRL.addr("PERIPH_BUS_ERR_CLEAR")
-        clr_end = clr + register_fields(clr)[0] // 8
+        clk_div = SEP_CPU_CTRL.addr("PKA_CLK_DIV")
+        clk_div_end = clk_div + register_fields(clk_div)[0] // 8
         ver = SEP_CPU_CTRL.addr("SEP_VERSION_ID")
         for addr, note in (
             (out0_end, "first word past outbound mailbox 0, before inbound mailbox 0"),
             (in0_base - 4, "last word before inbound mailbox 0 (other bus lane)"),
-            (clr_end, "first word past PERIPH_BUS_ERR_CLEAR"),
+            (clk_div_end, "first word past PKA_CLK_DIV"),
             (ver - 4, "last word before SEP_VERSION_ID (other bus lane)"),
         ):
             for op in ("r", "w", "r"):
@@ -961,7 +961,9 @@ class SepUnmappedAccess:
         res = ProbeResult(p, resp, rdata, to)
         if watch:
             res.lite_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in lite)
-            res.ext_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in ext)
+            # The probe is the only access in flight, so any ext handshake in its window is
+            # the probe returning, whatever address it carries.
+            res.ext_reached = bool(ext)
         if p.op == "r" and not to:
             res.alias = self.read_alias(rdata)
         if p.op == "w":

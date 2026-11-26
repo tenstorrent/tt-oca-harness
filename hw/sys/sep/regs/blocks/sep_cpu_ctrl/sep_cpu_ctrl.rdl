@@ -59,6 +59,22 @@ addrmap sep_cpu_ctrl {
         } pka_noise_src_valid [2:2] = 0x0;
     };
 
+    reg PKA_CLK_DIV {
+        regwidth = 64;
+        accesswidth = 64;
+        desc = "OTBN PKA clock divider. OTBN and its instruction and data memories run on the SEP
+                clock divided by div. The divided clock is high for div/2 SEP clock cycles,
+                rounded down, and low for the rest, so an even ratio gives a 50% duty cycle.
+                Change div only while OTBN is idle.";
+
+        field {
+            sw=rw;
+            hw=r;
+            desc="Divide ratio: 2 to 255 divide the SEP clock by that value; 0 and 1 run OTBN on
+                  the undivided SEP clock.";
+        } div [7:0] = 0x2;
+    };
+
     // TODO: Per-block timeout interrupt, count, enable, clear, mode - NOT YET IMPLEMENTED (reserved placeholders).
     reg TIMEOUT_INTERRUPT {
         regwidth = 64;
@@ -549,6 +565,7 @@ addrmap sep_cpu_ctrl {
     DMA_BUS_ERR_CLEAR     DMA_BUS_ERR_CLEAR                       @ 0x1B0;
     PERIPH_BUS_ERR_STATUS PERIPH_BUS_ERR_STATUS                   @ 0x1B8;
     PERIPH_BUS_ERR_CLEAR  PERIPH_BUS_ERR_CLEAR                    @ 0x1C0;
+    PKA_CLK_DIV           PKA_CLK_DIV                             @ 0x1C8;
 
     // Generic Address Space 0x1000 - 0x1fff
     SEP_VERSION_ID        SEP_VERSION_ID                          @ 0x1000;

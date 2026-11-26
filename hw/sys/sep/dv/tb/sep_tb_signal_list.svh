@@ -1009,8 +1009,11 @@
 // The client takes data_o on the clock with src_req_i && src_ack_o.
 // Read-only XMR, no force.
 `SEP_TB_OUT(logic [3:0], crypto_edn_sync_req_o)  // bit i = src_req_i of client i
-`SEP_TB_OUT(logic [3:0], crypto_edn_sync_ack_o)  // bit i = src_ack_o of client i
-`SEP_TB_OUT(logic [127:0], crypto_edn_sync_data_o)  // word i = data_o[31:0] (edn_bus)
+`SEP_TB_OUT(logic [3:0], crypto_edn_sync_ack_o)  // bit i = src_ack_o of client i; OTBN bits 2
+                                                 // and 3 rise for one clk_i cycle after the
+                                                 // OTBN clock edge that takes a word
+`SEP_TB_OUT(logic [127:0], crypto_edn_sync_data_o)  // word i = data_o[31:0] (edn_bus); OTBN
+// words 2 and 3 as taken on that edge
 // CHK5 per-sink ROUTING golden tap (AXIS1): the crypto-leg EDN word stream
 // POST the KM/crypto mux but PRE the drbg_axis_edn_adapter fan-out
 // (sep_crypto.entropy_muxed_req[1]). This is the authoritative ordered word

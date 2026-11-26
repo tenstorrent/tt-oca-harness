@@ -110,8 +110,9 @@ Checkers:
                    passes.
   CHK-ADAPTER-CLEAR-RND   per OTBN RND trial of the leg: the program ends with
                    ``ERR_BITS`` 0 and all 128 DMEM words are sent words (no
-                   sentinel left). Controls: a trial with phase 1 to 3 exists, and
-                   a trial with phase 5 to 9 passes.
+                   sentinel left). Controls: a trial with phase 1 to 3 exists, a
+                   trial with phase 5 to 9 passes, and every trial reads the 128
+                   sentinel words back before EXECUTE.
 """
 
 from __future__ import annotations
@@ -1355,6 +1356,17 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         if client == "otbn_rnd":
             for i in range(AC_RND_WORDS):
                 await self.otbn.write_dmem(4 * i, sentinel)
+            # DMEM still holds the sent words of the previous trial, so the sentinel
+            # must be in place before EXECUTE for a word the program does not store
+            # to be seen.
+            staged = await self.otbn.read_dmem_words(0, AC_RND_WORDS)
+            n_staged = sum(1 for w in staged if w == sentinel)
+            self.chk.ctrl(
+                "ADAPTER-CLEAR-RND-SENTINEL",
+                n_staged == AC_RND_WORDS,
+                sentinel=_hx(sentinel),
+                staged=f"{n_staged}/{AC_RND_WORDS}",
+            )
             await self.otbn.load_program(otbn_rnd_wsr_prog(AC_RND_FETCHES))
         else:
             await self.otbn.load_program(otbn_csr_prog(CSR_URND, 1))
@@ -1418,12 +1430,15 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             ack_period=_na(pr["ack_period"]), acks_before_clear=pr["acks_before_clear"],
             golden_ok=int(res.get("golden_ok", False)),
         )  # fmt: skip
+        # An OTBN client completes with no error only when its run ends with ERR_BITS 0.
+        err_bits = res.get("err_bits")
         hold_ok = bool(
             pr["clear_seen"]
             and pr["armed_handshakes"] >= 1
             and not pr["bad"]
             and pr["xz"] == 0
             and "error" not in res
+            and (client == "kmac" or err_bits == 0)
         )
         fields = {
             "client": client, "d": d, "phase": _na(phase), "clear_seen": pr["clear_seen"],
@@ -1432,6 +1447,8 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             "unmatched": pr["unmatched"], "xz": pr["xz"],
             "first_bad": pr["bad"][0] if pr["bad"] else "none",
         }  # fmt: skip
+        if client != "kmac":
+            fields["err_bits"] = _hx(err_bits)
         if "error" in res:
             fields["reason"] = f"client_error:{res['error']}"
         self.chk.ok("ADAPTER-CLEAR-HOLD", hold_ok, **fields)

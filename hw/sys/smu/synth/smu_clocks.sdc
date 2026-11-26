@@ -188,6 +188,14 @@ foreach mem {dat dct rlt} {
 }
 
 if {$smu_owns_child_copies} {
+# SEP OTBN runs on SMUCLK divided by SEP_CPU_CTRL.PKA_CLK_DIV; timed at its reset ratio of 2.
+# A configuration without SEP has no divider.
+set smu_sep_pka_clk_pin [get_pins -quiet "gen_sep.u_sep/u_sep_crypto/u_sep_crypto_otbn_wrapper_s3c_scan/u_otbn_clk_div/clk_o"]
+if {[sizeof_collection $smu_sep_pka_clk_pin]} {
+    create_generated_clock $smu_sep_pka_clk_pin -name SMUCLK_SEP_PKA -master_clock SMUCLK -divide_by 2 -source [get_ports "clk_smu_i"]
+}
+unset smu_sep_pka_clk_pin
+
 ############################
 # AVS Clock Constraints
 ############################

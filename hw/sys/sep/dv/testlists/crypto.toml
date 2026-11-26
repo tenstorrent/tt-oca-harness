@@ -31,6 +31,19 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# OTBN clock divider: PKA_CLK_DIV reset value and readback, the loopi program
+# graded at ratios 0 to 4, and its run time scaling with the ratio.
+# +esrc_noise_force feeds the URND reseed of each EXECUTE.
+name = "sep_otbn_clk_div_test"
+module = "otbn.sep_otbn_clk_div_test"
+seed = 1
+timeout_sec = 1200
+tags = ["otbn", "crypto", "subsystem", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 name = "sep_esrc_e2e_smoke_test"
 module = "system.sep_esrc_e2e_smoke_test"
 firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }

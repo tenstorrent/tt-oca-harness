@@ -325,7 +325,7 @@ accepted exception below.
 
 * Unproven claim: the result of a host write and read of OTBN IMEM or DMEM
   while `STATUS` reads BUSY_SEC_WIPE_INT (`0x04`).
-* Why the proven path is not used: `hw/sys/sep/doc/otbn.adoc:96-97` defers
+* Why the proven path is not used: `hw/sys/sep/doc/otbn.adoc:108-109` defers
   core behaviour to the vendored OpenTitan documents.
   `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson:798-804`,
   `:821-828` and `vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/registers.md:300-305`

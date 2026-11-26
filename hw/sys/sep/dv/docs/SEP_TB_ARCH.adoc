@@ -365,7 +365,11 @@ Observation probe groups:
   `u_tt_kmac.gen_entropy.u_prim_sync_reqack_data`, 2 OTBN RND
   `u_otbn.u_prim_edn_rnd_req.u_prim_sync_reqack_data`, 3 OTBN URND
   `u_otbn.u_prim_sync_reqack_data_urnd`): the word the client takes on its
-  handshake clock. No register shows that word for KMAC or OTBN URND. Owner:
+  handshake clock. OTBN runs on `clk_i` divided by `PKA_CLK_DIV`, so for
+  clients 2 and 3 the testbench captures `data_o` on the OTBN clock edge with
+  `src_req_i` and `src_ack_o` high and reports that take for one `clk_i` cycle
+  after the edge, with `crypto_edn_sync_req_o[i]` held high in that cycle; an
+  unknown `src_ack_o` shows as X. No register shows that word for KMAC or OTBN URND. Owner:
   `sep_trng_ext_sink_reset_rand_test`. These taps can record a clear and an
   acknowledgement on the same clock. That observation is not a graded
   checker; the test contract defines the graded adapter-clear behaviour.

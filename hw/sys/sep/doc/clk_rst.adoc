@@ -9,10 +9,11 @@
 == Clock Distribution
 
 The SEP system fabric, CPU and cryptographic subsystem receive `clk_i`.
-The CPU and some cryptographic blocks gate branches of this clock locally;
-these branches do not provide independently programmable CPU or accelerator
-frequencies. The other clock inputs serve reference counting, watchdog timing,
-entropy sampling and JTAG debug.
+The CPU and some cryptographic blocks gate branches of this clock locally.
+OTBN runs on a branch of `clk_i` divided by `SEP_CPU_CTRL.PKA_CLK_DIV`, 2 after
+reset; no other branch has a software-programmable frequency. The other clock
+inputs serve reference counting, watchdog timing, entropy sampling and JTAG
+debug.
 
 .SEP clock inputs
 [cols="1,3",options="header"]
@@ -34,10 +35,11 @@ entropy sampling and JTAG debug.
 The CPU TAP runs on `jtag_tck_i`; local clock gating and derived clocks are
 described below.
 The CPU has a free-running branch and a pipeline branch gated according to
-halt/pause state, flush activity and clock override. SPI generates its serial
-clock locally. Entropy-source oscillators and sample clocks are distinct from
-the main functional clock. The diagram describes connectivity; operating
-frequencies and timing constraints belong to the platform integration.
+halt/pause state, flush activity and clock override. OTBN and its memories run
+on the divided `PKA_CLK_DIV` branch. SPI generates its serial clock locally.
+Entropy-source oscillators and sample clocks are distinct from the main
+functional clock. The diagram describes connectivity; operating frequencies and
+timing constraints belong to the platform integration.
 
 [[sep-clock-tree]]
 .SEP clock tree and clock domains

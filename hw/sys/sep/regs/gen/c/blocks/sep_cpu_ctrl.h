@@ -620,6 +620,27 @@ typedef union {
     uint64_t w;
 } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR_t;
 
+// reg - sep_cpu_ctrl::PKA_CLK_DIV
+// OTBN PKA clock divider. OTBN and its instruction and data memories run on the SEP
+// clock divided by div. The divided clock is high for div/2 SEP clock cycles,
+// rounded down, and low for the rest, so an even ratio gives a 50% duty cycle.
+// Change div only while OTBN is idle.
+// Divide ratio: 2 to 255 divide the SEP clock by that value; 0 and 1 run OTBN on
+// the undivided SEP clock.
+#define SEP_CPU_CTRL__PKA_CLK_DIV__DIV_bm 0xff
+#define SEP_CPU_CTRL__PKA_CLK_DIV__DIV_bp 0
+#define SEP_CPU_CTRL__PKA_CLK_DIV__DIV_bw 8
+#define SEP_CPU_CTRL__PKA_CLK_DIV__DIV_reset 0x2
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        // Divide ratio: 2 to 255 divide the SEP clock by that value; 0 and 1 run OTBN on
+        // the undivided SEP clock.
+        uint64_t div :8;
+        uint64_t :56;
+    } f;
+    uint64_t w;
+} sep_cpu_ctrl__PKA_CLK_DIV_t;
+
 // reg - sep_cpu_ctrl::SEP_VERSION_ID
 // Version ID for the CPU
 #define SEP_CPU_CTRL__SEP_VERSION_ID__VERSION_ID_bm 0xffffffff
@@ -679,7 +700,8 @@ typedef struct __attribute__ ((__packed__)) {
     sep_cpu_ctrl__DMA_BUS_ERR_CLEAR_t DMA_BUS_ERR_CLEAR;
     sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS_t PERIPH_BUS_ERR_STATUS;
     sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR_t PERIPH_BUS_ERR_CLEAR;
-    uint8_t RESERVED_1c8_fff[0xe38];
+    sep_cpu_ctrl__PKA_CLK_DIV_t PKA_CLK_DIV;
+    uint8_t RESERVED_1d0_fff[0xe30];
     sep_cpu_ctrl__SEP_VERSION_ID_t SEP_VERSION_ID;
 } sep_cpu_ctrl_t;
 
