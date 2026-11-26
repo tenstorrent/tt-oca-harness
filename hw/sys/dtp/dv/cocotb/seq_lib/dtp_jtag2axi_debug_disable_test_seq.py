@@ -29,10 +29,8 @@ import math
 import random
 
 import cocotb
-from cocotb.triggers import ReadOnly, RisingEdge
 from env.dtp_types import JTAG2AXI_TARGETS, DtpDmiStatus, DtpDmReg, pack_sbcs, unpack_sbcs
 from ocah_axi_vip import OcahAxiDelays
-from ocah_jtag_vip import OcahJtagState
 from ocah_lib import OcahKnobs
 
 from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
@@ -224,73 +222,14 @@ class dtp_jtag2axi_debug_disable_test_seq(dtp_jtag2axi_base_test_seq):
         if disabled:
             await self.disabled_access(target, rng, read=read, ctx=ctx)
         else:
-            await self.enabled_access(target, rng, read=read, ctx=ctx)
+            await self.port_access(target, rng, read=read, check_id=DBG_DISABLE_CHECK_ID, ctx=ctx)
         self.close_bus_ledger()
         self._ledger_target = None
-
-    def seeded_access(self, target: str, rng: random.Random) -> tuple[int, int, int]:
-        """A seeded (address, size, offset) of a legal access."""
-        cfg = self.target_cfg(target)
-        size = rng.randint(0, cfg.data_size)
-        offset = rng.randrange(0, cfg.beat_bytes, 1 << size)
-        return self.random_target_addr(target, rng) + offset, size, offset
-
-    def memory_word(self, target: str, addr: int, size: int) -> int:
-        """The responder's ``size`` word at ``addr``."""
-        nbytes = self.size_bytes(size)
-        raw = self.target_memory(target).read(self.target_slot(target, addr), nbytes)
-        return int.from_bytes(bytes(raw), "little")
-
-    @staticmethod
-    def sized_word(rng: random.Random, size: int, avoid: int = 0) -> int:
-        """A seeded nonzero ``size`` word other than ``avoid``."""
-        while True:
-            word = rng.getrandbits(8 << size)
-            if word not in (0, avoid):
-                return word
-
-    def port_counts(self, target: str) -> tuple[int, int]:
-        """(writes, reads) ``target``'s port has completed."""
-        return self.port_history(target).counts()
 
     def err_slave_beat(self, target: str) -> int:
         """The error slave's read beat: ``0xBADCAB1E`` in each 32 bits."""
         words = self.target_cfg(target).data_width // 32
         return sum(ERR_SLAVE_WORD << (32 * w) for w in range(words))
-
-    async def enabled_access(
-        self, target: str, rng: random.Random, *, read: bool, ctx: str
-    ) -> None:
-        """A seeded access that reaches the port, judged on the bus and on its data, with
-        ``CHK-J2A-DBG-DISABLE`` recording that the port took it. A read returns the bytes a
-        full-beat write put there first; the AXI read checks compare every byte of the beat a
-        read returns."""
-        cfg = self.target_cfg(target)
-        addr, size, offset = self.seeded_access(target, rng)
-        data = self.sized_word(rng, size, self.memory_word(target, addr, size))
-        if read:
-            lanes = self.data_mask(size) << (8 * offset)
-            beat = (rng.getrandbits(cfg.data_width) & ~lanes) | (data << (8 * offset))
-            await self.sba_write(
-                target, addr - offset, beat, size=cfg.data_size, context=f"{ctx}.fill"
-            )
-        before = self.port_counts(target)
-        if read:
-            rdata = await self.sba_read(target, addr, size=size, context=f"{ctx}.read")
-            self.check_bridge_rdata(
-                target, rdata & self.data_mask(size), data, context=f"{ctx}.read"
-            )
-        else:
-            await self.sba_write(target, addr, data, size=size, context=f"{ctx}.write")
-            self.check_target_word(target, addr, data, size=size, context=f"{ctx}.mem")
-        after = self.port_counts(target)
-        self.check_equal(
-            self.target_evidence(target),
-            DBG_DISABLE_CHECK_ID,
-            after[int(read)] - before[int(read)],
-            1,
-            context=f"{ctx} target={target} enabled port_transactions",
-        )
 
     async def disabled_access(
         self, target: str, rng: random.Random, *, read: bool, ctx: str
@@ -550,31 +489,10 @@ class dtp_jtag2axi_debug_disable_test_seq(dtp_jtag2axi_base_test_seq):
         """Toggle ``target``'s disable ``delay`` clk_i cycles after the PTAP next leaves
         Update-DR."""
         tb_if = self.cfg.tb_if
-        update_dr = int(OcahJtagState.UPDATE_DR)
-        in_update = False
-        while True:
-            await RisingEdge(tb_if.jtag.tck)
-            await ReadOnly()
-            state = tb_if.sample("jtag_ptap_state")
-            if in_update and state != update_dr:
-                break
-            in_update = state == update_dr
+        await self.wait_update_dr_exit()
         await self.wait_sys_cycles(delay)
         field = self.target_cfg(target).dbg_disable_bit
         tb_if.set_dbg_disable({field: 1 - tb_if.dbg_field(field)})
-
-    @staticmethod
-    def sbdata_mask(size: int) -> int:
-        """The sbdata bits ``read_sbdata`` returns: the Debug Module shifts the beat to the
-        access offset and keeps the bits above the access size."""
-        return (1 << (64 if size == 3 else 32)) - 1
-
-    async def read_sbdata(self, target: str, size: int, ctx: str) -> int:
-        """sbdata0, and sbdata1 for an 8-byte access."""
-        value = await self.dmi_read(target, DtpDmReg.SBDATA0, context=f"{ctx}.sbdata0")
-        if size == 3:
-            value |= (await self.dmi_read(target, DtpDmReg.SBDATA1, context=f"{ctx}.sbdata1")) << 32
-        return value
 
     async def clear_sberror(self, target: str, size: int, *, ctx: str) -> None:
         """Clear sberror, keeping sbaccess ``size``, and require sbcs idle with no error."""
@@ -582,15 +500,3 @@ class dtp_jtag2axi_debug_disable_test_seq(dtp_jtag2axi_base_test_seq):
             target, DtpDmReg.SBCS, pack_sbcs(sberror=0x7, sbaccess=size), context=f"{ctx}.clear"
         )
         await self.wait_sba_idle(target, context=f"{ctx}.cleared")
-
-    def record_fields(
-        self, target: str, check_id: str, fields: list[tuple[str, int, int]], *, context: str
-    ) -> None:
-        """Record every (field, observed, expected) under ``check_id``; raise on a mismatch."""
-        self.check_equal(
-            self.target_evidence(target),
-            check_id,
-            {name: observed for name, observed, _ in fields},
-            {name: expected for name, _, expected in fields},
-            context=f"{context} target={target}",
-        )

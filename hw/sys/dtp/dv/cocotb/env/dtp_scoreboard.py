@@ -76,7 +76,7 @@ class DtpScoreboard(OcahScoreboard):
         self.scan_builder: DtpJtagScanBuilder | None = None
         self.xtrig_agent: DtpXtrigAgent | None = None
         self.axi_agent: DtpAxiAgent | None = None
-        self._resets_seen = (0, 0)
+        self._sys_rst_seen = 0
         # Predicted bridge transactions the resets withdrew.
         self._withdrawn = 0
 
@@ -282,14 +282,15 @@ class DtpScoreboard(OcahScoreboard):
     # Helpers.
     # ------------------------------------------------------------------
     def _sync_reset(self) -> None:
-        """A system or power-on reset aborts the bridge transactions in flight.
+        """A system reset aborts the bridge transactions in flight: the bridge ports and their
+        monitors reset with it. Power-on reset leaves them in flight.
 
         The predictions waiting for them are withdrawn.
         """
-        seen = (self.tb_if.sample("sys_rst_assert_count"), self.tb_if.sample("por_assert_count"))
-        if seen == self._resets_seen:
+        seen = self.tb_if.sample("sys_rst_assert_count")
+        if seen == self._sys_rst_seen:
             return
-        self._resets_seen = seen
+        self._sys_rst_seen = seen
         dropped = self.flush_expected(DTP_FEATURE_JTAG2AXI_REQ)
         self._withdrawn += dropped
         if dropped:

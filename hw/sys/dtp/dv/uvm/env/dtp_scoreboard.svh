@@ -86,7 +86,6 @@ class dtp_scoreboard extends ocah_scoreboard;
         jtag2axi_status_expected_export;
 
   protected bit [31:0] m_sys_rst_seen;
-  protected bit [31:0] m_por_seen;
 
   function new(string name = "dtp_scoreboard", uvm_component parent = null);
     super.new(name, parent);
@@ -311,15 +310,13 @@ class dtp_scoreboard extends ocah_scoreboard;
   // Helpers.
   // ------------------------------------------------------------------
 
-  // A system or power-on reset aborts the bridge transactions in flight,
-  // so the predictions waiting for them are withdrawn.
+  // A system reset aborts the bridge transactions in flight, since the
+  // bridge ports and their monitors reset with it, so the predictions
+  // waiting for them are withdrawn. Power-on reset leaves them in flight.
   protected function void sync_reset();
     int unsigned dropped;
-    if ((tb_vif.sys_rst_assert_count === m_sys_rst_seen) &&
-            (tb_vif.por_assert_count === m_por_seen))
-      return;
+    if (tb_vif.sys_rst_assert_count === m_sys_rst_seen) return;
     m_sys_rst_seen = tb_vif.sys_rst_assert_count;
-    m_por_seen     = tb_vif.por_assert_count;
     dropped        = flush_expected(DtpFeatureJtag2axiReq);
     if (dropped != 0)
       `uvm_info(get_type_name(), $sformatf(

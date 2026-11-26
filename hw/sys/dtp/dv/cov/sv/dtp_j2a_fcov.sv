@@ -17,7 +17,10 @@
 // and refused accesses while the error slave is selected, the changes of a
 // disable with the transfer then open, the cycles the select holds against
 // a changed disable while the bridge requests, and the select through and
-// out of system reset (cg_j2a_dbg_disable).
+// out of system reset (cg_j2a_dbg_disable); and each TAP reset with the
+// state of each bridge, the phase of each bridge's access at the bridge
+// reset, the scans in it, its TCK-side release after TCK stopped, and test
+// mode (cg_j2a_reset).
 //
 // One instance in the shared tb_top serves both flows. Each bridge's DMI
 // capture and update strobes, its captured status, the DMI value its bridge
@@ -50,6 +53,16 @@
 // handshakes between its bridge and the demultiplexer. A transfer is open
 // from its request handshake to its B or last R handshake, on the side the
 // select held at the request.
+//
+// The reset samples are taken where each reset acts: on TCK for an entry to
+// Test-Logic-Reset by TMS and for each DMI strobe while the bridge reset is
+// asserted, at each fall of TRST, power-on reset, rst_n_i and scan_rst_ni,
+// and on the system clock for port handshakes in test mode and for each
+// bridge's TCK-side release, from its tdr2axi's synchronized resets. A sample
+// at a fall reads the state from before it, since every flop the reset
+// clears updates after the sample. A bridge's access phase comes from its
+// port's handshakes, its DMI state machine, its Debug Module's sbbusy and
+// the last DMI operation its bridge accepted.
 //
 // Covergroups follow the cross rules dtp_fcov.sv states.
 //
@@ -103,7 +116,19 @@ module dtp_j2a_fcov (
   input wire [2:0]      bridge_requesting_i,
   input wire [2:0]      bridge_aw_hs_i,
   input wire [2:0]      bridge_ar_hs_i,
-  input wire [2:0]      bridge_done_i
+  input wire [2:0]      bridge_done_i,
+  input wire            por_ni,
+  input wire            trst_ni,
+  input wire [15:0]     tap_state_i,  // one-hot jtag_tap_pkg::tap_state_e
+  input wire            test_en_i,
+  input wire            scan_rst_ni,
+  // Each bridge's resets synchronized to clk_i and to TCK.
+  input wire [2:0]      arst_clk_ni,
+  input wire [2:0]      arst_tck_ni,
+  // Each bridge's DMI state machine is not idle, and its sticky DMI status is
+  // not 0.
+  input wire [2:0]      fsm_busy_i,
+  input wire [2:0]      sticky_i
 );
 
   localparam int unsigned Bridges = 3;
@@ -116,6 +141,7 @@ module dtp_j2a_fcov (
   localparam logic [2:0] SberrorAlign = 3'd3;
   localparam logic [2:0] SberrorSize = 3'd4;
   localparam logic [1:0] DmiOpRead = 2'd1;
+  localparam logic [1:0] DmiOpWrite = 2'd2;
   // cg_j2a_axi_timing sample kinds.
   localparam logic [2:0] KindAwStall = 3'd0;
   localparam logic [2:0] KindWStall = 3'd1;
@@ -133,6 +159,23 @@ module dtp_j2a_fcov (
   localparam logic [2:0] KindDisHeld = 3'd5;
   localparam logic [2:0] KindDisReset = 3'd6;
   localparam logic [2:0] KindDisResetSelect = 3'd7;
+  // cg_j2a_reset sample kinds, TAP reset sources and access phases.
+  localparam logic [2:0] KindRstTap = 3'd0;
+  localparam logic [2:0] KindRstBridge = 3'd1;
+  localparam logic [2:0] KindRstScan = 3'd2;
+  localparam logic [2:0] KindRstTckStopped = 3'd3;
+  localparam logic [2:0] KindRstTest = 3'd4;
+  localparam logic [1:0] TapSourceTms = 2'd0;
+  localparam logic [1:0] TapSourceTrst = 2'd1;
+  localparam logic [1:0] TapSourcePor = 2'd2;
+  localparam logic [2:0] PhaseLaunched = 3'd1;
+  localparam logic [2:0] PhaseRequest = 3'd2;
+  localparam logic [2:0] PhaseW = 3'd3;
+  localparam logic [2:0] PhaseResponse = 3'd4;
+  localparam logic [2:0] PhaseDone = 3'd5;
+  // The synchronizer depth: clk_i cycles of a TCK-side release with TCK
+  // stopped from which it counts as one.
+  localparam int unsigned TckStoppedCycles = 3;
   // Cycles from which a READY wait or a response latency counts as long, and
   // the latency up to which a response counts as prompt.
   localparam int unsigned LongCycles = 64;
@@ -493,12 +536,80 @@ module dtp_j2a_fcov (
     }
   endgroup
 
+  // One sample per bridge at each TAP reset, with its source (0 TMS, 1 TRST,
+  // 2 power-on reset) and the bridge's state (0 idle, 1 an access open at
+  // its port, 2 the sticky status set); one per bridge at each fall of
+  // rst_n_i outside test mode, with the op and phase of its access (0 none,
+  // 1 started and not at the port, 2 request pending, 3 write data pending,
+  // 4 response pending, 5 completed at the port with no DMI operation since
+  // the one that started it); one per DMI capture, DMI update and dmireset
+  // while the bridge reset is asserted; one per bridge whose TCK-side reset
+  // releases outside test mode after TCK stayed stopped for
+  // TckStoppedCycles past its clk_i-side release; and in test mode one per
+  // bridge for each request handshake at its port and each fall of rst_n_i
+  // and of scan_rst_ni.
+  covergroup cg_j2a_reset with function sample (
+      logic [1:0] bridge, logic [2:0] kind, logic [3:0] value
+  );
+    option.per_instance = 1;
+    // 16 * bridge + 4 * source + state
+    cp_tap: coverpoint {
+      bridge, value
+    } iff (kind == KindRstTap) {
+      bins smc_axi[] = {[0 : 2], [4 : 6], [8 : 10]};
+      bins smc_otp[] = {[16 : 18], [20 : 22], [24 : 26]};
+      bins sep_otp[] = {[32 : 34], [36 : 38], [40 : 42]};
+      illegal_bins none = {3, 7, 11, [12 : 15], 19, 23, 27, [28 : 31], 35, 39, 43, [44 : 63]};
+    }
+    // 16 * bridge + 8 * write + phase
+    cp_bridge: coverpoint {
+      bridge, value
+    } iff (kind == KindRstBridge) {
+      bins smc_axi_read[] = {1, 2, 4, 5};
+      bins smc_axi_write[] = {[9 : 13]};
+      bins smc_otp_read[] = {17, 18, 20, 21};
+      bins smc_otp_write[] = {[25 : 29]};
+      bins sep_otp_read[] = {33, 34, 36, 37};
+      bins sep_otp_write[] = {[41 : 45]};
+      ignore_bins idle = {0, 16, 32};
+      illegal_bins none = {
+        3, [6 : 8], [14 : 15], 19, [22 : 24], [30 : 31], 35, [38 : 40], [46 : 63]
+      };
+    }
+    // 4 * bridge + strobe (0 DMI capture, 1 DMI update, 2 dmireset)
+    cp_scan: coverpoint {
+      bridge, value[1:0]
+    } iff (kind == KindRstScan) {
+      bins smc_axi[] = {[0 : 2]};
+      bins smc_otp[] = {[4 : 6]};
+      bins sep_otp[] = {[8 : 10]};
+      illegal_bins none = {3, 7, 11, [12 : 15]};
+    }
+    cp_tck_stopped: coverpoint bridge iff (kind == KindRstTckStopped) {
+      bins smc_axi = {2'd0};
+      bins smc_otp = {2'd1};
+      bins sep_otp = {2'd2};
+      illegal_bins none = {2'd3};
+    }
+    // 4 * bridge + event (0 request handshake, 1 rst_n_i fall, 2 scan_rst_ni
+    // fall)
+    cp_test_mode: coverpoint {
+      bridge, value[1:0]
+    } iff (kind == KindRstTest) {
+      bins smc_axi[] = {[0 : 2]};
+      bins smc_otp[] = {[4 : 6]};
+      bins sep_otp[] = {[8 : 10]};
+      illegal_bins none = {3, 7, 11, [12 : 15]};
+    }
+  endgroup
+
   cg_j2a_dmi_status u_cg_j2a_dmi_status = new();
   cg_j2a_dm_access u_cg_j2a_dm_access = new();
   cg_j2a_sba_access u_cg_j2a_sba_access = new();
   cg_j2a_sba_error u_cg_j2a_sba_error = new();
   cg_j2a_axi_timing u_cg_j2a_axi_timing = new();
   cg_j2a_dbg_disable u_cg_j2a_dbg_disable = new();
+  cg_j2a_reset u_cg_j2a_reset = new();
 
   always_ff @(posedge tck_i) begin
     if (tap_rst_ni) begin
@@ -758,6 +869,164 @@ module dtp_j2a_fcov (
         if (bridge_requesting_i[b] && sec_select_i[b] != sec_disable_i[b])
           u_cg_j2a_dbg_disable.sample(2'(b), KindDisHeld, {2'b0, sec_disable_i[b]});
       end
+    end
+  end
+
+  // The reset the bridges synchronize: scan_rst_ni in test mode, rst_n_i
+  // outside it.
+  logic bridge_rst_n;
+  assign bridge_rst_n = test_en_i ? scan_rst_ni : rst_ni;
+
+  // Whether the PTAP was in Test-Logic-Reset at the last TCK edge, and a bit
+  // that changes on every TCK edge.
+  logic tap_tlr_q;
+  logic tck_toggle_q;
+
+  always_ff @(posedge tck_i or negedge tap_rst_ni) begin
+    if (!tap_rst_ni) begin
+      tap_tlr_q    <= 1'b1;
+      tck_toggle_q <= 1'b0;
+    end else begin
+      tap_tlr_q    <= tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET;
+      tck_toggle_q <= !tck_toggle_q;
+    end
+  end
+
+  // 1 for a DMI update that starts a bus read, 2 for one that starts a bus
+  // write, 0 otherwise. sbcs bit 20 is sbreadonaddr and bit 15 sbreadondata.
+  function automatic logic [1:0] starts_access(logic [40:0] dmi, logic [31:0] sbcs);
+    if (dmi[1:0] == DmiOpWrite && dmi[40:34] == AddrSbdata0) return 2'd2;
+    if (dmi[1:0] == DmiOpWrite && dmi[40:34] == AddrSbaddress0 && sbcs[20]) return 2'd1;
+    if (dmi[1:0] == DmiOpRead && dmi[40:34] == AddrSbdata0 && sbcs[15]) return 2'd1;
+    return 2'd0;
+  endfunction
+
+  // Per bridge: the bus access the last DMI update other than a NOP starts,
+  // as starts_access returns it for an update its own capture presented
+  // status 0 to, and a bit that changes with each such update.
+  logic [Bridges-1:0][1:0] start_op_q;
+  logic [Bridges-1:0]      op_toggle_q;
+
+  always_ff @(posedge tck_i or negedge tap_rst_ni) begin
+    if (!tap_rst_ni) begin
+      start_op_q  <= '0;
+      op_toggle_q <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (update_en_i[b] && update_dmi_i[b][1:0] != 2'd0) begin
+          start_op_q[b] <= scan_status_q[b] == 2'd0 ?
+              starts_access(update_dmi_i[b], dm_sbcs_i[b]) : 2'd0;
+          op_toggle_q[b] <= !op_toggle_q[b];
+        end
+      end
+    end
+  end
+
+  // Per bridge, on clk_i: op_toggle_q and its TCK-side reset a cycle ago;
+  // whether its port completed a transfer since the last change of
+  // op_toggle_q; and, while its clk_i-side reset is released and its
+  // TCK-side reset is not, the cycles before the first TCK edge and whether
+  // that edge has come.
+  logic [Bridges-1:0]       op_toggle_seen_q;
+  logic                     tck_toggle_seen_q;
+  logic [Bridges-1:0]       arst_tck_q;
+  logic [Bridges-1:0]       done_since_op_q;
+  logic [Bridges-1:0]       tck_ran_q;
+  logic [Bridges-1:0][31:0] tck_stopped_q;
+
+  always_ff @(posedge clk_i) begin
+    op_toggle_seen_q  <= op_toggle_q;
+    tck_toggle_seen_q <= tck_toggle_q;
+    arst_tck_q        <= arst_tck_ni;
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      if (!arst_clk_ni[b]) begin
+        tck_ran_q[b]     <= 1'b0;
+        tck_stopped_q[b] <= '0;
+      end else if (!arst_tck_ni[b]) begin
+        if (tck_toggle_q != tck_toggle_seen_q) tck_ran_q[b] <= 1'b1;
+        else if (!tck_ran_q[b]) tck_stopped_q[b] <= tck_stopped_q[b] + 32'd1;
+      end
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      done_since_op_q <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (op_toggle_q[b] != op_toggle_seen_q[b]) done_since_op_q[b] <= 1'b0;
+        else if (b_hs[b] || r_hs[b]) done_since_op_q[b] <= 1'b1;
+      end
+    end
+  end
+
+  // The state cp_tap records for bridge b.
+  function automatic logic [1:0] tap_reset_state(int unsigned b);
+    if (sticky_i[b]) return 2'd2;
+    if (port_awvalid_i[b] || port_wvalid_i[b] || port_arvalid_i[b] || aw_seen_q[b] ||
+        w_seen_q[b] || ar_seen_q[b])
+      return 2'd1;
+    return 2'd0;
+  endfunction
+
+  function automatic void sample_tap_reset(logic [1:0] source);
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      u_cg_j2a_reset.sample(2'(b), KindRstTap, {source, tap_reset_state(b)});
+    end
+  endfunction
+
+  // The op (bit 3, 1 a write) and phase cp_bridge records for bridge b.
+  function automatic logic [3:0] access_phase(int unsigned b);
+    if (ar_seen_q[b]) return {1'b0, PhaseResponse};
+    if (port_arvalid_i[b]) return {1'b0, PhaseRequest};
+    if (aw_seen_q[b] && w_seen_q[b]) return {1'b1, PhaseResponse};
+    if (aw_seen_q[b]) return {1'b1, PhaseW};
+    if (port_awvalid_i[b] || port_wvalid_i[b] || w_seen_q[b]) return {1'b1, PhaseRequest};
+    if (start_op_q[b] == 2'd0) return '0;
+    if (done_since_op_q[b]) return {start_op_q[b] == 2'd2, PhaseDone};
+    if (fsm_busy_i[b] || dm_sbbusy_i[b]) return {start_op_q[b] == 2'd2, PhaseLaunched};
+    return '0;
+  endfunction
+
+  always_ff @(posedge tck_i) begin
+    if (tap_rst_ni && tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET && !tap_tlr_q)
+      sample_tap_reset(TapSourceTms);
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      if (!bridge_rst_n) begin
+        if (capture_en_i[b]) u_cg_j2a_reset.sample(2'(b), KindRstScan, 4'd0);
+        if (update_en_i[b]) u_cg_j2a_reset.sample(2'(b), KindRstScan, 4'd1);
+        if (dmireset_i[b]) u_cg_j2a_reset.sample(2'(b), KindRstScan, 4'd2);
+      end
+    end
+  end
+
+  always @(negedge trst_ni) begin
+    if (por_ni === 1'b1) sample_tap_reset(TapSourceTrst);
+  end
+
+  always @(negedge por_ni) begin
+    if (trst_ni === 1'b1) sample_tap_reset(TapSourcePor);
+  end
+
+  always @(negedge rst_ni) begin
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      if (test_en_i) u_cg_j2a_reset.sample(2'(b), KindRstTest, 4'd1);
+      else u_cg_j2a_reset.sample(2'(b), KindRstBridge, access_phase(b));
+    end
+  end
+
+  always @(negedge scan_rst_ni) begin
+    if (test_en_i) begin
+      for (int unsigned b = 0; b < Bridges; b++) u_cg_j2a_reset.sample(2'(b), KindRstTest, 4'd2);
+    end
+  end
+
+  always_ff @(posedge clk_i) begin
+    for (int unsigned b = 0; b < Bridges; b++) begin
+      if (test_en_i && rst_ni && (aw_hs[b] || ar_hs[b]))
+        u_cg_j2a_reset.sample(2'(b), KindRstTest, 4'd0);
+      if (!test_en_i && arst_tck_ni[b] && !arst_tck_q[b] && tck_stopped_q[b] >= TckStoppedCycles)
+        u_cg_j2a_reset.sample(2'(b), KindRstTckStopped, '0);
     end
   end
 

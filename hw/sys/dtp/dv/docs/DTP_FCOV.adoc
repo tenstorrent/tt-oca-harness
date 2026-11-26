@@ -119,6 +119,7 @@ checkers. Toggle and FSM coverage are not collected.
 |JTAG2AXI System Bus Access errors |`cg_j2a_sba_error` |`dtp_j2a_fcov`
 |JTAG2AXI port timing |`cg_j2a_axi_timing` |`dtp_j2a_fcov`
 |JTAG2AXI debug disables |`cg_j2a_dbg_disable` |`dtp_j2a_fcov`
+|JTAG2AXI TAP and bridge resets |`cg_j2a_reset` |`dtp_j2a_fcov`
 |Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
 |Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
 |XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
@@ -617,6 +618,38 @@ disable that changes in the cycles a request or an error-slave transfer is open
 is a matter of timing, so `cp_held` and the `cp_switch` bins with an
 error-slave transfer open are closed across the passes and seeds of a run.
 
+==== `cg_j2a_reset`
+
+*Description*: Covers the TAP resets and the bridge reset on each JTAG2AXI
+bridge: each TAP reset source with the bridge idle, with an access open at its
+port, and with the sticky status set; the phase of the bridge's access at each
+bridge reset; the scans in a bridge reset; the TCK side's release after TCK
+stayed stopped; and test mode.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_tap` |One bin per bridge, TAP reset source, and bridge state: TMS, TRST, and power-on reset, each with the bridge idle, with an access open at its port, and with the sticky DMI status set
+|`cp_bridge` |One bin per bridge, op, and phase of its access at a fall of `rst_n_i` outside test mode: started and not at the port, request pending, write data pending for a write, response pending, and completed at the port with no DMI operation since the one that started it; a bridge with no access is ignored
+|`cp_scan` |One bin per bridge and strobe while the bridge reset is asserted: a DMI capture, a DMI update, and a DTMCS `dmireset`
+|`cp_tck_stopped` |One bin per bridge whose TCK-side reset releases outside test mode after TCK stayed stopped for at least three `clk_i` cycles past its `clk_i`-side release
+|`cp_test_mode` |One bin per bridge and event with `test_en_i` 1: a request handshake at its port, a fall of `rst_n_i`, and a fall of `scan_rst_ni`
+|===
+
+`dtp_j2a_fcov` takes each bridge's two synchronized resets from its `tdr2axi`
+and its DMI state machine's state and sticky status from its
+`dmi_tdr_bridge`, with the TAP, system, and DFT resets and the PTAP state from
+`tb_top`. A TAP reset is sampled at the fall of TRST or power-on reset, and on
+the TCK edge after the PTAP enters Test-Logic-Reset by TMS; an access is open
+from its port's request VALID to its response handshake. A fall of a reset is
+sampled with the state before it. The phase comes from the port's handshakes,
+and for an access not at the port from the last DMI operation the bridge
+accepted: one that starts a bus access, with the state machine or `sbbusy`
+busy and no transfer since, is started, and one whose transfer completed since
+is completed. A strobe in reset is sampled on TCK while the reset the bridges
+synchronize is low.
+`dtp_jtag2axi_reset_test` reaches every bin in every pass.
+
 ==== `cg_ctp`
 
 *Description*: Covers every CTP transmission and reception with the
@@ -1020,7 +1053,10 @@ code-coverage points that a formal unreachability analysis proves no stimulus
 reaches in the bench's environment: the DTP at the bench configuration, the
 DFT ports at their functional values, the boundary-scan chain looped back,
 and every other input free, the extended STAP host scan-in and the resets
-included. The analysis starts from the merged database of the
+included. The DFT ports reach no listed point other than their own toggles,
+which `dtp_jtag2axi_reset_test` covers and the list leaves out: `scan_rst_ni`
+reaches only the JTAG2AXI bridges, which hold no entry, and `test_en_i` also
+the `testmode_i` of the CSR crossbar's FIFOs, which no logic reads. The analysis starts from the merged database of the
 commercial-path `all` regression (<<dtp-fcov-evidence-paths>>), so it targets
 the points that regression left uncovered, and the list holds for the RTL
 that produced that database. No analysis in this repository writes the list:
@@ -1105,6 +1141,7 @@ review.
 |`dtp_jtag2axi_sba_errors_test` |`cg_j2a_sba_error` `cp_code`, `cp_bus`, `cp_size`, `cp_held`, and `cp_autoinc`
 |`dtp_jtag2axi_backpressure_test` |`cg_j2a_axi_timing` `cp_aw_stall`, `cp_w_stall`, `cp_ar_stall`, `cp_b_delay`, `cp_r_delay`, `cp_w_order`, and `cp_sbcs_race`
 |`dtp_jtag2axi_debug_disable_test` |`cg_j2a_dbg_disable`, `cg_instruction_gate` bridge bins with `set`
+|`dtp_jtag2axi_reset_test` |`cg_j2a_reset` `cp_tap`, `cp_bridge`, `cp_scan`, `cp_tck_stopped`, and `cp_test_mode`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
@@ -1144,6 +1181,6 @@ configuration change.
 |Internal cross-trigger lanes in point-to-point mode |The bench elaborates `XTRIG_INT_CT_MODE` = 0, so every internal CT runs pulse mode
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage
 |`prim_cdc_rand_delay` under every synchronizer primitive (`prim_flop_2sync`, `prim_sync3r` and their siblings) |Simulation-only CDC jitter model with no counterpart in a synthesized DTP; the VCS scope file removes the module from code coverage
-|DFT inputs `test_en_i` and `scan_rst_ni` |The bench holds them at their functional values, the environment the unreachability exclusion list is proven in, so the list excludes their toggles
+|DFT mode outside the JTAG2AXI bridge reset |`dtp_jtag2axi_reset_test` drives `test_en_i` and `scan_rst_ni` for the bridges' reset selection, and every other scenario holds them at their functional values; outside the bridges `test_en_i` reaches only the `testmode_i` of the CSR crossbar's FIFOs, which no logic reads, and scan behaviour is a scan-insertion level concern
 |Protocol-specific behavior without shared VIP support |Covered by OCAH-local DTP BFMs
 |===

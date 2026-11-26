@@ -779,6 +779,78 @@ module tb_top
     end
   end
 
+  // JTAG2AXI bridge reset: every bridge synchronizes scan_rst_ni while
+  // test_en_i is 1 and rst_n_i otherwise, into clk_i and into TCK. Per bridge
+  // (bit order as dtp_tb_if.j2a_b_hold), from its tdr2axi: the two
+  // synchronized resets, the rising edges of each one's clock with j2a_rst_n
+  // high and that reset low, taken between its fall and its rise, and the
+  // changes no reset rule allows. The edge counters take blocking
+  // assignments when the edge triggers, so they count the edge whose
+  // nonblocking update releases a synchronizer. The rule checks read the
+  // DUT's reset inputs, which change before anything derived from them.
+  logic        j2a_rst_n;
+  logic [31:0] j2a_rst_assert_count = '0;
+  logic [2:0]  j2a_arst_clk_n;
+  logic [2:0]  j2a_arst_tck_n;
+  logic [2:0]  j2a_tck;
+  assign j2a_rst_n = u_tb_if.test_en ? u_tb_if.scan_rst_n : rst_n_i;
+  always @(negedge j2a_rst_n) j2a_rst_assert_count <= j2a_rst_assert_count + 32'd1;
+  assign j2a_arst_clk_n = {
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.arst_clk_n,
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.arst_clk_n,
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.arst_clk_n
+  };
+  assign j2a_arst_tck_n = {
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.arst_tck_n,
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.arst_tck_n,
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.arst_tck_n
+  };
+  assign j2a_tck = {
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.i_tck,
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.i_tck,
+    u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.i_tck
+  };
+  for (genvar b = 0; b < 3; b++) begin : g_j2a_release
+    logic [31:0] clk_edges     = '0;
+    logic [31:0] tck_edges     = '0;
+    logic [31:0] clk_fall_edge = '0;
+    logic [31:0] tck_fall_edge = '0;
+    logic [31:0] clk_fall_errs = '0;
+    logic [31:0] tck_fall_errs = '0;
+    logic [31:0] clk_rise_errs = '0;
+    logic [31:0] tck_rise_errs = '0;
+    logic [7:0]  clk_release_edges = '0;
+    logic [7:0]  tck_release_edges = '0;
+    realtime     tck_rise_time     = 0.0;
+    always @(posedge clk_i) begin
+      if (j2a_rst_n === 1'b1 && j2a_arst_clk_n[b] === 1'b0) clk_edges = clk_edges + 32'd1;
+    end
+    always @(posedge j2a_tck[b]) begin
+      tck_rise_time = $realtime;
+      if (j2a_rst_n === 1'b1 && j2a_arst_tck_n[b] === 1'b0) tck_edges = tck_edges + 32'd1;
+    end
+    always @(negedge j2a_arst_clk_n[b]) begin
+      clk_fall_edge = clk_edges;
+      if ((u_tb_if.test_en ? u_tb_if.scan_rst_n : rst_n_i) === 1'b1)
+        clk_fall_errs = clk_fall_errs + 32'd1;
+    end
+    always @(negedge j2a_arst_tck_n[b]) begin
+      tck_fall_edge = tck_edges;
+      if ((u_tb_if.test_en ? u_tb_if.scan_rst_n : rst_n_i) === 1'b1)
+        tck_fall_errs = tck_fall_errs + 32'd1;
+    end
+    always @(posedge j2a_arst_clk_n[b]) begin
+      clk_release_edges = 8'(clk_edges - clk_fall_edge);
+      if (!u_tb_if.test_en && (rst_n_i !== 1'b1 || $realtime != clk_i_rise_time))
+        clk_rise_errs = clk_rise_errs + 32'd1;
+    end
+    always @(posedge j2a_arst_tck_n[b]) begin
+      tck_release_edges = 8'(tck_edges - tck_fall_edge);
+      if (!u_tb_if.test_en && (rst_n_i !== 1'b1 || $realtime != tck_rise_time))
+        tck_rise_errs = tck_rise_errs + 32'd1;
+    end
+  end
+
   // Flat responder outputs -> DUT resp struct
   always_comb begin
     axi_smc_dbg_resp          = '{default: '0};
@@ -1039,9 +1111,8 @@ module tb_top
     .rst_n_i                          (rst_n_i),
     .pwr_on_rst_ni                    (pwr_on_rst_ni),
 
-    // DFT controls, held at their functional values; DFT mode is outside the
-    // bench's scope (DTP_VPLAN)
-    .test_en_i                        (u_tb_if.test_en),
+    // DFT controls, driven by the sequences through dtp_tb_if
+    .test_en_i                       (u_tb_if.test_en),
     .scan_rst_ni                      (u_tb_if.scan_rst_n),
 
     // Lifecycle debug gating: active-high disables pre-resolved per
@@ -1218,9 +1289,10 @@ module tb_top
   // value, dmireset, Debug Module dmactive, System Bus Access request and
   // errors, the DMI requests its Debug Module accepts, and its security
   // select, synchronized disable and the handshakes between the bridge and
-  // its demultiplexer, through hierarchical references into its
+  // its demultiplexer, its synchronized resets, and its DMI state machine
+  // and sticky status, through hierarchical references into its
   // jtag_dmi2axi, and its port's handshake signals, in the bit order of
-  // dtp_tb_if.j2a_b_hold.
+  // dtp_tb_if.j2a_b_hold; and the TAP, system, test-mode and scan resets.
   dtp_j2a_fcov u_dtp_j2a_fcov (
     .tck_i           (jtag_tck),
     .tap_rst_ni      (jtag_tap_rst_n),
@@ -1371,6 +1443,23 @@ module tb_top
       (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_resp.b_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_req.b_ready) || (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_resp.r_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.bridge_req.r_ready),
       (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_resp.b_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_req.b_ready) || (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_resp.r_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.bridge_req.r_ready),
       (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_resp.b_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_req.b_ready) || (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_resp.r_valid && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_req.r_ready && u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.bridge_resp.r.last)
+    }),
+    .por_ni          (pwr_on_rst_ni),
+    .trst_ni         (jtag_trst),
+    .tap_state_i     (jtag_ptap_state),
+    .test_en_i       (u_tb_if.test_en),
+    .scan_rst_ni     (u_tb_if.scan_rst_n),
+    .arst_clk_ni     (j2a_arst_clk_n),
+    .arst_tck_ni     (j2a_arst_tck_n),
+    .fsm_busy_i      ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.u_dmi_tdr_bridge.state_q != '0,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.u_dmi_tdr_bridge.state_q != '0,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.u_dmi_tdr_bridge.state_q != '0
+    }),
+    .sticky_i        ({
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.gen_axi_lite.u_tdr2axi.u_dmi_tdr_bridge.error_q != '0,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.gen_axi_lite.u_tdr2axi.u_dmi_tdr_bridge.error_q != '0,
+      u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.gen_axi.u_tdr2axi.u_dmi_tdr_bridge.error_q != '0
     })
   );
 
@@ -1527,6 +1616,23 @@ module tb_top
   assign u_tb_if.stop_clks_change_count   = stop_clks_change_count;
   assign u_tb_if.stop_clks_off_edge_count = stop_clks_off_edge_count;
   assign u_tb_if.tap_state            = jtag_ptap_state;
+  assign u_tb_if.j2a_rst_n            = j2a_rst_n;
+  assign u_tb_if.j2a_rst_assert_count = j2a_rst_assert_count;
+  assign u_tb_if.j2a_arst_clk_n       = j2a_arst_clk_n;
+  assign u_tb_if.j2a_arst_tck_n       = j2a_arst_tck_n;
+  assign u_tb_if.j2a_clk_release_edges = {g_j2a_release[2].clk_release_edges,
+                                          g_j2a_release[1].clk_release_edges,
+                                          g_j2a_release[0].clk_release_edges};
+  assign u_tb_if.j2a_tck_release_edges = {g_j2a_release[2].tck_release_edges,
+                                          g_j2a_release[1].tck_release_edges,
+                                          g_j2a_release[0].tck_release_edges};
+  assign u_tb_if.j2a_release_err_count =
+      g_j2a_release[0].clk_fall_errs + g_j2a_release[0].tck_fall_errs +
+      g_j2a_release[0].clk_rise_errs + g_j2a_release[0].tck_rise_errs +
+      g_j2a_release[1].clk_fall_errs + g_j2a_release[1].tck_fall_errs +
+      g_j2a_release[1].clk_rise_errs + g_j2a_release[1].tck_rise_errs +
+      g_j2a_release[2].clk_fall_errs + g_j2a_release[2].tck_fall_errs +
+      g_j2a_release[2].clk_rise_errs + g_j2a_release[2].tck_rise_errs;
 
   // Decoded-IR observable (dtp_tb_if) and boundary-scan control
   // observables (dtp_scan_if) for the basic-JTAG instruction checks.

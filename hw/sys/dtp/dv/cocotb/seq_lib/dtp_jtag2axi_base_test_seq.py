@@ -14,6 +14,7 @@ import random
 from dataclasses import dataclass
 
 import cocotb
+from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.dtp_axi_port_history import DtpAxiPortHistory
 from env.dtp_jtag2axi_model import strobe_lanes
@@ -41,7 +42,7 @@ from ocah_axi_vip import (
     OcahAxiSlaveSequence,
 )
 from ocah_checker import OcahChecker
-from ocah_jtag_vip import OcahJtagChecker
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagState
 from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
@@ -246,13 +247,17 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         captured = await self.read_tdr(self.target_cfg(target).dtmcs_reg, shift_value)
         dmistat = unpack_dtmcs(captured)["dmistat"]
         self.check_dmi_status(target, dmistat, status, context=f"{context}.dmistat")
+        self.check_dtmcs_fields(target, captured, context=context)
+        return captured
+
+    def check_dtmcs_fields(self, target: str, captured: int, *, context: str) -> None:
+        """``CHK-J2A-DTM-CAPTURE`` on a DTMCS capture's fields other than dmistat."""
         self.check_dtm_capture(
             target,
             captured & ~(0x3 << _DTMCS_DMISTAT_LSB),
             DTP_EXPECTED_DTMCS,
             context=f"{context}.dtmcs",
         )
-        return captured
 
     # --- raw DMI scans -----------------------------------------------------------
     async def select_dmi(self, target: str) -> None:
@@ -832,3 +837,101 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             expected,
             context=f"{context} target={target} requests_while_open",
         )
+
+    # --- seeded accesses -------------------------------------------------------
+    def seeded_access(self, target: str, rng: random.Random) -> tuple[int, int, int]:
+        """A seeded (address, size, offset) of a legal access."""
+        cfg = self.target_cfg(target)
+        size = rng.randint(0, cfg.data_size)
+        offset = rng.randrange(0, cfg.beat_bytes, 1 << size)
+        return self.random_target_addr(target, rng) + offset, size, offset
+
+    def memory_word(self, target: str, addr: int, size: int) -> int:
+        """The responder's ``size`` word at ``addr``."""
+        nbytes = self.size_bytes(size)
+        raw = self.target_memory(target).read(self.target_slot(target, addr), nbytes)
+        return int.from_bytes(bytes(raw), "little")
+
+    @staticmethod
+    def sized_word(rng: random.Random, size: int, avoid: int = 0) -> int:
+        """A seeded nonzero ``size`` word other than ``avoid``."""
+        while True:
+            word = rng.getrandbits(8 << size)
+            if word not in (0, avoid):
+                return word
+
+    def port_counts(self, target: str) -> tuple[int, int]:
+        """(writes, reads) ``target``'s port has completed."""
+        return self.port_history(target).counts()
+
+    async def port_access(
+        self, target: str, rng: random.Random, *, read: bool, check_id: str, ctx: str
+    ) -> None:
+        """A seeded access that reaches the port, judged on the bus and on its data, with
+        ``check_id`` recording that the port took it. A read returns the bytes a full-beat
+        write put there first; the AXI read checks compare every byte of the beat a read
+        returns."""
+        cfg = self.target_cfg(target)
+        addr, size, offset = self.seeded_access(target, rng)
+        data = self.sized_word(rng, size, self.memory_word(target, addr, size))
+        if read:
+            lanes = self.data_mask(size) << (8 * offset)
+            beat = (rng.getrandbits(cfg.data_width) & ~lanes) | (data << (8 * offset))
+            await self.sba_write(
+                target, addr - offset, beat, size=cfg.data_size, context=f"{ctx}.fill"
+            )
+        before = self.port_counts(target)
+        if read:
+            rdata = await self.sba_read(target, addr, size=size, context=f"{ctx}.read")
+            self.check_bridge_rdata(
+                target, rdata & self.data_mask(size), data, context=f"{ctx}.read"
+            )
+        else:
+            await self.sba_write(target, addr, data, size=size, context=f"{ctx}.write")
+            self.check_target_word(target, addr, data, size=size, context=f"{ctx}.mem")
+        after = self.port_counts(target)
+        self.check_equal(
+            self.target_evidence(target),
+            check_id,
+            after[int(read)] - before[int(read)],
+            1,
+            context=f"{ctx} target={target} enabled port_transactions",
+        )
+
+    @staticmethod
+    def sbdata_mask(size: int) -> int:
+        """The sbdata bits ``read_sbdata`` returns: the Debug Module shifts the beat to the
+        access offset and keeps the bits above the access size."""
+        return (1 << (64 if size == 3 else 32)) - 1
+
+    async def read_sbdata(self, target: str, size: int, ctx: str) -> int:
+        """sbdata0, and sbdata1 for an 8-byte access."""
+        value = await self.dmi_read(target, DtpDmReg.SBDATA0, context=f"{ctx}.sbdata0")
+        if size == 3:
+            value |= (await self.dmi_read(target, DtpDmReg.SBDATA1, context=f"{ctx}.sbdata1")) << 32
+        return value
+
+    def record_fields(
+        self, target: str, check_id: str, fields: list[tuple[str, int, int]], *, context: str
+    ) -> None:
+        """Record every (field, observed, expected) under ``check_id``; raise on a mismatch."""
+        self.check_equal(
+            self.target_evidence(target),
+            check_id,
+            {name: observed for name, observed, _ in fields},
+            {name: expected for name, _, expected in fields},
+            context=f"{context} target={target}",
+        )
+
+    async def wait_update_dr_exit(self) -> None:
+        """Return on the TCK cycle in which the PTAP next leaves Update-DR."""
+        tb_if = self.cfg.tb_if
+        update_dr = int(OcahJtagState.UPDATE_DR)
+        in_update = False
+        while True:
+            await RisingEdge(tb_if.jtag.tck)
+            await ReadOnly()
+            state = tb_if.sample("jtag_ptap_state")
+            if in_update and state != update_dr:
+                return
+            in_update = state == update_dr

@@ -56,8 +56,13 @@ the transactions the passive monitors observe on its port:
                cycles of the update, and the disabled path's otherwise; no
                scan of that bridge falls within those cycles.
 
-A system reset returns every bridge to its reset state; a TAP reset leaves
-them unchanged. Captures and updates come from the TCK steps, so a DR scan of
+The bridge reset, ``j2a_rst_n`` of dtp_tb_if, returns every bridge to its
+reset state and drops the accesses in flight, whose ports reset with it; a
+TAP reset leaves the bridges unchanged. Outside test mode the TCK side of
+every bridge stays in reset for DTP_J2A_RESET_SYNC_TCK TCK edges after the
+release, and in test mode it follows the reset. A capture on a TCK edge in
+reset returns 0, and an update or a dmireset on one does nothing. Captures
+and updates come from the TCK steps, so a DR scan of
 any length counts: its update loads the captured value shifted by the bits
 the scan shifted, and only those bits of its capture are compared. A DMI
 operation is applied on the TCK cycle that leaves its Update-DR, and a bus
@@ -94,6 +99,7 @@ from .dtp_types import (
     DTP_DMI_BUSY_TCK,
     DTP_DMI_SETTLE_TCK,
     DTP_EXPECTED_DTMCS,
+    DTP_J2A_RESET_SYNC_TCK,
     JTAG2AXI_TARGETS,
     DtpDmiOp,
     DtpDmiStatus,
@@ -223,8 +229,6 @@ class _Bridge:
     either_item: OcahAxiItem | None = None
     # Port completions not yet applied, each with the TCK cycle it was reported on.
     completed: deque[tuple[OcahAxiItem, int]] = field(default_factory=deque)
-    # Completions due for accesses a system reset discarded.
-    orphans: int = 0
 
     def reset_dm(self) -> None:
         """The Debug Module's synchronous reset while dmactive is 0."""
@@ -254,12 +258,8 @@ class DtpJtag2AxiModel:
         self.reset()
 
     def reset(self) -> None:
-        """System reset: every bridge back to its reset state; accesses in flight are discarded."""
-        prior = self._bridges
+        """Bridge reset: every bridge back to its reset state; accesses in flight are dropped."""
         self._bridges = {name: _Bridge() for name in JTAG2AXI_TARGETS}
-        for name, old in prior.items():
-            outstanding = old.inflight is not None and not old.completed and old.either_item is None
-            self._bridges[name].orphans = old.orphans + int(outstanding)
 
     @staticmethod
     def classify(ir: int) -> tuple[DtpJ2aScanKind, DtpJtag2AxiTargetCfg | None]:
@@ -354,9 +354,6 @@ class DtpJtag2AxiModel:
         update; the held-back transaction of an access that may take either path, when this
         completes it in time."""
         bridge = self._bridges[target]
-        if bridge.orphans:
-            bridge.orphans -= 1
-            return None
         bridge.completed.append((observed, tck))
         if bridge.either_item is None or tck > (bridge.either_deadline or 0):
             return None
@@ -656,7 +653,8 @@ class DtpJtag2AxiTracker:
     and the response holds of the bridge are read from the TB interface on the
     update cycle, and so is the bridge's bit of ``j2a_dis_race``. A port transaction that
     completes an access which may take either path is returned from ``on_axi`` with the
-    bridge's name.
+    bridge's name. The bridge reset and its release come from ``j2a_rst_n``, its
+    assertion counter and ``test_en``, read on every TCK edge, TRST asserted or not.
     """
 
     def __init__(self, tb_if, *, negative: bool = False) -> None:
@@ -664,7 +662,9 @@ class DtpJtag2AxiTracker:
         self.ir = DtpJtagIrModel()
         self.bridges = DtpJtag2AxiModel(negative=negative)
         self._target_by_source: dict[str, str] = {}
-        self._sys_rst_seen = 0
+        self._j2a_rst_seen = 0
+        # TCK edges the bridges' TCK side has left in reset after its release.
+        self._tck_reset_edges = 0
         self._tck = 0
         self._prev_step_ns = 0.0
         # The bridge register captured in the DR scan in progress.
@@ -704,13 +704,17 @@ class DtpJtag2AxiTracker:
         """One TCK event; the bridge and transaction an update on it launches, if any."""
         self._sync_reset()
         launched = None
+        in_reset = item.kind == "STEP" and self._tck_side_in_reset()
         if item.kind == "STEP" and item.trst_n:
             self._tck += 1
             state = self.ir.tap_state()
             if state is OcahJtagState.CAPTURE_DR:
                 self._capture()
             elif state is OcahJtagState.UPDATE_DR and self._captured is not None:
-                launched = self._update()
+                if in_reset:
+                    self._captured = None
+                else:
+                    launched = self._update()
             self._prev_step_ns = item.time_ns or 0.0
         self.ir.on_event(item)
         if self.ir.take_tap_reset():
@@ -769,11 +773,21 @@ class DtpJtag2AxiTracker:
         return None if predicted is None else (target, predicted)
 
     def _sync_reset(self) -> None:
-        """Power-on reset resets the TAP; a system reset resets every bridge."""
+        """Power-on reset resets the TAP; the bridge reset resets every bridge."""
         self.ir.sync_power_on_reset(self.tb_if.sample("por_assert_count"))
         if self.ir.take_tap_reset():
             self._captured = None
-        sys_rst = self.tb_if.sample("sys_rst_assert_count")
-        if sys_rst != self._sys_rst_seen:
-            self._sys_rst_seen = sys_rst
+        j2a_rst = self.tb_if.sample("j2a_rst_assert_count")
+        if j2a_rst != self._j2a_rst_seen:
+            self._j2a_rst_seen = j2a_rst
             self.bridges.reset()
+
+    def _tck_side_in_reset(self) -> bool:
+        """Whether the bridges' TCK side is in reset on this TCK edge."""
+        if not self.tb_if.sample("j2a_rst_n"):
+            self._tck_reset_edges = 0 if self.tb_if.sample("test_en") else DTP_J2A_RESET_SYNC_TCK
+            return True
+        if self._tck_reset_edges:
+            self._tck_reset_edges -= 1
+            return True
+        return False
