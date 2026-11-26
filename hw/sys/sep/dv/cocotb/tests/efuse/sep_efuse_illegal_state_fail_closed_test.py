@@ -17,11 +17,11 @@ Graded after each injection:
   ``doc/trm/meta/ocah_hsr_table.adoc:38``): ``efuse_<read|program>_error_o``
   is 1, and so is the field software reads it through,
   ``EFUSE_READ_CTRL.read_status`` / ``EFUSE_PROGRAM_CTRL.program_status``
-  (``efuse_interface_ctrl.rdl:133``, ``:102``: "1: Error")
+  (``efuse_interface_ctrl.rdl:133``, ``:96``: "1: Error")
   (CHK-READ-FAILCLOSED-ERR, CHK-PROGRAM-FAILCLOSED);
 * the idle program interface issues no bank command: with no program go and
   no enable there is no program request (``efuse_interface_ctrl.rdl:76``,
-  ``:112``; CHK-PROGRAM-FAILCLOSED);
+  ``:102``; CHK-PROGRAM-FAILCLOSED);
 * the read interface serves a new request after both injections, and the
   program interface after each one (CHK-READ-ALIVE and CHK-PROGRAM-ALIVE
   after; OCAH-HSR-SEP-010).
@@ -793,9 +793,6 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # The read FSM serves a new request after the injections (OCAH-HSR-SEP-010).
         await self._assert_read_alive("after")
 
-        # Each program leg uses two fresh bits: OTP is write-once, so programming
-        # a bit again would not issue a command and a control would fail for the
-        # wrong reason.
         pg_leg_bits = zip(pg_bits[1::2], pg_bits[2::2])
         for leg, (state, (inject_bit, alive_bit)) in enumerate(
             zip(program_illegal, pg_leg_bits), start=1
