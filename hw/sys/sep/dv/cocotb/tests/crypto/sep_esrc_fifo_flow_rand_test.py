@@ -22,7 +22,7 @@ Output FIFO):
     (``hw/ip/entropy_source/regs/entropy_source.rdl``:168-210): with every enable bit 0,
     PIC source 16 (bit 15 of ``sep_internal_interrupts``, ``hw/sys/sep/doc/interrupts.adoc``
     :22-24, :109-111) stays 0 while a FIFO overflow or underflow is live, and reads 1
-    when only the enable bit of that live cause is set (:183, :188).
+    when only the enable bit of that live cause is set (:191, :196).
   * ``FIFO_ERROR`` is a ``level intr`` field (entropy_source.rdl:117-123): while a
     pointer-copy mismatch holds and FIFO_ERROR has set before any pop or push, a
     write-one clear does not leave it at 0.

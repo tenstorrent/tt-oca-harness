@@ -39,7 +39,7 @@ Mechanism and Token Submission):
                     interface-control access answers SLVERR
                     (``hw/ip/efuse/doc/architecture.adoc:355-357``), a denied read
                     returns the read data 0xBADCAB1E
-                    (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``), and
+                    (``hw/sys/sep/doc/otp_fuse_controller.adoc:129-132``), and
                     the target reads the same at the frontdoor before and after; the
                     bit p reads 0 at the direct read at the end. PROD and RMA_SIP
                     grade the same way. No program command reaches
@@ -66,7 +66,7 @@ Mechanism and Token Submission):
                     SLVERR (``hw/ip/efuse/doc/architecture.adoc:355-357``: accesses
                     outside the MMR space are blocked with an SLVERR response), and
                     the read returns the read data 0xBADCAB1E
-                    (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``).
+                    (``hw/sys/sep/doc/otp_fuse_controller.adoc:129-132``).
   OBS-JTAG-SHIM-DENY-DATA  the frontdoor value of ``EFUSE_BANK_INIT_TIME`` before and
                     after the two shim accesses: no TT text maps a JTAG address to a
                     shim register offset.
@@ -144,7 +144,7 @@ OKAY = 0
 # hw/ip/efuse/doc/architecture.adoc:355-357: in PROD and RMA_SIP a SEP JTAG access
 # outside the MMR space is blocked with an SLVERR response.
 DENY_RESP = RESP_SLVERR
-# hw/sys/sep/doc/otp_fuse_controller.adoc:128-131: in PROD and RMA_SIP every JTAG access
+# hw/sys/sep/doc/otp_fuse_controller.adoc:129-132: in PROD and RMA_SIP every JTAG access
 # to the shadow registers, the interface control registers and the SHIM completes with
 # SLVERR and read data 0xBADCAB1E.
 DENY_RDATA = 0xBADCAB1E
@@ -305,7 +305,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         addresses answer SLVERR (``hw/ip/efuse/doc/architecture.adoc:355-357``: in PROD
         and RMA_SIP a SEP JTAG access outside the MMR space is blocked with an SLVERR
         response), and the JTAG read returns ``DENY_RDATA``
-        (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``). ``OBS-JTAG-SHIM-DENY-DATA``
+        (``hw/sys/sep/doc/otp_fuse_controller.adoc:129-132``). ``OBS-JTAG-SHIM-DENY-DATA``
         logs the frontdoor value of ``EFUSE_BANK_INIT_TIME`` before and after.
         """
         s = self.shim_draw
@@ -508,7 +508,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
 
         CHK-JTAG-CONCURRENT: the JTAG read answers SLVERR
         (``hw/ip/efuse/doc/architecture.adoc:355-357``) with the read data ``DENY_RDATA``
-        (``hw/sys/sep/doc/otp_fuse_controller.adoc:128-131``), and the
+        (``hw/sys/sep/doc/otp_fuse_controller.adoc:129-132``), and the
         frontdoor read returns the staged word, outside ``ignore_mask`` (the bit c when
         it shares the word). The frontdoor response code is logged in the same line.
         ``OBS-EF-ARB-CONCURRENT`` logs the clock each read completes on and the command

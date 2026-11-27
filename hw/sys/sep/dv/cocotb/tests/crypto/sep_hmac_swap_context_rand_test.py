@@ -21,7 +21,7 @@ Contracts (spec text, not RTL):
   hashes on from them (hmac.adoc:141, :161;
   vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:365-366, :372, :386).
   The context switch follows the OpenTitan HMAC programmer's guide that
-  doc/programmer/src/sep-programming.adoc:875-876 names: write whole blocks, then
+  doc/programmer/src/sep-programming.adoc:886-887 names: write whole blocks, then
   ``hash_stop``; wait for ``hmac_done``; save DIGEST and MSG_LENGTH; clear
   ``sha_en``; before the restore ``sha_en`` reads 0; write ``CFG``, DIGEST and
   MSG_LENGTH; set ``sha_en``; write ``hash_continue``.
@@ -42,7 +42,7 @@ Contracts (spec text, not RTL):
 * A completed hash sets ``INTR_STATE.hmac_done`` (hmac.adoc:51); with
   ``INTR_ENABLE.hmac_done`` set (hmac.adoc:63) vector bit 17 rises, because bit i of
   the vector is PIC source i + 1 and source 18 is HMAC done
-  (hw/sys/sep/doc/interrupts.adoc:23, :117-119).
+  (hw/sys/sep/doc/interrupts.adoc:23, :125-127).
 
 The golden is the software SHA-2 model (env/sep_hmac_golden.py ``sha2_bytes``). The
 message bytes of a swap cell are the AXI write lanes in write order; a multi-byte
@@ -128,7 +128,7 @@ assert len(HMAC_DIGEST) == CTX_DIGEST_WORDS, "register map does not declare DIGE
 # SW_RESET_N baseline: every crypto engine and the TRNG released, Key Manager held
 # (hw/sys/sep/regs/gen/adoc/blocks/sep_reset_ctrl.adoc).
 SW_RESET_N_BASELINE = 0x7E
-# Vector bit 17 carries PIC source 18, HMAC done (hw/sys/sep/doc/interrupts.adoc:23, :117-119).
+# Vector bit 17 carries PIC source 18, HMAC done (hw/sys/sep/doc/interrupts.adoc:23, :125-127).
 VEC_HMAC_DONE_BIT = 17
 
 SHA_SIZES = (256, 384, 512)

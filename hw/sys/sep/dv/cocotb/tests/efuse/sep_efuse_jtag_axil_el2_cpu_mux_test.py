@@ -12,7 +12,7 @@ interface controller's AXI-Lite mux.
 
 The OTP image is real-sensed at LC_STATE=PROD, which restricts the JTAG path: MMR token accesses
 are allowed, and shadow-map and interface-CSR accesses get the SLVERR response and the read
-data ``0xBADCAB1E`` that ``hw/sys/sep/doc/otp_fuse_controller.adoc:124-131`` (Shadow Register
+data ``0xBADCAB1E`` that ``hw/sys/sep/doc/otp_fuse_controller.adoc:125-132`` (Shadow Register
 and JTAG Access Control) states for SEP.
 One PROD image covers both the allowed coexistence and the LC-gated deny without forcing
 lc_state.
@@ -80,7 +80,7 @@ _SEC_DIS_I0_SEED = 0x5A5A_4001
 # Interface control sits outside the token block and is blocked in PROD.
 # For SEP, architecture.adoc:355-357 (JTAG Access Control Based on LC_STATE) states
 # that accesses outside the MMR space "are blocked with an SLVERR response", and
-# otp_fuse_controller.adoc:124-131 gives every such access SLVERR and read data 0xBADCAB1E.
+# otp_fuse_controller.adoc:125-132 gives every such access SLVERR and read data 0xBADCAB1E.
 _JTAG_DENY_RESP = RESP_SLVERR
 _JTAG_DENY_RDATA = 0xBADCAB1E
 _EFUSE_IFACE_PROGRAM = sym("EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR")

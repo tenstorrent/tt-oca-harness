@@ -228,7 +228,7 @@ edges in (t0, t1].
   ``clk_i`` edge of the fall is logged as INFO-BITE-CLEAR-EDGE and not graded.
   The request stays 0 because ``WDOG_CTRL.enable``
   resets to 0 ("When set to 1, the watchdog timer will count.",
-  ``<aon_rdl>:73-74``) and a bite needs an enabled timer (``<aon>/README.md:56``).
+  ``<aon_rdl>:80-81``) and a bite needs an enabled timer (``<aon>/README.md:56``).
   Controls of the same pulse: ``sep_cpu_reset_n_o`` reads 0 (the pulse reaches
   the SEP, ``clk_rst.adoc:60``), and the SEP reset tap ``dbg_sep_reset_n_o``
   stays 1 ("A watchdog reset restarts the CPU without asserting the
@@ -318,8 +318,8 @@ Leg H grades the count and the bite request. The timer core runs on
 watchdog timer."; ``hw/sys/sep/doc/watchdog.adoc:23``, the timer domain reset is
 synchronized to ``clk_wdt_i``) and the count "increments on every tick of the
 AON clock" (``<aon>/README.md:52``), so the count advances while ``clk_i`` is
-stopped. ``wdt_timer_rst_req_o`` is "the bite reset request that fires when the
-second timeout stage expires" (``watchdog.adoc:27``), the bite occurs "on every
+stopped. ``wdt_timer_rst_req_o`` is "the bite reset request" (``watchdog.adoc:27``),
+the bite occurs "on every
 AON clock tick when the count is at least ``WDOG_BITE_THOLD``"
 (``<aon>/README.md:56``), and the request is "driven on the AON domain"
 (``<aon>/doc/theory_of_operation.md:9``), so it rises while ``clk_i`` is
@@ -1120,7 +1120,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         Spec: "separate consecutive writes by at least eight reference-clock
         periods" (doc/programmer/src/sep-smc-common.adoc:516-518), and the readback
         is "at or just above the written value"
-        (hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:101-104). V1 is written,
+        (hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:103-106). V1 is written,
         then V2 with no read between, d edges after the B handshake of V1 (counted
         to the AW handshake of V2, which is at least the separation of any other
         reading of the rule). The bounded poll must read a value in
@@ -1491,9 +1491,9 @@ class sep_timer_clock_contract_test(sep_base_test):
             f"at pass {bite_pass} (bx=0x{bx:x} dx=0x{dx:x})"
         )
         # The bark interrupt line (tap wdt_bark_probe_o), sampled at the AR of each
-        # status read: "the watchdog bark interrupt that fires when the first timeout
-        # stage expires" (hw/sys/sep/doc/watchdog.adoc:27). A status read of 0 means
-        # the stage had not expired at its AR, so the line reads 0 there; after the
+        # status read: "``intr_wdog_timer_bark_o``, the watchdog bark interrupt"
+        # (hw/sys/sep/doc/watchdog.adoc:27). A status read of 0 means the bark had
+        # not fired at its AR, so the line reads 0 there; after the
         # first status read of 1 (sticky until a write of 1) the line reads 1 at every
         # later AR. bark_pass < bite_pass gives at least one later pass.
         early = [i for i, p in enumerate(passes) if not p["bark"] and p["line"]]

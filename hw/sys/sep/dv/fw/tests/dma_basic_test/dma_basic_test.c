@@ -172,8 +172,8 @@ static void chunk_done_w1c(void) {
 
 // Write 1 to the STATUS RW1C bits after an error leg and read STATUS back
 // before the next GO, because GO also clears STATUS.error. STATUS.error is
-// write-one-to-clear (hw/sys/sep/doc/dma.adoc:131-132;
-// vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:308-315),
+// write-one-to-clear (hw/sys/sep/doc/dma.adoc:133-134;
+// vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:310-317),
 // so the readback must show ERROR = 0. Returns the readback.
 static uint32_t error_w1c(const char *chk, int *e) {
     wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
@@ -743,7 +743,7 @@ static int chk_done_rw1c(void) {
 // Four cells: a transfer whose source or destination address does not meet the
 // alignment its width requires, at both the 4-byte and the 2-byte width. Each
 // address "Must be aligned to the transfer width" (secure_dma.rdl:74, :82, :91,
-// :100), so the misaligned side's bit ("address is invalid", :336, :341) must
+// :100), so the misaligned side's bit ("address is invalid", :338, :343) must
 // rise, and no non-address bit may. The other side is aligned to the width but
 // not to its partner, and "Source and destination address must have the same
 // alignment" (:83, :92, :101) names no bit, so the other address bit is logged
@@ -968,7 +968,7 @@ static int chk_host_intg(void) {
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
-    // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:67-69):
+    // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:69-71):
     // with the pin low again, STATUS still holds host_path_err. The testbench
     // requires aggregator bit 41 high up to CHK-HOSTINTG-HELD, and the pin low on
     // a clock after its release at this read (CTRL-HOSTINTG-HELD-PIN).

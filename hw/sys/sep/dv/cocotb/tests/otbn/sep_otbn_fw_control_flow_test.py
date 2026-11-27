@@ -10,7 +10,7 @@ STATUS register" (:460-461); ``done`` (:153-156); EXECUTE runs until ``ecall``, 
 the internal wipe, ``ERR_BITS``, IDLE and ``done`` (ToO:132-139); ``INTR_STATE``
 is RW1C and ``INTR_ENABLE.done`` gates the line (``OTBN/doc/registers.md`` :37,
 :54); OTBN done is vector bit 29, PIC source 30 (``hw/sys/sep/doc/interrupts.adoc``
-:22-27, :165-167).
+:22-27, :173-175).
 
 The firmware (``fw/tests/otbn_fw_control_flow_test``) brings the entropy stack up
 (EXECUTE reseeds URND from EDN, ToO:80-81, :133), waits for IDLE after the reset
@@ -112,7 +112,7 @@ M_STATUS = OTBN.field_mask("STATUS", "status")
 M_DONE = OTBN.field_mask("INTR_STATE", "done")
 EXEC_CODES = (ST_BUSY_EXECUTE, ST_SEC_WIPE_INT)
 
-# Vector bit 29 is PIC source 30, OTBN done (interrupts.adoc:22-27, :165-167).
+# Vector bit 29 is PIC source 30, OTBN done (interrupts.adoc:22-27, :173-175).
 VEC_OTBN_DONE = 29
 PIC_SRC_OTBN_DONE = VEC_OTBN_DONE + 1
 

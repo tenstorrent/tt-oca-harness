@@ -101,8 +101,8 @@ _LINE_POLLS = 64
 # so a FAIL that ends the sim right after still finds the release sampled.
 _LABEL_CLK = 3
 
-# PIC sources (hw/sys/sep/doc/interrupts.adoc:177-178 source 33 Crypto alert,
-# :194-196 source 35 Adams Bridge error, :198-200 source 36 Adams Bridge
+# PIC sources (hw/sys/sep/doc/interrupts.adoc:185-186 source 33 Crypto alert,
+# :206-208 source 35 Adams Bridge error, :210-212 source 36 Adams Bridge
 # notification); vector bit i is PIC source i + 1 (:22-23).
 _SRC_CRYPTO_ALERT = pic("Crypto alert")
 _SRC_ABR_ERROR = pic("Adams Bridge error")
@@ -337,8 +337,8 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
 
         await self._notif_w1c_leg(abr)
 
-        # hw/sys/sep/doc/interrupts.adoc:22-23 (bit i is source i + 1), :194-196
-        # and :198-200: each source drives its own bit. One trigger write and one
+        # hw/sys/sep/doc/interrupts.adoc:22-23 (bit i is source i + 1), :206-208
+        # and :210-212: each source drives its own bit. One trigger write and one
         # keyGen command lie in the window, and each status is sticky until its
         # W1C (integration/rdl/sep/abr_reg.rdl:517-518, :533-534), so each bit
         # rises once. The held cp_src_exclusive_other rise of each source

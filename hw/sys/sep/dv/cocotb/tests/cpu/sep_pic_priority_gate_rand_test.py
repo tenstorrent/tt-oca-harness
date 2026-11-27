@@ -72,7 +72,7 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  ``meicidpl`` reads L with no ``meicpct`` write (fast
                  interrupt redirect captures the claim ID and level pair,
                  PRM sections 8.6.1, 8.8, 8.12.9, 8.12.10;
-                 ``hw/sys/sep/doc/interrupts.adoc:387`` names the
+                 ``hw/sys/sep/doc/interrupts.adoc:400`` names the
                  fast-interrupt path of this core).
 * CHK-INT-TIMER-HOLD (firmware) internal timer k with bound 0 is pending
                  (``mip`` bit 29 - k reads 1) with ``mie.MITIEk`` 0 and
@@ -80,7 +80,7 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  both 1: no trap for a hold window of 32 core clocks or more;
                  then ``mie.MITIEk`` 1 takes one trap with
                  ``mcause`` 0x8000_001D (k = 0) or 0x8000_001C (k = 1)
-                 (``hw/sys/sep/doc/interrupts.adoc:294-299``).
+                 (``hw/sys/sep/doc/interrupts.adoc:307-312``).
 * CHK-INT-TIMER-TRAP (firmware) internal timer k stopped, ``mitcnt`` 0, bound
                  B drawn, then enabled: one trap with the timer's ``mcause``,
                  at least B core clocks after the enable (PRM chapter 6: the
@@ -119,7 +119,7 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  ``mie.MTIE`` 0 and mstatus.MIE 1 no trap for a hold window;
                  with ``mie.MTIE`` 1 one trap with ``mcause`` 0x8000_0007;
                  with the pin 0, ``mip.MTIP`` reads 0
-                 (``hw/sys/sep/doc/interrupts.adoc:291``: the pin drives
+                 (``hw/sys/sep/doc/interrupts.adoc:304``: the pin drives
                  ``mip.MTIP``; EL2 PRM tables 13.1 and 13.2 for ``mie.mtie``
                  and ``mip.mtip``, table 13.3 for ``mcause`` 0x8000_0007).
 * CHK-SOFT-PIN   (firmware, last leg) the host drives ``soft_int_i`` on each
@@ -130,8 +130,8 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  1; the ``meip`` words outside the excluded idle bits read
                  the same as with the pin 0 before and after the window; with
                  the pin 0, ``mip.MSIP`` reads 0
-                 (``hw/sys/sep/doc/interrupts.adoc:291-292``: the pin drives
-                 ``mip.MSIP``; ``:261``: the pin bypasses the PIC; RISC-V
+                 (``hw/sys/sep/doc/interrupts.adoc:304-305``: the pin drives
+                 ``mip.MSIP``; ``:274``: the pin bypasses the PIC; RISC-V
                  privileged spec section 3.1.9: no trap with ``mie.MSIE`` 0).
 
 Open-value leg (logged, not graded): the priord flip leg arms a drawn source

@@ -560,7 +560,7 @@ class SepUnmappedCfg:
         # hw/sys/sep/regs/gen/adoc/memory_map.adoc:64 (eFuse Token Registers
         # row, Past Extent column) states it, and this generated map is the
         # golden CHK-UNMAPPED-CODE grades. Its codes were assigned from the RTL.
-        # hw/sys/sep/doc/otp_fuse_controller.adoc:45-46 states SLVERR for an
+        # hw/sys/sep/doc/otp_fuse_controller.adoc:46-47 states SLVERR for an
         # address of the APB span outside the register windows; the two
         # documents differ on this span, so the leaf also logs each code of
         # the span as OBS-EFUSE-TOKEN-PAST-CODE.

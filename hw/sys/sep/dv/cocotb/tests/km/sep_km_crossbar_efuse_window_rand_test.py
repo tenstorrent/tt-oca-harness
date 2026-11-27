@@ -140,7 +140,7 @@ write-locked field completes with SLVERR, and that the host readback (class OKAY
 ``efuse_shadow_probe_o`` of that word equal the staged word.
 ``CTRL-EFW-WLOCK-SHADOW`` is its control: the same KM write to a word of an
 unlocked spare field, which is not a plan target (SW writable,
-``otp_fuse_controller.adoc:385-401,471-474``), completes OKAY, and the host
+``otp_fuse_controller.adoc:384-400,470-473``), completes OKAY, and the host
 readback (class OKAY) and the probe equal the written value; a mismatch prints
 ``CTRL-MISSING EFW-WLOCK-SHADOW`` and fails the leaf. ``CTRL-EFW-WLOCK-LOCKABLE``
 is its second control: a KM write of the same rule as the write-locked write
@@ -148,7 +148,7 @@ is its second control: a KM write of the same rule as the write-locked write
 which is not a spare and not a plan target, and whose used bits an unlocked write
 can change, completes OKAY, and the host readback (class OKAY) and the probe
 equal the written value for a writable field and the staged value OR the
-written value for a set-only field (``otp_fuse_controller.adoc:208,261,274,279,
+written value for a set-only field (``otp_fuse_controller.adoc:209,262,275,280,
 471-474``); a mismatch prints ``CTRL-MISSING EFW-WLOCK-LOCKABLE`` and fails the
 leaf. Both controls run before the check.
 """
@@ -946,14 +946,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         (``otp_fuse_controller.adoc:110-114``); the KM eFuse path honors the
         same per-field locks (``key_manager/doc/architecture.adoc:924-928``).
         The control writes a SW-writable spare word that is not a plan target
-        (read-write, ``otp_fuse_controller.adoc:385-401,471-474``), so a KM path
+        (read-write, ``otp_fuse_controller.adoc:384-400,470-473``), so a KM path
         that drops every write fails the control first. A second control writes
         a word of an unlocked lockable field of the plan that is not a spare
         and not a plan target, so a KM path that refuses every non-spare write
         also fails a control first. Its expected readback follows the field's
-        SW-writable entry (``otp_fuse_controller.adoc:208,471-474``): the
+        SW-writable entry (``otp_fuse_controller.adoc:209,470-473``): the
         written word for a writable field, the staged word OR the written word
-        for a set-only field (``:261,274,279``). The control word comes from the
+        for a set-only field (``:262,274,279``). The control word comes from the
         write class of the write-locked word (set-only or writable, full or
         narrow) when the plan has one, and its write changes only used bits.
         The model is not updated: the next cold reset

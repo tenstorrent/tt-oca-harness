@@ -114,8 +114,8 @@ at byte offset 2 of the watchdog ``WKUP_THOLD_LO`` word answer OKAY, and the
 writes of the same shapes answer SLVERR. "A narrow read inside a register
 returns OKAY"; a partial write, "a byte strobe that misses a byte the register
 owns", gets a TL-UL error and "the faulting access also received SLVERR
-synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``;
-the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
+synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:395-400``;
+the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:450``). The word after the
 write and the other sub-word targets are logged (``INFO-REG-SUBWORD``). Control
 CTRL-REG-SUBWORD-SHAPE: the LSU (``s_axi``) read address handshake of each shape
 carries the byte address and AxSIZE 0 or 1, since a 32-bit read also answers
@@ -172,7 +172,7 @@ drawn address.
 CHK-ROW-SIZE3: an SI AxSIZE 3 read and write at the last register of the
 entropy source block (its register extent is 4 mod 8, so the upper half of the
 beat lies past the extent) answer SLVERR on RRESP and on BRESP
-(``hw/sys/sep/doc/memory_map.adoc:78-80``: a generated register block answers
+(``hw/sys/sep/doc/memory_map.adoc:80-82``: a generated register block answers
 SLVERR past its last register, "a 64-bit access to the last register of a
 block with 32-bit registers" included; ``doc/trm/src/memory_map.adoc:93-96``).
 The leaf derives the cell from the generated register allocation and fails
@@ -301,7 +301,7 @@ _ATTR_SALT = 0x524F_5741
 _STRADDLE_SALT = 0x5354_5244
 # Straddle cells: an AxSIZE 3 access at the last 32-bit register of a block whose
 # register extent is 4 mod 8, so the upper half lies past that extent.
-# hw/sys/sep/doc/memory_map.adoc:78-80 states SLVERR for a block generated from
+# hw/sys/sep/doc/memory_map.adoc:80-82 states SLVERR for a block generated from
 # SystemRDL (entropy source); the AES block is bridged to TL-UL, so its read is
 # logged only and it takes no write (its last register is shadowed).
 STRADDLE_GRADED = ("esrc",)
@@ -329,8 +329,8 @@ SUBWORD_TARGETS = (
     ("sw_reset_n", rr.SW_RESET_N, False),
 )
 # A narrow read inside a peripheral register answers OKAY and a partial write
-# answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393;
-# the watchdog block is PERIPH_BUS_ERR_STATUS.wdt, :442).
+# answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:395-400;
+# the watchdog block is PERIPH_BUS_ERR_STATUS.wdt, :450).
 SUBWORD_GRADED = "wdt_wkup_thold_lo"
 # Sub-word targets whose unstrobed lanes are not graded: the word holds fields
 # that hardware writes, or the RDL properties do not state the access.

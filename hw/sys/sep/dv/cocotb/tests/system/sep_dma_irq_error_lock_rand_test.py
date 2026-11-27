@@ -17,9 +17,9 @@ matching INTR_ENABLE bit; a single-chunk copy raises no chunk event, so its
 source 10 is 0 with either value of INTR_ENABLE.DMA_CHUNK_DONE. For the
 zero-size event sources 9 and 10 are logged when enabled and graded 0 when
 disabled. Single-chunk contract: STATUS.CHUNK_DONE is "Only raised for
-multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``); "Chunk
+multi-chunk memory-to-memory transfers" (``secure_dma.rdl:329-330``); "Chunk
 completion applies to multi-chunk transfers without hardware handshake; it is
-not a per-trigger interrupt in handshake mode" (``dma.adoc:129-131``); "Since interrupts are implemented as status bits, they are cleared
+not a per-trigger interrupt in handshake mode" (``dma.adoc:131-133``); "Since interrupts are implemented as status bits, they are cleared
 by writing a '1' to the corresponding bit in the STATUS register" (OpenTitan
 DMA ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39``). So every STATUS read of the single-chunk copy
 gives CHUNK_DONE = 0, INTR_STATE.DMA_CHUNK_DONE reads 0 at the end of the trial
@@ -40,15 +40,15 @@ to SIZE_ERROR alone and INTR_STATE.DMA_ERROR, and assert PIC source 11. Each
 kind has one defect only, and the controller reports every detected error in
 ERROR_CODE (OpenTitan DMA ``programmers_guide.md:102-103``). The hash opcode of
 each hash kind is drawn from SHA-256, SHA-384 and SHA-512 ("inline hashing
-requires 4-byte transfers", ``hw/sys/sep/doc/dma.adoc:133``; opcodes 1, 2 and
-3, ``doc/programmer/src/sep-programming.adoc:763-764``). After a write of 1 to
+requires 4-byte transfers", ``hw/sys/sep/doc/dma.adoc:135``; opcodes 1, 2 and
+3, ``doc/programmer/src/sep-programming.adoc:772-773``). After a write of 1 to
 STATUS.ERROR, with no reset, ERROR and ERROR_CODE read 0 and a legal copy
 completes with the destination equal to the source. Control: the hash of the
 same opcode at encoding 2 completes with ERROR clear.
 In the error state, before that write, each kind writes all-ones and then 0 to
 INTR_STATE, all-ones and then 0 to ERROR_CODE, and, on the one kind drawn per
 seed, 0 to STATUS, reading the register back after each write. INTR_STATE and ERROR_CODE are ``sw = r``
-(``secure_dma.rdl:9-20``, ``:334-371``; ``doc/trm/src/register-field-access.adoc:42-44``)
+(``secure_dma.rdl:9-20``, ``:336-373``; ``doc/trm/src/register-field-access.adoc:42-44``)
 and STATUS.ERROR is RW1C (``secure_dma.rdl``, STATUS;
 ``register-field-access.adoc:61``, "writing 0 leaves it"), so none of these
 writes changes a value. No text states the write response of an ``R``
@@ -62,7 +62,7 @@ STATUS.ERROR releases the interrupt: "Since interrupts are implemented as
 status bits, they are cleared by writing a '1' to the corresponding bit in the
 STATUS register" (OpenTitan DMA
 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:39``); "Status
-completion and error bits are write-one-to-clear" (``dma.adoc:131-132``).
+completion and error bits are write-one-to-clear" (``dma.adoc:133-134``).
 INTR_STATE is read once after that write: DMA_ERROR reads 0 and
 source 11 is low. Its control is INTR_STATE.DMA_ERROR = 1 and source 11 high
 just before the write.
@@ -97,30 +97,30 @@ reason other than the lock fails the control. These values are the pre-lock
 values of that context. After the lock write and after
 each attempt the leaf writes new BASE and LIMIT values and RANGE_VALID=0 and
 reads all four registers back. The RANGE_REGWEN read-back is logged, not
-graded (``INFO-DMA-LOCK-READBACK``); CHK-DMA-LOCK grades that the lock holds.
-The texts disagree on the value: the field is ``onwrite =
-wzc`` (``secure_dma.rdl:146``), a per-bit write-0-to-clear
-(``doc/trm/src/register-field-access.adoc:58,72-74``) that gives 0x0 for 0x9
-written over 0x6, while the field text says the register is "set to
-kMultiBitBool4False" (``secure_dma.rdl:149``, 0x9) and the programmer guide
-writes 0x9 to it (``doc/programmer/src/sep-programming.adoc:781-782``). After a
+graded (``INFO-DMA-LOCK-READBACK``: its golden is an open specification
+question); CHK-DMA-LOCK grades that the lock holds. The texts disagree on the
+value: the field is ``onwrite = wzc`` (``secure_dma.rdl:146``), a per-bit
+write-0-to-clear (``doc/trm/src/register-field-access.adoc:58,72-74``) that
+gives 0x0 for 0x9 written over 0x6, while the field text says "writing
+kMultiBitBool4False (0x9) reads back 0x9" (``secure_dma.rdl:150``). After a
 cold reset the leaf also writes a drawn value that is neither MuBi4 value to
 RANGE_REGWEN, reads it back and writes RANGE_BASE; the read-back and whether
-BASE took the write are logged (``INFO-DMA-REGWEN-NONMUBI``), because
-no TT text states the read-back of a non-MuBi4 write or whether such a value
-locks. Control, else CTRL-MISSING: RANGE_REGWEN reads 0x6 before the write and
+BASE took the write are logged (``INFO-DMA-REGWEN-NONMUBI``), because the
+same two texts disagree: the field text says "any value other than 0x6 locks
+the range" (``secure_dma.rdl:150``), and ``wzc`` leaves 0x6, and so no lock,
+for a value with bits 1 and 2 set. Control, else CTRL-MISSING: RANGE_REGWEN reads 0x6 before the write and
 BASE before the write differs from the value written. An outside-range copy runs
 first, from a cold reset: a copy (OPCODE 0, both ASID 0x7) whose source or destination region lies
 wholly outside BASE..LIMIT, with RANGE_VALID=1, ends with DONE=1, ERROR=0,
 ERROR_CODE.SRC_ADDR_ERROR=0 and DST_ADDR_ERROR=0, and the destination reads back
 equal to the source: "The range does not bound a copy between internal
-addresses." (``hw/sys/sep/doc/dma.adoc:106``). Its control is a zero fill
+addresses." (``hw/sys/sep/doc/dma.adoc:108``). Its control is a zero fill
 (OPCODE 4) from a cold reset with the same range and its destination at the
 same outside region, filled first with a non-zero word: "The fill writes only
 inside the enabled memory range, from ``ENABLED_MEMORY_RANGE_BASE`` to
 ``ENABLED_MEMORY_RANGE_LIMIT`` inclusive, whatever the address spaces. [...]
 The first write that would leave the range is not issued: the fill stops with
-``STATUS.ERROR`` and ``ERROR_CODE.DST_ADDR_ERROR``" (``hw/sys/sep/doc/dma.adoc:98-103``).
+``STATUS.ERROR`` and ``ERROR_CODE.DST_ADDR_ERROR``" (``hw/sys/sep/doc/dma.adoc:100-105``).
 The control reads ERROR=1, DST_ADDR_ERROR=1 and the outside region unchanged,
 so a DMA that ignores the range for every opcode fails the control. A second
 control reads BASE, LIMIT and RANGE_VALID of the copy trial back before GO.
@@ -143,8 +143,8 @@ CTRL-MISSING: the same copy with both ADDR_HI at 0 completes and the
 destination equals the source.
 
 Leg L5, tied-off address spaces: "Selecting the tied-off CTN or SYS address
-space does not complete." (``hw/sys/sep/doc/dma.adoc:70``); "the other address
-spaces are tied off and never complete" (``doc/programmer/src/sep-programming.adoc:741-742``).
+space does not complete." (``hw/sys/sep/doc/dma.adoc:72``); "the other address
+spaces are tied off and never complete" (``doc/programmer/src/sep-programming.adoc:750-751``).
 The ASID encodings are SOC_ADDR 0xa and SYS_ADDR 0x9 (ADDR_SPACE_ID enums,
 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:253-259,272-278``).
 Four trials, each from a cold reset: the L4 copy (SRAM source to SRAM
@@ -162,10 +162,10 @@ is complete."
 ``abort`` bit [...] The STATUS indicates via the ``aborted`` bit that the DMA
 operation was aborted and the DMA stopped its operation."
 (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:43-45``).
-The tied-off start does not complete (``hw/sys/sep/doc/dma.adoc:70``), so the
+The tied-off start does not complete (``hw/sys/sep/doc/dma.adoc:72``), so the
 ABORT hits an ongoing operation. Control: one STATUS read just before the
 ABORT shows BUSY=1, DONE=0 and ABORTED=0 ("DMA operation is active if this bit
-is set.", ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:615``),
+is set.", ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:617``),
 else CTRL-MISSING, so a DUT that ignores the tied-off GO and sets ABORTED on an
 idle ABORT fails. The bound of 200 reads comes from a control
 in the same leg, from a cold reset: the ASID 0x7 copy of MAX_BYTES, with
@@ -225,7 +225,7 @@ Checkers:
                     width. Source and destination address must have the same
                     alignment." and SRC_ADDR_LO states only the width rule
                     (``secure_dma.rdl:90-92``, ``:73-74``); DST_ADDR_ERROR
-                    "Destination address is invalid." (``secure_dma.rdl:341``);
+                    "Destination address is invalid." (``secure_dma.rdl:343``);
                     the controller checks the configuration "before starting a
                     transfer" and "reports all detected errors in ERROR_CODE"
                     (OpenTitan DMA
@@ -270,7 +270,7 @@ Checkers:
                     destination equals the source, logged. DST_ADDR_LO "Source
                     and destination address must have the same alignment."
                     (``secure_dma.rdl:92``) states no unit for the alignment
-                    and no ERROR_CODE bit for it (``:333-372``).
+                    and no ERROR_CODE bit for it (``:335-374``).
                     Control, else CTRL-MISSING (CTRL-DMA-ALIGN-GO):
                     TRANSFER_WIDTH and DST_ADDR_LO read back as written before
                     the GO write, and after it a STATUS read shows DONE or
@@ -295,7 +295,7 @@ Checkers:
                     reads 1 and ERROR_CODE is unchanged.
                     On that kind the ERROR_CODE clear of CHK-DMA-SIZE-ERR
                     ("The error is cleared by writing the RW1C STATUS.error
-                    register", ``dma.hjson:670``) is not graded
+                    register", ``dma.hjson:672``) is not graded
                     (``code_cleared=-``): the STATUS write of 0 comes before
                     the W1C, so the read after the W1C does not show what the
                     W1C cleared. The leaf logs ERROR_CODE before and after
@@ -325,10 +325,11 @@ Checkers:
                     BASE and LIMIT read the values written before the lock
                     and RANGE_VALID reads 1. Source: "Used by firmware to lock
                     the DMA enabled memory range configuration registers from
-                    further modification. Once this register is set to
-                    kMultiBitBool4False, it can only be set to
-                    kMultiBitBool4True through a reset event."
-                    (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:338-339``),
+                    further modification. The range registers are writable
+                    only while this field reads kMultiBitBool4True (0x6), its
+                    reset value." and "the field cannot return to
+                    kMultiBitBool4True before a reset."
+                    (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:338-339``, ``:341``),
                     so no unlock attempt before a reset re-opens the range
                     registers. Every new value differs from the locked one, so
                     a write that lands changes the read-back. Control: before
@@ -1856,7 +1857,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             self._ctrl_missing(
                 "CTRL-DMA-RANGE-OUT", f"CHK-DMA-RANGE-OUT range read-back before GO: {line}"
             )
-        # dma.adoc:106: the range does not bound a copy between internal addresses.
+        # dma.adoc:108: the range does not bound a copy between internal addresses.
         if not (ended and st.done and not st.error and (src_err, dst_err, out_mism) == (0, 0, 0)):
             self._fail("CHK-DMA-RANGE-OUT", line)
         self._pass("CHK-DMA-RANGE-OUT", line)
@@ -1900,8 +1901,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"write_resp={resp_rw}/{'/'.join(map(str, resps))} control_pre_lock_landed=1"
             )
             # The lock keeps the range registers "from further modification", and
-            # only a reset unlocks it (dma.hjson:338-339): no write after the lock
-            # lands, whatever the later RANGE_REGWEN writes are.
+            # only a reset unlocks it (dma.hjson:338-339, :341): no write after the
+            # lock lands, whatever the later RANGE_REGWEN writes are.
             if base != pre[0] or limit != pre[1] or valid != 1:
                 self._fail("CHK-DMA-LOCK", line)
             self._pass("CHK-DMA-LOCK", line)
@@ -2187,10 +2188,10 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         st, tie_done_at, err_reads, window = await self._l5_copy(word)
         ecode = await ops.rd(ERROR_CODE)
-        # The tied-off start does not complete (dma.adoc:70), so the ABORT hits an
+        # The tied-off start does not complete (dma.adoc:72), so the ABORT hits an
         # ongoing operation and sets STATUS.ABORTED once complete
         # (dma.hjson:527-528; programmers_guide.md:43-45): graded in _leg_l5.
-        # BUSY=1 just before the ABORT shows the start is active (dma.hjson:615).
+        # BUSY=1 just before the ABORT shows the start is active (dma.hjson:617).
         tie_pre = await ops.read_status()
         tie_active = int(tie_pre.busy == 1 and tie_pre.done == 0 and tie_pre.aborted == 0)
         regwen = (await ops.rd(CFG_REGWEN) & CFG_REGWEN_MASK) >> _CFG_REGWEN_LSB

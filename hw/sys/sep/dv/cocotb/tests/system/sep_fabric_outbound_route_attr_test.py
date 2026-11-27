@@ -292,7 +292,7 @@ LOWADDR_HI = 0x0FFF_FFFF
 SMU_BASE_FIELD = SEP_CPU_CTRL.field_mask("SMU_GLOBAL_BASE_ADDR", "addr")
 SMU_SIZE_FIELD = SEP_CPU_CTRL.field_mask("SMU_REGION_SIZE", "size")
 # The moved SMU pair: base and size are software fields (sw = rw,
-# hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:202-218). The window
+# hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:208-224). The window
 # sits above the SMC aperture of the SMC memory-model bench, 0x4000_0000 +
 # 16 MiB (hw/sys/sep/dv/tb/tb_top.sv:660-661), and below the reset SMU pair.
 SMU_MOVED_BASE = 0x4100_0000

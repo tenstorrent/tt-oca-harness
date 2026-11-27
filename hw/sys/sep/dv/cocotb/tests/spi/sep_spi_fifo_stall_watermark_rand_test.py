@@ -16,7 +16,7 @@ and size the stimulus.
 
 Depth sources: the SEP SPI host is the unmodified OpenTitan IP
 (``doc/trm/src/revision.adoc:191``; "The SEP SPI host is the unmodified
-OpenTitan SPI Host.", ``doc/programmer/src/sep-programming.adoc:811``). The
+OpenTitan SPI Host.", ``doc/programmer/src/sep-programming.adoc:820``). The
 OpenTitan SPI_HOST features give the FIFO sizes: "288 bytes for TX data, 256
 bytes for RX data"
 (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/README.md:26``), that is
@@ -104,7 +104,7 @@ Checkers:
                    segment ended with ACTIVE=0; INFO-SPI-QD-EXTRA logs per
                    width whether it was graded. RXQD/TXQD give "how many unread/unsent 32-bit
                    words are currently in the RX/TX FIFO"; only "When active"
-                   may they under- or overestimate (spi_host.hjson:322-333).
+                   may they under- or overestimate (spi_host.hjson:324-335).
                    A read with ACTIVE=1 is logged as INFO-SPI-QD. At least one
                    graded read per run (required evidence).
   CHK-SPI-QD-ACTIVE At each STATUS read of the RX stall drain with ACTIVE=1,
@@ -135,7 +135,7 @@ Checkers:
                    is logged as INFO-SPI-CMDQD-STEP, not graded: the texts
                    conflict. CMDQD "Indicates how many unread 32-bit words
                    are currently in the command segment queue."
-                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:318-319``)
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:320-321``)
                    and counts "unprocessed segments [...] in the FIFO"
                    (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:394``),
                    but a descriptor can wait "in the Command Clock Domain
@@ -187,7 +187,7 @@ Checkers:
                    STATUS.RXFULL = 1 ("When high, indicates that the receive
                    fifo is full.", spi_host.hjson:288) and RXQD = 64 ("how
                    many unread 32-bit words are currently in the RX FIFO",
-                   spi_host.hjson:324-325), RxDepth = 64 ("256 bytes for RX
+                   spi_host.hjson:326-327), RxDepth = 64 ("256 bytes for RX
                    data",
                    ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/README.md:26``).
                    Control: the 63-word
@@ -199,7 +199,7 @@ Checkers:
                    clocks. CMDQD reads 4 or less in every STATUS read of the
                    leg: CMDQD "Indicates how many unread 32-bit words are
                    currently in the command segment queue."
-                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:318-319``),
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:320-321``),
                    and CmdDepth "The size of the Cmd FIFO (one segment
                    descriptor per entry)" is 4 (spi_host.hjson:103-106; the
                    SEP host is the unmodified IP, ``doc/trm/src/revision.adoc:191``).
@@ -1382,7 +1382,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             accepted += 1
             # The CMDQD change per accepted COMMAND is logged, not graded. The
             # texts conflict: CMDQD counts "unread 32-bit words [...] in the
-            # command segment queue" (spi_host.hjson:318-319) and "unprocessed
+            # command segment queue" (spi_host.hjson:320-321) and "unprocessed
             # segments [...] in the FIFO" (theory_of_operation.md:394), but a
             # descriptor can wait "in the Command Clock Domain Crossing"
             # (programmers_guide.md:143), where CMDQD need not count it. The

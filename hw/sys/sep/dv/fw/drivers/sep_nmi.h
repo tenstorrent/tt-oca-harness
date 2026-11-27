@@ -23,9 +23,10 @@
 #define SEP_NMI_VEC_ADDR SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR
 #define SEP_NMI_VEC_LOCK_ADDR SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR
 // Reset value only. It is a placeholder, not a valid handler -- nothing guarantees
-// the image even covers that address, and an uninitialized ICCM fetch there is an
-// uncorrectable ECC error that re-raises NMI. Steps 1-2 above must complete before
-// any NMI source is enabled.
+// the image even covers that address, and a fetch there that takes an uncorrectable
+// ICCM ECC error raises an instruction access fault (mcause 0x1) through mtvec, not
+// the NMI (doc/programmer/src/sep-programming.adoc:75-77). Steps 1-2 above must
+// complete before any NMI source is enabled.
 #define SEP_NMI_VEC_DEFAULT SEP_CPU_CTRL__SEP_NMI_VEC_reset
 
 typedef void (*sep_nmi_handler_t)(void);
@@ -60,7 +61,7 @@ static inline void nmi_set_vector_reg(void) {
     _sep_nmi_wr(SEP_NMI_VEC_ADDR, nmi_get_vector_addr());
 }
 
-// Lock SEP_NMI_VEC (write-once-set; sticky until reset).
+// Lock SEP_NMI_VEC (write-one-to-set; sticky until the next SEP reset).
 static inline void nmi_lock_vector_reg(void) {
     _sep_nmi_wr(SEP_NMI_VEC_LOCK_ADDR, SEP_CPU_CTRL__SEP_NMI_VEC_LOCK__LOCK_bm);
 }

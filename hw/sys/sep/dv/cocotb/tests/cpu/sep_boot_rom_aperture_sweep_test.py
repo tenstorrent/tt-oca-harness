@@ -70,7 +70,7 @@ Checks:
                      PR-LSU-ROM.
   CHK-ROM-NOECC    : a 1-bit or 2-bit flip in a stored word reads back as the
                      whole flipped 64-bit word with no trap and no NMI; the
-                     neighbour words read exact (rom.adoc:59-60, no ECC or
+                     neighbour words read exact (rom.adoc:58-59, no ECC or
                      integrity-error sideband). The PR-LSU-ROM R beats are
                      counted and their OKAY count is logged in the same line
                      (no TT text states the code). Positive probes in the same
