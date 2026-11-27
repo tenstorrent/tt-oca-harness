@@ -176,31 +176,12 @@ waive_violation -add {ocah_dtp_SETUP_CLOCK_UNUSED_output_tck_clocks} \
 #=======================================================================================================================
 # CDC_GLITCH_CTRL : OR-reduction of clk-stop-request signals before synchronizers
 #=======================================================================================================================
-# Both ctn_clock_stop_ctrl and jtag_debug_ctrl_reg reduce multi-bit clock-stop request
-# vectors combinationally (via | operator) before feeding a 2-stage synchronizer.
-# The tool flags two patterns:
-#
-# u_cla_clock_stop_sync (TCK domain):
-#   xtrig_clk_stop_req_i[8:0] (ck_feedthru) are all in the same domain; their OR
-#   reduction is glitch-free in practice because the bits are synchronous to each other.
-#   Any sub-cycle glitch on the OR output is far shorter than one TCK period and will
-#   be resolved by the 2-stage synchronizer.
-#
-# u_clk_stop_sync (DTPCLK domain):
-#   xtrig_clk_stop_req_i[8:0] (ck_feedthru) and jtag_clock_stop (JTAG_TCK) are OR'd
-#   before the DTPCLK synchronizer. The 2-stage synchronizer is precisely the mechanism
-#   designed to handle multi-domain asynchronous inputs: any transient at the synchronizer
-#   input is resolved within 2 DTPCLK cycles. For a safety-fail-safe "stop clock" signal,
-#   metastability at the synchronizer input is acceptable because the resolved output is
-#   always correct (clocks stop if and only if a stop is genuinely requested).
+# xtrig_clk_stop_req_i[8:0] arrive from independent devices on ck_feedthru and are not
+# synchronous to each other. Only the JTAG status capture (u_cla_clock_stop_sync) is waived;
+# the OR in front of u_clk_stop_sync drives the chiplet halt and stays reported.
 #=======================================================================================================================
-waive_violation -add {ocah_dtp_CDC_GLITCH_CTRL_ctn_clk_stop_sync} \
-    -comment {ctn_clock_stop_ctrl/u_clk_stop_sync (DTPCLK domain), GLITCH_SOURCES_FROM_DIFF_DOMAIN: xtrig_clk_stop_req_i[8:0] (ck_feedthru) is OR'd with jtag_clock_stop (JTAG_TCK) before the 2-stage synchronizer. The synchronizer is precisely the correct mechanism for asynchronous multi-domain inputs; any transient at its input resolves within 2 DTPCLK cycles. Fail-safe stop-clock path -- output is metastability-free regardless of input waveform.} \
-    -filter [apply_modprefix {(GlitchDestInfo:DestObject =~ "*u_clock_stop_ctrl/u_clk_stop_sync*") AND (Module == "${MODPREFIX}dtp")}] \
-    -app { cdc } -tag { CDC_GLITCH_CTRL } -user { bmelton } -timestamp { 15-05-2026 04:30:00 }
-
 waive_violation -add {ocah_dtp_CDC_GLITCH_CTRL_cla_clock_stop_sync} \
-    -comment {jtag_debug_ctrl_reg/u_cla_clock_stop_sync (JTAG_TCK domain), GLITCH_SOURCES_FROM_SAME_DOMAIN: xtrig_clk_stop_req_i[8:0] (all ck_feedthru) is OR-reduced before the 2-stage synchronizer. The 9 bits are synchronous to each other so the OR is glitch-free in practice. The synchronizer captures the result during JTAG Capture-DR; any residual transient resolves within 2 TCK cycles. Worst-case incorrect capture is harmless -- JTAG host re-reads on the next scan.} \
+    -comment {jtag_debug_ctrl_reg/u_cla_clock_stop_sync (JTAG_TCK domain): the OR of xtrig_clk_stop_req_i[8:0], independent asynchronous requests, feeds a 2-flop synchronizer whose only consumer is the read-only DEBUG_CONTROL status bit captured in Capture-DR. A glitch can at worst return one wrong status read, which the next scan corrects; nothing in the chiplet acts on it.} \
     -filter [apply_modprefix {(GlitchDestInfo:DestObject =~ "*u_jtag_debug_ctrl_reg/u_cla_clock_stop_sync*") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_GLITCH_CTRL } -user { bmelton } -timestamp { 15-05-2026 04:30:00 }
 
@@ -224,12 +205,12 @@ waive_violation -add {ocah_dtp_CDC_GLITCH_CTRL_cla_clock_stop_sync} \
 #   (partially-matched because the OR before the sync merges this with the ck_feedthru signal)
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_CDC_UNSYNC_CTRL_cla_clock_stop_sync} \
-    -comment {NONSTATIC_COMBO_IN_CROSSING: xtrig_clk_stop_req_i[8:0] is OR-reduced combinationally before u_cla_clock_stop_sync. ctn_clock_stop_ctrl lacks the ck_feedthru clock so pre-registration in source domain is not possible here. Tool confirms SYNC_BY_NFF (2-stage synchronizer present). The synchronizer correctly resolves any metastability within 2 TCK cycles.} \
+    -comment {NONSTATIC_COMBO_IN_CROSSING: xtrig_clk_stop_req_i[8:0] is OR-reduced combinationally before u_cla_clock_stop_sync; no ck_feedthru clock exists in the DTP to register it. The 2-flop synchronizer (SYNC_BY_NFF) resolves metastability; the OR's glitch exposure is the CDC_GLITCH_CTRL check.} \
     -filter [apply_modprefix {(DestObject =~ "*u_cla_clock_stop_sync*") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_UNSYNC_CTRL } -user { bmelton } -timestamp { 15-05-2026 04:30:00 }
 
 waive_violation -add {ocah_dtp_CDC_UNSYNC_CTRL_clk_stop_sync} \
-    -comment {NONSTATIC_COMBO_IN_CROSSING + ASYNC_SRC_CONVERGE: xtrig_clk_stop_req_i[8:0] (ck_feedthru) and jtag_clock_stop Q[3] (JTAG_TCK) are OR'd combinationally before u_clk_stop_sync. Two sources from different domains cannot be pre-registered together without knowing which domain to use. The OR-then-sync pattern is the standard approach for "is any stop requested?" logic; the 2-stage synchronizer handles both sources. Tool confirms SYNC_BY_NFF.} \
+    -comment {NONSTATIC_COMBO_IN_CROSSING + ASYNC_SRC_CONVERGE: xtrig_clk_stop_req_i[8:0] (ck_feedthru) and jtag_clock_stop (JTAG_TCK) are OR'd combinationally before u_clk_stop_sync. The 2-flop synchronizer (SYNC_BY_NFF) resolves metastability; the OR's glitch exposure stays reported under CDC_GLITCH_CTRL.} \
     -filter [apply_modprefix {(DestObject =~ "*u_clk_stop_sync*") AND (Module == "${MODPREFIX}dtp")}] \
     -app { cdc } -tag { CDC_UNSYNC_CTRL } -user { bmelton } -timestamp { 15-05-2026 04:30:00 }
 
@@ -283,7 +264,7 @@ waive_violation -add {ocah_dtp_CDC_UNSYNC_ASYNCRESET_pwr_on_rst_to_jtag_flops} \
 #           ├── stap_3dcr_rst             (= prim_and2(trst_n_combined, local rst_n))
 #           ├── stap_extra0_rst           (= prim_and2(trst_n_combined, local rst_n))
 #           ├── stap_smc_dbg_rst          (= prim_and2(trst_n_combined, local rst_n))
-#           └── ic_reset_ctrl_rst_n       (= prim_and2(trst_n_combined, scan enable))
+#           └── ic_reset_ctrl_rst_n       (= prim_or2(TAP rst_n, ~reset_hold))
 #
 # tlr_reset also reaches each STAP/IC gated reset because the TLR flop output is
 # wired into the same TAP-side reset tree those gates drive (IEEE 1149.1: TLR
@@ -304,7 +285,7 @@ waive_violation -add {ocah_dtp_cdc_SETUP_RESET_OVERLAP_pwr_on_rst_to_trst_n_comb
 
 # Edges: trst_n_combined -> {5 STAP gated resets, ic_reset_ctrl_rst_n}
 waive_violation -add {ocah_dtp_cdc_SETUP_RESET_OVERLAP_trst_n_combined_to_children} \
-    -comment {Declared edges trst_n_combined -> {stap_sep_dbg_rst, stap_io_rst, stap_3dcr_rst, stap_extra0_rst, stap_smc_dbg_rst, ic_reset_ctrl_rst_n}. Each child is computed as prim_and2(trst_n_combined, local enable); the master physically feeding its child's AND gate is by construction. Hierarchy declared in dtp.resets.tcl.} \
+    -comment {Declared edges trst_n_combined -> {stap_sep_dbg_rst, stap_io_rst, stap_3dcr_rst, stap_extra0_rst, stap_smc_dbg_rst, ic_reset_ctrl_rst_n}. Each STAP child is prim_and2(trst_n_combined, local rst_n) and ic_reset_ctrl_rst_n is prim_or2(TAP rst_n, ~reset_hold); the master physically feeding its child's gate is by construction. Hierarchy declared in dtp.resets.tcl.} \
     -filter {(Tag == "SETUP_RESET_OVERLAP") AND (SrcRstInfo:ResetName == "trst_n_combined") AND ((DesRstInfo:ResetName == "stap_sep_dbg_rst") OR (DesRstInfo:ResetName == "stap_io_rst") OR (DesRstInfo:ResetName == "stap_3dcr_rst") OR (DesRstInfo:ResetName == "stap_extra0_rst") OR (DesRstInfo:ResetName == "stap_smc_dbg_rst") OR (DesRstInfo:ResetName == "ic_reset_ctrl_rst_n"))} \
     -app { cdc } -tag { SETUP_RESET_OVERLAP } -user { bmelton } -timestamp { 17-05-2026 17:30:00 }
 
