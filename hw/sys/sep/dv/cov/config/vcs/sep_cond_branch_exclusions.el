@@ -702,7 +702,7 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "2905179362 3747101343"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1063/1024, :1366/1327, :1392/1353, :1418/1379, :1444/1405, :1470/1431, :1496/1457, :1522/1483 and :1548/1509 assign load_next_c = '1 in both arms of the SW-write test, so load_next is constant 1 for TIMEOUT_CLEAR, DMA_BUS_ERR_CLEAR and the seven PERIPH_BUS_ERR_CLEAR fields, and the implicit else of 'if(load_next)' at :1075, :1378, :1404, :1430, :1456, :1482, :1508, :1534 and :1560 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1063/1066, :1366/1369, :1392/1395, :1418/1421, :1444/1447, :1470/1473, :1496/1499, :1522/1525 and :1548/1551 assign load_next_c = '1 in both arms of the SW-write test, so load_next is constant 1 for TIMEOUT_CLEAR, DMA_BUS_ERR_CLEAR and the seven PERIPH_BUS_ERR_CLEAR fields, and the implicit else of 'if(load_next)' at :1075, :1378, :1404, :1430, :1456, :1482, :1508, :1534 and :1560 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test."
 Branch 34 "4266396544" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 60 "3588033518" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 62 "884099970" "(~arst_n)" (2) "(~arst_n) 0,0"
@@ -720,7 +720,7 @@ Branch 8 "2691458842" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "2905179362 3747101343"
 MODULE: sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-BRANCH: in each of these field combos every path sets load_next_c to '1 (for example hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:760,763 and :1063,1024 and :1366,1327), so the implicit else of 'if(field_combo.*.load_next)' in the storage flop at lines 730, 1033, 1336, 1362, 1388, 1414, 1440, 1466, 1492 and 1518 is unreachable. NOT waived: the reset arm and the load arm of each flop, and the load_next branches of fields that software alone loads."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-BRANCH: in each of these field combos every path sets load_next_c to '1 (for example hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:760,763 and :1063,1066 and :1366,1369), so the implicit else of 'if(field_combo.*.load_next)' in the storage flop at lines 730, 1033, 1336, 1362, 1388, 1414, 1440, 1466, 1492 and 1518 is unreachable. NOT waived: the reset arm and the load arm of each flop, and the load_next branches of fields that software alone loads."
 Branch 8 "2691458842" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 34 "4266396544" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 60 "3588033518" "(~arst_n)" (2) "(~arst_n) 0,0"
@@ -754,7 +754,7 @@ Block 10 "2670421632" "pro_read_intf_rm_lc_state_write_lock = efuse_guard.entry_
 
 CHECKSUM: "171941408 446195242"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:378 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:747), efuse_guard (:949) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:296). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_shadow_regs.sv:229-232 (SMC preload) and :755-760 (SMC APB response reset) do not execute here. NOT waived: the SEP preload statement at :221-225 and the LC_STATE access arm at :728-752."
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:378 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:747), efuse_guard (:949) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:296). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_shadow_regs.sv:229-232 (SMC preload) and :755-760 (SMC APB response reset) do not execute here. NOT waived: the SEP preload statement at :238-242 and the LC_STATE access arm at :659-752."
 Block 18 "3048384116" "if (((sim_skip_fuse_sense == 1'b1) && $value$plusargs(\"smc_shadow_reg_preload=%s\", smc_shadow_reg_preload)))"
 Block 155 "4129704973" "apb_resp_from_ac.pready <= 1'b0;"
 

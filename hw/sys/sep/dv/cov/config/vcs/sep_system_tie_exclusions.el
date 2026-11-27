@@ -240,7 +240,7 @@ Toggle slv_req_i.aw.addr "logic slv_req_i.aw.addr[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_lsu_local_alias_remap
-ANNOTATION: "SEP-CPU-LSU-TIED: slv_req_i is lsu_axi_req_raw (sep_cpu.sv:524), which only the VeeR LSU drives. el2_lsu_bus_buffer.sv:886-887 and :903-904 tie qos 0 and lock 0; sep_cpu.sv:497-499 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:545) and :565 AWATOP to 0. NOT waived: every mst_req_o field, because mst_req_o is lsu_axi_req (sep_cpu.sv:526), which the TB forces in a no_cpu leaf (hw/sys/sep/dv/tb/tb_top.sv:1081); and the slv_req_i prot, len, burst and wlast."
+ANNOTATION: "SEP-CPU-LSU-TIED: slv_req_i is lsu_axi_req_raw (sep_cpu.sv:524), which only the VeeR LSU drives. el2_lsu_bus_buffer.sv:886-887 and :903-904 tie qos 0 and lock 0; sep_cpu.sv:497-499 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:545) and :565 AWATOP to 0. NOT waived: every mst_req_o field, because mst_req_o is lsu_axi_req (sep_cpu.sv:526), which the TB forces in a no_cpu leaf (hw/sys/sep/dv/tb/tb_top.sv:1177); and the slv_req_i prot, len, burst and wlast."
 Toggle slv_req_i.aw.qos "logic slv_req_i.aw.qos[3:0]"
 Toggle slv_req_i.aw.lock "logic slv_req_i.aw.lock"
 Toggle slv_req_i.aw.user "logic slv_req_i.aw.user[11:0]"
@@ -580,7 +580,7 @@ Toggle tl_d_o.d_opcode [2:1] "logic tl_d_o.d_opcode[2:0]"
 
 CHECKSUM: "3519459534 3972236298"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
-ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1205). host_tl_h_i comes from tlul_to_axi_lite.sv:151 and :262,264 (sep_dma_wrap.sv:266): d_param and d_sink 0, d_opcode ACCESS_ACK or ACCESS_ACK_DATA (d_opcode[2:1] 0). The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the same fields to the same 0. NOT waived: address, data, mask, d_error, the response echo fields d_source and d_size, and the integrity fields."
+ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1206). host_tl_h_i comes from tlul_to_axi_lite.sv:151 and :262,264 (sep_dma_wrap.sv:266): d_param and d_sink 0, d_opcode ACCESS_ACK or ACCESS_ACK_DATA (d_opcode[2:1] 0). The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the same fields to the same 0. NOT waived: address, data, mask, d_error, the response echo fields d_source and d_size, and the integrity fields."
 Toggle host_tl_h_o.a_user.instr_type "logic host_tl_h_o.a_user.instr_type[3:0]"
 Toggle host_tl_h_o.a_user.rsvd "logic host_tl_h_o.a_user.rsvd[9:0]"
 Toggle host_tl_h_o.a_address [1:0] "logic host_tl_h_o.a_address[31:0]"

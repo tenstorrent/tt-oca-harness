@@ -294,7 +294,7 @@ SMU_SIZE_FIELD = SEP_CPU_CTRL.field_mask("SMU_REGION_SIZE", "size")
 # The moved SMU pair: base and size are software fields (sw = rw,
 # hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:208-224). The window
 # sits above the SMC aperture of the SMC memory-model bench, 0x4000_0000 +
-# 16 MiB (hw/sys/sep/dv/tb/tb_top.sv:660-661), and below the reset SMU pair.
+# 16 MiB (hw/sys/sep/dv/tb/tb_top.sv:672-673), and below the reset SMU pair.
 SMU_MOVED_BASE = 0x4100_0000
 SMU_MOVED_SIZE = 0x0100_0000
 # A second moved pair, drawn on its own seeded stream so the other draws keep

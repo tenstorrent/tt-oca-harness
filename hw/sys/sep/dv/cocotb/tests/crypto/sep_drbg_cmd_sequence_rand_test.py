@@ -58,7 +58,7 @@ bit N - 1):
     triggered. Furthermore, CSRNG will respond with the appropriate error status
     response on the relevant interface." (theory_of_operation.md:50-51). "Several control fields
     use MuBi4 encodings, for which true is `0x6` and false is `0x9`."
-    (``doc/programmer/src/sep-programming.adoc``:390-391). Every command word of
+    (``doc/programmer/src/sep-programming.adoc``:398-399). Every command word of
     the leaf is built from these fields.
   * EDN boot words (edn.adoc:128-131, :142-145): ``BOOT_INS_CMD`` resets to
     0x901 and ``BOOT_GEN_CMD`` to 0xFFF003; "the hardware only supports a value

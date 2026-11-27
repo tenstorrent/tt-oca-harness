@@ -3,7 +3,7 @@
 """ESRC read-only registers, the TRNG-reset restore, the MODULE_ENABLE lock and INTR_STATUS.
 
 Contract (``hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc``, golden lines cited
-per check; ``hw/ip/entropy_source/doc/architecture.adoc:220-223``, Reset):
+per check; ``hw/ip/entropy_source/doc/architecture.adoc:225-228``, Reset):
   * A write of the complement of the value read to a read-only ESRC register leaves its
     field bits unchanged (access R, for example ``COMPONENT_ID``, :91-95) and answers
     OKAY or SLVERR; a DECERR means the write reached no block

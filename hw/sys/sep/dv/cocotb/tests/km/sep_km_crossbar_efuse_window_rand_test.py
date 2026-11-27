@@ -96,7 +96,7 @@ Checks (anchor):
                   ``architecture.adoc:404-406``, and program_done states that
                   the status of the program is in program_status,
                   ``hw/ip/efuse/regs/efuse_interface_ctrl.rdl:90``,
-                  ``efuse_interface_ctrl.adoc:50``); each KM eFuse write
+                  ``efuse_interface_ctrl.adoc:52``); each KM eFuse write
                   leaves on efuse_req_o in order, and each target shadow word
                   equals the model word (path readback, ``KM-BUS`` write
                   handshakes, ``efuse_read_cmd_req_valid_o``,

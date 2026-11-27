@@ -14,7 +14,7 @@ this order, over the CPU-LSU master on ``s_axi``:
   ``hw/sys/sep/doc/clk_rst.adoc``, Clock Distribution). Of two writes with no
   poll between them, separated by 8 and by a drawn 9 to 12 ``clk_ref_i`` periods,
   the second one holds (CHK-REFCNT-SPACED;
-  ``doc/programmer/src/sep-smc-common.adoc:516-518``).
+  ``doc/programmer/src/sep-smc-common.adoc:519-521``).
 * Leg T. The bark status and then the bite request follow the count reads that
   reach the bark and bite thresholds, neither earlier than threshold - A nor
   later than threshold + A + D_pass in count (D_pass: the most the count
@@ -534,7 +534,7 @@ CLKSTOP_RUN = 8  # clk_i cycles after the leg H restart before the first read
 # both miss the bound of 1 of CHK-WDT-CLKSTOP-COUNT.
 CLKSTOP_MIN_E = 4
 # Spaced reload pair of leg R. SPACED_MIN_REF: "separate consecutive writes by at least
-# eight reference-clock periods" (doc/programmer/src/sep-smc-common.adoc:516-518).
+# eight reference-clock periods" (doc/programmer/src/sep-smc-common.adoc:519-521).
 SPACED_MIN_REF = 8
 SPACED_MAX_REF = 12  # largest drawn spacing (environment choice)
 # clk_ref_i period of the pairs, in clk_i periods: longer than the issue-to-AW time of a
@@ -1122,7 +1122,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         """CHK-REFCNT-SPACED: of two writes d clk_ref_i edges apart, the second one holds.
 
         Spec: "separate consecutive writes by at least eight reference-clock
-        periods" (doc/programmer/src/sep-smc-common.adoc:516-518), and the readback
+        periods" (doc/programmer/src/sep-smc-common.adoc:519-521), and the readback
         is "at or just above the written value"
         (hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:103-106). V1 is written,
         then V2 with no read between, d edges after the B handshake of V1 (counted

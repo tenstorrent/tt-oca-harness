@@ -17,7 +17,7 @@ Contract (``vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
   * The sources that "signal a fatal alert" (CSRNG 20, 21, 22, 25, 26; EDN 20, 21,
     22) pulse the Crypto alert, vector bit 32 (csrng.adoc:381-396; edn.adoc:309-315;
     crypto.adoc:152; interrupts.adoc:185-186).
-  * A TRNG reset clears ``ERR_CODE`` (hw/ip/entropy_source/doc/architecture.adoc:219-223).
+  * A TRNG reset clears ``ERR_CODE`` (hw/ip/entropy_source/doc/architecture.adoc:224-228).
   * ``CTRL.CMD_FIFO_RST`` True clears both command FIFOs (edn.adoc:98-101).
   * ``RESEED_CMD`` and ``GENERATE_CMD`` take up to 13 words; a 14th sets
     ``SFIFO_RESCMD_ERR`` or ``SFIFO_GENCMD_ERR``, ``edn_fatal_err`` and a fatal
