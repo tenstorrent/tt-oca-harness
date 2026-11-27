@@ -25,15 +25,24 @@ from __future__ import annotations
 # (hierarchy path, pin class)
 GRADED_PINS: tuple[tuple[str, str], ...] = (
     ("u_dut.u_sep.u_boot_rom_axi_mux.test_i", "axi_cell"),
-    ("u_dut.u_sep.u_efuse_shim_demux.test_i", "axi_cell"),
     ("u_dut.u_sep.u_entropy_fifo.u_axi_to_axi_lite.test_i", "axi_cell"),
-    ("u_dut.u_sep.u_sep_crypto.u_efuse_shim_axi_mux.test_i", "axi_cell"),
-    ("u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_otp_demux.test_i", "axi_cell"),
     (
-        "u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_otp_err_slv.u_axi_err_slv.test_i",
+        "u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_addr_demux.u_err_slv.u_axi_err_slv.test_i",
         "axi_cell",
     ),
     ("u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_xbar.u_axi_lite_xbar.test_i", "axi_cell"),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_addr_demux.u_err_slv.u_axi_err_slv.test_i",
+        "axi_cell",
+    ),
     (
         "u_dut.u_sep.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_axi_to_axi_lite.test_i",
         "axi_cell",
@@ -51,11 +60,27 @@ GRADED_PINS: tuple[tuple[str, str], ...] = (
     ("u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_axi_demux.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_axi_err_slv.test_i", "axi_cell"),
     (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_csrng_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_csrng_addr_demux.u_err_slv.u_axi_err_slv.test_i",
+        "axi_cell",
+    ),
+    (
         "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_csrng_axi_to_axi_lite.test_i",
         "axi_cell",
     ),
     (
         "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_csrng_host_isolate.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_edn_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_crypto_axi_interconnect.u_edn_addr_demux.u_err_slv.u_axi_err_slv.test_i",
         "axi_cell",
     ),
     (
@@ -127,19 +152,20 @@ GRADED_PINS: tuple[tuple[str, str], ...] = (
         "axi_cell",
     ),
     (
-        "u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_axi_lite_demux_shim_or_interface_request.test_i",
-        "axi_cell",
-    ),
-    (
         "u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_axi_lite_mux.test_i",
         "axi_cell",
     ),
+    ("u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_shim_axi_lite_mux.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_km_efuse_axi_lite_mux.test_i", "axi_cell"),
     (
         "u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_prim_axi_lite_err_slv_jtag_access_ctrl.u_axi_err_slv.test_i",
         "axi_cell",
     ),
     ("u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_sep_efuse_axi_to_axi_lite.test_i", "axi_cell"),
+    (
+        "u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_sep_efuse_shim_axi_to_axi_lite.test_i",
+        "axi_cell",
+    ),
     (
         "u_dut.u_sep.u_sep_crypto.u_sep_lifecycle_ctrl.u_lifecycle_axi_to_axi_lite.test_i",
         "axi_cell",
@@ -149,9 +175,11 @@ GRADED_PINS: tuple[tuple[str, str], ...] = (
         "clock_gater",
     ),
     ("u_dut.u_sep.u_sep_dma_wrap.u_axi_to_axi_lite_reg.test_i", "axi_cell"),
-    ("u_dut.u_sep.u_sep_io.u_axi_lite_demux.test_i", "axi_cell"),
+    ("u_dut.u_sep.u_sep_dma_wrap.u_reg_addr_demux.u_demux.test_i", "axi_cell"),
+    ("u_dut.u_sep.u_sep_dma_wrap.u_reg_addr_demux.u_err_slv.u_axi_err_slv.test_i", "axi_cell"),
+    ("u_dut.u_sep.u_sep_io.u_addr_demux.u_demux.test_i", "axi_cell"),
+    ("u_dut.u_sep.u_sep_io.u_addr_demux.u_err_slv.u_axi_err_slv.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sep_io.u_axi_to_axi_lite.test_i", "axi_cell"),
-    ("u_dut.u_sep.u_sep_io.u_axil_err_slv.u_axi_err_slv.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sep_local_axi_xbar_wrapper.u_sep_local_axi_xbar.u_axi_xbar.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sep_reset_ctrl.u_axi_to_axi_lite.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sep_system_peripherals.u_axi_demux.test_i", "axi_cell"),
@@ -582,10 +610,6 @@ GRADED_PINS: tuple[tuple[str, str], ...] = (
         "axi_cell",
     ),
     (
-        "u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_err_slv.u_axi_err_slv.test_i",
-        "axi_cell",
-    ),
-    (
         "u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_inbound_filter_axil_demux.test_i",
         "axi_cell",
     ),
@@ -602,7 +626,11 @@ GRADED_PINS: tuple[tuple[str, str], ...] = (
         "axi_cell",
     ),
     (
-        "u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_system_csr_axil_demux.test_i",
+        "u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_system_csr_addr_demux.u_demux.test_i",
+        "axi_cell",
+    ),
+    (
+        "u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_system_csr_addr_demux.u_err_slv.u_axi_err_slv.test_i",
         "axi_cell",
     ),
     (
@@ -617,6 +645,8 @@ GRADED_PINS: tuple[tuple[str, str], ...] = (
         "u_dut.u_sep.u_sep_system_peripherals.u_sep_system_peripherals_xbar_wrapper.u_sep_system_peripherals_xbar.u_system_csr_a2l_1.test_i",
         "axi_cell",
     ),
+    ("u_dut.u_sep.u_sep_wdt_wrap.u_wdt_addr_demux.u_demux.test_i", "axi_cell"),
+    ("u_dut.u_sep.u_sep_wdt_wrap.u_wdt_addr_demux.u_err_slv.u_axi_err_slv.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_to_axi_lite.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sram_burst_demux.test_i", "axi_cell"),
     ("u_dut.u_sep.u_sram_burst_err_slv.test_i", "axi_cell"),

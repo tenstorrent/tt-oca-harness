@@ -983,9 +983,11 @@ static void req_ext(uint32_t step, uint32_t n) {
 
 // meigwclr race: the boundary source of the drawn bit b1 in edge mode. Each
 // attempt runs the same code from its "REQ race" line to its meigwclr write,
-// so the host times a one-clock pulse of the input against the write from the
-// attempt before. Attempt 0 has no pulse.
-#define N_RACE 4u
+// so the host times a one-clock pulse of the input against the write clock it
+// measures in attempt 1. Attempts 0 and 1 have no pulse. Attempt 0 enters the
+// loop from the code before it and can take a different number of clocks with
+// the code layout, so it is not timed.
+#define N_RACE 5u
 static void gwclr_race(void) {
     req_ext(4u, 1u);
     (void)wait_band(1u, 0u);
@@ -1375,7 +1377,7 @@ int main(void) {
     rec_hex("out3", aes_out[3]);
     rec_end();
     req_kv("win", "otp", 1u);
-    uint32_t otp = rd(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
+    uint32_t otp = rd(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
     wait_clk(g_p[P_SETTLE]);
     req_kv("win", "otp", 0u);
     req_kv("win", "lcc", 1u);

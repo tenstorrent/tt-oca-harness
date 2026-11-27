@@ -208,7 +208,7 @@ _M_RD_BUSY = _IC.field_mask("EFUSE_READ_CTRL", "read_busy")
 _M_RD_STATUS = _IC.field_mask("EFUSE_READ_CTRL", "read_status")
 _RD_DATA_ADDR = _IC.addr("EFUSE_READ_INTERFACE_READ_DATA")
 # One shadow word per 32-bit register of the MAP window.
-_N_WORDS = sym("SEP_EFUSE_MAP_REG_MAP_SIZE") // 4
+_N_WORDS = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_SIZE") // 4
 # READ commands of one sense: ST_READ issues a single READ command for all shadow
 # words (hw/sys/sep/doc/otp_fuse_controller.adoc:96).
 _SENSE_READ_CMDS = 1

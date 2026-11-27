@@ -154,10 +154,12 @@ _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 # The token whose SHA-256 digest tb_top binds as SEP_SEC_DISABLE_TOKEN (32 zero bytes).
 _SEC_DIS_TOKEN = 0
-_SEC_DIS_TOKEN_I = tuple(sym(f"EFUSE_MMR_SEC_DISABLE_TOKEN_I_{i}__REG_ADDR") for i in range(8))
-_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+_SEC_DIS_TOKEN_I = tuple(
+    sym(f"SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_{i}__REG_ADDR") for i in range(8)
+)
+_TOKEN_EOP = sym("SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_REG_ADDR")
 _EOP_SEC_DIS = EFUSE_MMR.field_mask("TOKEN_EOP", "secure_disable_token_go")
-_SEC_DIS_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
+_SEC_DIS_MATCH = sym("SEP_EFUSE_WRAP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 _MATCH_MASK = EFUSE_MMR.field_mask("TOKEN_MATCH", "token_match_status")
 _MATCH_LSB = EFUSE_MMR.field_lsb("TOKEN_MATCH", "token_match_status")
 

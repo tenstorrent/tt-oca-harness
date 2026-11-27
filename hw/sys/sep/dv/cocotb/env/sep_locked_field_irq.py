@@ -23,7 +23,7 @@ from sep_seeded_rng import SepSeededRng
 from sep_spec_tables import agg_from_pic
 
 IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
-# Read data of a shadow read that a lock blocks (otp_fuse_controller.adoc:112-114).
+# Read data of a shadow read that a lock blocks (otp_fuse_controller.adoc:112-115).
 # No staged pattern may equal it, so a read-lock readback that returns it also
 # differs from the stored field.
 DENY_DATA_MARKER = 0xBADCAB1E
@@ -41,7 +41,7 @@ def _spare_count() -> int:
     fields = sorted(
         int(m.group(1))
         for n in dir(sep_reg)
-        if (m := re.fullmatch(r"SEP_EFUSE_MAP_SPARE(\d+)_REG_OFFSET", n))
+        if (m := re.fullmatch(r"SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE(\d+)_REG_OFFSET", n))
     )
     locks = sorted(
         int(m.group(1))
@@ -57,7 +57,7 @@ def _spare_count() -> int:
 
 
 SPARE_COUNT = _spare_count()
-_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
+_EFUSE_MAP = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP")
 # The 96-bit lock vector is LOCKS followed by LOCKS_SPARE (otp_fuse_controller.adoc),
 # so a LOCKS_SPARE bit sits above every LOCKS bit.
 _LOCKS_SPARE_VECTOR_LSB = 8 * (_EFUSE_MAP.offset("LOCKS_SPARE") - _EFUSE_MAP.offset("LOCKS"))
@@ -215,7 +215,7 @@ class SepLockedFieldIrqCfg:
 def _selftest() -> None:
     # otp_fuse_controller.adoc: nine spares, slots 32-40.
     assert SPARE_COUNT == 9, f"SPARE_COUNT={SPARE_COUNT}, spec gives SPARE0..SPARE8"
-    # otp_fuse_controller.adoc:214-215: spare k (slot 32 + k) has its write lock at
+    # otp_fuse_controller.adoc:215-216: spare k (slot 32 + k) has its write lock at
     # LOCKS_SPARE bit 2k and its read lock at bit 2k + 1, above the 64 LOCKS bits.
     for k in range(SPARE_COUNT):
         assert spare_write_lock_bit(k) == 64 + 2 * k, f"spare {k} write lock"

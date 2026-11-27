@@ -173,6 +173,19 @@ these reset boundaries.
 
 ==== Scratch Register Reference
 
+The two banks share one 4 KiB page, placed by the wrapper below. The section
+that follows defines each register and its fields.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_scratch_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_scratch_wrap.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
 ifdef::backend-html5[]
 ++++
 include::partial$sep/regs/gen/html/blocks/sep_scratch.html[]

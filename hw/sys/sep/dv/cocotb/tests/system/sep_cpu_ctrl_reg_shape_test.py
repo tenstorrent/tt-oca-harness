@@ -32,8 +32,8 @@ Checkers:
   CHK-NMI-DEFAULT ``SEP_NMI_VEC[31:0]`` on the first read after reset, before
                   any write, equals the RDL reset (``nmi_vec[31:1] =
                   0x6000_0080``, vector 0xC000_0100, and ``rsvd`` 0;
-                  ``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:276``,
-                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:342-347``).
+                  ``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:283``,
+                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:349-354``).
   CHK-NMI-LOCK    ``SEP_NMI_VEC[31:0]`` after each of the 8 locked writes
                   (bits 31:1 the vector before the write, bit 0 zero), and
                   ``lock`` after each of the 4 lock writes.
@@ -43,7 +43,7 @@ Checkers:
   CHK-CC-TIMEOUT-INTR ``TIMEOUT_INTERRUPT[0]`` after the 16 timeout writes
                   equals its RDL reset 0 (``R``, "timeout interrupt status not
                   yet implemented";
-                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:114``).
+                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:116``).
   Each graded readback and response prints its own ``CHK-<name> PASS`` line.
   CHK-SCR-SHAPE   the low word of each written scratch register (64-bit
                   readback, and ``scratch_cold_probe_o`` for the cold bank);
@@ -103,7 +103,7 @@ SENSE_REGS = {
         SEP_CPU_CTRL.field_mask("SMC_FUSE_SENSE_STATUS", "smc_fuse_sense_done"),
     ),
 }
-SCR_META = RegBlock("SEP_SCRATCH_COLD")
+SCR_META = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD")
 SCR_FIELD = SCR_META.field_mask("SCRATCH_0_", "data")
 SCR_RESET = SCR_META.reset("SCRATCH_0_") & SCR_FIELD
 BANKS = {"cold": SCRATCH_COLD_ADDRS, "warm": SCRATCH_WARM_ADDRS}

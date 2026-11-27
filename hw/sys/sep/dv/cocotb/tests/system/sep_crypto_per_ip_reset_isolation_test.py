@@ -43,7 +43,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     whole new CBC message of M blocks equals its NIST SP
                     800-38A golden (upstream aes/doc/programmers_guide.md,
                     Clear upon Reset and Initialization;
-                    ``hw/sys/sep/doc/reset_controller.adoc:98``). Controls:
+                    ``hw/sys/sep/doc/reset_controller.adoc:97``). Controls:
                     CTRL-AES-MIDMSG-PREFIX, the k blocks before the reset equal
                     the CBC golden prefix; CTRL-AES-MIDMSG-DISTINCT, the new
                     golden differs from CBC under the old key, the old IV or
@@ -391,7 +391,7 @@ KMAC_STATUS_RDL_MASK = sum(f.mask for f in _KMAC_STATUS_FIELDS if f.reset is not
 KMAC_STATUS_RDL_RESET = sum(f.reset << f.lsb for f in _KMAC_STATUS_FIELDS if f.reset is not None)
 KMAC_STATUS_UNSTATED_MASK = KMAC_STATUS_FIELD_MASK & ~KMAC_STATUS_RDL_MASK
 # Read data of a new transaction on an isolated path: SLVERR with 0x1501A7ED in
-# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:139-141). No generated
+# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:138-140). No generated
 # constant holds it.
 ISO_DATA = 0x1501_A7ED
 KMAC_STATUS_RESERVED_MASK = ~KMAC_STATUS_FIELD_MASK & 0xFFFF_FFFF
@@ -486,7 +486,7 @@ _EDN_OTBN_RND = 2
 # Isolate-complete bits (``crypto_isolated_probe_o``, bench stage order) of the
 # host and Key Manager paths of each engine whose EDN endpoints a software
 # reset cancels. The cancel runs from the cycle all of them read 1 until the
-# reset releases (hw/sys/sep/doc/reset_controller.adoc:161-163).
+# reset releases (hw/sys/sep/doc/reset_controller.adoc:160-162).
 _CANCEL_ISO_MASK = {
     ENG_AES.rst_bit: (1 << ISO_BENCH.index("host_aes")) | (1 << ISO_BENCH.index("km_aes")),
     ENG_KMAC.rst_bit: (1 << ISO_BENCH.index("host_kmac")) | (1 << ISO_BENCH.index("km_kmac")),
@@ -674,9 +674,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         The TRNG domain isolates the ESRC, CSRNG and EDN host paths, and a new
         transaction on an isolated path completes SLVERR with read data
-        0x1501A7ED (hw/sys/sep/doc/reset_controller.adoc:139-141, :155). The
+        0x1501A7ED (hw/sys/sep/doc/reset_controller.adoc:138-140, :154). The
         reads go out while the TRNG gated reset is low, which follows the
-        isolated report (:143); the probe is read again after the three reads,
+        isolated report (:142); the probe is read again after the three reads,
         so a read that was not inside the hold fails.
         """
         got = []
@@ -1250,7 +1250,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
     async def _grade_host_drain(self, rec: dict, *, name: str, chk: str) -> None:
         """Grade the drain reads that went out with the reset request.
 
-        Golden: ``hw/sys/sep/doc/reset_controller.adoc:139-142``. Once isolation
+        Golden: ``hw/sys/sep/doc/reset_controller.adoc:138-141``. Once isolation
         is requested, new transactions complete with SLVERR and read data
         0x1501A7ED in each 32-bit word; the isolate unit drains the
         transactions it accepted before that. Each read is one aligned 32-bit
@@ -1268,7 +1268,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         A read accepted on ``s_axi`` before the request passes ``u_axi_demux``
         and, on AXI-Lite paths, the bus conversion before the isolate stage
-        (``reset_controller.adoc:121-124``). No spec states where the stage
+        (``reset_controller.adoc:120-123``). No spec states where the stage
         accepts a read, and an ARVALID already pending at the stage when the
         request rises cannot be withdrawn, so such a read may complete OKAY or
         SLVERR. Its first ARVALID clock and its AR handshake at the stage
@@ -1380,7 +1380,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         The arrival AR is accepted after the isolate request rose, so the
         isolate stage sees it as a new transaction on an isolated path: it
         completes with SLVERR and read data 0x1501A7ED in each 32-bit word
-        (hw/sys/sep/doc/reset_controller.adoc:139-141). The read is one aligned
+        (hw/sys/sep/doc/reset_controller.adoc:138-140). The read is one aligned
         32-bit word.
         """
         self._check_arrival_in_window(rec, name=name, chk=chk)
@@ -1662,7 +1662,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         """The cancelled KMAC endpoint gives no acknowledge on its reset edge.
 
         The spec states the cancel, not the bus value of a cancelled endpoint
-        (hw/sys/sep/doc/reset_controller.adoc:161-165), so ``edn_bus`` and
+        (hw/sys/sep/doc/reset_controller.adoc:160-164), so ``edn_bus`` and
         ``edn_fips`` are logged as ``INFO-EDN-CANCEL-BUS`` and not graded.
         """
         if snap["ack"]:
@@ -1744,7 +1744,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         change the prior data by popping the data FIFO",
         vendor/lowRISC/opentitan/upstream/hw/ip/edn/doc/theory_of_operation.md:152-160).
         A KMAC software reset leaves the other clients unaffected
-        (hw/sys/sep/doc/reset_controller.adoc:161-165). So the last URND
+        (hw/sys/sep/doc/reset_controller.adoc:160-164). So the last URND
         acknowledge before the edge must carry ``word``: a different word
         there means the edge cleared a word that URND never received. Then
         the next URND acknowledge after the edge must come within
@@ -2067,7 +2067,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         the word URND is finally acknowledged with.
 
         A software reset cancels only that engine's endpoints, and other
-        clients are unaffected (hw/sys/sep/doc/reset_controller.adoc:161-165),
+        clients are unaffected (hw/sys/sep/doc/reset_controller.adoc:160-164),
         so a sibling word that changes on the KMAC reset edge breaks the
         contract.
 
@@ -2249,7 +2249,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "and the previous cycle had not acknowledged that word. "
                     "This breaks the contract that a software reset leaves "
                     "other EDN clients unaffected "
-                    "(hw/sys/sep/doc/reset_controller.adoc:161-165)."
+                    "(hw/sys/sep/doc/reset_controller.adoc:160-164)."
                 )
                 self.logger.error(failures[-1])
             else:
@@ -2335,7 +2335,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         AXI master itself, so ``delay`` walks the phase of the cancel start.
 
         The cancel runs from the first cycle all of the engine's paths report
-        isolated until its reset releases (hw/sys/sep/doc/reset_controller.adoc:161-163).
+        isolated until its reset releases (hw/sys/sep/doc/reset_controller.adoc:160-162).
         No endpoint in ``bits`` may be acknowledged on any cycle of that window.
         A word an endpoint held with ``edn_ack`` low on the cycle before the
         cancel start, and that no client was acknowledged with before, is a
@@ -2801,13 +2801,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         A word committed to an endpoint and not yet acknowledged on the cycle
         before its cancel started must never be acknowledged to any client
-        afterwards (hw/sys/sep/doc/reset_controller.adoc:164-165). At least one
+        afterwards (hw/sys/sep/doc/reset_controller.adoc:163-164). At least one
         such word is required, so the discard is graded.
 
         The words the endpoints held at each reset request are logged as
         ``INFO-EDN-HELD-AT-REQUEST``, with any acknowledge of the same word
         after the request. EDN keeps serving the engine while it drains
-        (reset_controller.adoc:163), and no text states whether a word on the
+        (reset_controller.adoc:162), and no text states whether a word on the
         endpoint bus before the paths isolate is committed, so they are not
         graded.
         """

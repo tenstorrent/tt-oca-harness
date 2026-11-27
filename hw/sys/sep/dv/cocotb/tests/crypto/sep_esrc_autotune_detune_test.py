@@ -23,7 +23,7 @@ RING_OSC_TUNE):
     software changes the division only while the generator is disabled
     (architecture.adoc:75; entropy_source.rdl:674). The programming guide
     disables ``RING_OSC_ENABLE.ENABLE`` while software programs the
-    entropy-source policy (``doc/programmer/src/sep-programming.adoc:409``), so a
+    entropy-source policy (``doc/programmer/src/sep-programming.adoc:417``), so a
     divide written with that field clear and ``CTRL.MODULE_ENABLE`` set takes
     the stated ratio once the field is restored.
 

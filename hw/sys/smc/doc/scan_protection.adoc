@@ -82,7 +82,7 @@ regenerated:
 ----
 localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
     0: efuse_pkg::make_shadow_word_range(
-        efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR),
+        efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR),
         HarnessLockFieldBits + efuse_pkg::SupplementaryLockBits,
         NumFuseWordWidth),
     default: '0

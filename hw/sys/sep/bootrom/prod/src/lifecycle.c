@@ -26,7 +26,7 @@
 // ---------------------------------------------------------------------------
 
 uint32_t lc_read_state(void) {
-    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
+    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
     // The eFuse field is 8 bits, differentially encoded by the RTL; the low
     // nibble carries the decoded lifecycle state.
     return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &
@@ -202,7 +202,7 @@ bool sboot_dis_disabled(void) {
 }
 
 void rom_sboot_dis_policy(void) {
-    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
+    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
 
     // rsvd[31:1] is hw=rw in the RDL: driven from the fuse array rather than
     // tied off, so it can read non-zero on a real part. On a healthy one it
@@ -243,13 +243,13 @@ void rom_chiplet_dbg_policy(uint32_t lc_state) {
     // A read of a read-locked field completes with a bus error and a sentinel
     // instead of its value, so a lock on either vector means the ROM cannot see
     // that debug is open.
-    uint32_t locks = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR);
+    uint32_t locks = mmio_read32(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR);
     bool disabled = (locks & (SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bm |
                               SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bm)) != 0u;
     if (!disabled) {
         // CHIPLET_DBG is in the low word of each 64-bit vector.
-        uint32_t sip = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR);
-        uint32_t sys = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR);
+        uint32_t sip = mmio_read32(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR);
+        uint32_t sys = mmio_read32(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR);
         disabled = ((sip | sys) & SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_bm) != 0u;
     }
     g_chiplet_dbg_open = !disabled;

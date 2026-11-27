@@ -67,7 +67,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   "Indicates the number of half sck cycles, CSNTRAIL+1, to leave between last
   edge of sck and the rising edge of cs_n", CSNIDLE "the minimum number of sck
   half-cycles to hold cs_n high between commands"
-  (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc:165-175``,
+  (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc:167-177``,
   CONFIGOPTS). The OpenTitan theory of operation states the three as minimum
   bounds: "These settings are all minimum bounds, and delays in the FSM
   implementation may create more margin in each of these timing constraints."
@@ -81,7 +81,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   (each beat one core clock after its sample edge) reads the seeded bytes with
   FULLCYC = 1: the host samples a full cycle after its shift edge (RXDATA
   words read in the ByteOrder = 1 order). Source
-  ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:373-380``
+  ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:375-382``
   (CONFIGOPTS.FULLCYC): "Rather than sampling the SD bus a half cycle after
   shifting out data, the data is sampled a full cycle after shifting data out.
   ... If CPHA = 1, data is shifted and sampled with the trailing edge, also
@@ -96,7 +96,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   host uses. Control: the same frame with FULLCYC = 0 reads every beat one
   beat late (``late_sample_edge_bytes``: beat k reads beat k-1, beat 0 reads
   the lane level 0 before the first late change), else CTRL-MISSING; the
-  FULLCYC = 0 sample point is the sample edge (``spi_host.hjson:374-375``,
+  FULLCYC = 0 sample point is the sample edge (``spi_host.hjson:376-377``,
   "sampling the SD bus a half cycle after shifting out data"). The wire
   monitor is stopped for this leg (it samples at the sample edge); RXDATA is
   the graded side.

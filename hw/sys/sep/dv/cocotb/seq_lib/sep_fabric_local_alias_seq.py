@@ -20,8 +20,8 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import (
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0,
     SEP_CPU_CTRL,
+    SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0,
     indexed_block_count,
     sym,
 )
@@ -40,30 +40,30 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     OUTFILT_BASE,
 )
 
-# `local_master_alias_remap_ctrl_wrap` holds NUM_REGIONS (16); the count comes from the export. The
-# datapath test selects the upper half so the remap debug index's MSB is exercised.
-N_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP")
+# `sep_remap_wrap.local_master_alias_remap` holds NUM_REGIONS (16); the count comes from the
+# export. The datapath test selects the upper half so the remap debug index's MSB is exercised.
+N_REGIONS = indexed_block_count("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP")
 # Remap geometry from the REGION_ATTRS ``offset`` field and the START/END
 # address fields of alias_remap.rdl: the addend covers [ADDR_TOP-1:IDX_START].
-OFFSET_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_mask(
+OFFSET_MASK = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "offset"
 )
-IDX_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_lsb(
+IDX_START = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.field_lsb(
     "REGION_REGION_ATTRS", "offset"
 )
-ADDR_TOP = IDX_START + LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_width(
+ADDR_TOP = IDX_START + SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.field_width(
     "REGION_REGION_ATTRS", "offset"
 )
 ADDEND_MASK = (1 << (ADDR_TOP - IDX_START)) - 1
-START_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_mask(
+START_MASK = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.field_mask(
     "REGION_REGION_START", "start_addr"
 )
-END_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_mask(
+END_MASK = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.field_mask(
     "REGION_REGION_END", "end_addr"
 )
 PAGE = 1 << IDX_START
 VALID_HI = (
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_mask("REGION_REGION_ATTRS", "valid")
+    SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0.field_mask("REGION_REGION_ATTRS", "valid")
     >> 32
 )
 SRC_PAGES = (OUTFILT_BASE & ~(PAGE - 1), INFILT_BASE & ~(PAGE - 1))
@@ -177,7 +177,7 @@ def _selftest() -> None:
     sib = SepLocalAliasCfg(1, sibling_of=cfg)
     assert remapped_addr(sib.offset, sib.access_addr) == DEST_ADDR
     assert sib.region != cfg.region and sib.src_page != cfg.src_page
-    _ = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
+    _ = sym("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
 
 
 _selftest()

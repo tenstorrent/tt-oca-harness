@@ -27,7 +27,7 @@ import logging
 from cocotb.triggers import ClockCycles
 
 # The register the ROM's early checks read (DFX_CTRL_STATUS_SMU_REG_ADDR in smc_rom_defs.h).
-DFX_CTRL_STATUS_SMU = 0xC000_B800
+DFX_CTRL_STATUS_SMU = 0xC001_7000
 # dfx_ctrl_status.rdl fields of that register.
 DFX_FIELDS = {
     "mem_repair_done": 0,
@@ -128,12 +128,14 @@ class SmcDftStatusDriver:
     async def read_smc_config(self) -> int:
         """The instance's SMC_CONFIG eFuse shadow, read once fuse sensing completes."""
         # smc_occp_dual_defs, which every caller imports first, puts smc_reg on sys.path.
-        from smc_reg import SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+        from smc_reg import SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
 
         done = getattr(self.harness.dut, f"{self.instance}_fuse_sense_done_o")
         for _ in range(FUSE_SENSE_WAIT_CYCLES):
             if int(done.value):
-                return await self.csr.read("SMC_CONFIG", SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR)
+                return await self.csr.read(
+                    "SMC_CONFIG", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR
+                )
             await ClockCycles(self.clk, 1)
         raise AssertionError(
             f"{self.instance} fuse_sense_done never rose within {FUSE_SENSE_WAIT_CYCLES} cycles"

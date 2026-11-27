@@ -4,7 +4,9 @@
 
 // Wrap the OpenTitan AES core with an AXI-Lite CSR bridge and a Key Manager key CSR block.
 //
-// axi_lite_to_tlul bridges the 32-bit AXI-Lite CSR interface onto the AES TL-UL port. The
+// axi_lite_to_tlul bridges the 32-bit AXI-Lite CSR interface onto the AES TL-UL port. Ahead of
+// the bridge a demux passes the 2^aes_reg_pkg::BlockAw bytes the AES decodes and answers the
+// rest of the AES page with SLVERR and read data 0xBADCAB1E. The
 // AXI4-Lite key interface terminates in the generated aes_wrapper_key_reg block, whose
 // two key shares and valid bit drive the AES keymgr_key_i sideload port.
 // EDN supplies entropy for PRNG reseeding. Two alerts leave the block: index 0 is
@@ -21,6 +23,7 @@ module aes_wrapper (
   input logic clk_i,                          // System clock.
   input logic rst_ni,                         // Active-low reset; also drives the AES
                                               // shadow-register reset.
+  input logic test_en_i,                      // DFT test-enable (scan-enable).
 
   input  sep_pkg::sep_32_32_axil_req_t  aes_axil_req_i,  // AES CSR request, bridged to the AES
                                                          // TL-UL port.
@@ -57,6 +60,37 @@ module aes_wrapper (
   // AXI-Lite to TL-UL conversion
   // ============================================================================
 
+  localparam logic [31:0] RegWindowBase[1] = '{32'(sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR)};
+  localparam logic [31:0] RegWindowSize[1] = '{32'(1) << aes_reg_pkg::BlockAw};
+
+  sep_pkg::sep_32_32_axil_req_t  aes_reg_axil_req;
+  sep_pkg::sep_32_32_axil_resp_t aes_reg_axil_resp;
+
+  prim_axil_addr_demux #(
+    .AXI_ADDR_WIDTH (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .NUM_RANGES     (1),
+    .RANGE_BASE     (RegWindowBase),
+    .RANGE_SIZE     (RegWindowSize),
+    .MISS_RESP      (axi_pkg::RESP_SLVERR),
+    .MAX_TRANS      (2),
+    .aw_chan_t      (sep_pkg::sep_32_32_axil_aw_chan_t),
+    .w_chan_t       (sep_pkg::sep_32_32_axil_w_chan_t),
+    .b_chan_t       (sep_pkg::sep_32_32_axil_b_chan_t),
+    .ar_chan_t      (sep_pkg::sep_32_32_axil_ar_chan_t),
+    .r_chan_t       (sep_pkg::sep_32_32_axil_r_chan_t),
+    .axil_req_t     (sep_pkg::sep_32_32_axil_req_t),
+    .axil_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
+  ) u_aes_addr_demux (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .test_en_i   (test_en_i),
+    .slv_req_i   (aes_axil_req_i),
+    .slv_resp_o  (aes_axil_resp_o),
+    .mst_reqs_o  (aes_reg_axil_req),
+    .mst_resps_i (aes_reg_axil_resp)
+  );
+
   tlul_pkg::tl_h2d_t tl_req;
   tlul_pkg::tl_d2h_t tl_resp;
 
@@ -70,8 +104,8 @@ module aes_wrapper (
   ) u_aes_axi_lite_to_tlul (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
-    .axi_lite_req_i  (aes_axil_req_i),
-    .axi_lite_rsp_o  (aes_axil_resp_o),
+    .axi_lite_req_i  (aes_reg_axil_req),
+    .axi_lite_rsp_o  (aes_reg_axil_resp),
     .tl_o            (tl_req),
     .tl_i            (tl_resp),
     .err_o           (bus_err_o),

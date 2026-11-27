@@ -37,9 +37,9 @@ seq_lib.smu_lifecycle_table gives ``smc_jtag2axi`` disabled, and then:
   programmed, and the eFuse bank-control shim CSR must read its RDL reset.
 
 The SEP eFuse bank-control leg is the last step.
-hw/sys/sep/doc/otp_fuse_controller.adoc:43-45 states that "Addresses from the
-MAP window to the end of the last register window go through the AXI-Lite to
-APB bridge, and all others go to the shim's bank control registers", and
+hw/sys/sep/doc/otp_fuse_controller.adoc:41-44 states that the wrapper decodes a
+JTAG access to "the shim CSR window to the shim's bank control registers
+through a multiplexer shared with the functional shim port", and
 hw/sys/smu/doc/port_table.adoc:185 lists ``sep_efuse_bank_ctrl_req_o`` as the
 "SEP eFuse bank control AXI-Lite request passthrough" on the SMU boundary. So a
 SEP OTP JTAG2AXI access to the shim window is the one stimulus on this bench
@@ -148,9 +148,13 @@ _SHIM_CTRL_H = (
 )
 
 #: SEP eFuse MAP LC_STATE, the word the shadow image programs.
-SEP_EFUSE_LC_STATE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
+SEP_EFUSE_LC_STATE = c_header_u32(
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR"
+)
 #: SEP eFuse MAP SPARE0, a writable word no other consumer reads.
-SEP_EFUSE_SPARE0 = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR")
+SEP_EFUSE_SPARE0 = c_header_u32(
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR"
+)
 #: eFuse bank-control shim CSR, outside the MAP/MMR window and therefore on
 #: the SMU boundary port.
 SEP_EFUSE_SHIM_INIT_TIME = c_header_u32(
@@ -161,7 +165,7 @@ SEP_EFUSE_SHIM_INIT_TIME_RESET = c_header_u32(
 )
 
 #: SMC eFuse MAP SPARE[0], the word smu_dtp_otp_smc_map_rw_test also uses.
-SMC_EFUSE_SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
+SMC_EFUSE_SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 
 #: SMC CPU_CTRL scratch0, SMC-local. A benign always-mapped fabric target; the
 #: point is whether the bridge launches, not what it returns.
@@ -457,9 +461,9 @@ class SmuOtpBridgesUnderDbgDisableSeq:
             evidence="CHK-OTP-SEP-RW-WHILE-BLOCKED",
         )
 
-        # The shim window: past the last register window, so it goes to the
-        # shim's bank control registers (otp_fuse_controller.adoc:43-45) on the
-        # passthrough port that crosses the SMU boundary (port_table.adoc:185).
+        # The wrapper decodes the shim CSR window to the shim's bank control
+        # registers (otp_fuse_controller.adoc:41-44) on the passthrough port
+        # that crosses the SMU boundary (port_table.adoc:185).
         shim_reset = await self._sep_otp_rd(jtag, SEP_EFUSE_SHIM_INIT_TIME, "SEP_SHIM_INIT_TIME")
         sb.expect_eq(
             "eFuse bank-control shim CSR reads its RDL reset over the SEP OTP bridge",

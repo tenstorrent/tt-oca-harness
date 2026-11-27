@@ -9,8 +9,8 @@ test rebuilds the same plan from the same seed for its golden.
 
 Contract (spec only):
 ``hw/ip/key_manager/regs/gen/adoc/memory_map.adoc`` (decode table and notes;
-note [2]: the range 0x11600 to 0x11FFF is inside the eFuse window and answers
-SLVERR with 0xBADCAB1E); ``hw/ip/key_manager/doc/index.adoc`` "Memory Map";
+the eFuse control, token and shadow rows tile the eFuse window 0x11000 to
+0x11FFF); ``hw/ip/key_manager/doc/index.adoc`` "Memory Map";
 ``hw/ip/key_manager/doc/architecture.adoc`` "OTP Inputs and Readout" and the
 VROM note under the "Key Manager executable regions" table (without
 ``OCAH_KM_VROM``, which SEP DV does not define, the VROM window
@@ -32,9 +32,12 @@ Checks (anchor):
                   a store of the first word and a store of one drawn word
                   answer DECERR (response class only) (POKE result +
                   IRQ_STATUS)
-  CHK-XBAR-EFUSE  eFuse window offsets outside its three maps answer SLVERR,
-                  data 0xBADCAB1E, by read and write, and reach no efuse_req_o
-                  handshake; each access of the watched replay answers SLVERR
+  CHK-XBAR-EFUSE  eFuse window offsets past the registers of its three maps
+                  answer SLVERR with the read data of their row (0x0 past the
+                  control and token registers, 0xBADCAB1E past the shadow
+                  registers), by read and write; in a watched replay each
+                  access gets the same response and makes one efuse_req_o
+                  handshake with the same address bits [11:0], in order
                   (POKE result + IRQ_STATUS + KM-BUS)
   CHK-XBAR-SIZE   ROM top, SRAM base and top, the SRAM top store and the first
                   and last decoded word of each row answer clean (POKE result)
@@ -59,7 +62,7 @@ Checks (anchor):
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
                   register (KM readback vs host readback, staged fuse model);
                   each KM read of the read-locked field completes with SLVERR
-                  and data 0xBADCAB1E (otp_fuse_controller.adoc:112-114)
+                  and data 0xBADCAB1E (otp_fuse_controller.adoc:112-115)
   CHK-EFW-RD-TM   the same with ``secure_tm_o`` = 1; register reads keep their
                   normal access controls (``test_mode.adoc`` "Protection While
                   Active"), so each readable shadow draw equals the model and
@@ -131,8 +134,8 @@ Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
 
 Write-locked shadow word, after the boot-one checks and before the boot-two
-re-sense (``otp_fuse_controller.adoc:110-114``; ``hw/ip/key_manager/doc/
-architecture.adoc:924-928``, the KM eFuse path honors the native per-field
+re-sense (``otp_fuse_controller.adoc:110-115``; ``hw/ip/key_manager/doc/
+architecture.adoc:922-926``, the KM eFuse path honors the native per-field
 locks): ``CHK-EFW-WLOCK-SHADOW`` grades that a KM write of a drawn value, which
 differs from the staged word in a used bit of the field (it sets a used bit
 that is 0, or clears a used bit when every used bit is 1), to a word of the
@@ -140,7 +143,7 @@ write-locked field completes with SLVERR, and that the host readback (class OKAY
 ``efuse_shadow_probe_o`` of that word equal the staged word.
 ``CTRL-EFW-WLOCK-SHADOW`` is its control: the same KM write to a word of an
 unlocked spare field, which is not a plan target (SW writable,
-``otp_fuse_controller.adoc:385-401,471-474``), completes OKAY, and the host
+``otp_fuse_controller.adoc:384-400,470-473``), completes OKAY, and the host
 readback (class OKAY) and the probe equal the written value; a mismatch prints
 ``CTRL-MISSING EFW-WLOCK-SHADOW`` and fails the leaf. ``CTRL-EFW-WLOCK-LOCKABLE``
 is its second control: a KM write of the same rule as the write-locked write
@@ -148,7 +151,7 @@ is its second control: a KM write of the same rule as the write-locked write
 which is not a spare and not a plan target, and whose used bits an unlocked write
 can change, completes OKAY, and the host readback (class OKAY) and the probe
 equal the written value for a writable field and the staged value OR the
-written value for a set-only field (``otp_fuse_controller.adoc:208,261,274,279,
+written value for a set-only field (``otp_fuse_controller.adoc:209,262,275,280,
 471-474``); a mismatch prints ``CTRL-MISSING EFW-WLOCK-LOCKABLE`` and fails the
 leaf. Both controls run before the check.
 """
@@ -255,11 +258,11 @@ _KEY_PORT = {
     "main:abr_wrapper_key": 4,
 }
 _SHARE_ZERO_CONTRACT = (
-    "key_manager/doc/architecture.adoc:290-291(Key_Delivery),"
+    "key_manager/doc/architecture.adoc:288-289(Key_Delivery),"
     "{aes,otbn,kmac,hmac}_wrapper_key.rdl:37,abr_wrapper_key.rdl:44(KEY_SHARE0)"
 )
 _SRAM_TOP_CONTRACT = (
-    "key_manager/doc/architecture.adoc:90(Parameters),key_manager.rdl:62(SRAM_Region)"
+    "key_manager/doc/architecture.adoc:88(Parameters),key_manager.rdl:62(SRAM_Region)"
 )
 
 KM_ROM_BASE = _ROW["main:rom"]["base"]
@@ -271,11 +274,10 @@ KM_SRAM_TOP = _ROW["main:sram"]["end"] - 3
 _SRAM_SIZE = _ROW["main:sram"]["end"] + 1 - KM_SRAM_BASE
 KM_SRAM_ALIAS = (KM_SRAM_TOP - _SRAM_SIZE // 2, KM_SRAM_TOP - _SRAM_SIZE * 3 // 4)
 KM_EFUSE_MAP = _ROW["main:otp_efuse_map"]["base"]
-KM_EFUSE_CTRL = _ROW["main:otp_efuse_ctrl"]["base"]
-KM_EFUSE_MMR = _ROW["main:otp_efuse_mmr"]["base"]
-# The OTP/eFuse window spans the three eFuse maps and the reserved range up to
-# 0x11FFF (memory_map.adoc note [2]).
-KM_EFUSE_WINDOW = _ROW["reserved_11600"]["end"] + 1 - KM_EFUSE_MAP
+# The OTP/eFuse window spans the three eFuse maps.
+_EFUSE_ROWS = {n: _ROW[f"main:otp_efuse_{n}"] for n in ("map", "ctrl", "mmr")}
+KM_EFUSE_BASE = min(r["base"] for r in _EFUSE_ROWS.values())
+KM_EFUSE_WINDOW = max(r["end"] for r in _EFUSE_ROWS.values()) + 1 - KM_EFUSE_BASE
 # Low address bits that the eFuse master keeps from the KM offset ([11:0]).
 KM_EFUSE_LOW = KM_EFUSE_WINDOW - 1
 KM_EFUSE_LOW_BITS = KM_EFUSE_LOW.bit_length()
@@ -297,12 +299,6 @@ KM_RSV_ROM_GROWTH = _ROW["reserved_4000"]["base"]
 # The generated KM map has no VROM row, so the bounds are the spec text.
 KM_VROM_BASE = 0x1000_0000
 KM_VROM_SIZE = 0x1_0000
-# The eFuse window answer outside its register maps: SLVERR with 0xBADCAB1E
-# (memory_map.adoc, the past-extent response of the eFuse control map).
-_EFUSE_PAST = _ROW["main:otp_efuse_ctrl"]["past_response"]
-if _EFUSE_PAST is None or _EFUSE_PAST["rresp"] != "SLVERR":
-    raise ValueError(f"eFuse control map past-extent response {_EFUSE_PAST} is not SLVERR")
-BADCAB = int(_EFUSE_PAST["rdata"]) & WORD_MASK
 
 # --- eFuse interface registers (efuse_interface_ctrl.adoc, efuse_mmr) ---------
 
@@ -427,7 +423,7 @@ def _short(key: str) -> str:
 
 
 def _in_efuse_window(addr: int) -> bool:
-    return KM_EFUSE_MAP <= addr < KM_EFUSE_MAP + KM_EFUSE_WINDOW
+    return KM_EFUSE_BASE <= addr < KM_EFUSE_BASE + KM_EFUSE_WINDOW
 
 
 def _hole_word(key: str, base: int, occupied: int) -> int:
@@ -462,17 +458,11 @@ def _row_cells(row: dict, rng: SepSeededRng, draws: dict[str, int]) -> list[Cell
     win = _short(key)
     out: list[Cell] = []
     if row["kind"] == "reserved":
-        if _in_efuse_window(base):
-            # memory_map.adoc note [2]: the eFuse window answers every offset
-            # outside its register maps with SLVERR and 0xBADCAB1E.
-            chk, resp, rdata = "CHK-XBAR-EFUSE", "SLVERR", BADCAB
-        else:
-            resp, rdata = _resp_cell(row["hole_responses"][0][1])
-            chk = "CHK-XBAR-RSV"
+        resp, rdata = _resp_cell(row["hole_responses"][0][1])
         drawn = base + 4 * rng.randrange(1, (end + 1 - base) // 4 - 1)
         draws[f"{win}.drawn"] = drawn
         for kind, addr in (("first", base), ("last", end - 3), ("drawn", drawn)):
-            out += _both(win, addr, kind, chk, resp, rdata)
+            out += _both(win, addr, kind, "CHK-XBAR-RSV", resp, rdata)
         return out
     occupied = row["occupied_size"]
     first_chk = "INFO" if key in _FIRST_UNSTATED else "SIZE"
@@ -549,7 +539,6 @@ _FCOV_WIN = {
     "otp_efuse_map": 5,
     "otp_efuse_ctrl": 6,
     "otp_efuse_mmr": 7,
-    "reserved_11600": 8,
     "kpv": 9,
     "kmcsr": 10,
     "reserved_14800": 11,
@@ -595,28 +584,23 @@ def _fcov_xbar_masks(walk: _Walk) -> tuple[int, int]:
 
 
 # cp_if_decode_outcome class of a walk check: 0 DECERR on reserved, 1 SLVERR
-# past the extent or in a hole, 2 SLVERR with 0xBADCAB1E in the eFuse window.
+# past the extent or in a hole, 2 SLVERR past the registers of an eFuse map.
 _FCOV_DEC_CLASS = {"CHK-XBAR-RSV": 0, "CHK-XBAR": 1, "CHK-XBAR-EFUSE": 2}
+# cp_efw_read_class classes of each eFuse map: (in its registers, past them).
+_EFW_CLASS = {"map": (0, 5), "ctrl": (1, 3), "mmr": (2, 4)}
 
 
 def _efw_read_class(addr: int) -> int:
     """cp_efw_read_class class of a KM read address in the eFuse window.
 
-    0 shadow map, 1 interface control, 2 token registers, 3 gap after the
-    control registers, 4 gap after the token registers, 5 reserved 0x11600.
+    0 shadow registers, 1 interface control, 2 token registers, 3 past the
+    control registers, 4 past the token registers, 5 past the shadow registers.
     """
-    ctrl, mmr = _ROW["main:otp_efuse_ctrl"], _ROW["main:otp_efuse_mmr"]
-    if KM_EFUSE_MAP <= addr < KM_EFUSE_MAP + _ROW["main:otp_efuse_map"]["aperture_size"]:
-        return 0
-    if KM_EFUSE_CTRL + ctrl["occupied_size"] <= addr < KM_EFUSE_CTRL + ctrl["aperture_size"]:
-        return 3
-    if KM_EFUSE_MMR + mmr["occupied_size"] <= addr < KM_EFUSE_MMR + mmr["aperture_size"]:
-        return 4
-    if _ROW["reserved_11600"]["base"] <= addr <= _ROW["reserved_11600"]["end"]:
-        return 5
-    if KM_EFUSE_CTRL <= addr < KM_EFUSE_CTRL + ctrl["aperture_size"]:
-        return 1
-    return 2
+    for name, (inside, past) in _EFW_CLASS.items():
+        row = _EFUSE_ROWS[name]
+        if row["base"] <= addr <= row["end"]:
+            return inside if addr < row["base"] + row["occupied_size"] else past
+    raise ValueError(f"0x{addr:x} is outside the eFuse window")
 
 
 def _fcov_outcome_mask(walk: _Walk, vrom: list[tuple[Cell, kp.PokeResult]], rd1: list[dict]) -> int:
@@ -922,7 +906,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         Bits outside ``used`` keep their staged value, so a refusal cannot come
         from a write to unused bits. It sets a used bit that
         is 0 in ``staged``. When every used bit is 1, it clears one used bit
-        instead: a write lock blocks any write (``otp_fuse_controller.adoc:110,112-114``).
+        instead: a write lock blocks any write (``otp_fuse_controller.adoc:110,112-115``).
         """
         word = (staged & ~used & WORD_MASK) | (rng.getrandbits(WORD_BITS) & used)
         ones = [b for b in range(WORD_BITS) if (used >> b) & 1]
@@ -943,15 +927,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
 
         A write-lock blocks shadow writes, and a write to a locked field
         completes with SLVERR and leaves the shadow unchanged
-        (``otp_fuse_controller.adoc:110-114``); the KM eFuse path honors the
-        same per-field locks (``key_manager/doc/architecture.adoc:924-928``).
+        (``otp_fuse_controller.adoc:110-115``); the KM eFuse path honors the
+        same per-field locks (``key_manager/doc/architecture.adoc:922-926``).
         The control writes a SW-writable spare word that is not a plan target
-        (read-write, ``otp_fuse_controller.adoc:385-401,471-474``), so a KM path
+        (read-write, ``otp_fuse_controller.adoc:384-400,470-473``), so a KM path
         that drops every write fails the control first. A second control writes
         a word of an unlocked lockable field of the plan that is not a spare
         and not a plan target, so a KM path that refuses every non-spare write
         also fails a control first. Its expected readback follows the field's
-        SW-writable entry (``otp_fuse_controller.adoc:208,471-474``): the
+        SW-writable entry (``otp_fuse_controller.adoc:209,470-473``): the
         written word for a writable field, the staged word OR the written word
         for a set-only field (``:261,274,279``). The control word comes from the
         write class of the write-locked word (set-only or writable, full or
@@ -1085,47 +1069,40 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
     async def _efuse_forward_probe(self, walk: _Walk) -> dict:
         """KM-BUS: replay the graded eFuse-gap accesses with efuse_req_o watched.
 
-        memory_map.adoc note [2]: the eFuse window answers an offset outside its
-        register maps itself, so none of these accesses reaches efuse_req_o. The
-        control read of the first eFuse map word shows the same watch sees a
-        forwarded read.
+        memory_map.adoc: the KM forwards the whole eFuse window, so each of
+        these accesses drives one efuse_req_o handshake with the same address
+        bits [11:0], and the SEP eFuse controller answers it.
         """
         gap_cells = [
             (cell, op)
             for (cell, _res), op in zip(walk.cells, walk.ops, strict=True)
             if cell.chk == "CHK-XBAR-EFUSE" and not cell.control
         ]
-        gap = [op for _cell, op in gap_cells]
         ar: list[int] = []
         aw: list[int] = []
         mons = [
             cocotb.start_soon(self._efuse_ar_monitor(ar, "ar")),
             cocotb.start_soon(self._efuse_ar_monitor(aw, "aw")),
         ]
-        gap_res = await self._run_chunked(gap)
-        await ClockCycles(cocotb.top.clk_i, 4)
-        gap_ar, gap_aw = list(ar), list(aw)
-        await self._run([kp.rd(KM_EFUSE_MAP)], allow_unknown=True)
+        gap_res = await self._run_chunked([op for _cell, op in gap_cells])
         await ClockCycles(cocotb.top.clk_i, 4)
         for mon in mons:
             if hasattr(mon, "cancel"):
                 mon.cancel()
             else:
                 mon.kill()
-        # Each replayed access must get the response of its walk cell (SLVERR),
-        # so the replay ran and "no handshake" is not the result of an access
-        # that never left the KM.
         answered = sum(
             1
             for (cell, _op), r in zip(gap_cells, gap_res, strict=True)
             if r.flags_known and r.clean and (r.slv, r.dec) == _EXP_BITS[cell.resp]
         )
         return {
-            "gap_ops": len(gap),
+            "gap_ops": len(gap_cells),
             "gap_answered": answered,
-            "gap_ar": gap_ar,
-            "gap_aw": gap_aw,
-            "control_ar": len(ar) - len(gap_ar),
+            "gap_ar": [a & KM_EFUSE_LOW for a in ar],
+            "gap_aw": [a & KM_EFUSE_LOW for a in aw],
+            "exp_ar": [c.addr & KM_EFUSE_LOW for c, _op in gap_cells if c.d == "rd"],
+            "exp_aw": [c.addr & KM_EFUSE_LOW for c, _op in gap_cells if c.d == "wr"],
         }
 
     async def _vrom_walk(self, rng: SepSeededRng) -> list[tuple[Cell, kp.PokeResult]]:
@@ -1513,35 +1490,29 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         return []
 
     def _grade_forward(self, seed: int, fwd: dict) -> None:
-        """CHK-XBAR-EFUSE: no graded eFuse-gap access reaches efuse_req_o."""
-        if fwd["control_ar"] < 1:
-            self._fail(
-                "CHK-XBAR-EFUSE",
-                ["control: the eFuse map read showed no efuse_req_o read handshake"],
-            )
-        problems = (
-            [
-                f"{fwd['gap_ops']} eFuse-gap accesses gave efuse_req_o handshakes "
-                f"ar={[hex(a) for a in fwd['gap_ar']]} aw={[hex(a) for a in fwd['gap_aw']]}"
-            ]
-            if fwd["gap_ar"] or fwd["gap_aw"]
-            else []
-        )
+        """CHK-XBAR-EFUSE: each graded eFuse-gap access reaches efuse_req_o."""
+        problems = [
+            f"efuse_req_o {ch} offsets {[hex(a) for a in fwd['gap_' + ch]]} != "
+            f"replayed offsets {[hex(a) for a in fwd['exp_' + ch]]}"
+            for ch in ("ar", "aw")
+            if fwd["gap_" + ch] != fwd["exp_" + ch]
+        ]
         if fwd["gap_ops"] == 0:
             problems.append("no graded eFuse-gap access")
         if fwd["gap_answered"] != fwd["gap_ops"]:
             problems.append(
                 f"{fwd['gap_answered']} of {fwd['gap_ops']} replayed eFuse-gap accesses "
-                "answered SLVERR (each must, so each ran)"
+                "got the response of their walk cell"
             )
         self._fail("CHK-XBAR-EFUSE", problems + self._xz_problems())
         self.logger.info(
-            "CHK-XBAR-EFUSE PASS seed=%d forward=none gap_ops=%d gap_answered_slverr=%d "
-            "efuse_req_ar=0 efuse_req_aw=0 control_map_rd_ar=%d xz_cycles=%d",
+            "CHK-XBAR-EFUSE PASS seed=%d forward=all gap_ops=%d gap_answered=%d "
+            "efuse_req_ar=%d efuse_req_aw=%d xz_cycles=%d",
             seed,
             fwd["gap_ops"],
             fwd["gap_answered"],
-            fwd["control_ar"],
+            len(fwd["gap_ar"]),
+            len(fwd["gap_aw"]),
             self.mon_xz,
         )
 
@@ -1591,7 +1562,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             word = (d["km"] - KM_EFUSE_MAP) // 4
             if word in locked_words:
                 locked_reads += 1
-                # otp_fuse_controller.adoc:112-114: a read the read lock blocks
+                # otp_fuse_controller.adoc:112-115: a read the read lock blocks
                 # completes with SLVERR and read data 0xBADCAB1E.
                 if (d["km_cls"], kd) == ("SLVERR", DENY_DATA_MARKER):
                     locked_deny += 1
@@ -1680,9 +1651,9 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             self.mon_xz,
         )
         # OTP_EFUSE_REMAP_BASE is the address of the eFuse controller
-        # (hw/ip/key_manager/doc/architecture.adoc:68-71, :88-89); the SEP map places
+        # (hw/ip/key_manager/doc/architecture.adoc:68-69, :86-87); the SEP map places
         # the eFuse shadow map, interface controller and MMR in the one 4 KiB page
-        # at 0x1093_0000 (hw/sys/sep/regs/sep.rdl:108, :111, :114).
+        # at 0x1093_0000 (hw/sys/sep/regs/sep.rdl:104, sep_efuse_wrap.rdl:20-22).
         exp = SHADOW_BASE & ~KM_EFUSE_LOW
         self._fail(
             "CHK-REMAP-BASE",

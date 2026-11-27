@@ -241,7 +241,8 @@ static int stage_kmac(void) {
 }
 
 static int stage_efuse(void) {
-    if (rw_check32(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR, 0x00001234u) != 0)
+    if (rw_check32(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR,
+                   0x00001234u) != 0)
         return -1;
 #ifdef SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
     /* The shim timing-register check compiles only when the register is defined. */
@@ -249,7 +250,7 @@ static int stage_efuse(void) {
                    0x0000ABCDu) != 0)
         return -1;
 #endif
-    g_sink ^= READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
+    g_sink ^= READ_REG(SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
     return 0;
 }
 

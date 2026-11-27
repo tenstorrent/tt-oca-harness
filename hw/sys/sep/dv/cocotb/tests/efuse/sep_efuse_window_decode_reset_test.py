@@ -2,15 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Interface-control and token window reset values, read-write behaviour, and window decode.
 
-After a real fuse sense the interface-control window (``0x1093_0400``, 36 bytes) and
-the token window (``0x1093_0500``) hold the described registers with their reset
+After a real fuse sense the interface-control window (``0x1093_0000``, 36 bytes) and
+the token window (``0x1093_0400``) hold the described registers with their reset
 values and read-write behaviour. No access past the interface-control extent and no
-access in the reserved span at ``0x1093_0600`` changes ``EFUSE_INTERFACE_CTRL_STATUS``,
+access in the reserved span changes ``EFUSE_INTERFACE_CTRL_STATUS``,
 ``EFUSE_PROGRAM_CTRL``, ``EFUSE_READ_CTRL``, ``EFUSE_PROGRAM_ADDR`` or
-``EFUSE_READ_ADDR``, or aliases a software-writable shadow word.
+``EFUSE_READ_ADDR``, or aliases a software-writable shadow word. The reserved span has
+two zones: the words of the eFuse wrapper page past the register extent of each of its
+three sub-blocks (SLVERR), and the Reserved row ``0x1093_1000`` to ``0x1093_FFFF``
+(DECERR).
 
-Sources: ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (rows eFuse Interface Control,
-eFuse Token Registers, Reserved); ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
+Sources: ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (rows SEP eFuse Wrapper Address
+Map, Reserved); ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
 (reset and access columns); ``hw/ip/efuse/regs/gen/adoc/efuse_mmr.adoc`` (token arrays,
 ``TOKEN_MATCH_FAULT``); ``hw/sys/sep/regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc``
 (``FEAT_CTRL``, access R); ``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``
@@ -196,7 +199,6 @@ _OBS_SALT = 0x5357_4158
 _SHADOW_LAST_IDX = NUM_FUSE_WORDS - 1
 _SHADOW_LAST = SHADOW_BASE + 4 * _SHADOW_LAST_IDX
 _PAST_EXTENT_PINNED = STATUS_ADDR + IFCTL_EXTENT
-_RSVD_PINNED = (SHADOW_BASE + 0x600, SHADOW_BASE + 0xC1C, SHADOW_BASE + 0xFFFC)
 _ARRAY_TOKEN = {"sip": TOKEN_T1, "chiplet": TOKEN_T2, "sec_dis": TOKEN_OTHER}
 _ARRAY_TAG = {"sip": "sip", "chiplet": "chp", "sec_dis": "sdis"}
 _RESP = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
@@ -619,14 +621,21 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             rsvd=f"0x{cmp.rsvd:x}",
         )
 
-        # Step 10: 24 token words in the drawn order; no go; read back.
+        # Step 10: 24 token words in the drawn order; no go; then read back. All
+        # three arrays are written before the first readback, so an array that
+        # aliases another returns the other array's vector.
+        resp_ok_of = {}
+        for ch in CHANNELS:
+            words = token_words(_ARRAY_TOKEN[ch])
+            resp_ok = True
+            for k in p.draws[f"word_order.{ch}"]:
+                ok_w, _code = await self._wr(TOKEN_ARRAY_ADDR[ch][k], words[k], ungraded=True)
+                resp_ok = resp_ok and ok_w
+            resp_ok_of[ch] = resp_ok
         for ch in CHANNELS:
             words = token_words(_ARRAY_TOKEN[ch])
             order = list(p.draws[f"word_order.{ch}"])
-            resp_ok = True
-            for k in order:
-                ok_w, _code = await self._wr(TOKEN_ARRAY_ADDR[ch][k], words[k], ungraded=True)
-                resp_ok = resp_ok and ok_w
+            resp_ok = resp_ok_of[ch]
             got_words = []
             for k in range(8):
                 v, _ok, _c = await self._rd(TOKEN_ARRAY_ADDR[ch][k])
@@ -696,7 +705,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             await self._decode_access("ctrl", addr)
 
         # Step 15: reserved leg (three pinned, then the six drawn addresses).
-        for addr in (*_RSVD_PINNED, *p.leg["rsvd_addrs"]):
+        for addr in (*p.leg["rsvd_pinned"], *p.leg["rsvd_addrs"]):
             await self._decode_access("rsvd", addr)
 
         # Step 16: control reads after the last unmapped access.

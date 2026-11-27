@@ -32,13 +32,13 @@ class smu_smc_wdt_sanity_test_seq extends smu_base_test_seq;
   localparam string ChkTimeoutPaths = "CHK-TIMEOUT-PATHS";
 
   localparam bit [63:0] CtrlAddr =
-      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR);
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_BASE_ADDR);
   localparam bit [63:0] FeedAddr =
-      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_FEED_BASE_ADDR);
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_FEED_BASE_ADDR);
   localparam bit [63:0] KeyAddr =
-      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR);
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_BASE_ADDR);
   localparam bit [63:0] CmpAddr =
-      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR);
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_BASE_ADDR);
 
   // The KEY magic of the watchdog register specification; the generated
   // headers carry no define for it.

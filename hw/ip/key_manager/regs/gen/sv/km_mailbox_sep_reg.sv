@@ -10,7 +10,7 @@ module km_mailbox_sep_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [4:0] s_axil_awaddr,
+        input wire [11:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module km_mailbox_sep_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [4:0] s_axil_araddr,
+        input wire [11:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -37,7 +37,7 @@ module km_mailbox_sep_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [4:0] cpuif_addr;
+    logic [11:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +54,10 @@ module km_mailbox_sep_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [4:0] axil_araddr;
+    logic [11:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [4:0] axil_awaddr;
+    logic [11:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -135,17 +135,17 @@ module km_mailbox_sep_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[4:2], 2'b0};
+                cpuif_addr = {axil_araddr[11:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[4:2], 2'b0};
+                cpuif_addr = {axil_awaddr[11:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[4:2], 2'b0};
+                cpuif_addr = {axil_araddr[11:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -238,7 +238,7 @@ module km_mailbox_sep_reg (
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
-    logic [4:0] decoded_addr;
+    logic [11:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -249,27 +249,27 @@ module km_mailbox_sep_reg (
         automatic logic is_valid_rw;
         is_valid_addr = '0;
         is_valid_rw = '0;
-        decoded_reg_strb.SEP_WRITE_DATA = cpuif_req_masked & (cpuif_addr == 5'h0) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h0);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 5'h0) & cpuif_req_is_wr;
-        decoded_reg_strb.SEP_WRITE_SEPARATOR = cpuif_req_masked & (cpuif_addr == 5'h4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h4);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 5'h4);
-        decoded_reg_strb.SEP_READ_DATA = cpuif_req_masked & (cpuif_addr == 5'h8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 5'h8) & !cpuif_req_is_wr;
-        decoded_reg_strb.SEP_STATUS = cpuif_req_masked & (cpuif_addr == 5'hc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'hc);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 5'hc);
-        decoded_reg_strb.SEP_IRQ_STATUS = cpuif_req_masked & (cpuif_addr == 5'h10);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h10);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 5'h10);
-        decoded_reg_strb.SEP_IRQ_ENABLE = cpuif_req_masked & (cpuif_addr == 5'h14);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h14);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 5'h14);
-        decoded_reg_strb.SEP_CTRL = cpuif_req_masked & (cpuif_addr == 5'h18);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 5'h18);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 5'h18);
+        decoded_reg_strb.SEP_WRITE_DATA = cpuif_req_masked & (cpuif_addr == 12'h0) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h0) & cpuif_req_is_wr;
+        decoded_reg_strb.SEP_WRITE_SEPARATOR = cpuif_req_masked & (cpuif_addr == 12'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h4);
+        decoded_reg_strb.SEP_READ_DATA = cpuif_req_masked & (cpuif_addr == 12'h8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h8) & !cpuif_req_is_wr;
+        decoded_reg_strb.SEP_STATUS = cpuif_req_masked & (cpuif_addr == 12'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'hc);
+        decoded_reg_strb.SEP_IRQ_STATUS = cpuif_req_masked & (cpuif_addr == 12'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h10);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h10);
+        decoded_reg_strb.SEP_IRQ_ENABLE = cpuif_req_masked & (cpuif_addr == 12'h14);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h14);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h14);
+        decoded_reg_strb.SEP_CTRL = cpuif_req_masked & (cpuif_addr == 12'h18);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h18);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 12'h18);
         decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req;
     end
 
@@ -886,7 +886,7 @@ module km_mailbox_sep_reg (
     // Readback
     //--------------------------------------------------------------------------
 
-    logic [4:0] rd_mux_addr;
+    logic [11:0] rd_mux_addr;
     assign rd_mux_addr = decoded_addr;
 
     logic readback_err;
@@ -895,14 +895,14 @@ module km_mailbox_sep_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 5'h4) begin
+        if(rd_mux_addr == 12'h4) begin
             readback_data_var[0] = field_storage.SEP_WRITE_SEPARATOR.set.value;
             readback_data_var[31:1] = 31'h0;
         end
-        if(rd_mux_addr == 5'h8) begin
+        if(rd_mux_addr == 12'h8) begin
             readback_data_var[31:0] = 32'h0;
         end
-        if(rd_mux_addr == 5'hc) begin
+        if(rd_mux_addr == 12'hc) begin
             readback_data_var[0] = hwif_in.SEP_STATUS.inbound_empty.next;
             readback_data_var[1] = hwif_in.SEP_STATUS.inbound_full.next;
             readback_data_var[2] = hwif_in.SEP_STATUS.outbound_empty.next;
@@ -917,7 +917,7 @@ module km_mailbox_sep_reg (
             readback_data_var[25] = hwif_in.SEP_STATUS.outbound_separator.next;
             readback_data_var[31:26] = 6'h0;
         end
-        if(rd_mux_addr == 5'h10) begin
+        if(rd_mux_addr == 12'h10) begin
             readback_data_var[0] = hwif_in.SEP_IRQ_STATUS.outbound_read_data_avail.next;
             readback_data_var[1] = hwif_in.SEP_IRQ_STATUS.inbound_write_space_avail.next;
             readback_data_var[2] = field_storage.SEP_IRQ_STATUS.inbound_overflow.value;
@@ -925,7 +925,7 @@ module km_mailbox_sep_reg (
             readback_data_var[4] = field_storage.SEP_IRQ_STATUS.flushed_by_km.value;
             readback_data_var[31:5] = 27'h0;
         end
-        if(rd_mux_addr == 5'h14) begin
+        if(rd_mux_addr == 12'h14) begin
             readback_data_var[0] = field_storage.SEP_IRQ_ENABLE.outbound_read_data_avail_en.value;
             readback_data_var[1] = field_storage.SEP_IRQ_ENABLE.inbound_write_space_avail_en.value;
             readback_data_var[2] = field_storage.SEP_IRQ_ENABLE.inbound_overflow_en.value;
@@ -933,7 +933,7 @@ module km_mailbox_sep_reg (
             readback_data_var[4] = field_storage.SEP_IRQ_ENABLE.flushed_by_km_en.value;
             readback_data_var[31:5] = 27'h0;
         end
-        if(rd_mux_addr == 5'h18) begin
+        if(rd_mux_addr == 12'h18) begin
             readback_data_var[0] = field_storage.SEP_CTRL.inbound_overflow_resp.value;
             readback_data_var[1] = field_storage.SEP_CTRL.outbound_underflow_resp.value;
             readback_data_var[2] = field_storage.SEP_CTRL.flush.value;

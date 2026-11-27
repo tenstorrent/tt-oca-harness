@@ -60,7 +60,9 @@ WORD0_BIT = 0
 WORD0 = efuse_preload_word_at(LOCKS_ADDR)
 #: The SPARE field programmed under a late write lock; no other leaf of a run touches it.
 LOCK_FIELD = 2
-LOCK_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", LOCK_FIELD)
+LOCK_WORD_ADDR = smc_indexed_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", LOCK_FIELD
+)
 LOCK_WRITE = smc_efuse_map_u32(f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{LOCK_FIELD}_WRITE_LOCK_bm")
 LOCK_BIT_IN_FLIGHT = 0
 LOCK_BIT_REFUSED = 1

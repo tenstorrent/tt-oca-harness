@@ -77,11 +77,11 @@ class HeaderAgreement(unittest.TestCase):
         self.assertEqual(model.array_count("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL"), 16)
         self.assertEqual(model.array_count("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL"), 32)
         attrs = model.by_symbol(
-            "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3__REGION_REGION_ATTRS"
+            "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3__REGION_REGION_ATTRS"
         )
         self.assertEqual(
             (attrs.block, attrs.name, attrs.index),
-            ("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_3_", "REGION_REGION_ATTRS", None),
+            ("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_3_", "REGION_REGION_ATTRS", None),
         )
         self.assertEqual(attrs.field("valid").lsb, 63)
         self.assertEqual(model.block("KM_MAILBOX_SEP").size, 0x1C)

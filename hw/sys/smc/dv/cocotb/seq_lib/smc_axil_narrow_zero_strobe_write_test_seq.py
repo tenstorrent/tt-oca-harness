@@ -439,7 +439,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         self.sema0 = _reg("smc_cpu_ctrl/SEMA[0]")
         self.mutex = [_reg(f"smc_cpu_ctrl/MUTEX[{i}]") for i in range(4)]
         self.wdt = {
-            n: _reg(f"smc_cluster_core3_wdt/{n}")
+            n: _reg(f"smc_cluster_wdt_wrap/core3_wdt/{n}")
             for n in ("CTRL", "COUNT", "COUNT_HI", "SCALED_COUNT", "FEED", "KEY", "CMP")
         }
         assert self.ss_lock.addr == self.ss_cfg.addr + 4

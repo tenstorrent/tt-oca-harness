@@ -12,7 +12,7 @@
 package smc_efuse_pkg;
 
   function automatic int unsigned efuse_offset(input longint unsigned addr);
-    return int'(addr - smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);
+    return int'(addr - smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR);
   endfunction
 
   // Shadow register layout preserved from the legacy generated sub-block header.
@@ -122,7 +122,7 @@ package smc_efuse_pkg;
 
   // Spare region count follows the RDL, so adding or removing a spare region updates the field
   // count with it.
-  localparam int unsigned NumSpareRegions = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
+  localparam int unsigned NumSpareRegions = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM);
 
   // Lock meta-field + 4 functional fields + NumSpareRegions spare regions + SPARE_TAIL
   // (idx 0 to 4 + NumSpareRegions).
@@ -139,8 +139,8 @@ package smc_efuse_pkg;
   localparam int unsigned HarnessLockFieldBits = 64;
   // Shadow bit address of SUPPLEMENTARY_LOCKS, from the generated map.
   localparam int unsigned SupplementaryLocksBitOffset =
-      8 * int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR -
-               smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);
+      8 * int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR -
+               smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR);
 
   typedef struct packed {
     logic [NumEfuseBits-HarnessLockFieldBits-efuse_pkg::SupplementaryLockBits-1:0] reserved;
@@ -162,7 +162,7 @@ package smc_efuse_pkg;
       (
           efuse_offset
           (
-              smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR
+              smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR
           ),
           HarnessLockFieldBits
           +
@@ -182,32 +182,32 @@ package smc_efuse_pkg;
     map[0] = '{
         idx: LocksMetaIdx,
         lock: {WriteSetOnly, ReadUnlock},
-        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR),
-        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR)-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR)-1
     };
     map[1] = '{ // JTAG_PUBLIC_IDENTITY (idx 0)
         idx: 6'd0,
         lock: {WriteUnlock, ReadUnlock},
-        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR),
-        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0))-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0))-1
     };
     map[2] = '{ // I2C_I3C_ID[9] -- all nine elements share one slot (idx 1)
         idx: 6'd1,
         lock: {WriteUnlock, ReadUnlock},
-        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0)),
-        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR)-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0)),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR)-1
     };
     map[3] = '{ // SMC_CONFIG (idx 2)
         idx: 6'd2,
         lock: {WriteUnlock, ReadUnlock},
-        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR),
-        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR)-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR)-1
     };
     map[4] = '{ // OCCP_TRANSPORT_TIMEOUT (idx 3)
         idx: 6'd3,
         lock: {WriteUnlock, ReadUnlock},
-        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR),
-        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0))-1
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR),
+        end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0))-1
     };
 
     // SPARE[0..NumSpareRegions-1] take slots 4 onwards, one each.
@@ -215,14 +215,26 @@ package smc_efuse_pkg;
       map[5+k] = '{
           idx: efuse_pkg::EfuseFieldMapIdxWidth'(4 + k),
           lock: {WriteUnlock, ReadUnlock},
-          start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k)),
+          start_addr:
+          efuse_offset
+          (
+              smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k)
+          ),
           end_addr:
           (
           k == NumSpareRegions - 1
           ) ?
-          (efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0)) - 1)
+          (
+          efuse_offset
+          (
+              smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0)
+          ) - 1
+          )
           : (
-          efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k + 1)) - 1
+          efuse_offset
+          (
+              smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k + 1)
+          ) - 1
           )
       };
     end
@@ -232,9 +244,9 @@ package smc_efuse_pkg;
         start_addr:
         efuse_offset
         (
-            smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0)
+            smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0)
         ),
-        end_addr: int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE) - 1
+        end_addr: int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE) - 1
     };
 
     return map;

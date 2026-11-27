@@ -88,7 +88,7 @@ SIZE_4B = 2
 # no side effect and the surviving lanes are exactly the AXI lane rule, so the
 # size axis can be crossed with ordering without modelling a block's own
 # behaviour.
-SIZE_CROSS_BLOCKS = ("SEP_SCRATCH_COLD", "SEP_SCRATCH_WARM")
+SIZE_CROSS_BLOCKS = ("SEP_SCRATCH_WRAP_SCRATCH_COLD", "SEP_SCRATCH_WRAP_SCRATCH_WARM")
 
 # Blocks kept out of the sweep for a reason that is about the access, not
 # about the register. Each entry states what a probe there would measure
@@ -164,7 +164,7 @@ M_AXI_ALLOW_WINDOWS: tuple[tuple[str, int, int], ...] = (
     (
         "dma_csr+scratch",
         sym("SECURE_DMA_REG_MAP_BASE_ADDR"),
-        _page_top(_block_last_byte("SEP_SCRATCH_WARM")),
+        _page_top(_block_last_byte("SEP_SCRATCH_WRAP_SCRATCH_WARM")),
     ),
     # OTBN through KMAC.
     ("crypto", sym("OTBN_REG_MAP_BASE_ADDR"), _page_top(_block_last_byte("KMAC"))),
@@ -211,7 +211,7 @@ WRITE_ORDERS: tuple[tuple[str, int, int], ...] = (
 # The same-ID leg. The system-CSR bridge holds four transactions
 # (sep_system_peripherals_xbar.sv, MaxTxns), so the leg issues four, and
 # requires three in flight on the pins before the first response.
-BRIDGE_ID_BLOCK = "SEP_SCRATCH_COLD"
+BRIDGE_ID_BLOCK = "SEP_SCRATCH_WRAP_SCRATCH_COLD"
 BRIDGE_ID_REQUESTS = 4
 BRIDGE_ID_DEPTH_FLOOR = 3
 # Bound on the whole leg, in system clocks. A healthy register access retires

@@ -61,6 +61,7 @@ from sep_reg_meta import (
 
 # isort: split
 import sep_reg  # noqa: E402
+from sep_decode_resp import sep_map_row, sep_map_rows  # noqa: E402
 from sep_efuse_image import (  # noqa: E402
     LC_PROD,
     LC_PROD_END,
@@ -99,7 +100,7 @@ __all__ = [
     "vector_filter_legal",
 ]
 
-_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
+_EFUSE_MAP = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP")
 _MASK64 = (1 << 64) - 1
 # Bound of every redraw loop. Each predicate below accepts a large fraction of
 # its draws, so the bound is never reached; reaching it raises.
@@ -573,14 +574,14 @@ CH_SEC_DIS = "sec_dis"
 CHANNELS = (CH_SIP, CH_CHIPLET, CH_SEC_DIS)
 _CH_ARRAY = {CH_SIP: "RMA_SIP", CH_CHIPLET: "RMA_CHIPLET", CH_SEC_DIS: "SEC_DISABLE"}
 TOKEN_ARRAY_ADDR: dict[str, tuple[int, ...]] = {
-    ch: tuple(sym(f"EFUSE_MMR_{arr}_TOKEN_I_{i}__REG_ADDR") for i in range(8))
+    ch: tuple(sym(f"SEP_EFUSE_WRAP_EFUSE_MMR_{arr}_TOKEN_I_{i}__REG_ADDR") for i in range(8))
     for ch, arr in _CH_ARRAY.items()
 }
 MATCH_ADDR: dict[str, int] = {
-    ch: sym(f"EFUSE_MMR_{arr}_TOKEN_MATCH_REG_ADDR") for ch, arr in _CH_ARRAY.items()
+    ch: sym(f"SEP_EFUSE_WRAP_EFUSE_MMR_{arr}_TOKEN_MATCH_REG_ADDR") for ch, arr in _CH_ARRAY.items()
 }
-TOKEN_EOP_ADDR = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
-TOKEN_MATCH_FAULT_ADDR = sym("EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR")
+TOKEN_EOP_ADDR = sym("SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+TOKEN_MATCH_FAULT_ADDR = sym("SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR")
 GO_MASK: dict[str, int] = {
     CH_SIP: EFUSE_MMR.field_mask("TOKEN_EOP", "rma_sip_token_go"),
     CH_CHIPLET: EFUSE_MMR.field_mask("TOKEN_EOP", "rma_chiplet_token_go"),
@@ -727,7 +728,7 @@ STATUS_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
 PROGRAM_CTRL_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
 READ_CTRL_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
 PROGRAM_ADDR_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_ADDR")
-IFCTL_EXTENT = block_size("EFUSE_INTERFACE_CTRL")
+IFCTL_EXTENT = block_size("SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL")
 READ_ADDR_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_ADDR")
 _PG = "EFUSE_PROGRAM_CTRL"
 _RD = "EFUSE_READ_CTRL"
@@ -1113,13 +1114,19 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
     for ch in CHANNELS:
         d.word_order(ch)
     # Past the interface-control extent, after its pinned first word: word offsets
-    # up to 0xFC.
-    cands = list(range(IFCTL_EXTENT + 4, 0x100, 4))
+    # to the end of the interface-control window.
+    ifctl = sep_map_row(EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS"))
+    cands = list(range(IFCTL_EXTENT + 4, ifctl.end + 1 - ifctl.base, 4))
     offsets = d.sample("past_extent_offsets", cands, 7)
     rw_offs = {field_offset(n) + 4 * w for n in SHADOW_RW_FIELDS for w in range(field_n_words(n))}
-    pinned = {0x600, 0xC1C, 0xFFFC}
-    zone1 = [a for a in range(0x604, 0x1000, 4) if a not in pinned]
-    zone2 = [a for a in range(0x1000, 0xFFFC, 4) if a not in pinned]
+    # Zone 1: the words of the eFuse wrapper page past each sub-block's register
+    # extent (SLVERR); zone 2: the Reserved row past the page (DECERR). The
+    # pinned words are the last word of the page and both ends of zone 2.
+    page = [r for r in sep_map_rows() if r.base >> 12 == SHADOW_BASE >> 12]
+    gap = sep_map_row(page[-1].end + 1)
+    pinned = (page[-1].end - 3, gap.base, gap.end - 3)
+    zone1 = [a for r in page for a in range(r.base + r.extent, r.end, 4) if a not in pinned]
+    zone2 = [a for a in range(gap.base, gap.end, 4) if a not in pinned]
     a1 = d.choice("rsvd_alias_zone1", [a for a in zone1 if a & 0x3FF in rw_offs])
     a2 = d.choice("rsvd_alias_zone2", [a for a in zone2 if a & 0x3FF in rw_offs])
     more = d.sample("rsvd_rest", [a for a in zone1 + zone2 if a not in (a1, a2)], 4)
@@ -1129,7 +1136,8 @@ def plan_window_decode_reset(seed: int) -> SepEfusePlan:
         "past_extent_addrs": [
             EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS") + o for o in offsets
         ],
-        "rsvd_addrs": [SHADOW_BASE + a for a in rsvd],
+        "rsvd_pinned": list(pinned),
+        "rsvd_addrs": rsvd,
         "ctl_word_addr": shadow_addr("SYS_DIS", w),
         "rw_shadow_offsets": sorted(rw_offs),
     }

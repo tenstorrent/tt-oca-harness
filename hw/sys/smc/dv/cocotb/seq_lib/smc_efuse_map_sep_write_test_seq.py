@@ -39,8 +39,8 @@ _CFG_RSVD = (
     | smc_efuse_map_u32("SMC_EFUSE_MAP__SMC_CONFIG__CONFIG_RSVD_HIGH_bm")
 )
 _AXI_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
-_PAST_RRESP = generated_past_extent_resp("smc_efuse_map")[0]
-_PAST_DATA = _component_row("smc_efuse_map")["past_response"]["rdata"]
+_PAST_RRESP = generated_past_extent_resp("smc_efuse_wrap.smc_efuse_map")[0]
+_PAST_DATA = _component_row("smc_efuse_wrap.smc_efuse_map")["past_response"]["rdata"]
 _HALF_LO = 0x1234_5678
 _HALF_HI = 0x9ABC_DEF0
 _CHK_STEP = {
@@ -177,8 +177,8 @@ class smc_efuse_map_sep_write_test_seq(SmcCsrSeq):
         i2c = range(reg["I2C_I3C_ID"].first_word, reg["I2C_I3C_ID"].end_word)
         cfg = reg["SMC_CONFIG"].first_word
         occp = reg["OCCP_TRANSPORT_TIMEOUT"].first_word
-        spare_num = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")
-        tail_num = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")
+        spare_num = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM")
+        tail_num = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")
         spare = [
             range(reg[f"SPARE{k}"].first_word, reg[f"SPARE{k}"].end_word) for k in range(spare_num)
         ]

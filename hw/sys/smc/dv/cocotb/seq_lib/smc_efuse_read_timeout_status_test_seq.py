@@ -43,7 +43,7 @@ from .smc_efuse_read_program_timeout_test_seq import (
     TMO_EN_R,
 )
 
-READ_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR")
+READ_ADDR = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_ADDR_BASE_ADDR")
 _POLL = 10_000
 
 

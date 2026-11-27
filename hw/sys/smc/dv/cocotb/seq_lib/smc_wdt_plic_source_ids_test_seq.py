@@ -48,7 +48,7 @@ CHK_ORDER = (
 
 
 def _wdt_reg(core: int, reg: str) -> int:
-    return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_{reg}_BASE_ADDR")
+    return smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{core}_WDT_{reg}_BASE_ADDR")
 
 
 def _priority_addr(source: int) -> int:

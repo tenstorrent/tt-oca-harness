@@ -40,8 +40,8 @@ from seq_lib.smu_smc_efuse_shadow_map_readback_test_seq import (
 )
 
 SUPP_WINDOW = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_FUSE_BASE_ADDR")
-SUPP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR")
-SUPP_LOCKS_WORD = (SUPP_LOCKS - smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")) // 4
+SUPP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR")
+SUPP_LOCKS_WORD = (SUPP_LOCKS - smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")) // 4
 #: Supplementary words read over JTAG2AXI: every fourth word plus the first and last word of each
 #: lock region ("entries are 64, 96 and 128", hw/ip/efuse/doc/architecture.adoc, Supplementary
 #: Locks); a JTAG2AXI read is slow, so the window is sampled and the stream carries all 128.

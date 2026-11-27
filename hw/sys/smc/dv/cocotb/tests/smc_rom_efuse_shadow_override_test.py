@@ -40,8 +40,8 @@ from seq_lib.smc_prod_rom_boot_seq import smc_prod_rom_boot_seq
 from seq_lib.smc_prod_rom_defs import describe_post_code
 from smc_base_test import smc_base_test
 from smc_reg import (
-    SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR,
-    SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR,
+    SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR,
+    SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR,
     SMC_I2C_WRAP_I2C_0__TARGET_ID_REG_ADDR,
     SMC_I2C_WRAP_I2C_1__TARGET_ID_REG_ADDR,
 )
@@ -137,8 +137,12 @@ class _ShadowOverrideSeq(smc_prod_rom_boot_seq):
             )
 
     async def _slot6(self) -> tuple[int, int]:
-        low = await self._jtag_read("I2C_I3C_ID_6_LO", SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR)
-        high = await self._jtag_read("I2C_I3C_ID_6_HI", SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR + 4)
+        low = await self._jtag_read(
+            "I2C_I3C_ID_6_LO", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR
+        )
+        high = await self._jtag_read(
+            "I2C_I3C_ID_6_HI", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR + 4
+        )
         return low, high
 
     async def _override_during_stall(self) -> None:
@@ -160,7 +164,7 @@ class _ShadowOverrideSeq(smc_prod_rom_boot_seq):
         )
 
         lc_state = int(dut.tb_lc_state.value)
-        locks = await self._jtag_read("LOCKS", SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR)
+        locks = await self._jtag_read("LOCKS", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_REG_ADDR)
         before = await self._slot6()
         if lc_state != LC_STATE_TEST_DEV or locks & LOCKS_I2C_I3C_ID_WRITE_LOCK:
             raise AssertionError(
@@ -170,9 +174,11 @@ class _ShadowOverrideSeq(smc_prod_rom_boot_seq):
         if before != (self.slot6, 0):
             raise AssertionError(f"slot 6 sensed {before}, the image programs ({self.slot6:#x}, 0)")
         await self._jtag_write(
-            "I2C_I3C_ID_6_LO", SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR, self.override
+            "I2C_I3C_ID_6_LO", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR, self.override
         )
-        await self._jtag_write("I2C_I3C_ID_6_HI", SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR + 4, 0)
+        await self._jtag_write(
+            "I2C_I3C_ID_6_HI", SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR + 4, 0
+        )
         after = await self._slot6()
         if after != (self.override, 0):
             raise AssertionError(f"slot 6 reads back {after} after writing ({self.override:#x}, 0)")

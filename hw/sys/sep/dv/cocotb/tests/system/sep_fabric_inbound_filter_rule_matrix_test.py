@@ -63,7 +63,7 @@ to 0 fails.
 CHK-SI-PRESENSE-READ runs last: after an ``rst_ni`` pulse, one external
 read of SRAM word 0 with ARID 63 is sent while fuse sensing runs. While
 ``sep_reset_n`` is low the port accepts AR beats and discards them without a
-response (``hw/sys/sep/doc/fabric.adoc:339-342``;
+response (``hw/sys/sep/doc/fabric.adoc:345-348``;
 ``doc/integrator/src/smu-sep.adoc:72-76``). The check needs the AR handshake
 on the m_axi pins with ``dbg_sep_reset_n_o`` 0, and no R beat with RID 63 from
 then until 256 clocks after ``sep_reset_n`` releases, nor during the control
@@ -71,7 +71,7 @@ read that follows. CTRL-SI-POSTRELEASE-READ sends the same read with ARID 62
 after that window: it must get its R beat, RID 62 and RLAST 1, within 256
 clocks of its AR handshake, and DECERR, since after the release the filter
 answers every request with DECERR until firmware enables an entry and the
-``rst_ni`` pulse left none enabled (``fabric.adoc:342-344``). So the window of
+``rst_ni`` pulse left none enabled (``fabric.adoc:348-350``). So the window of
 the check is at least the time the released port takes to answer that read.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
@@ -92,9 +92,9 @@ that WDT probe and turns the scratch register DECERR. Each probe is therefore
 proven reachable, so neither DECERR can be an address-decode hole.
 CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
 cannot move. The lock is write-once, and every later write to the entry's
-FILTER_CONFIG completes DECERR (filter_ctrl.rdl locked;
+FILTER_CONFIG completes SLVERR (filter_ctrl.rdl locked;
 hw/ip/axi_filter/doc/index.adoc "Locking a Filter Entry"), so both refused
-writes must answer DECERR. Each refused write is graded against a read of
+writes must answer SLVERR. Each refused write is graded against a read of
 the same register just before it: the low word reads back unchanged, and
 locked stays 1. A 2-beat INCR
 inside the widened page still passes OKAY as two Lite singles. A single beat
@@ -106,7 +106,7 @@ lock is sticky until reset, so this cell runs last on entry 15.
 CHK-FILT-RSVD-READ: through an entry whose window runs from the last SRAM
 granule to the Reserved row base 0x10050000, an external read of that base
 answers DECERR with 0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``;
-the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``).
+the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:68-71``).
 CTRL-FILT-RSVD-ALLOW reads a staged SRAM word through the same entry first and
 needs that word back, so the DECERR is not a filter denial.
 
@@ -114,7 +114,7 @@ Functional coverage: the window of this leaf holds only the graded bursts
 and the refused FILTER_CONFIG writes with their read-backs. A
 ``cp_lite_split`` cell samples only after the check of its burst passed
 (``lite_split_pass``); ``cp_locked_write`` samples at the read-back when it
-equals the read before the DECERR write, the read pair that
+equals the read before the SLVERR write, the read pair that
 CHK-CONFIG-LOCK grades.
 
 Run mode: no_cpu with the external SMN master and real PROD fuse sense
@@ -147,6 +147,7 @@ from seq_lib.sep_inbound_filter_rule_seq import (
     PAGE_SIZE,
     RESP_DECERR,
     RESP_OKAY,
+    RESP_SLVERR,
     SepInboundFilter,
     SepInboundFilterCfg,
     SepInboundFilterMatrixCfg,
@@ -767,11 +768,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             )
         self.logger.info(
             "INFO-CONFIG-LOCK entry %d locked FILTER_CONFIG writes: lo resp=%d, hi resp=%d "
-            "(spec DECERR=%d)",
+            "(spec SLVERR=%d)",
             wcfg.entry,
             resp_lo,
             resp_hi,
-            RESP_DECERR,
+            RESP_SLVERR,
         )
         # The frozen bit still drives the hardware, not just the CSR readback.
         # START/END already hold the widened page, so a single beat inside it is
@@ -796,15 +797,15 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             data,
             [hex(a) for a in lite_ar],
         )
-        assert (resp_lo, resp_hi) == (RESP_DECERR, RESP_DECERR), (
+        assert (resp_lo, resp_hi) == (RESP_SLVERR, RESP_SLVERR), (
             f"CHK-CONFIG-LOCK FAIL: writes to locked FILTER_CONFIG answered lo resp={resp_lo}, "
-            f"hi resp={resp_hi}; a write to a locked entry goes to the AXI error subordinate "
-            f"and completes DECERR ({RESP_DECERR})"
+            f"hi resp={resp_hi}; a write to a locked entry goes to the AXI-Lite error subordinate "
+            f"and completes SLVERR ({RESP_SLVERR})"
         )
         self.logger.info(
-            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d, DECERR) "
+            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d, SLVERR) "
             "leaves FILTER_CONFIG lo 0x%08x (allow_burst=%d), clearing locked "
-            "(resp=%d, DECERR) leaves the bit set, and a 2-beat INCR at 0x%08x still "
+            "(resp=%d, SLVERR) leaves the bit set, and a 2-beat INCR at 0x%08x still "
             "passes OKAY rdata=0x%08x as Lite AR %s",
             wcfg.entry,
             resp_lo,
@@ -882,7 +883,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     async def _presense_si_read_log(self, addr: int, rec: dict, watch, read) -> None:
         """CHK-SI-PRESENSE-READ and its control CTRL-SI-POSTRELEASE-READ.
 
-        ``hw/sys/sep/doc/fabric.adoc:339-344``: while ``sep_reset_n`` is low the
+        ``hw/sys/sep/doc/fabric.adoc:345-350``: while ``sep_reset_n`` is low the
         port accepts AR beats and discards them without a response; after the
         release the filter answers DECERR until firmware enables an entry.
 
@@ -953,7 +954,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
 
         The memory map gives the Reserved row 0x10050000-0x107FFFFF the cell
         "DECERR, 0xBADCAB1E / DECERR" (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``),
-        the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:66-69``).
+        the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:68-71``).
         A filter denial gives the same code and data, so CTRL-FILT-RSVD-ALLOW
         first reads the last SRAM word through the same entry, whose window
         runs from that word to the Reserved base: the staged value shows the entry

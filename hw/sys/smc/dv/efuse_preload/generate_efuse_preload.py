@@ -4,7 +4,7 @@
 """Turn an SMC eFuse configuration TOML into a simulator preload image.
 
 Blocks from efuse_schema.toml are concatenated in schema order, LSB first, into one
-image the size of SMC_TOP_SMC_EFUSE_MAP_SIZE; hex output is one 32-bit word per line
+image the size of SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE; hex output is one 32-bit word per line
 for $readmemh.
 """
 
@@ -26,12 +26,12 @@ SMC_ADDR_H = Path(__file__).resolve().parents[2] / "regs" / "gen" / "c" / "smc_a
 
 def _efuse_map_bits() -> int:
     match = re.search(
-        r"^#define\s+SMC_TOP_SMC_EFUSE_MAP_SIZE\s+(0x[0-9A-Fa-f]+)\s*$",
+        r"^#define\s+SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE\s+(0x[0-9A-Fa-f]+)\s*$",
         SMC_ADDR_H.read_text(encoding="utf-8"),
         re.MULTILINE,
     )
     if match is None:
-        sys.exit(f"error: SMC_TOP_SMC_EFUSE_MAP_SIZE not found in {SMC_ADDR_H}")
+        sys.exit(f"error: SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE not found in {SMC_ADDR_H}")
     return 8 * int(match.group(1), 16)
 
 
@@ -124,7 +124,7 @@ def build_image(config: dict, schema: dict) -> int:
     if offset != EFUSE_SIZE_BITS:
         sys.exit(
             f"error: schema totals {offset} bits, expected {EFUSE_SIZE_BITS} "
-            "(SMC_TOP_SMC_EFUSE_MAP_SIZE). Schema and "
+            "(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE). Schema and "
             "smc_efuse_map.rdl have diverged."
         )
     if locks >= (1 << lock_width):

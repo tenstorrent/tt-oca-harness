@@ -42,8 +42,8 @@ Checks:
                   and rises before the first host read that shows the READY word
   CHK-BOOT-ORDER-WARM
                   at every warm boot COLD_BOOT_DONE reads 1 while the KM is held
-                  and after the READY word (``reset_controller.adoc:96,182``;
-                  ``km_csr.rdl:697,701``; ``architecture.adoc:1127``)
+                  and after the READY word (``reset_controller.adoc:95,181``;
+                  ``km_csr.rdl:697,701``; ``architecture.adoc:1125``)
   CHK-BOOT-FLUSH  at each warm reset of the warm-reset leg: the FIFOs keep their
                   words while the KM is held (every stale write OKAY, inbound depth
                   w, outbound depth as before the reset); after the release the
@@ -59,7 +59,7 @@ Checks:
                   first read after the last warm boot, with the bit cleared while
                   the KM was held at that reset (CTRL-BOOT-FLUSHED-CLR): the
                   KM boot flush sets the peer's flushed-by-other status
-                  (``architecture.adoc:240-241``), and the SEP-side IRQ_STATUS
+                  (``architecture.adoc:238-239``), and the SEP-side IRQ_STATUS
                   is not in the KM address map (``key_manager.rdl:107`` maps
                   only ``km_mailbox_km``; ``km_mailbox_sep.rdl:255-263``)
   CHK-RST-AXI-VALID
@@ -75,30 +75,30 @@ Checks:
                   it. INFO-RST-AXI-READY logs the readies of the first sample
                   with the reset at 0: no value is graded, because ARREADY,
                   AWREADY and WREADY are not constrained during reset
-                  (``hw/ip/key_manager/doc/architecture.adoc:189-190``)
+                  (``hw/ip/key_manager/doc/architecture.adoc:187-188``)
   CHK-RST-AXI-NORESP
                   at each of the four AXI reset points a request that the reset
                   drops gets no response, during the reset or after the release
-                  (``architecture.adoc:185-191``; "that edge" is the first
+                  (``architecture.adoc:183-189``; "that edge" is the first
                   clock edge after the KM CPU reset asserts, with VALID still
                   high). The cold points reach that case when
                   INFO-RST-AXI-HANDSHAKE shows ``handshake=1``, valid and ready
                   both 1 in the first sample with the reset at 0; it stays INFO
                   because READY is not constrained in reset
-                  (``architecture.adoc:189-190``). At the warm-read and
+                  (``architecture.adoc:187-188``). At the warm-read and
                   warm-write points SW_RESET_N bit 0 asserts the KM CPU reset on
                   the clock edge that completes the first AR, then the first
                   AW, of a KM boot: the slave received that request just before
                   the reset is sampled low, and its response must not reach the
                   master, because the warm reset discards the in-flight state of
                   the KM fabric and register CPU interfaces
-                  (``architecture.adoc:179-180``). The dropped
+                  (``architecture.adoc:177-178``). The dropped
                   request reaches port 1 (KMCSR) only: the first AR and AW of a
                   boot go there. Ports 0, 2 and 3 receive no dropped request and
                   are graded by the same rules; port 2 carries no B traffic
                   here. Graded on the slave side of the KM crossbar, on
                   the ports the KM warm reset resets (KPV, KMCSR, DRBG sampler,
-                  mailbox; ``architecture.adoc:167-176,179-180``): the R and B
+                  mailbox; ``architecture.adoc:165-174,177-178``): the R and B
                   valids read 0 in every sample from the first sample with the
                   KM CPU reset at 0 to the end of that reset (AXI A3.1.2), and
                   from the next KM CPU release each R valid on a port has an AR
@@ -111,7 +111,7 @@ Checks:
                   the release; at its end each port has no more W than AW
                   handshakes since the release (W may lead its AW; a W with no
                   AW since the release is data of a write the reset dropped,
-                  ``architecture.adoc:185-191``). So no response appears
+                  ``architecture.adoc:183-189``). So no response appears
                   before the port's next request, no request gets two
                   responses, and no write data of a dropped AW reaches a slave. A background watcher per point grades it
                   and logs the end reason; a watcher whose window has not ended
@@ -127,10 +127,10 @@ Checks:
 Logged, not graded: INFO-RST-AXI-EXT-RSP (per AXI reset point, with its
 CHK-RST-AXI-NORESP line: the same R and B pairing after the release on the
 crypto engine ports 4-7 and 9, which lead outside the KM
-(``architecture.adoc:180-182`` gives no completion or cancellation guarantee
-for an external transaction), and on port 8, which combines the KM-internal OTP
-error slave and the forwarded eFuse path behind the OTP demux
-(``key_manager.sv:379,400``) that the tap cannot separate; nothing is graded. An unknown tap bit on these ports is logged in ``x_ports``).
+(``architecture.adoc:178-180`` gives no completion or cancellation guarantee
+for an external transaction), and on port 8, which the KM forwards to
+``efuse_req_o``, the eFuse controller outside the KM
+(``key_manager.sv:347-353``); nothing is graded. An unknown tap bit on these ports is logged in ``x_ports``).
 
 Controls: CTRL-RST-AXI-PENDING (cold points: the point's valid reads 1 in the
 sample before the KM CPU reset reads 0); CTRL-RST-AXI-HANDSHAKE (warm points:
@@ -226,15 +226,15 @@ AXI_WARM_POINTS = (("warm-read", AXI_AR), ("warm-write", AXI_AW))
 AXI_WARM_TRIES = 3  # warm resets per warm point: one to measure, then aimed ones
 # KM-AXIV slave-side taps: bit i is master port i of the KM crossbar
 # (km_axi_lite_xbar.sv AddrMap). The graded ports are the slaves the KM warm
-# reset resets (architecture.adoc:167-176, 179-180: the KM-internal fabric, the
+# reset resets (architecture.adoc:165-174, 177-178: the KM-internal fabric, the
 # register CPU interfaces of KMCSR and KPV, the DRBG sampler and the KM side of
 # the mailbox): 0 KPV, 1 KMCSR, 2 DRBG sampler, 3 mailbox. The other ports lead
 # to slaves outside the KM: 4-7 and 9 the crypto engines. The warm reset is not
 # a completion or cancellation guarantee for an external transaction
-# (architecture.adoc:180-182), so those ports are logged by INFO-RST-AXI-EXT-RSP
-# and not graded. Port 8 combines the KM-internal OTP error slave and the
-# forwarded eFuse path behind the OTP demux (key_manager.sv:379,400), which the
-# tap cannot separate, so it is logged with them and not graded.
+# (architecture.adoc:178-180), so those ports are logged by INFO-RST-AXI-EXT-RSP
+# and not graded. Port 8 is forwarded to efuse_req_o, the eFuse controller
+# outside the KM (key_manager.sv:347-353), so it is logged with them and not
+# graded.
 KM_PORTS_WARM = 0b00_0000_1111
 KM_PORTS_EXT = 0b11_1111_0000
 KM_PORTS = 10
@@ -944,9 +944,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
     def _boot_order_warm(self, tag: str, cbd_held: int, cbd_ready: int) -> None:
         """CHK-BOOT-ORDER-WARM: a KM warm reset keeps COLD_BOOT_DONE at 1.
 
-        ``hw/sys/sep/doc/reset_controller.adoc:96,182``: SW_RESET_N bit 0 drives the
+        ``hw/sys/sep/doc/reset_controller.adoc:95,181``: SW_RESET_N bit 0 drives the
         KM warm reset; ``hw/ip/key_manager/regs/km_csr.rdl:697,701``: the bit stays
-        set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1127``:
+        set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1125``:
         on a warm reset ``COLD_BOOT_DONE`` already reads 1. The cold-boot reference
         before every warm reset proves the rise (CHK-BOOT-ORDER).
         """
@@ -1157,7 +1157,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             "BOOT-FLUSHED-BY-KM",
             flushed_by_km == 1,
             contract=(
-                "key_manager/doc/architecture.adoc:240-241(Mailbox_Transport),"
+                "key_manager/doc/architecture.adoc:238-239(Mailbox_Transport),"
                 "key_manager.rdl:107(mailbox_km),km_mailbox_sep.rdl:255-263(FLUSHED_BY_KM)"
             ),
             boot=tag,
@@ -1222,7 +1222,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         check grades the valid level, which a handshake on that edge also
         clears. INFO-RST-AXI-HANDSHAKE logs whether the request and its ready
         are both 1 in the first sample with the reset at 0, the dropped-request
-        case of ``architecture.adoc:187-191``; READY is not constrained in
+        case of ``architecture.adoc:183-187``; READY is not constrained in
         reset, so that is not graded. At that sample the point starts its
         CHK-RST-AXI-NORESP watcher, which runs on past the return: the KM stays
         held until the next release.
@@ -1335,7 +1335,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         Runs after the cold AXI points, with the KM held and before the
         entropy source comes up. SW_RESET_N bit 0 drives ``warm_rst_ni``, which
         is synchronous to ``clk_i`` and triggers the warm hold counter
-        (``architecture.adoc:134,146-149``), so the reset asserts on a clock
+        (``architecture.adoc:132,144-147``), so the reset asserts on a clock
         edge. The write-to-reset latency is measured, not taken from a golden;
         it is constant with no host traffic and the KM paths idle. From each release the KM CPU runs the same ROM path to
         its first AR and first AW (local memory only before them). Attempt 0

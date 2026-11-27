@@ -148,7 +148,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          write that would leave the range is not issued: the
                          fill stops with ``STATUS.ERROR`` and
                          ``ERROR_CODE.DST_ADDR_ERROR``, and the writes before
-                         it remain" (``hw/sys/sep/doc/dma.adoc:98-104``).
+                         it remain" (``hw/sys/sep/doc/dma.adoc:102-108``).
                          Control (``CTRL-DMA-ZF-BASELIM``, else CTRL-MISSING):
                          BASE and LIMIT read back the value written, before GO.
 
@@ -1192,9 +1192,9 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
     async def _leg_s(self, plan: Plan) -> None:
         """A fill with an invalid SRC_ADDR_SPACE_ID ends in ASID_ERROR alone and writes nothing.
 
-        Goldens: ``hw/sys/sep/doc/dma.adoc:107-109`` (a fill validates the
+        Goldens: ``hw/sys/sep/doc/dma.adoc:111-113`` (a fill validates the
         source registers as for a copy);
-        ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:711-713``
+        ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:713-715``
         (ERROR_CODE.ASID_ERROR: a source or destination ASID with an invalid
         value); ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/
         programmers_guide.md:102-103`` (the configuration is checked before a

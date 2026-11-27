@@ -314,9 +314,9 @@ module smc_efuse_ctrl_fcov #(
   // read of its control register after the injection, the word carrying
   // done and status with busy clear, the taps agreeing.
   localparam logic [55:0] ReadCtrlAddr =
-      56'(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR);
+      56'(SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR);
   localparam logic [55:0] ProgCtrlAddr =
-      56'(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR);
+      56'(SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR);
   localparam logic [31:0] ReadCtrlBusy = 32'(EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_BUSY_MASK);
   localparam logic [31:0] ReadCtrlDone = 32'(EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_READ_DONE_MASK);
   localparam logic [31:0] ReadCtrlStatus =
@@ -370,23 +370,29 @@ module smc_efuse_ctrl_fcov #(
   // of a slot from the generated HARNESS_LOCKS field positions, and the field
   // word of the shadow output at bits 32w+31:32w.
   // ------------------------------------------------------------------
-  localparam logic [55:0] MapBase = 56'(SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);
-  localparam logic [55:0] MapEnd = MapBase + 56'(SMC_TOP_SMC_EFUSE_MAP_SIZE);
-  localparam logic [55:0] LocksAddr = 56'(SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR);
-  localparam logic [55:0] Slot0Base = 56'(SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR);
-  localparam logic [55:0] Slot1Base = 56'(SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0));
-  localparam logic [55:0] Slot2Base = 56'(SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR);
-  localparam logic [55:0] Slot3Base = 56'(SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR);
-  localparam logic [55:0] Spare0Base = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0));
-  localparam logic [55:0] SpareStride = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(1)) - Spare0Base;
-  localparam logic [55:0] SpareNum = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
+  localparam logic [55:0] MapBase = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR);
+  localparam logic [55:0] MapEnd = MapBase + 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE);
+  localparam logic [55:0] LocksAddr = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR);
+  localparam logic [55:0] Slot0Base = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR);
+  localparam logic [55:0] Slot1Base = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(
+      0
+  ));
+  localparam logic [55:0] Slot2Base = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR);
+  localparam logic [55:0] Slot3Base = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR);
+  localparam logic [55:0] Spare0Base = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0));
+  localparam logic [55:0] SpareStride = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(
+      1
+  )) - Spare0Base;
+  localparam logic [55:0] SpareNum = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM);
   localparam logic [55:0] SpareEnd = Spare0Base + SpareNum * SpareStride;
-  localparam logic [55:0] TailBase = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0));
-  localparam logic [55:0] TailStride = 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(
+  localparam logic [55:0] TailBase = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(
+      0
+  ));
+  localparam logic [55:0] TailStride = 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(
       1
   )) - TailBase;
   localparam logic [55:0] TailEnd =
-      TailBase + 56'(SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM) * TailStride;
+      TailBase + 56'(SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_NUM) * TailStride;
   localparam int unsigned NumSlots = 8;
   localparam int unsigned NumWords = SHADOW_BITS / 32;
 
@@ -621,9 +627,9 @@ module smc_efuse_ctrl_fcov #(
   localparam logic IfcRead = 1'b0;
   localparam logic IfcProgram = 1'b1;
   localparam logic [55:0] ReadTmoAddr =
-      56'(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR);
+      56'(SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR);
   localparam logic [55:0] ProgTmoAddr =
-      56'(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR);
+      56'(SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR);
   localparam logic [31:0] ReadTmoCycles =
       32'(EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_READ_REQ_TIMEOUT_CYCLES_MASK);
   localparam logic [31:0] ReadTmoEnable =

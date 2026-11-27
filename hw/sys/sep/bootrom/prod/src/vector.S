@@ -15,7 +15,7 @@
 #include "sep_smc_map.h"
 
 /* No mailbox stores: a bus error on a reset or halt path raises NMI and loops. */
-.equ SEP_COLD_SCRATCH_1, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
+.equ SEP_COLD_SCRATCH_1, SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
 
 /* DCCM base from EL2 snapshot: sadr=0xC0040000, size=128KiB → top=0xC0060000.
  * (Actual stack pointer uses __stack_top from the linker script.) */
@@ -38,8 +38,8 @@
  * sep_reset_n & wdt_rst_ni -- so a watchdog reset would clear the very register
  * the handler address was parked in.
  */
-.equ SEP_COLD_SCRATCH_7, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
-.equ SEP_COLD_SCRATCH_0, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+.equ SEP_COLD_SCRATCH_7, SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
+.equ SEP_COLD_SCRATCH_0, SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 
 /* ICCM address range for warm handler jump validation.
  *

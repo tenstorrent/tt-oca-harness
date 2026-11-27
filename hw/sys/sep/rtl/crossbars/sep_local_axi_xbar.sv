@@ -3,20 +3,29 @@
 
 // Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.
 //
-// DMA, watchdog and SPI controller address bounds come from sep_top_addrmap_pkg; the
-// remaining address rules are explicit integration apertures in AddrMap below.
+// The DMA, watchdog, reset controller, SPI controller and scratch rules start at their
+// sep_top_addrmap_pkg base and end on the 4 KiB page boundary after the registers; each of
+// those targets answers every address in its page. The remaining rules are fixed address ranges
+// from the SEP memory map, each decoded further by the target behind it. The efuse_shim rule
+// takes the EFUSE_SHIM_SIZE bytes at the base of the sep_external window, and the sep_external
+// rule the rest.
 // Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
 // than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
 // get DECERR.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module sep_local_axi_xbar
   import sep_local_axi_xbar_pkg::axi64_req_t;
   import sep_local_axi_xbar_pkg::axi64_resp_t;
   import sep_local_axi_xbar_pkg::axi_out_req_t;
   import sep_local_axi_xbar_pkg::axi_out_resp_t;
+#(
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4  // Size in bytes of the eFuse shim CSR window
+                                                // at the base of the sep_external window.
+)
 (
   input  logic clk_i,                         // System clock.
   input  logic rst_ni,                        // Active-low reset.
@@ -44,7 +53,7 @@ module sep_local_axi_xbar
 
   input  axi64_req_t  ext_req_i,              // Request forwarded by sep_system_peripherals;
                                               // reaches sram, dma_csr, sep_wdt, sep_crypto, sep_io,
-                                              // entropy_fifo and sep_external.
+                                              // entropy_fifo, sep_external and efuse_shim.
   output axi64_resp_t ext_resp_o,             // Response to ext; unmapped or unconnected addresses
                                               // get DECERR.
 
@@ -56,40 +65,41 @@ module sep_local_axi_xbar
   output axi_out_req_t  sram_req_o,           // Request for the SEP SRAM, 0x1000_0000-0x1003_FFFF.
   input  axi_out_resp_t sram_resp_i,          // Response from the SEP SRAM.
 
-  output axi_out_req_t  dma_csr_req_o,        // Request for the secure DMA register extent from
-                                              // sep_top_addrmap_pkg.
+  output axi_out_req_t  dma_csr_req_o,        // Request for the secure DMA register page.
   input  axi_out_resp_t dma_csr_resp_i,       // Response from the secure DMA registers.
 
-  output axi_out_req_t  sep_wdt_req_o,        // Request for the watchdog timer register extent from
-                                              // sep_top_addrmap_pkg.
+  output axi_out_req_t  sep_wdt_req_o,        // Request for the watchdog timer register page.
   input  axi_out_resp_t sep_wdt_resp_i,       // Response from the watchdog timer.
 
-  output axi_out_req_t  sep_reset_ctrl_req_o,  // Request for sep_reset_ctrl,
-                                               // 0x1080_3000-0x1080_3007.
+  output axi_out_req_t  sep_reset_ctrl_req_o,  // Request for the sep_reset_ctrl register page.
   input  axi_out_resp_t sep_reset_ctrl_resp_i,  // Response from sep_reset_ctrl.
 
   output axi_out_req_t  sep_crypto_req_o,     // Request for sep_crypto, 0x1090_0000-0x1094_FFFF.
   input  axi_out_resp_t sep_crypto_resp_i,    // Response from sep_crypto.
 
   output axi_out_req_t  sep_system_peripherals_req_o,  // Request for sep_system_peripherals:
-                                                       // scratch 0x1080_2000-0x1080_20FF, CSRs
+                                                       // scratch 0x1080_2000-0x1080_2FFF, CSRs
                                                        // 0x10A0_0000-0x10A4_FFFF, remap window
                                                        // 0x1100_0000-0x11FF_FFFF, external chiplet
                                                        // 0x0000_0000-0x0FFF_FFFF, and SMU
                                                        // 0x4000_0000-0xBFFF_FFFF.
   input  axi_out_resp_t sep_system_peripherals_resp_i,  // Response from sep_system_peripherals.
 
-  output axi_out_req_t  sep_io_req_o,         // Request for the SPI controller register extent
-                                              // from sep_top_addrmap_pkg, to sep_io.
+  output axi_out_req_t  sep_io_req_o,         // Request for the SPI controller register page, to
+                                              // sep_io.
   input  axi_out_resp_t sep_io_resp_i,        // Response from sep_io.
 
-  output axi_out_req_t  entropy_fifo_req_o,   // Request for the entropy pool,
-                                              // 0x1095_0000-0x1095_FFFF.
+  output axi_out_req_t  entropy_fifo_req_o,   // Request for the entropy pool register page.
   input  axi_out_resp_t entropy_fifo_resp_i,  // Response from the entropy pool.
 
-  output axi_out_req_t  sep_external_req_o,   // Request for the external aperture
-                                              // 0x2000_0000-0x3FFF_FFFF, to sep.
-  input  axi_out_resp_t sep_external_resp_i   // Response from the external aperture.
+  output axi_out_req_t  sep_external_req_o,   // Request for the sep_external window
+                                              // 0x2000_0000-0x3FFF_FFFF above the eFuse shim
+                                              // window, to sep.
+  input  axi_out_resp_t sep_external_resp_i,  // Response from the sep_external window.
+
+  output axi_out_req_t  efuse_shim_req_o,     // Request for the eFuse shim CSR window, to
+                                              // sep_crypto.
+  input  axi_out_resp_t efuse_shim_resp_i     // Response from the eFuse shim CSR window.
 );
 
   // ===========================================================================
@@ -114,35 +124,28 @@ module sep_local_axi_xbar
           start_addr: 32'h10000000,
           end_addr: 33'h10040000
       },
-      // dma_csr.main: secure_dma register extent, not the 4 kB spec aperture --
-      // secure_dma_reg_top decodes 9 bits, so a wider window aliases.
+      // dma_csr.main: the secure_dma page; sep_dma_wrap answers the addresses outside the
+      // window secure_dma_reg_top decodes.
       '{
           idx: 2,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR),
-          end_addr:
-          33'(
-          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR
-          +
-          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE
-          )
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE))
       },
-      // sep_wdt.main: wdt_timer register extent, not the 4 kB spec aperture --
-      // aon_timer_reg_top decodes 6 bits, so a wider window aliases.
+      // sep_wdt.main: the wdt_timer page; sep_wdt_wrap answers the addresses outside the
+      // window aon_timer_reg_top decodes.
       '{
           idx: 3,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR),
-          end_addr:
-          33'(
-          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR
-          +
-          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE
-          )
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE))
       },
-      // sep_reset_ctrl.main: 0x10803000 - 0x10803008
+      // sep_reset_ctrl.main: the sep_reset_ctrl page, all of which its register block decodes.
       '{
           idx: 4,
-          start_addr: 32'h10803000,
-          end_addr: 33'h10803008
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_BASE_ADDR),
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SEP_RESET_CTRL_SIZE))
       },
       // sep_crypto.main: 0x10900000 - 0x10950000
       '{
@@ -150,11 +153,13 @@ module sep_local_axi_xbar
           start_addr: 32'h10900000,
           end_addr: 33'h10950000
       },
-      // sep_system_peripherals.scratch_region: 0x10802000 - 0x10802100
+      // sep_system_peripherals.scratch_region: the scratch page; sep_system_csr answers the
+      // addresses outside the cold and warm scratch windows.
       '{
           idx: 6,
-          start_addr: 32'h10802000,
-          end_addr: 33'h10802100
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_BASE_ADDR),
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE))
       },
       // sep_system_peripherals.csr_region: 0x10a00000 - 0x10a50000
       '{
@@ -180,31 +185,39 @@ module sep_local_axi_xbar
           start_addr: 32'h40000000,
           end_addr: 33'hc0000000
       },
-      // sep_io.main: spi_controller register extent, not the 1 MiB spec aperture -- the
-      // rest of the aperture is refused here with DECERR.
+      // sep_io.main: the spi_controller page; sep_io answers the addresses outside the window
+      // spi_host_reg_top decodes.
       '{
           idx: 7,
           start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR),
-          end_addr:
-          33'(
-          sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR
-          +
-          sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE
-          )
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE))
       },
-      // entropy_fifo.main: 0x10950000 - 0x10960000
+      // entropy_fifo.main: the entropy_pool page, all of which sep_entropy_fifo decodes.
       '{
           idx: 8,
-          start_addr: 32'h10950000,
-          end_addr: 33'h10960000
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR),
+          end_addr: 33'(sep_pkg::reg_page_end(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR,
+                                              sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_SIZE))
       },
-      // sep_external.main: 0x20000000 - 0x40000000
+      // sep_external.main: above the eFuse shim window - 0x40000000
       '{
           idx: 9,
-          start_addr: 32'h20000000,
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR
+                          + EFUSE_SHIM_SIZE),
           end_addr: 33'h40000000
+      },
+      // efuse_shim.main: the EFUSE_SHIM_SIZE bytes at the base of the sep_external window
+      '{
+          idx: 10,
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR),
+          end_addr: 33'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR
+                        + EFUSE_SHIM_SIZE)
       }
   };
+
+  // The eFuse shim and the external window rules share the first page of that window.
+  `OCAH_ASSERT_XBAR_PAGE_OWNER(gen_page_owner, AddrMap, 10)
 
   // ===========================================================================
   // Input Protocol/Width Conversion (to match crossbar)
@@ -235,8 +248,8 @@ module sep_local_axi_xbar
   // ===========================================================================
   // Crossbar
   // ===========================================================================
-  sep_local_axi_xbar_pkg::xbar_mst_req_t  [9:0] xbar_mst_req;
-  sep_local_axi_xbar_pkg::xbar_mst_resp_t [9:0] xbar_mst_resp;
+  sep_local_axi_xbar_pkg::xbar_mst_req_t  [10:0] xbar_mst_req;
+  sep_local_axi_xbar_pkg::xbar_mst_resp_t [10:0] xbar_mst_resp;
 
   axi_xbar #(
     .Cfg          (sep_local_axi_xbar_pkg::XbarCfg),
@@ -342,5 +355,12 @@ module sep_local_axi_xbar
   // Direct connection (no conversion needed)
   assign sep_external_req_o = xbar_mst_req[9];
   assign xbar_mst_resp[9] = sep_external_resp_i;
+
+  // ---------------------------------------------------------------------------
+  // Output: efuse_shim (AXI4, 64-bit)
+  // ---------------------------------------------------------------------------
+  // Direct connection (no conversion needed)
+  assign efuse_shim_req_o = xbar_mst_req[10];
+  assign xbar_mst_resp[10] = efuse_shim_resp_i;
 
 endmodule : sep_local_axi_xbar

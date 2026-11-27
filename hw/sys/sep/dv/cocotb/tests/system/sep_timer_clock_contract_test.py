@@ -1120,7 +1120,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         Spec: "separate consecutive writes by at least eight reference-clock
         periods" (doc/programmer/src/sep-smc-common.adoc:516-518), and the readback
         is "at or just above the written value"
-        (hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:101-104). V1 is written,
+        (hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:103-106). V1 is written,
         then V2 with no read between, d edges after the B handshake of V1 (counted
         to the AW handshake of V2, which is at least the separation of any other
         reading of the rule). The bounded poll must read a value in

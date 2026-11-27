@@ -103,9 +103,9 @@ state. No text states the response of an LC_STATE write, so no check grades it:
 ``OBS-LC-WR-NIBBLE`` logs ``resp=`` for every write cell.
 Every graded cell grades ``CHK-LC-STATE-PORT``: the ``lc_state_o`` port (tap
 ``lc_state_probe_o``) equals LC_STATE[7:0] at ``efuse_shadow_probe_o`` and
-``{~raw, raw}`` of the cell's golden state. ``doc/integrator/src/smu-sep.adoc:202``
+``{~raw, raw}`` of the cell's golden state. ``doc/integrator/src/smu-sep.adoc:217``
 gives ``lc_state_o`` as the differentially encoded LC_STATE shadow, and
-``hw/sys/sep/doc/otp_fuse_controller.adoc:222-223`` gives that encoding as
+``hw/sys/sep/doc/otp_fuse_controller.adoc:223-224`` gives that encoding as
 ``{~raw[3:0], raw[3:0]}`` in bits [7:0].
 Every write cell also carries, in LC_STATE[31:8], one bit that no earlier write
 or the sensed word set; ``CTRL-LC-WR-LANDED`` requires that bit in the readback,

@@ -63,6 +63,11 @@ root = "hw/common/dv/vip/ocah_uart_vip/dv"
 [duts.axi_lite_to_ahb]
 root = "hw/common/axi/dv"
 
+# AXI-Lite address demux unit bench. hw/common/ocah_prim sits outside the directory
+# convention, so it is registered here.
+[duts.prim_axil_addr_demux]
+root = "hw/common/ocah_prim/dv"
+
 # Cross-trigger IP-level benches: the family nests one level below the
 # hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is
 # registered here.

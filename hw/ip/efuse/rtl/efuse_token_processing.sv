@@ -50,7 +50,8 @@ module efuse_token_processing #(
 
   input  efuse_apb_req_t           apb_req_i,  // APB request for the MMR window: token words, start
                                                // bits, match status, and fault status; only
-                                               // paddr[6:0] is decoded.
+                                               // the efuse_mmr register block's address bits
+                                               // are decoded.
   output efuse_apb_resp_t          apb_resp_o,  // APB response from the MMR window.
 
   output logic[5:0]                rma_sip_token_match_q_o,  // Registered RMA SiP token comparator
@@ -128,7 +129,7 @@ module efuse_token_processing #(
     .s_apb_penable (apb_req_i.penable),
     .s_apb_pwrite  (apb_req_i.pwrite),
     .s_apb_pprot   (apb_req_i.pprot),
-    .s_apb_paddr   (apb_req_i.paddr[6:0]),
+    .s_apb_paddr   (apb_req_i.paddr[efuse_mmr_reg_pkg::EFUSE_MMR_REG_MIN_ADDR_WIDTH-1:0]),
     .s_apb_pwdata  (apb_req_i.pwdata),
     .s_apb_pstrb   (apb_req_i.pstrb),
     .s_apb_pready  (apb_resp_o.pready),

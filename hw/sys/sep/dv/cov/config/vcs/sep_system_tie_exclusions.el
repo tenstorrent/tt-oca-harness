@@ -39,7 +39,7 @@
 
 CHECKSUM: "3579852188 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:489) and :506 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-191) can move through the remap subtractor."
+ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:536) and :508 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-197) can move through the remap subtractor."
 Toggle ifu_demux_req[0].ar.size "logic ifu_demux_req[0].ar.size[2:0]"
 Toggle ifu_demux_req[0].ar.prot "logic ifu_demux_req[0].ar.prot[2:0]"
 Toggle ifu_demux_req[0].ar.cache "logic ifu_demux_req[0].ar.cache[3:0]"
@@ -135,13 +135,13 @@ Toggle ifu_demux_resp[2].aw_ready "logic ifu_demux_resp[2].aw_ready"
 
 CHECKSUM: "3579852188 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-TCM-RESP-USER-TIED: sep_cpu.sv:511-512 drive cpu_tcm_axi_resp_o B and R USER to the sep_pkg::SepSourceId constant (sep_pkg.sv:489). NOT waived: the B/R id, resp, data and last from the VeeR DMA port."
+ANNOTATION: "SEP-CPU-TCM-RESP-USER-TIED: sep_cpu.sv:511-512 drive cpu_tcm_axi_resp_o B and R USER to the sep_pkg::SepSourceId constant (sep_pkg.sv:536). NOT waived: the B/R id, resp, data and last from the VeeR DMA port."
 Toggle cpu_tcm_axi_resp_o.r.user "logic cpu_tcm_axi_resp_o.r.user[11:0]"
 Toggle cpu_tcm_axi_resp_o.b.user "logic cpu_tcm_axi_resp_o.b.user[11:0]"
 
 CHECKSUM: "3579852188 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-IRQ38-TIED: PIC source 39 is sep_internal_interrupts[38] = entropy_pool_err (sep.sv:601, :1074). sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and prim_fifo_sync_cnt.sv:142 then ties err_o to 0. NOT waived: every other interrupt line."
+ANNOTATION: "SEP-CPU-IRQ38-TIED: PIC source 39 is sep_internal_interrupts[38] = entropy_pool_err (sep.sv:534, :1009). sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and prim_fifo_sync_cnt.sv:142 then ties err_o to 0. NOT waived: every other interrupt line."
 Toggle extintsrc_req_i [38] "logic extintsrc_req_i[254:0]"
 
 CHECKSUM: "3579852188 1455020830"
@@ -157,31 +157,31 @@ Toggle sb_axi_arid_raw "logic sb_axi_arid_raw[0:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_lsu_local_alias_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:485-486) at the instantiation (sep_cpu.sv:529-530). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:477-478) at the instantiation (sep_cpu.sv:529-530). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
 Toggle region_size_i "logic region_size_i[31:0]"
 Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:485-486) at the instantiation (sep_cpu.sv:544-545). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:477-478) at the instantiation (sep_cpu.sv:544-545). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
 Toggle region_size_i "logic region_size_i[31:0]"
 Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_dbg_local_alias_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:485-486) at the instantiation (sep_cpu.sv:559-560). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:477-478) at the instantiation (sep_cpu.sv:559-560). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
 Toggle region_size_i "logic region_size_i[31:0]"
 Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_dma_local_alias_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:485-486) at the instantiation (hw/sys/sep/rtl/sep_dma_wrap.sv:333-334). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:477-478) at the instantiation (hw/sys/sep/rtl/sep_dma_wrap.sv:369-370). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
 Toggle region_size_i "logic region_size_i[31:0]"
 Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
-ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:489) and :506 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-191) can move through the remap subtractor."
+ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:536) and :508 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-197) can move through the remap subtractor."
 Toggle slv_req_i.ar.size "logic slv_req_i.ar.size[2:0]"
 Toggle slv_req_i.ar.prot "logic slv_req_i.ar.prot[2:0]"
 Toggle slv_req_i.ar.cache "logic slv_req_i.ar.cache[3:0]"
@@ -240,7 +240,7 @@ Toggle slv_req_i.aw.addr "logic slv_req_i.aw.addr[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_lsu_local_alias_remap
-ANNOTATION: "SEP-CPU-LSU-TIED: slv_req_i is lsu_axi_req_raw (sep_cpu.sv:524), which only the VeeR LSU drives. el2_lsu_bus_buffer.sv:886-887 and :903-904 tie qos 0 and lock 0; sep_cpu.sv:497-499 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:489) and :507 AWATOP to 0. NOT waived: every mst_req_o field, because mst_req_o is lsu_axi_req (sep_cpu.sv:526), which the TB forces in a no_cpu leaf (hw/sys/sep/dv/tb/tb_top.sv:1081); and the slv_req_i prot, len, burst and wlast."
+ANNOTATION: "SEP-CPU-LSU-TIED: slv_req_i is lsu_axi_req_raw (sep_cpu.sv:524), which only the VeeR LSU drives. el2_lsu_bus_buffer.sv:886-887 and :903-904 tie qos 0 and lock 0; sep_cpu.sv:497-499 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:536) and :509 AWATOP to 0. NOT waived: every mst_req_o field, because mst_req_o is lsu_axi_req (sep_cpu.sv:526), which the TB forces in a no_cpu leaf (hw/sys/sep/dv/tb/tb_top.sv:1081); and the slv_req_i prot, len, burst and wlast."
 Toggle slv_req_i.aw.qos "logic slv_req_i.aw.qos[3:0]"
 Toggle slv_req_i.aw.lock "logic slv_req_i.aw.lock"
 Toggle slv_req_i.aw.user "logic slv_req_i.aw.user[11:0]"
@@ -252,7 +252,7 @@ Toggle slv_req_i.w.user "logic slv_req_i.w.user[11:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_dbg_local_alias_remap
-ANNOTATION: "SEP-CPU-DBG-TIED: only the VeeR debug system-bus master drives this remap. el2_dbg.sv:738-774 tie id 0, prot 3'b001, AW cache 4'hF, AR cache 0, len 0, burst INCR, qos 0, lock 0, wlast 1, bready 1 and rready 1; sep_cpu.sv:501-503 and :508 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:489) and AWATOP to 0; axi_window_remap.sv passes them unchanged. NOT waived: addr, size, region, valid, data and strobe, which a system-bus access moves."
+ANNOTATION: "SEP-CPU-DBG-TIED: only the VeeR debug system-bus master drives this remap. el2_dbg.sv:738-774 tie id 0, prot 3'b001, AW cache 4'hF, AR cache 0, len 0, burst INCR, qos 0, lock 0, wlast 1, bready 1 and rready 1; sep_cpu.sv:501-503 and :508 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:536) and AWATOP to 0; axi_window_remap.sv passes them unchanged. NOT waived: addr, size, region, valid, data and strobe, which a system-bus access moves."
 Toggle slv_req_i.aw.id "logic slv_req_i.aw.id[2:0]"
 Toggle slv_req_i.aw.prot "logic slv_req_i.aw.prot[2:0]"
 Toggle slv_req_i.aw.cache "logic slv_req_i.aw.cache[3:0]"
@@ -298,7 +298,7 @@ Toggle mst_req_o.r_ready "logic mst_req_o.r_ready"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_dma_local_alias_remap
-ANNOTATION: "SEP-DMA-MASTER-TIED: only the secure DMA host port drives this path. axi_lite_to_axi.sv:39-67 set burst FIXED, size log2(4), wlast 1 and id, len, lock, qos, region, atop and user to 0; sep_dma_wrap.sv:283-284 feed cache 4'b0000; the upsizer and the remap pass them unchanged. NOT waived: addr, size, prot and the W data/strobe."
+ANNOTATION: "SEP-DMA-MASTER-TIED: only the secure DMA host port drives this path. axi_lite_to_axi.sv:39-67 set burst FIXED, size log2(4), wlast 1 and id, len, lock, qos, region, atop and user to 0; sep_dma_wrap.sv:319-320 feed cache 4'b0000; the upsizer and the remap pass them unchanged. NOT waived: addr, size, prot and the W data/strobe."
 Toggle slv_req_i.aw.id "logic slv_req_i.aw.id[2:0]"
 Toggle slv_req_i.aw.len "logic slv_req_i.aw.len[7:0]"
 Toggle slv_req_i.aw.burst "logic slv_req_i.aw.burst[1:0]"
@@ -348,16 +348,14 @@ Toggle readback_data [63:7] "logic readback_data[63:0]"
 
 CHECKSUM: "3683425261 2769646694"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_reset_ctrl
-ANNOTATION: "SEP-RSTCTL-LITE-RESP-TIED: axil_resp is the u_reg response. Its bresp/rresp hold OKAY (SEP-REGBLOCK-A2-NOERROR, sep_reset_ctrl_reg.sv:209-213 never take the SLVERR arm) and its read data [63:7] is 0 (sep_reset_ctrl_reg.sv:498-517). SEP-RSTCTL-AXI-USER-TIED: sep_reset_ctrl_axi_resp_o comes from axi_to_axi_lite (sep_reset_ctrl.sv:100-120). Its B/R user is 0 on every source: axi_to_axi_lite.sv:157-170 default '0, axi_atop_filter.sv:220 and :287 inject '0, axi_err_slv.sv:142 and :193 inject '0. NOT waived: the full-AXI r.data and r/b resp, which the burst splitter error slave and the ATOP filter can drive."
-Toggle axil_resp.r.resp "logic axil_resp.r.resp[1:0]"
-Toggle axil_resp.b.resp "logic axil_resp.b.resp[1:0]"
+ANNOTATION: "SEP-RSTCTL-LITE-RDATA-TIED: axil_resp is the u_reg response. Its read data [63:7] is 0 (sep_reset_ctrl_reg.sv:500-519). SEP-RSTCTL-AXI-USER-TIED: sep_reset_ctrl_axi_resp_o comes from axi_to_axi_lite (sep_reset_ctrl.sv:100-120). Its B/R user is 0 on every source: axi_to_axi_lite.sv:157-170 default '0, axi_atop_filter.sv:220 and :287 inject '0, axi_err_slv.sv:142 and :193 inject '0. NOT waived: the full-AXI r.data and r/b resp, which the burst splitter error slave and the ATOP filter can drive."
 Toggle axil_resp.r.data [63:7] "logic axil_resp.r.data[63:0]"
 Toggle sep_reset_ctrl_axi_resp_o.r.user "logic sep_reset_ctrl_axi_resp_o.r.user[11:0]"
 Toggle sep_reset_ctrl_axi_resp_o.b.user "logic sep_reset_ctrl_axi_resp_o.b.user[11:0]"
 
 CHECKSUM: "2905179362 2073096279"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: sep_system_csr.sv:777 and :779-784 tie timeout_interrupt_rsvd, sep_standalone and fast_{pka,sram,dccm,iccm,spi}_en to 0, and :815 and :818-823 drive these hw=w inputs from them. SEP-REGBLOCK-ALIGNED-ADDR: sep_cpu_ctrl_reg.sv:129-148 build cpuif_addr as {addr[12:3], 3'b0}; :317 and :1537 copy it, so bits [2:0] are 0. NOT waived: the sw-writable reserved TIMEOUT_* fields and the 64-bit REFERENCE_COUNTER, which software can write."
+ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: sep_system_csr.sv:751 and :753-758 tie timeout_interrupt_rsvd, sep_standalone and fast_{pka,sram,dccm,iccm,spi}_en to 0, and :789 and :792-797 drive these hw=w inputs from them. SEP-REGBLOCK-ALIGNED-ADDR: sep_cpu_ctrl_reg.sv:129-148 build cpuif_addr as {addr[12:3], 3'b0}; :317 and :1544 copy it, so bits [2:0] are 0. NOT waived: the sw-writable reserved TIMEOUT_* fields and the 64-bit REFERENCE_COUNTER, which software can write."
 Toggle hwif_in.SEP_TEST_CTRL.fast_spi_en.next "logic hwif_in.SEP_TEST_CTRL.fast_spi_en.next"
 Toggle hwif_in.SEP_TEST_CTRL.fast_iccm_en.next "logic hwif_in.SEP_TEST_CTRL.fast_iccm_en.next"
 Toggle hwif_in.SEP_TEST_CTRL.fast_dccm_en.next "logic hwif_in.SEP_TEST_CTRL.fast_dccm_en.next"
@@ -416,7 +414,7 @@ Toggle axi_lite_rsp_o.b.resp [0] "logic axi_lite_rsp_o.b.resp[1:0]"
 
 CHECKSUM: "2097437693 2552262841"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-SPI-ADDR-MASK: sep_ot_spi_wrap.sv:75-86 AND both AXI-Lite addresses with SpiAddrMask = (1 << spi_host_reg_pkg::BlockAw) - 1, and BlockAw is 6 (spi_host_reg_pkg.sv:17), so address bits [31:6] are 0 on every path into the bridge. NOT waived: bits [5:0], which select the spi_host register."
+ANNOTATION: "SEP-SPI-ADDR-MASK: sep_ot_spi_wrap.sv:84-95 AND both AXI-Lite addresses with SpiAddrMask = (1 << spi_host_reg_pkg::BlockAw) - 1, and BlockAw is 6 (spi_host_reg_pkg.sv:17), so address bits [31:6] are 0 on every path into the bridge. NOT waived: bits [5:0], which select the spi_host register."
 Toggle axi_lite_req_i.ar.addr [31:6] "logic axi_lite_req_i.ar.addr[31:0]"
 Toggle axi_lite_req_i.aw.addr [31:6] "logic axi_lite_req_i.aw.addr[31:0]"
 Toggle tl_o.a_address [31:6] "logic tl_o.a_address[31:0]"
@@ -425,7 +423,7 @@ Toggle req_addr_d [31:6] "logic req_addr_d[31:0]"
 
 CHECKSUM: "3927392748 3613800401"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap
-ANNOTATION: "SEP-SPI-ADDR-MASK: sep_ot_spi_wrap.sv:75-86 AND both AXI-Lite addresses with SpiAddrMask = (1 << spi_host_reg_pkg::BlockAw) - 1, and BlockAw is 6 (spi_host_reg_pkg.sv:17), so address bits [31:6] are 0 on every path into the bridge. NOT waived: bits [5:0], which select the spi_host register."
+ANNOTATION: "SEP-SPI-ADDR-MASK: sep_ot_spi_wrap.sv:84-95 AND both AXI-Lite addresses with SpiAddrMask = (1 << spi_host_reg_pkg::BlockAw) - 1, and BlockAw is 6 (spi_host_reg_pkg.sv:17), so address bits [31:6] are 0 on every path into the bridge. NOT waived: bits [5:0], which select the spi_host register."
 Toggle axil_req_masked.ar.addr [31:6] "logic axil_req_masked.ar.addr[31:0]"
 Toggle axil_req_masked.aw.addr [31:6] "logic axil_req_masked.aw.addr[31:0]"
 Toggle tl_req.a_address [31:6] "logic tl_req.a_address[31:0]"
@@ -472,65 +470,21 @@ Toggle tl_d_o.d_opcode [2:1] "logic tl_d_o.d_opcode[2:0]"
 
 CHECKSUM: "883981495 759020956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap
-ANNOTATION: "SEP-WDT-ALERT-PING-TIED: sep_wdt_wrap.sv:193 ties ping_req_i to 1'b0 on the alert receiver, so the ping wires of its rx struct cannot move. NOT waived: alert_p and ack_p, which move when the timer raises an alert -- a fault-injection gap."
+ANNOTATION: "SEP-WDT-ALERT-PING-TIED: sep_wdt_wrap.sv:231 ties ping_req_i to 1'b0 on the alert receiver, so the ping wires of its rx struct cannot move. NOT waived: alert_p and ack_p, which move when the timer raises an alert -- a fault-injection gap."
 Toggle wdt_alert_rx[0].ping_p "logic wdt_alert_rx[0].ping_p"
 Toggle wdt_alert_rx[0].ping_n "logic wdt_alert_rx[0].ping_n"
 
 CHECKSUM: "828256374 178008815"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io
-ANNOTATION: "SEP-IO-ERRSLV-CONST: axil_resps[1] is prim_axi_lite_err_slv (sep_io.sv:190-204, RESP DECERR, RESP_DATA 32'hBADCAB1E). axi_err_slv.sv:142-145 and :193-197 drive r.data, r.resp and b.resp to those constants on every cycle and axi_lite_to_axi.sv:70-86 pass them through. NOT waived: the valid/ready handshakes, which an access to an unmapped IO address moves."
-Toggle axil_resps[1].r.data "logic axil_resps[1].r.data[31:0]"
-Toggle axil_resps[1].r.resp "logic axil_resps[1].r.resp[1:0]"
-Toggle axil_resps[1].b.resp "logic axil_resps[1].b.resp[1:0]"
-
-CHECKSUM: "828256374 178008815"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io
-ANNOTATION: "SEP-A2A-RESP-USER-TIED: the B/R user leaving axi_to_axi_lite is 0 on every source: axi_to_axi_lite.sv:157-170 default '0, axi_atop_filter.sv:220 and :287 inject '0, axi_err_slv.sv:142 and :193 inject '0; the 64-to-32 axi_dw_downsizer copies it (axi_dw_downsizer.sv:594, :737) or starts from '0 (:386, :561). Its resp[0] is 0 because the bridge below returns OKAY or SLVERR only (axi_lite_to_tlul.sv:54-55) and the injected errors are SLVERR. NOT waived: the resp at the downsizer output, which axi_dw_downsizer.sv:408 and :491 seed with EXOKAY."
-Toggle axil_resps[0].r.resp [0] "logic axil_resps[0].r.resp[1:0]"
-Toggle axil_resps[0].b.resp [0] "logic axil_resps[0].b.resp[1:0]"
+ANNOTATION: "SEP-A2A-RESP-USER-TIED: the B/R user leaving axi_to_axi_lite is 0 on every source: axi_to_axi_lite.sv:157-170 default '0, axi_atop_filter.sv:220 and :287 inject '0, axi_err_slv.sv:142 and :193 inject '0; the 64-to-32 axi_dw_downsizer copies it (axi_dw_downsizer.sv:594, :737) or starts from '0 (:386, :561)."
 Toggle axi_resp.r.user "logic axi_resp.r.user[11:0]"
 Toggle axi_resp.b.user "logic axi_resp.b.user[11:0]"
 Toggle sep_io_axi_resp_o.r.user "logic sep_io_axi_resp_o.r.user[11:0]"
 Toggle sep_io_axi_resp_o.b.user "logic sep_io_axi_resp_o.b.user[11:0]"
 
-CHECKSUM: "834177952 2569679982"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_axil_err_slv
-ANNOTATION: "SEP-ERRSLV-INTERNAL-TIED: inside prim_axi_lite_err_slv, axi_lite_to_axi.sv:39-67 set burst FIXED, size log2(4), wlast 1 and id, len, lock, qos, region, atop and user to 0, and prim_axi_lite_err_slv.sv:82-83 feed cache 0. axi_err_slv.sv:142-145 and :193-197 drive r.data RESP_DATA, r.resp and b.resp RESP, and r/b user 0; the 1-bit id is the tied 0. NOT waived: addr, prot, data, strobe and every valid/ready, which an unmapped access moves."
-Toggle axi_req.ar.id "logic axi_req.ar.id"
-Toggle axi_req.ar.len "logic axi_req.ar.len[7:0]"
-Toggle axi_req.ar.lock "logic axi_req.ar.lock"
-Toggle axi_req.ar.qos "logic axi_req.ar.qos[3:0]"
-Toggle axi_req.ar.region "logic axi_req.ar.region[3:0]"
-Toggle axi_req.ar.user "logic axi_req.ar.user"
-Toggle axi_req.ar.size "logic axi_req.ar.size[2:0]"
-Toggle axi_req.ar.burst "logic axi_req.ar.burst[1:0]"
-Toggle axi_req.ar.cache "logic axi_req.ar.cache[3:0]"
-Toggle axi_req.aw.id "logic axi_req.aw.id"
-Toggle axi_req.aw.len "logic axi_req.aw.len[7:0]"
-Toggle axi_req.aw.lock "logic axi_req.aw.lock"
-Toggle axi_req.aw.qos "logic axi_req.aw.qos[3:0]"
-Toggle axi_req.aw.region "logic axi_req.aw.region[3:0]"
-Toggle axi_req.aw.user "logic axi_req.aw.user"
-Toggle axi_req.aw.size "logic axi_req.aw.size[2:0]"
-Toggle axi_req.aw.burst "logic axi_req.aw.burst[1:0]"
-Toggle axi_req.aw.cache "logic axi_req.aw.cache[3:0]"
-Toggle axi_req.aw.atop "logic axi_req.aw.atop[5:0]"
-Toggle axi_req.w.user "logic axi_req.w.user"
-Toggle axi_req.w.last "logic axi_req.w.last"
-Toggle axi_resp.r.user "logic axi_resp.r.user"
-Toggle axi_resp.b.user "logic axi_resp.b.user"
-Toggle axi_resp.r.data "logic axi_resp.r.data[31:0]"
-Toggle axi_resp.r.resp "logic axi_resp.r.resp[1:0]"
-Toggle axi_resp.b.resp "logic axi_resp.b.resp[1:0]"
-Toggle axi_resp.r.id "logic axi_resp.r.id"
-Toggle axi_resp.b.id "logic axi_resp.b.id"
-Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[31:0]"
-Toggle axil_resp_o.r.resp "logic axil_resp_o.r.resp[1:0]"
-Toggle axil_resp_o.b.resp "logic axil_resp_o.b.resp[1:0]"
-
 CHECKSUM: "3519459534 3972236298"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
-ANNOTATION: "SEP-DMA-MASTER-TIED: only the secure DMA host port drives this path. axi_lite_to_axi.sv:39-67 set burst FIXED, size log2(4), wlast 1 and id, len, lock, qos, region, atop and user to 0; sep_dma_wrap.sv:283-284 feed cache 4'b0000; the upsizer and the remap pass them unchanged. NOT waived: addr, prot and the W data/strobe."
+ANNOTATION: "SEP-DMA-MASTER-TIED: only the secure DMA host port drives this path. axi_lite_to_axi.sv:39-67 set burst FIXED, size log2(4), wlast 1 and id, len, lock, qos, region, atop and user to 0; sep_dma_wrap.sv:319-320 feed cache 4'b0000; the upsizer and the remap pass them unchanged. NOT waived: addr, prot and the W data/strobe."
 Toggle axi32_mst_req.aw.id "logic axi32_mst_req.aw.id[2:0]"
 Toggle axi32_mst_req.aw.len "logic axi32_mst_req.aw.len[7:0]"
 Toggle axi32_mst_req.aw.burst "logic axi32_mst_req.aw.burst[1:0]"
@@ -580,7 +534,7 @@ Toggle tl_d_o.d_opcode [2:1] "logic tl_d_o.d_opcode[2:0]"
 
 CHECKSUM: "3519459534 3972236298"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
-ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1203). host_tl_h_i comes from tlul_to_axi_lite.sv:151 and :262,264 (sep_dma_wrap.sv:266): d_param and d_sink 0, d_opcode ACCESS_ACK or ACCESS_ACK_DATA (d_opcode[2:1] 0). The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the same fields to the same 0. NOT waived: address, data, mask, d_error, the response echo fields d_source and d_size, and the integrity fields."
+ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1138). host_tl_h_i comes from tlul_to_axi_lite.sv:151 and :262,264 (sep_dma_wrap.sv:302): d_param and d_sink 0, d_opcode ACCESS_ACK or ACCESS_ACK_DATA (d_opcode[2:1] 0). The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the same fields to the same 0. NOT waived: address, data, mask, d_error, the response echo fields d_source and d_size, and the integrity fields."
 Toggle host_tl_h_o.a_user.instr_type "logic host_tl_h_o.a_user.instr_type[3:0]"
 Toggle host_tl_h_o.a_user.rsvd "logic host_tl_h_o.a_user.rsvd[9:0]"
 Toggle host_tl_h_o.a_address [1:0] "logic host_tl_h_o.a_address[31:0]"
@@ -595,7 +549,7 @@ Toggle host_tl_h_i.d_opcode [2:1] "logic host_tl_h_i.d_opcode[2:0]"
 
 CHECKSUM: "2470472206 1152219882"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1203); tl_i is host_tl_h_o (hw/sys/sep/rtl/sep_dma_wrap.sv:265). NOT waived: address, data, mask, the integrity fields and every tl_o response field."
+ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1138); tl_i is host_tl_h_o (hw/sys/sep/rtl/sep_dma_wrap.sv:301). NOT waived: address, data, mask, the integrity fields and every tl_o response field."
 Toggle tl_i.a_user.instr_type "logic tl_i.a_user.instr_type[3:0]"
 Toggle tl_i.a_user.rsvd "logic tl_i.a_user.rsvd[9:0]"
 Toggle tl_i.a_address [1:0] "logic tl_i.a_address[31:0]"
@@ -703,103 +657,103 @@ Condition 52 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:137-153), so the zero-strobe early-OKAY path at :158-162 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:179-186), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Block 12 "2970101142" "req_error_d = 1'b0;"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:137-153), so the zero-strobe early-OKAY path at :158-162 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:179-186), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Branch 2 "3464338896" "state_q" (1) "state_q IDLE ,0,1,1,-,-,-,-,-,-,-,-,-"
 
 CHECKSUM: "2097437693 3453034612"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:137-153), so the zero-strobe early-OKAY path at :158-162 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_wdt_wrap.sv:179-186), so the zero-strobe early-OKAY path at :196-200 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Fsm state_q "3453034612"
 Transition IDLE->AXI_B_RESP "0->6"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:227-245), so the zero-strobe early-OKAY path at :158-162 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:268-277), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Block 12 "2970101142" "req_error_d = 1'b0;"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:227-245), so the zero-strobe early-OKAY path at :158-162 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:268-277), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Branch 2 "3464338896" "state_q" (1) "state_q IDLE ,0,1,1,-,-,-,-,-,-,-,-,-"
 
 CHECKSUM: "2097437693 3453034612"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:227-245), so the zero-strobe early-OKAY path at :158-162 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (axi_lite_to_tlul.sv:30; sep_dma_wrap.sv:268-277), so the zero-strobe early-OKAY path at :166-170 is dead by parameter: its statements, its IDLE branch arm and the IDLE->AXI_B_RESP transition cannot occur. NOT waived: the PUT_PARTIAL_DATA path and every reset-to-IDLE transition."
 Fsm state_q "3453034612"
 Transition IDLE->AXI_B_RESP "0->6"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_wdt_wrap.sv:137-153), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_wdt_wrap.sv:179-186), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 39 "915842203" "cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_wdt_wrap.sv:137-153), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_wdt_wrap.sv:179-186), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 42 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap.u_wdt_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_wdt_wrap.sv:137-153), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_wdt_wrap.sv:179-186), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:110-126), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:120-135), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 39 "915842203" "cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:110-126), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:120-135), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 42 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:110-126), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:120-135), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 39 "915842203" "cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 42 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 3216173326"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 43 "993725118" "rsp_intg = {tlul_pkg::D2H_RSP_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2470472206 3216173326"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 46 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2470472206 1300994536"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1201), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 1300994536"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-DMA-HOST-DREADY-TIED: tl_i is host_tl_h_o from tlul_adapter_host in secure_dma (hw/sys/sep/rtl/sep_dma_wrap.sv:265), and tlul_adapter_host.sv:118 ties d_ready to 1, so the TL_D_RESP arm that waits on d_ready = 0 (tlul_to_axi_lite.sv:267) cannot occur. NOT waived: the d_ready = 1 arm."
+ANNOTATION: "SEP-DMA-HOST-DREADY-TIED: tl_i is host_tl_h_o from tlul_adapter_host in secure_dma (hw/sys/sep/rtl/sep_dma_wrap.sv:301), and tlul_adapter_host.sv:118 ties d_ready to 1, so the TL_D_RESP arm that waits on d_ready = 0 (tlul_to_axi_lite.sv:267) cannot occur. NOT waived: the d_ready = 1 arm."
 Branch 3 "255991702" "state_q" (18) "state_q TL_D_RESP ,-,-,-,-,-,-,-,-,-,0"
 
 CHECKSUM: "2708775971 73523738"
@@ -811,22 +765,22 @@ Toggle status_word [63:8] "logic status_word[63:0]"
 
 CHECKSUM: "1557237986 3866655258"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1090 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. NOT waived: every other filter port and the isolate nets."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1025 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. NOT waived: every other filter port and the isolate nets."
 Toggle filter_skip_i "logic filter_skip_i"
 
 CHECKSUM: "1951099644 1291595517"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1090 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. NOT waived: inbound_filter_skip_i, which feature control (sep_debug) drives at hw/sys/sep/rtl/sep.sv:1089."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1025 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. NOT waived: inbound_filter_skip_i, which feature control (sep_debug) drives at hw/sys/sep/rtl/sep.sv:1024."
 Toggle outbound_filter_skip_i "logic outbound_filter_skip_i"
 
 CHECKSUM: "4268271618 3948953717"
 MODULE: traffic_filter
-ANNOTATION: "SEP-FILTER-GROUPID-OFF: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:411 and :493 set EN_GROUP_ID_FILTER to 1'b0 for both filter wraps, which own every traffic_filter instance, so hw/ip/axi_filter/rtl/traffic_filter.sv:89 assigns pass_group_id the literal 1'b1. NOT waived: pass_src_id, pass_ns, pass_burst and the tx_group_id_i input, which traffic moves."
+ANNOTATION: "SEP-FILTER-GROUPID-OFF: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:413 and :495 set EN_GROUP_ID_FILTER to 1'b0 for both filter wraps, which own every traffic_filter instance, so hw/ip/axi_filter/rtl/traffic_filter.sv:89 assigns pass_group_id the literal 1'b1. NOT waived: pass_src_id, pass_ns, pass_burst and the tx_group_id_i input, which traffic moves."
 Toggle pass_group_id "logic pass_group_id"
 
 CHECKSUM: "633166899 1052850956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr
-ANNOTATION: "SEP-CSR-BANK-RESP-OKAY: the alias-remap and output-remap banks drive s_axil_bresp/rresp from a no-error response buffer (hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv:596,630, hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:343,364, hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv:445,473 assign cpuif_wr_err and readback_err to '0), and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:330,338,397,405,466,474 connect those ports straight to these response copies, so the response code is always OKAY. NOT waived: the response valid/ready and read data, which bank accesses move, and the filter-bank response copies, which pass through the per-entry lock demux."
+ANNOTATION: "SEP-CSR-BANK-RESP-OKAY: the alias-remap and output-remap banks drive s_axil_bresp/rresp from a no-error response buffer (hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv:596,630, hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:343,364, hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv:445,473 assign cpuif_wr_err and readback_err to '0), and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:298,306,365,373,434,442 connect those ports straight to these response copies, so the response code is always OKAY. NOT waived: the response valid/ready and read data, which bank accesses move, and the filter-bank response copies, which pass through the per-entry lock demux."
 Toggle local_master_aR_resps[0].r.resp "logic local_master_aR_resps[0].r.resp[1:0]"
 Toggle local_master_aR_resps[0].b.resp "logic local_master_aR_resps[0].b.resp[1:0]"
 Toggle local_master_aR_resps[1].r.resp "logic local_master_aR_resps[1].r.resp[1:0]"
@@ -932,7 +886,7 @@ Toggle field_combo.START_ADDR.start_addr.load_next "logic field_combo.START_ADDR
 
 CHECKSUM: "2368045406 3790533153"
 MODULE: output_remap_reg
-ANNOTATION: "SEP-OUTREMAP-ADDR3-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:389,400,458,469 drive s_axil_awaddr/araddr of every output_remap_reg instance as {1'b0, addr[2:0]}, so address bit 3 is 0; hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:137,142,147 build cpuif_addr as {addr[3], 3'b0}, so cpuif_addr, decoded_addr and rd_mux_addr are 0 on every access. NOT waived: s_axil_awaddr/araddr and axil_awaddr/araddr bits [2:0], which the register-bank address moves."
+ANNOTATION: "SEP-OUTREMAP-ADDR3-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:357,368,426,437 drive s_axil_awaddr/araddr of every output_remap_reg instance as {1'b0, addr[2:0]}, so address bit 3 is 0; hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:137,142,147 build cpuif_addr as {addr[3], 3'b0}, so cpuif_addr, decoded_addr and rd_mux_addr are 0 on every access. NOT waived: s_axil_awaddr/araddr and axil_awaddr/araddr bits [2:0], which the register-bank address moves."
 Toggle s_axil_awaddr [3] "net s_axil_awaddr[3:0]"
 Toggle s_axil_araddr [3] "net s_axil_araddr[3:0]"
 Toggle axil_awaddr [3] "logic axil_awaddr[3:0]"
@@ -981,7 +935,7 @@ Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 
 CHECKSUM: "1557237986 2379620973"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_inbound_filter
-ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:436,518,613,615 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:576,691). NOT waived: the START_ADDR/END_ADDR status fields, which the filter configuration moves."
+ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:438,520,615,617 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:544,662). NOT waived: the START_ADDR/END_ADDR status fields, which the filter configuration moves."
 Toggle filter_status_o[0].FILTER_CONFIG.data_bus_width.next "logic filter_status_o[0].FILTER_CONFIG.data_bus_width.next[2:0]"
 Toggle filter_status_o[1].FILTER_CONFIG.data_bus_width.next "logic filter_status_o[1].FILTER_CONFIG.data_bus_width.next[2:0]"
 Toggle filter_status_o[2].FILTER_CONFIG.data_bus_width.next "logic filter_status_o[2].FILTER_CONFIG.data_bus_width.next[2:0]"
@@ -1001,7 +955,7 @@ Toggle filter_status_o[15].FILTER_CONFIG.data_bus_width.next "logic filter_statu
 
 CHECKSUM: "1557237986 3866655258"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:436,518,613,615 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:576,691). NOT waived: the START_ADDR/END_ADDR status fields, which the filter configuration moves."
+ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:438,520,615,617 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:544,662). NOT waived: the START_ADDR/END_ADDR status fields, which the filter configuration moves."
 Toggle filter_status_o[0].FILTER_CONFIG.data_bus_width.next "logic filter_status_o[0].FILTER_CONFIG.data_bus_width.next[2:0]"
 Toggle filter_status_o[1].FILTER_CONFIG.data_bus_width.next "logic filter_status_o[1].FILTER_CONFIG.data_bus_width.next[2:0]"
 Toggle filter_status_o[2].FILTER_CONFIG.data_bus_width.next "logic filter_status_o[2].FILTER_CONFIG.data_bus_width.next[2:0]"
@@ -1037,7 +991,7 @@ Toggle filter_status_o[31].FILTER_CONFIG.data_bus_width.next "logic filter_statu
 
 CHECKSUM: "1951099644 1291595517"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals
-ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:436,518,613,615 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:576,691). NOT waived: the START_ADDR/END_ADDR status fields."
+ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:438,520,615,617 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:544,662). NOT waived: the START_ADDR/END_ADDR status fields."
 Toggle outbound_filter_status[0].FILTER_CONFIG.data_bus_width.next "logic outbound_filter_status[0].FILTER_CONFIG.data_bus_width.next[2:0]"
 Toggle outbound_filter_status[1].FILTER_CONFIG.data_bus_width.next "logic outbound_filter_status[1].FILTER_CONFIG.data_bus_width.next[2:0]"
 Toggle outbound_filter_status[2].FILTER_CONFIG.data_bus_width.next "logic outbound_filter_status[2].FILTER_CONFIG.data_bus_width.next[2:0]"
@@ -1089,7 +1043,7 @@ Toggle inbound_filter_status[15].FILTER_CONFIG.data_bus_width.next "logic inboun
 
 CHECKSUM: "633166899 1052850956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr
-ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:436,518,613,615 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:576,691). NOT waived: the START_ADDR/END_ADDR status fields."
+ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:438,520,615,617 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:544,662). NOT waived: the START_ADDR/END_ADDR status fields."
 Toggle outbound_filter_status_i[0].FILTER_CONFIG.data_bus_width.next "logic outbound_filter_status_i[0].FILTER_CONFIG.data_bus_width.next[2:0]"
 Toggle outbound_filter_status_i[1].FILTER_CONFIG.data_bus_width.next "logic outbound_filter_status_i[1].FILTER_CONFIG.data_bus_width.next[2:0]"
 Toggle outbound_filter_status_i[2].FILTER_CONFIG.data_bus_width.next "logic outbound_filter_status_i[2].FILTER_CONFIG.data_bus_width.next[2:0]"
@@ -1141,12 +1095,12 @@ Toggle inbound_filter_status_i[15].FILTER_CONFIG.data_bus_width.next "logic inbo
 
 CHECKSUM: "1620533576 534567824"
 MODULE: filter_ctrl_reg
-ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:436,518,613,615 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:576,691). Every filter_ctrl_reg instance is one of these banks. NOT waived: the hwif_in START_ADDR/END_ADDR fields."
+ANNOTATION: "SEP-FILTER-DBUSWIDTH-CONST: hw/ip/axi_filter/rtl/axi_filter_wrap.sv:134 assigns FILTER_CONFIG.data_bus_width.next the localparam DbusWidthLog2 (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:58, 3 for the 64-bit data bus of both filter wraps); the value reaches the banks only through wires (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:438,520,615,617 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:544,662). Every filter_ctrl_reg instance is one of these banks. NOT waived: the hwif_in START_ADDR/END_ADDR fields."
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[0].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1156,7 +1110,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[1].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1166,7 +1120,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[2].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1176,7 +1130,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[3].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1186,7 +1140,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[4].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1196,7 +1150,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[5].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1206,7 +1160,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[6].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1216,7 +1170,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[7].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1226,7 +1180,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[8].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1236,7 +1190,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[9].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1246,7 +1200,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[10].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1256,7 +1210,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[11].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1266,7 +1220,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[12].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1276,7 +1230,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[13].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1286,7 +1240,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[14].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1296,7 +1250,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[15].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1306,7 +1260,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[16].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1316,7 +1270,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[17].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1326,7 +1280,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[18].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1336,7 +1290,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[19].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1346,7 +1300,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[20].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1356,7 +1310,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[21].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1366,7 +1320,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[22].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1376,7 +1330,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[23].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1386,7 +1340,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[24].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1396,7 +1350,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[25].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1406,7 +1360,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[26].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1416,7 +1370,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[27].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1426,7 +1380,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[28].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1436,7 +1390,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[29].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1446,7 +1400,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[30].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1456,7 +1410,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_outbound_filter_reg[31].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1466,7 +1420,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[0].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1476,7 +1430,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[1].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1486,7 +1440,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[2].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1496,7 +1450,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[3].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1506,7 +1460,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[4].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1516,7 +1470,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[5].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1526,7 +1480,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[6].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1536,7 +1490,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[7].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1546,7 +1500,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[8].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1556,7 +1510,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[9].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1566,7 +1520,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[10].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1576,7 +1530,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[11].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1586,7 +1540,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[12].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1596,7 +1550,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[13].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1606,7 +1560,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[14].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -1616,7 +1570,7 @@ Toggle axil_resp_o.r.data "logic axil_resp_o.r.data[63:0]"
 
 CHECKSUM: "1849182084 4050892946"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.gen_inbound_filter_reg[15].u_err_slv
-ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
+ANNOTATION: "SEP-FILTERREG-ERRSLV-NO-READ: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i of each per-entry lock demux to 1'b0, so the demux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:368-388, r fifo :395-405, :438) never routes a read to port 1 and this error slave sees ar_valid = 0 and r_ready = 0. The read payload is the RESP and RESP_DATA parameters (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:194-196). NOT waived: ar.addr and ar.prot, which the demux broadcasts to every port, the write channel, which locked-entry writes move, and r_valid, ar_ready and r.last, which hold only through error-slave state."
 Toggle axil_req_i.ar_valid "logic axil_req_i.ar_valid"
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axi_req.ar_valid "logic axi_req.ar_valid"
@@ -3132,7 +3086,7 @@ Toggle err_slv_resp.b.user "logic err_slv_resp.b.user[11:0]"
 
 CHECKSUM: "633166899 1052850956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr
-ANNOTATION: "SEP-CSR-BANK-RESP-OKAY: the filter banks drive s_axil_rresp from a no-error response buffer (hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv:630 assigns readback_err '0), and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:548 and :663 tie slv_ar_select_i to 1'b0, so the per-entry demux R mux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:429-434) selects the bank port only and the read response is always OKAY. NOT waived: the filter b.resp copies, which the locked-entry error slave answers, and the system-CSR r.resp, which an out-of-window access can move."
+ANNOTATION: "SEP-CSR-BANK-RESP-OKAY: the filter banks drive s_axil_rresp from a no-error response buffer (hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv:630 assigns readback_err '0), and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:516 and :634 tie slv_ar_select_i to 1'b0, so the per-entry demux R mux (vendor/pulp-platform/axi/upstream/src/axi_lite_demux.sv:429-434) selects the bank port only and the read response is always OKAY. NOT waived: the filter b.resp copies, which the locked-entry error slave answers, and the system-CSR r.resp, which an out-of-window access can move."
 Toggle gen_outbound_filter_reg[0].filter_reg_resp.r.resp "logic gen_outbound_filter_reg[0].filter_reg_resp.r.resp[1:0]"
 Toggle gen_outbound_filter_reg[1].filter_reg_resp.r.resp "logic gen_outbound_filter_reg[1].filter_reg_resp.r.resp[1:0]"
 Toggle gen_outbound_filter_reg[2].filter_reg_resp.r.resp "logic gen_outbound_filter_reg[2].filter_reg_resp.r.resp[1:0]"
@@ -3232,7 +3186,7 @@ Toggle inbound_filter_axil_resps[15].r.resp "logic inbound_filter_axil_resps[15]
 
 CHECKSUM: "633166899 1052850956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr
-ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:777 and :779-783 assign timeout_interrupt_rsvd, sep_standalone, fast_pka_en, fast_sram_en, fast_dccm_en and fast_iccm_en the literal 0, and :815 and :818-822 copy them into sep_cpu_ctrl_hwif_in. hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1200 assigns SEP_NMI_VEC.rsvd.value = 1'h0. NOT waived: the other hwif_in fields, such as REFERENCE_COUNTER, which hardware moves, and the SW-writable hwif_out fields."
+ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:751 and :753-757 assign timeout_interrupt_rsvd, sep_standalone, fast_pka_en, fast_sram_en, fast_dccm_en and fast_iccm_en the literal 0, and :789 and :792-796 copy them into sep_cpu_ctrl_hwif_in. hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1207 assigns SEP_NMI_VEC.rsvd.value = 1'h0. NOT waived: the other hwif_in fields, such as REFERENCE_COUNTER, which hardware moves, and the SW-writable hwif_out fields."
 Toggle timeout_interrupt_rsvd "logic timeout_interrupt_rsvd"
 Toggle sep_standalone "logic sep_standalone"
 Toggle fast_pka_en "logic fast_pka_en"
@@ -3249,7 +3203,7 @@ Toggle sep_cpu_ctrl_hwif_out.SEP_NMI_VEC.rsvd.value "logic sep_cpu_ctrl_hwif_out
 
 CHECKSUM: "2196427632 3867530623"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_inbound_global_to_local_addr_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:543 ties target_base_i to '0. NOT waived: region_size_i, local_alias_base_i and the address nets, which configuration and traffic move."
+ANNOTATION: "SEP-REMAP-CONST-PORT: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:545 ties target_base_i to '0. NOT waived: region_size_i, local_alias_base_i and the address nets, which configuration and traffic move."
 Toggle target_base_i "logic target_base_i[55:0]"
 
 CHECKSUM: "2196427632 2116802384"
@@ -3284,35 +3238,35 @@ Toggle mst_req_o.aw.prot "logic mst_req_o.aw.prot[2:0]"
 
 CHECKSUM: "637028774 3305483671"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_ap_remap
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:321-322 and :348-349 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:492, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the input user fields and axi_req_remapped, which carry the initiator user, and the response user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the input user fields and axi_req_remapped, which carry the initiator user, and the response user fields."
 Toggle axi_remapped_req_o.ar.user "logic axi_remapped_req_o.ar.user[11:0]"
 Toggle axi_remapped_req_o.w.user "logic axi_remapped_req_o.w.user[11:0]"
 Toggle axi_remapped_req_o.aw.user "logic axi_remapped_req_o.aw.user[11:0]"
 
 CHECKSUM: "145282378 3429664812"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_ap_remap.gen_user_override.u_user_override
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:321-322 and :348-349 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:492, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: axi_in_req_i user and the response user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: axi_in_req_i user and the response user fields."
 Toggle axi_out_req_o.ar.user "logic axi_out_req_o.ar.user[11:0]"
 Toggle axi_out_req_o.w.user "logic axi_out_req_o.w.user[11:0]"
 Toggle axi_out_req_o.aw.user "logic axi_out_req_o.aw.user[11:0]"
 
 CHECKSUM: "637028774 3305483671"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_stee_remap
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:321-322 and :348-349 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:492, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the input user fields and axi_req_remapped, which carry the initiator user, and the response user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the input user fields and axi_req_remapped, which carry the initiator user, and the response user fields."
 Toggle axi_remapped_req_o.ar.user "logic axi_remapped_req_o.ar.user[11:0]"
 Toggle axi_remapped_req_o.w.user "logic axi_remapped_req_o.w.user[11:0]"
 Toggle axi_remapped_req_o.aw.user "logic axi_remapped_req_o.aw.user[11:0]"
 
 CHECKSUM: "145282378 3429664812"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_stee_remap.gen_user_override.u_user_override
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:321-322 and :348-349 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:492, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: axi_in_req_i user and the response user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: axi_in_req_i user and the response user fields."
 Toggle axi_out_req_o.ar.user "logic axi_out_req_o.ar.user[11:0]"
 Toggle axi_out_req_o.w.user "logic axi_out_req_o.w.user[11:0]"
 Toggle axi_out_req_o.aw.user "logic axi_out_req_o.aw.user[11:0]"
 
 CHECKSUM: "1951099644 1291595517"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:321-322 and :348-349 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:492, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the pre-remap user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the pre-remap user fields."
 Toggle sep_ap_remapped_axi_req.ar.user "logic sep_ap_remapped_axi_req.ar.user[11:0]"
 Toggle sep_ap_remapped_axi_req.w.user "logic sep_ap_remapped_axi_req.w.user[11:0]"
 Toggle sep_ap_remapped_axi_req.aw.user "logic sep_ap_remapped_axi_req.aw.user[11:0]"
@@ -3346,7 +3300,7 @@ Toggle axi_in_req_i.aw.addr [55:32] "logic axi_in_req_i.aw.addr[55:0]"
 
 CHECKSUM: "582063369 344859140"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_local_master_remap_wrap.u_axi_alias_remap.u_aw_addr_adder
-ANNOTATION: "SEP-ADDR-PAD-32-56: hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv:91-93 (gen_addr_pad) pad the 32-bit local-master address to 56 bits with zeros, so address bits [55:32] are 0. hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv:101-102 and :111-112 feed b_i = {1'b0, addr[55:12]} and a_i = {1'b0, offset[55:12]}, so b_i[43:20], a_i[44] and b_i[44] are 0. The adder has 9 chunks of 5 bits (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:190); the top chunk sum is at most 15 + 0 + 1 < 32, so carry[8], c_o and the final carry_prev are 0 (hw/common/ocah_prim/rtl/prim_carry_select_adder.sv:25-41). NOT waived: a_i[43:0] (the SW offset), b_i[19:0], sum_o and carry[7:0]."
+ANNOTATION: "SEP-ADDR-PAD-32-56: hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv:91-93 (gen_addr_pad) pad the 32-bit local-master address to 56 bits with zeros, so address bits [55:32] are 0. hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv:101-102 and :111-112 feed b_i = {1'b0, addr[55:12]} and a_i = {1'b0, offset[55:12]}, so b_i[43:20], a_i[44] and b_i[44] are 0. The adder has 9 chunks of 5 bits (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:192); the top chunk sum is at most 15 + 0 + 1 < 32, so carry[8], c_o and the final carry_prev are 0 (hw/common/ocah_prim/rtl/prim_carry_select_adder.sv:25-41). NOT waived: a_i[43:0] (the SW offset), b_i[19:0], sum_o and carry[7:0]."
 Toggle b_i [43:20] "logic b_i[44:0]"
 Toggle a_i [44] "logic a_i[44:0]"
 Toggle b_i [44] "logic b_i[44:0]"
@@ -3356,7 +3310,7 @@ Toggle carry_prev "logic carry_prev"
 
 CHECKSUM: "582063369 344859140"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_local_master_remap_wrap.u_axi_alias_remap.u_ar_addr_adder
-ANNOTATION: "SEP-ADDR-PAD-32-56: hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv:91-93 (gen_addr_pad) pad the 32-bit local-master address to 56 bits with zeros, so address bits [55:32] are 0. hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv:101-102 and :111-112 feed b_i = {1'b0, addr[55:12]} and a_i = {1'b0, offset[55:12]}, so b_i[43:20], a_i[44] and b_i[44] are 0. The adder has 9 chunks of 5 bits (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:190); the top chunk sum is at most 15 + 0 + 1 < 32, so carry[8], c_o and the final carry_prev are 0 (hw/common/ocah_prim/rtl/prim_carry_select_adder.sv:25-41). NOT waived: a_i[43:0] (the SW offset), b_i[19:0], sum_o and carry[7:0]."
+ANNOTATION: "SEP-ADDR-PAD-32-56: hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv:91-93 (gen_addr_pad) pad the 32-bit local-master address to 56 bits with zeros, so address bits [55:32] are 0. hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv:101-102 and :111-112 feed b_i = {1'b0, addr[55:12]} and a_i = {1'b0, offset[55:12]}, so b_i[43:20], a_i[44] and b_i[44] are 0. The adder has 9 chunks of 5 bits (hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:192); the top chunk sum is at most 15 + 0 + 1 < 32, so carry[8], c_o and the final carry_prev are 0 (hw/common/ocah_prim/rtl/prim_carry_select_adder.sv:25-41). NOT waived: a_i[43:0] (the SW offset), b_i[19:0], sum_o and carry[7:0]."
 Toggle b_i [43:20] "logic b_i[44:0]"
 Toggle a_i [44] "logic a_i[44:0]"
 Toggle b_i [44] "logic b_i[44:0]"
@@ -3470,13 +3424,13 @@ Toggle remap_regions_i[15].region_start [11:0] "logic remap_regions_i[15].region
 
 CHECKSUM: "1196780505 246924877"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_inbound_to_sep_id_remap
-ANNOTATION: "SEP-INBOUND-ID-PAD: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:694 sets MAX_INFLIGHT_IDS 4, so IdxWidth is 2, and vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:198-200 pad the 3-bit output ID with literal zeros, so ID bit 2 is 0. NOT waived: ID bits [1:0], which the remap table assigns."
+ANNOTATION: "SEP-INBOUND-ID-PAD: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:696 sets MAX_INFLIGHT_IDS 4, so IdxWidth is 2, and vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:198-200 pad the 3-bit output ID with literal zeros, so ID bit 2 is 0. NOT waived: ID bits [1:0], which the remap table assigns."
 Toggle axi_out_req_o.ar.id [2] "logic axi_out_req_o.ar.id[2:0]"
 Toggle axi_out_req_o.aw.id [2] "logic axi_out_req_o.aw.id[2:0]"
 
 CHECKSUM: "1951099644 1291595517"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals
-ANNOTATION: "SEP-INBOUND-ID-PAD: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:694 sets MAX_INFLIGHT_IDS 4, so IdxWidth is 2, and vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:198-200 pad the 3-bit output ID with literal zeros, so ID bit 2 is 0. NOT waived: ID bits [1:0]."
+ANNOTATION: "SEP-INBOUND-ID-PAD: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:696 sets MAX_INFLIGHT_IDS 4, so IdxWidth is 2, and vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:198-200 pad the 3-bit output ID with literal zeros, so ID bit 2 is 0. NOT waived: ID bits [1:0]."
 Toggle smn_inbound_to_sep_axi_req_o.ar.id [2] "logic smn_inbound_to_sep_axi_req_o.ar.id[2:0]"
 Toggle smn_inbound_to_sep_axi_req_o.aw.id [2] "logic smn_inbound_to_sep_axi_req_o.aw.id[2:0]"
 
@@ -3498,14 +3452,14 @@ Toggle mailbox_from_csr_axil_resp.b.resp [0] "logic mailbox_from_csr_axil_resp.b
 
 CHECKSUM: "3432265777 778853912"
 INSTANCE: sep_uvm_top.u_dut.u_sep
-ANNOTATION: "SEP-ENTROPY-POOL-ERR-TIED: hw/sys/sep/rtl/sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and each non-secure arm of the vendored prim_fifo_sync ties err_o to 0. hw/sys/sep/rtl/sep_entropy_fifo.sv:210 and hw/sys/sep/rtl/sep.sv:1073,601,614 carry it to PIC source 39 (bit 38). NOT waived: entropy_pool_low, entropy_pool_fill_stall and every other interrupt bit."
+ANNOTATION: "SEP-ENTROPY-POOL-ERR-TIED: hw/sys/sep/rtl/sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and each non-secure arm of the vendored prim_fifo_sync ties err_o to 0. hw/sys/sep/rtl/sep_entropy_fifo.sv:210 and hw/sys/sep/rtl/sep.sv:1008,534,547 carry it to PIC source 39 (bit 38). NOT waived: entropy_pool_low, entropy_pool_fill_stall and every other interrupt bit."
 Toggle entropy_pool_err "logic entropy_pool_err"
 Toggle sep_internal_interrupts [38] "logic sep_internal_interrupts[42:0]"
 Toggle sep_interrupts [38] "logic sep_interrupts[254:0]"
 
 CHECKSUM: "633166899 1052850956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr
-ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:777 and :779-784 tie timeout_interrupt_rsvd, sep_standalone and fast_{pka,sram,dccm,iccm,spi}_en to 0, and :815 and :818-823 drive the sep_cpu_ctrl hwif inputs from them. NOT waived: all other sep_cpu_ctrl_hwif_in fields."
+ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:751 and :753-758 tie timeout_interrupt_rsvd, sep_standalone and fast_{pka,sram,dccm,iccm,spi}_en to 0, and :789 and :792-797 drive the sep_cpu_ctrl hwif inputs from them. NOT waived: all other sep_cpu_ctrl_hwif_in fields."
 Toggle sep_cpu_ctrl_hwif_in.SEP_TEST_CTRL.fast_spi_en.next "logic sep_cpu_ctrl_hwif_in.SEP_TEST_CTRL.fast_spi_en.next"
 Toggle fast_spi_en "logic fast_spi_en"
 
@@ -3523,7 +3477,7 @@ Toggle host_tl_h_i.d_user.rsp_intg [6] "logic host_tl_h_i.d_user.rsp_intg[6:0]"
 
 CHECKSUM: "3037710887 3972236298"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
-ANNOTATION: "SEP-DMA-ADDR-WORD-ALIGNED: hw/common/tlul/rtl/tlul_adapter_host.sv:115 drives a_address[1:0] to 0 (vendor/lowRISC/opentitan/upstream/hw/ip/dma/rtl/secure_dma.sv:240); hw/common/axi/tlul_to_axi_lite.sv:174,197,220 copy it (reset :101); vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:41,58 copy it with burst FIXED (:44,61) and cache 0 (hw/sys/sep/rtl/sep_dma_wrap.sv:283-284), so vendor/pulp-platform/axi/upstream/src/axi_dw_upsizer.sv:380,518,643,693 hold the address unchanged (reset '0 at :366,674). NOT waived: address bits [31:2], and dma_req_o.Ax.addr, which the sw-writable SEP_LOCAL_BASE_ADDR moves through the remap."
+ANNOTATION: "SEP-DMA-ADDR-WORD-ALIGNED: hw/common/tlul/rtl/tlul_adapter_host.sv:115 drives a_address[1:0] to 0 (vendor/lowRISC/opentitan/upstream/hw/ip/dma/rtl/secure_dma.sv:240); hw/common/axi/tlul_to_axi_lite.sv:174,197,220 copy it (reset :101); vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:41,58 copy it with burst FIXED (:44,61) and cache 0 (hw/sys/sep/rtl/sep_dma_wrap.sv:319-320), so vendor/pulp-platform/axi/upstream/src/axi_dw_upsizer.sv:380,518,643,693 hold the address unchanged (reset '0 at :366,674). NOT waived: address bits [31:2], and dma_req_o.Ax.addr, which the sw-writable SEP_LOCAL_BASE_ADDR moves through the remap."
 Toggle axi_lite_mst_req.ar.addr [1:0] "logic axi_lite_mst_req.ar.addr[31:0]"
 Toggle axi_lite_mst_req.aw.addr [1:0] "logic axi_lite_mst_req.aw.addr[31:0]"
 Toggle axi32_mst_req.ar.addr [1:0] "logic axi32_mst_req.ar.addr[31:0]"
@@ -3602,7 +3556,7 @@ Toggle req_opcode_d [1] "logic req_opcode_d[2:0]"
 
 CHECKSUM: "848773853 3826471955"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_boot_rom_memory_interface
-ANNOTATION: "SEP-MEMIF-CSR-TIED: hw/sys/sep/rtl/sep.sv:885,888 tie csr_in_axil_req_i and csr_out_axil_resp_i of u_boot_rom_memory_interface to '0, and hw/ip/memory_interface/rtl/memory_interface.sv:221-227 drive csr_in_axil_resp_o and csr_out_axil_req_o only from those tied inputs, so every bit of the four CSR AXI-Lite ports holds constant. NOT waived: the mem_axi request and response ports and the ROM memory port, which move with bus traffic."
+ANNOTATION: "SEP-MEMIF-CSR-TIED: hw/sys/sep/rtl/sep.sv:818,821 tie csr_in_axil_req_i and csr_out_axil_resp_i of u_boot_rom_memory_interface to '0, and hw/ip/memory_interface/rtl/memory_interface.sv:221-227 drive csr_in_axil_resp_o and csr_out_axil_req_o only from those tied inputs, so every bit of the four CSR AXI-Lite ports holds constant. NOT waived: the mem_axi request and response ports and the ROM memory port, which move with bus traffic."
 Toggle csr_in_axil_req_i.r_ready "logic csr_in_axil_req_i.r_ready"
 Toggle csr_in_axil_req_i.ar_valid "logic csr_in_axil_req_i.ar_valid"
 Toggle csr_in_axil_req_i.ar.prot "logic csr_in_axil_req_i.ar.prot[2:0]"
@@ -3644,7 +3598,7 @@ Toggle csr_out_axil_resp_i.aw_ready "logic csr_out_axil_resp_i.aw_ready"
 
 CHECKSUM: "848773853 452915742"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sram_memory_interface
-ANNOTATION: "SEP-MEMIF-CSR-TIED: hw/sys/sep/rtl/sep.sv:814,817 tie csr_in_axil_req_i and csr_out_axil_resp_i of u_sram_memory_interface to '0, and hw/ip/memory_interface/rtl/memory_interface.sv:221-227 drive csr_in_axil_resp_o and csr_out_axil_req_o only from those tied inputs, so every bit of the four CSR AXI-Lite ports holds constant. NOT waived: the mem_axi request and response ports and the SRAM memory port, which move with bus traffic."
+ANNOTATION: "SEP-MEMIF-CSR-TIED: hw/sys/sep/rtl/sep.sv:747,750 tie csr_in_axil_req_i and csr_out_axil_resp_i of u_sram_memory_interface to '0, and hw/ip/memory_interface/rtl/memory_interface.sv:221-227 drive csr_in_axil_resp_o and csr_out_axil_req_o only from those tied inputs, so every bit of the four CSR AXI-Lite ports holds constant. NOT waived: the mem_axi request and response ports and the SRAM memory port, which move with bus traffic."
 Toggle csr_in_axil_req_i.r_ready "logic csr_in_axil_req_i.r_ready"
 Toggle csr_in_axil_req_i.ar_valid "logic csr_in_axil_req_i.ar_valid"
 Toggle csr_in_axil_req_i.ar.prot "logic csr_in_axil_req_i.ar.prot[2:0]"
@@ -3712,7 +3666,7 @@ Toggle mem_axi_resp_o.b.resp [1] "logic mem_axi_resp_o.b.resp[1:0]"
 
 CHECKSUM: "1185615089 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-IFU-ROM-RESP-NOERR: the only R source of the ROM mux is u_boot_rom_memory_interface (hw/sys/sep/rtl/sep.sv:865-892). There vendor/pulp-platform/axi/upstream/src/axi_to_mem.sv:111 ties mem_err_i to '0, so r.resp[1] holds 0, and vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:554 drives r.user to '0. ifu_demux_resp[0] is the same net (hw/sys/sep/rtl/sep_cpu.sv:624). NOT waived: r.resp[0], r.last, r.data and r.id of the ROM response, and every SRAM-side and merged IFU response field."
+ANNOTATION: "SEP-CPU-IFU-ROM-RESP-NOERR: the only R source of the ROM mux is u_boot_rom_memory_interface (hw/sys/sep/rtl/sep.sv:798-825). There vendor/pulp-platform/axi/upstream/src/axi_to_mem.sv:111 ties mem_err_i to '0, so r.resp[1] holds 0, and vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:554 drives r.user to '0. ifu_demux_resp[0] is the same net (hw/sys/sep/rtl/sep_cpu.sv:624). NOT waived: r.resp[0], r.last, r.data and r.id of the ROM response, and every SRAM-side and merged IFU response field."
 Toggle ifu_rom_axi_resp_i.r.user "logic ifu_rom_axi_resp_i.r.user[11:0]"
 Toggle ifu_rom_axi_resp_i.r.resp [1] "logic ifu_rom_axi_resp_i.r.resp[1:0]"
 Toggle ifu_demux_resp[0].r.user "logic ifu_demux_resp[0].r.user[11:0]"
@@ -3725,12 +3679,12 @@ Toggle sep_cpu_trace_o.trace_rv_i_address_ip [0] "logic sep_cpu_trace_o.trace_rv
 
 CHECKSUM: "883981495 759020956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap
-ANNOTATION: "SEP-WDT-DEBUG-SLEEP-TIED: hw/sys/sep/rtl/sep.sv:327 drives wdt_debug_sleep_mode to 1'b0, connected to wdt_debug_sleep_mode_i at :1163. NOT waived: the watchdog bus, bark, bite and alert signals."
+ANNOTATION: "SEP-WDT-DEBUG-SLEEP-TIED: hw/sys/sep/rtl/sep.sv:327 drives wdt_debug_sleep_mode to 1'b0, connected to wdt_debug_sleep_mode_i at :1098. NOT waived: the watchdog bus, bark, bite and alert signals."
 Toggle wdt_debug_sleep_mode_i "logic wdt_debug_sleep_mode_i"
 
 CHECKSUM: "3568733711 1558512121"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_reference_counter_counter
-ANNOTATION: "SEP-REFCNT-EN-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:802 ties cnt_en_i to 1'b1, and hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv:52-58 carry it through a reset-less prim_sync3 to ref_cnt_en, so neither net takes the value 0. NOT waived: the count, update and gray-code CDC paths."
+ANNOTATION: "SEP-REFCNT-EN-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:776 ties cnt_en_i to 1'b1, and hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv:52-58 carry it through a reset-less prim_sync3 to ref_cnt_en, so neither net takes the value 0. NOT waived: the count, update and gray-code CDC paths."
 Toggle cnt_en_i "logic cnt_en_i"
 Toggle ref_cnt_en "logic ref_cnt_en"
 

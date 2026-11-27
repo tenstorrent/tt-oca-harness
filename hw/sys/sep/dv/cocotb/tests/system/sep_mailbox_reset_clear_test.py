@@ -16,9 +16,9 @@ and enables, drops every mailbox line, and restores the ISS source ID of an
 inbound filter entry to its reset value 0. The mailbox works after the reset.
 ``rst_ni`` asserts ``sep_reset_n``, which resets the system peripherals
 (``hw/sys/sep/doc/clk_rst.adoc:57-58``, ``hw/sys/sep/doc/reset_controller.adoc:45-50``);
-the system CSRs hold the inbound filter entries (``hw/sys/sep/doc/fabric.adoc:146``)
+the system CSRs hold the inbound filter entries (``hw/sys/sep/doc/fabric.adoc:151``)
 and sit inside the system peripherals
-(``hw/sys/sep/doc/assets/sep-system-peripherals.svg``, ``fabric.adoc:272-275``). So
+(``hw/sys/sep/doc/assets/sep-system-peripherals.svg``, ``fabric.adoc:278-281``). So
 ``locked`` and ``entry_enabled`` return to their ``FILTER_CONFIG`` reset values 0.
 
 Flow: thresholds and enables on all 16 ports; one locked ISS entry (``src_id``

@@ -58,14 +58,14 @@ bit N - 1):
     triggered. Furthermore, CSRNG will respond with the appropriate error status
     response on the relevant interface." (theory_of_operation.md:50-51). "Several control fields
     use MuBi4 encodings, for which true is `0x6` and false is `0x9`."
-    (``doc/programmer/src/sep-programming.adoc``:390-391). Every command word of
+    (``doc/programmer/src/sep-programming.adoc``:398-399). Every command word of
     the leaf is built from these fields.
   * EDN boot words (edn.adoc:128-131, :142-145): ``BOOT_INS_CMD`` resets to
     0x901 and ``BOOT_GEN_CMD`` to 0xFFF003; "the hardware only supports a value
     of 0 for the `clen` field".
   * EDN software status: "write an Instantiate command with no additional data
     to `EDN.SW_CMD_REQ`. Poll `CMD_ACK` ... and require `CMD_STS` to report
-    success." (sep-programming.adoc:459-462). EDN ``CMD_STS`` uses the CSRNG
+    success." (sep-programming.adoc:467-470). EDN ``CMD_STS`` uses the CSRNG
     codes (edn.adoc:172-176): "0 SUCCESS", "1 INVALID_ACMD ... the issued
     application command doesn't represent a valid operation", "4
     RESEED_CNT_EXCEEDED ... This happens only for Generate commands."
@@ -183,7 +183,7 @@ Checkers:
                  ack of the first EDN instantiate is logged only
                  (``INFO-EDN-STS``, not graded): the success code is stated only for the
                  sequence with ``AUTO_REQ_MODE`` = true
-                 (``doc/programmer/src/sep-programming.adoc:457-462``), and this
+                 (``doc/programmer/src/sep-programming.adoc:465-470``), and this
                  leg enables EDN with ``AUTO_REQ_MODE`` = false and the endpoints
                  in reset.
   CHK-EDN-ACK-ERR  after that reserved acmd acks with a non-zero ``CMD_STS``,
@@ -339,7 +339,7 @@ Checkers:
                  27; then ``CMD_ACK`` = 1, ``CMD_STS`` = 0,
                  ``edn_cmd_req_done`` = 1, the next command on the port is a
                  generate and ``HW_CMD_STS`` reads ``AUTO_MODE`` = 1,
-                 ``BOOT_MODE`` = 0 (sep-programming.adoc:457-462, :466-468;
+                 ``BOOT_MODE`` = 0 (sep-programming.adoc:465-470, :474-476;
                  edn.adoc:107). In the hold both seed handshake signals are
                  read with no unknown bit allowed; an X or Z on either fails.
   CHK-EDN-AUTO-ZERO  with ``AUTO_REQ_MODE`` true and
@@ -1680,11 +1680,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
     # --- EDN instantiate and the ESRC seed ------------------------------------------
     async def _inst_seed_leg(self) -> None:
         """CHK-EDN-INST-SEED: "CSRNG cannot acknowledge that command until it has
-        accepted a complete ESRC seed" (sep-programming.adoc:466-468).
+        accepted a complete ESRC seed" (sep-programming.adoc:474-476).
 
         A TRNG reset, then ESRC configured with its generators off (no seed), CSRNG
         on and EDN on in the stated sequence (``AUTO_REQ_MODE`` true,
-        sep-programming.adoc:457-462). The instantiate to ``SW_CMD_REQ`` must reach
+        sep-programming.adoc:465-470). The instantiate to ``SW_CMD_REQ`` must reach
         the EDN to CSRNG port, then the drawn hold H passes with no seed handshake,
         no ``CMD_ACK`` and no rise of vector bit 27. The generators then go on: the
         first seed handshake comes before the rise of bit 27, ``CMD_ACK`` = 1 with

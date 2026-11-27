@@ -33,22 +33,30 @@ UNITS = ("OTBN", "HMAC", "KMAC", "ENTROPY_SOURCE", "ABR")
 ROOT = pathlib.Path(__file__).resolve().parents[6]
 SVH = ROOT / "hw/sys/sep/regs/gen/svh/sep_reg.svh"
 OUT = ROOT / "hw/sys/sep/dv/tb/sep_fcov_crypto_reg_addrs.svh"
-MAP_PY = ROOT / "hw/sys/sep/regs/gen/py/sep_memory_map.py"
+DECODE_PY = ROOT / "hw/sys/sep/dv/cocotb/env/sep_decode_resp.py"
 
 
 def apertures() -> list[tuple[str, int, int]]:
-    """``(CamelName, base, last)`` of every unit aperture of the component view."""
-    spec = importlib.util.spec_from_file_location("sep_memory_map", MAP_PY)
-    assert spec is not None and spec.loader is not None, MAP_PY
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    out = []
-    for row in mod.VIEWS["sep-components"]["rows"]:
+    """``(CamelName, base, last)`` of every unit aperture of the component view.
+
+    A wrapper unit gives one aperture per sub-block, as ``sep_decode_resp`` splits it.
+    """
+    spec = importlib.util.spec_from_file_location("sep_decode_resp", DECODE_PY)
+    assert spec is not None and spec.loader is not None, DECODE_PY
+    decode = sys.modules[spec.name] = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(decode)
+    units = []
+    for row in decode.sep_memory_map.VIEWS["sep-components"]["rows"]:
         if row["kind"] != "node":
             continue
         unit = row["key"].split(":", 1)[1]
-        out.append(("".join(w.capitalize() for w in unit.split("_")), row["base"], row["end"]))
-    return out
+        if unit not in decode.WRAPPERS:
+            units.append((unit, row["base"], row["end"]))
+            continue
+        units += [
+            (r.unit, r.base, r.end) for r in decode.sub_block_rows(row) if r.unit != "Reserved"
+        ]
+    return [("".join(w.capitalize() for w in u.split("_")), base, last) for u, base, last in units]
 
 
 def render() -> str:

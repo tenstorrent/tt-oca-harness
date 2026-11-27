@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="868" viewBox="0 0 1040 868" role="img" aria-labelledby="title desc">
 <title id="title">eFuse controller and interface shim</title>
-<desc id="desc">The SEP and SMC eFuse wrappers each instantiate efuse_interface_controller, which the adopter connects to an interface shim in front of the fuse bank. In sep_efuse_wrapper the 64-bit AXI4 functional port passes through axi_dw_converter and axi_to_axi_lite and is multiplexed with the Key Manager AXI-Lite port; these are SEP only. Both wrappers pass the OTP JTAG AXI-Lite port through a lifecycle filter that answers blocked accesses with an error. Inside the controller an AXI-Lite multiplexer merges the functional and JTAG ports, and an address decode sends the bank control window to the shim and the rest through an AXI-Lite to APB bridge. An APB demultiplexer selects the MMR window (efuse_token_processing, SEP only), the MAP window (efuse_shadow_regs with the sensing FSM, shadow map and field locks), the CTRL window (efuse_interface_ctrl_reg) or an error response. The CTRL registers drive the program and read interfaces. A priority multiplexer selects sensing, then program, then read, and efuse_guard filters the fuse command against the field locks and, in SEP, the RMA token bits before it reaches the shim. The shim holds the bank control registers, a read FSM and a write FSM with read-back, and selects one of them onto the APB request to the fuse bank model. Dashed outlines mark the logic present only in SEP, where HAS_LC_STATE is 1.</desc>
+<desc id="desc">The SEP and SMC eFuse wrappers each instantiate efuse_interface_controller, which the adopter connects to an interface shim in front of the fuse bank. In sep_efuse_wrapper the 64-bit AXI4 functional port passes through axi_dw_converter and axi_to_axi_lite and is multiplexed with the Key Manager AXI-Lite port; these are SEP only. Both wrappers route the OTP JTAG AXI-Lite port through a demultiplexer whose select comes from the lifecycle state and the address: an access to the eFuse register page goes to the controller, an access to the shim CSR window goes to a shim multiplexer that it shares with the functional shim port, and a blocked access or any other address goes to an error responder that answers SLVERR with read data 0xBADCAB1E. In sep_efuse_wrapper the 64-bit AXI4 functional shim port passes through its own axi_dw_converter and axi_to_axi_lite. The shim multiplexer drives the bank control registers of the shim. Inside the controller an AXI-Lite multiplexer merges the functional and JTAG ports into an AXI-Lite to APB bridge. An APB demultiplexer selects the MMR window (efuse_token_processing, SEP only), the MAP window (efuse_shadow_regs with the sensing FSM, shadow map and field locks), the CTRL window (efuse_interface_ctrl_reg) or an error response. The CTRL registers drive the program and read interfaces. A priority multiplexer selects sensing, then program, then read, and efuse_guard filters the fuse command against the field locks and, in SEP, the RMA token bits before it reaches the shim. The shim holds the bank control registers, a read FSM and a write FSM with read-back, and selects one of them onto the APB request to the fuse bank model. Dashed outlines mark the logic present only in SEP, where HAS_LC_STATE is 1.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -80,17 +80,17 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="smu" x="130" y="16" width="732" height="458" rx="8"/>
 <text class="bs" x="142" y="444" text-anchor="start">sep_efuse_wrapper</text>
 <text class="bs" x="142" y="462" text-anchor="start">smc_efuse_wrapper</text>
-<rect class="smu" x="300" y="28" width="552" height="434" rx="8"/>
-<text class="b" x="312" y="450" text-anchor="start">efuse_interface_controller</text>
+<rect class="smu" x="306" y="28" width="546" height="434" rx="8"/>
+<text class="b" x="318" y="450" text-anchor="start">efuse_interface_controller</text>
 <rect class="external" x="14" y="40" width="104" height="64" rx="6"/>
 <text class="s" x="66" y="60" text-anchor="middle">Functional</text>
 <text class="s" x="66" y="77" text-anchor="middle">SEP: AXI4</text>
 <text class="s" x="66" y="94" text-anchor="middle">SMC: AXI-Lite</text>
 <rect class="external opt" x="14" y="116" width="104" height="40" rx="6"/>
 <text class="s" x="66" y="141" text-anchor="middle">Key Manager</text>
-<rect class="external" x="14" y="200" width="104" height="52" rx="6"/>
-<text class="s" x="66" y="222.5" text-anchor="middle">OTP JTAG</text>
-<text class="s" x="66" y="239.5" text-anchor="middle">AXI-Lite</text>
+<rect class="external" x="14" y="218" width="104" height="52" rx="6"/>
+<text class="s" x="66" y="240.5" text-anchor="middle">OTP JTAG</text>
+<text class="s" x="66" y="257.5" text-anchor="middle">AXI-Lite</text>
 <rect class="core opt" x="142" y="44" width="112" height="56" rx="6"/>
 <text class="s" x="198" y="67" text-anchor="middle">axi_dw_converter</text>
 <text class="s" x="198" y="85" text-anchor="middle">axi_to_axi_lite</text>
@@ -98,18 +98,40 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="fabric opt" d="M272,56 L292,65 L292,143 L272,152 Z"/>
 <path class="axi" d="M258,72 L268,72"/>
 <path class="axi" d="M122,136 L268,136"/>
-<rect class="core" x="142" y="196" width="142" height="60" rx="6"/>
-<text class="s" x="215" y="220" text-anchor="middle">JTAG lifecycle filter</text>
-<text class="s" x="215" y="238" text-anchor="middle">blocked: error</text>
-<path class="axi" d="M122,226 L138,226"/>
+<rect class="core" x="136" y="145" width="104" height="36" rx="6"/>
+<text class="s" x="188" y="159" text-anchor="middle">LC state and</text>
+<text class="s" x="188" y="175" text-anchor="middle">address decode</text>
+<path class="sigo" d="M165,181 L165,204"/>
+<path class="fabric" d="M154,216 L176,198 L176,290 L154,272 Z"/>
+<path class="axi" d="M122,244 L150,244"/>
+<text class="s" x="245" y="204" text-anchor="middle">eFuse page</text>
+<path class="axi" d="M180,210 L310,210"/>
+<rect class="core" x="196" y="218" width="104" height="52" rx="6"/>
+<text class="s" x="248" y="235" text-anchor="middle">other or blocked</text>
+<text class="s" x="248" y="250" text-anchor="middle">SLVERR</text>
+<text class="s" x="248" y="265" text-anchor="middle">0xBADCAB1E</text>
+<path class="axi" d="M180,244 L192,244"/>
+<text class="s" x="165" y="306" text-anchor="middle">JTAG</text>
+<text class="s" x="165" y="322" text-anchor="middle">demux</text>
+<text class="s" x="230" y="320" text-anchor="middle">shim CSR</text>
+<path class="axi" d="M180,278 L190,278 L190,326 L268,326"/>
+<rect class="external" x="14" y="338" width="104" height="64" rx="6"/>
+<text class="s" x="66" y="358" text-anchor="middle">Functional shim</text>
+<text class="s" x="66" y="375" text-anchor="middle">SEP: AXI4</text>
+<text class="s" x="66" y="392" text-anchor="middle">SMC: AXI-Lite</text>
+<path class="axi" d="M122,370 L138,370"/>
+<rect class="core opt" x="142" y="342" width="112" height="56" rx="6"/>
+<text class="s" x="198" y="365" text-anchor="middle">axi_dw_converter</text>
+<text class="s" x="198" y="383" text-anchor="middle">axi_to_axi_lite</text>
+<path class="fabric" d="M272,314 L288,322 L288,386 L272,394 Z"/>
+<path class="axi" d="M258,370 L268,370"/>
+<text class="s" x="280" y="410" text-anchor="middle">shim</text>
+<text class="s" x="280" y="426" text-anchor="middle">mux</text>
 <path class="fabric" d="M314,80 L336,92 L336,238 L314,250 Z"/>
 <path class="axi" d="M296,104 L310,104"/>
-<path class="axi" d="M288,226 L310,226"/>
-<path class="fabric" d="M356,136 L378,124 L378,228 L356,216 Z"/>
-<path class="axi" d="M340,176 L352,176"/>
 <rect class="core" x="396" y="112" width="108" height="44" rx="6"/>
 <text class="s" x="450" y="139" text-anchor="middle">AXI-Lite to APB</text>
-<path class="axi" d="M382,134 L392,134"/>
+<path class="axi" d="M340,134 L392,134"/>
 <path class="fabric" d="M530,64 L552,44 L552,246 L530,226 Z"/>
 <path class="axi" d="M508,134 L526,134"/>
 <rect class="core opt" x="580" y="40" width="180" height="52" rx="6"/>
@@ -148,8 +170,6 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="282" y="186" text-anchor="middle">mux</text>
 <text class="s" x="338" y="268" text-anchor="middle">func /</text>
 <text class="s" x="338" y="284" text-anchor="middle">JTAG mux</text>
-<text class="s" x="367" y="100" text-anchor="middle">address</text>
-<text class="s" x="367" y="116" text-anchor="middle">decode</text>
 <text class="s" x="541" y="264" text-anchor="middle">APB</text>
 <text class="s" x="541" y="280" text-anchor="middle">demux</text>
 <path class="sigo opt" d="M760,58 L874,58"/>
@@ -163,9 +183,9 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigplain opt" d="M14,488 L1026,488"/>
 <text class="si" x="14" y="480" text-anchor="start">OCAH</text>
 <text class="si" x="14" y="508" text-anchor="start">Adopter integration</text>
-<rect class="smu" x="300" y="502" width="552" height="246" rx="8"/>
-<text class="b" x="312" y="736" text-anchor="start">efuse_interface_shim</text>
-<path class="axi" d="M382,196 L392,196 L392,290 L566,290 L566,514"/>
+<rect class="smu" x="306" y="502" width="546" height="246" rx="8"/>
+<path class="axi" d="M292,354 L300,354 L300,544 L462,544"/>
+<text class="b" x="318" y="736" text-anchor="start">efuse_interface_shim</text>
 <rect class="core" x="466" y="518" width="180" height="52" rx="6"/>
 <text class="bs" x="556" y="539" text-anchor="middle">efuse_shim_ctrl_reg</text>
 <text class="s" x="556" y="558" text-anchor="middle">EFUSE_BANK_INIT_TIME</text>

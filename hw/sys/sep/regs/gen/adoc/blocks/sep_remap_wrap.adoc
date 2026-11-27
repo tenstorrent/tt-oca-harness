@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-sep_remap_wrap]
+== SEP Remap Wrapper Address Map
+
+Places the local-master alias remap and the AP and STEE output remap registers in one 4 KiB page.
+
+[NOTE]
+======
+*Register Arrays:*
+
+* *alias_remap[16].REGION.region_start*: 16 registers, base 0x0, stride 0x20
+* *alias_remap[16].REGION.region_end*: 16 registers, base 0x8, stride 0x20
+* *alias_remap[16].REGION.region_attrs*: 16 registers, base 0x10, stride 0x20
+* *ap_output_remap.output_remap[16].REGION.region_attrs*: 16 registers, base 0x200, stride 0x8
+* *stee_output_remap.output_remap[16].REGION.region_attrs*: 16 registers, base 0x300, stride 0x8
+======
+
+[cols="1,4,1,6", options="header"]
+|===
+| Address | Name | Access | Description
+| 0x0 - 0x1E0 | <<reg-{regmap-instance}-sep_remap_wrap-local_master_alias_remap-alias_remap-REGION-region_start,alias_remap[16].REGION.region_start>> | RW a| -
+| 0x8 - 0x1E8 | <<reg-{regmap-instance}-sep_remap_wrap-local_master_alias_remap-alias_remap-REGION-region_end,alias_remap[16].REGION.region_end>> | RW a| -
+| 0x10 - 0x1F0 | <<reg-{regmap-instance}-sep_remap_wrap-local_master_alias_remap-alias_remap-REGION-region_attrs,alias_remap[16].REGION.region_attrs>> | RW a| -
+| 0x200 - 0x278 | <<reg-{regmap-instance}-sep_remap_wrap-ap_output_remap-output_remap-REGION-region_attrs,ap_output_remap.output_remap[16].REGION.region_attrs>> | RW a| -
+| 0x300 - 0x378 | <<reg-{regmap-instance}-sep_remap_wrap-stee_output_remap-output_remap-REGION-region_attrs,stee_output_remap.output_remap[16].REGION.region_attrs>> | RW a| -
+|===
+
+[#reg-{regmap-instance}-sep_remap_wrap-local_master_alias_remap-alias_remap-REGION-region_start]
+=== alias_remap[16].REGION.region_start
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:56 | `Reserved` | - | - a| Reserved
+| 55:12 | `start_addr` | RW | 0x0 a| Start of remap region
+| 11:0 | `Reserved` | - | - a| Reserved
+|===
+
+[#reg-{regmap-instance}-sep_remap_wrap-local_master_alias_remap-alias_remap-REGION-region_end]
+=== alias_remap[16].REGION.region_end
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:56 | `Reserved` | - | - a| Reserved
+| 55:12 | `end_addr` | RW | 0x0 a| End of remap region (non-inclusive). A region whose end is at or below its start contains no address and never remaps.
+| 11:0 | `Reserved` | - | - a| Reserved
+|===
+
+[#reg-{regmap-instance}-sep_remap_wrap-local_master_alias_remap-alias_remap-REGION-region_attrs]
+=== alias_remap[16].REGION.region_attrs
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63 | `valid` | RW | 0x0 a| If set, this remap will be active
+| 62:60 | `Reserved` | - | - a| Reserved
+| 59:56 | `cacheable` | RW | 0x0 a| Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.
+| 55:12 | `offset` | RW | 0x0 a| The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The addition is modulo 2^44, so a carry out of bit 55 is discarded. The lower 12 bits of the address are preserved unchanged. When more than one valid region contains the address, the lowest-numbered region applies.
+| 11:0 | `Reserved` | - | - a| Reserved
+|===
+
+[#reg-{regmap-instance}-sep_remap_wrap-ap_output_remap-output_remap-REGION-region_attrs]
+=== ap_output_remap.output_remap[16].REGION.region_attrs
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63 | `valid` | RW | 0x0 a| If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged
+| 62:56 | `Reserved` | - | - a| Reserved
+| 55:0 | `offset` | RW | 0x0 a| Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
+e.g. SMC: 8 * 1MB regions --> 20 bits of address space per region, 36 MSBs from this register used
+SEP: 16 * 512KB regions --> 19 bits of address space per region, 37 MSBs from this register used
+|===
+
+[#reg-{regmap-instance}-sep_remap_wrap-stee_output_remap-output_remap-REGION-region_attrs]
+=== stee_output_remap.output_remap[16].REGION.region_attrs
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63 | `valid` | RW | 0x0 a| If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged
+| 62:56 | `Reserved` | - | - a| Reserved
+| 55:0 | `offset` | RW | 0x0 a| Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
+e.g. SMC: 8 * 1MB regions --> 20 bits of address space per region, 36 MSBs from this register used
+SEP: 16 * 512KB regions --> 19 bits of address space per region, 37 MSBs from this register used
+|===

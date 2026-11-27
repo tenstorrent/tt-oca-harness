@@ -207,12 +207,12 @@ their RDL reset value, so the readback of CHK-DEMOTE-HELD is live);
 ``CTRL-JTAG-TRST-EDGE`` (``jtag_trst_probe_o`` falls and then rises in the
 ``jtag_trst_ni`` pulse). Info: ``INFO-AGG-UNLATCHED``
 records that ``host_path_err`` and the hmac, csrng and edn bits of
-``PERIPH_BUS_ERR_STATUS`` are not observable in this bench, with the reason
+``PERIPH_BUS_ERR_STATUS`` are not latched by this leaf, with the reason
 per bit: a host-path fault needs a DMA bus fault, and the leaf locks the DMA
 range to the SRAM before the sequences; the leaf holds HMAC in its engine
-reset through every pulse; the CSRNG and EDN windows answer an unmapped offset
-with DECERR before the register bridge (``docs/SEP_FCOV.adoc``
-``periph_bus_err_csrng``). These bits read 0 before and after each pulse
+reset through every pulse; the leaf makes no access past the CSRNG or EDN
+registers, the only access that latches those bits
+(``hw/sys/sep/regs/gen/adoc/memory_map.adoc:91-92``). These bits read 0 before and after each pulse
 sequence, so the line shows nothing about their retention, and that question
 stays open. The DBG lines of CHK-BANK
 and CHK-CPU-RST-DBG take credit only after CHK-DBG-SYNC passes.
@@ -375,13 +375,13 @@ SEQ_LATCHED = ("aes", "kmac", "otbn", "wdt")
 SEQ_SET = sum(PERIPH_BIT[n] for n in SEQ_LATCHED)
 SEQ_CLR = sum(PERIPH_CLR[n] for n in SEQ_LATCHED)
 # Status bits no access of this leaf latches before a CPU-only pulse. Their
-# retention is not observable in this bench; INFO-AGG-UNLATCHED records the
+# retention is not observed by this leaf; INFO-AGG-UNLATCHED records the
 # reason per bit.
 SEQ_UNLATCHED = {
     "host_path_err": "needs_a_dma_bus_fault_the_leaf_dma_range_is_locked_to_sram",
     "hmac": "hmac_held_in_its_engine_reset_through_every_pulse",
-    "csrng": "csrng_window_decerrs_an_unmapped_offset_before_the_bridge",
-    "edn": "edn_window_decerrs_an_unmapped_offset_before_the_bridge",
+    "csrng": "no_access_of_the_leaf_past_the_csrng_registers",
+    "edn": "no_access_of_the_leaf_past_the_edn_registers",
 }
 DMA_HOLE = dma_reg_unmapped_addr()
 PERIPH_MASK = SEP_CPU_CTRL.mask32("PERIPH_BUS_ERR_STATUS")

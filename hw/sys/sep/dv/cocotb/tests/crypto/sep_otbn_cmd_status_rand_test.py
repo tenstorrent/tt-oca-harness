@@ -11,7 +11,7 @@ writes are ignored if OTBN is not idle; unrecognized commands are ignored);
 ``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/csr.yml`` :173 (an ``RND`` read
 stalls until a number arrives from the EDN); ``hw/sys/sep/doc/trng.adoc`` :191
 (native requests get no acknowledgement during the TRNG adapter clear);
-``hw/sys/sep/doc/interrupts.adoc`` :22 and :164-166 (vector bit 29 is PIC
+``hw/sys/sep/doc/interrupts.adoc`` :22 and :172-174 (vector bit 29 is PIC
 source 30, OTBN done);
 ``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md``
 (``ToO`` below) and ``otbn.hjson`` / ``base-insns.yml`` in the same ``otbn`` tree
@@ -231,7 +231,7 @@ Checkers:
                        long as the LOCKED window (the fatal alert "can only be cleared
                        by resetting OTBN", ToO:314; the gated crypto reset and
                        ``otbn_sw_rst_n`` reset OTBN, ``hw/sys/sep/doc/reset_controller.adoc``
-                       :60-66, :97). The rise count in the LOCKED window is the control
+                       :60-66, :96). The rise count in the LOCKED window is the control
                        that a window of that length sees the repeat.
                        IMEM_INTG_VIOLATION "Data read from the instruction memory
                        failed the integrity checks." is fatal (ToO:261-263); "A
@@ -523,7 +523,7 @@ def sw_kind_progs(kind: int, off: int) -> tuple[tuple[int, ...], tuple[int, ...]
     return (loopi(0, 1), NOP, ECALL), (loopi(1, 1), NOP, ECALL)
 
 
-# Vector bit 29 is PIC source 30, OTBN done (interrupts.adoc:22, :164-166).
+# Vector bit 29 is PIC source 30, OTBN done (interrupts.adoc:22, :172-174).
 VEC_OTBN_DONE = 29
 
 # DMEM layout of the compute program: [0] = a, [4] = b, [8] = result.

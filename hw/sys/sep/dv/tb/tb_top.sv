@@ -776,7 +776,7 @@ module sep_uvm_top
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR - SmcLocalBase +
             SmcSepViewBase),
         // SMC_EFUSE_MAP: chiplet/package ID
-        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
         // DFX_CTRL: STATUS_SMU
         56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
         // SMC_CPU_CTRL: scratch[0..15] at +0x80
@@ -788,7 +788,7 @@ module sep_uvm_top
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE),
-        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
         56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
@@ -5911,7 +5911,7 @@ module sep_uvm_top
     // the valids may be high on the first edge that samples the KM CPU reset
     // low and must be low from the next edge on. The cold reset asserts
     // asynchronously and the warm reset on a clock edge
-    // (hw/ip/key_manager/doc/architecture.adoc:185-191, Reset Conditioning).
+    // (hw/ip/key_manager/doc/architecture.adoc:183-189, Reset Conditioning).
     bind key_manager ocah_axi_sva #(
         .MASTER_SYNC_RESET (1'b1),
         .IS_LITE    (1'b1),

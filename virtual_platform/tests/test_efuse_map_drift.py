@@ -64,10 +64,15 @@ _SHADOW_LIMIT = 0x400
 def _rdl_offsets():
     """{register name: offset} for the shadow region, from the generated header."""
     text = _GENERATED_HEADER.read_text()
+    prefix = "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP"
+    base = re.search(rf"{prefix}_BASE_ADDR\s+0x([0-9A-F]+)", text)
+    if base is None:
+        return {}
+    base = int(base.group(1), 16)
     out = {}
-    for m in re.finditer(r"SEP_EFUSE_MAP_([A-Z0-9_]+)_BASE_ADDR\s+0x1093(0[0-9A-F]{3})", text):
-        off = int(m.group(2), 16)
-        if off < _SHADOW_LIMIT:
+    for m in re.finditer(rf"{prefix}_([A-Z0-9_]+)_BASE_ADDR\s+0x([0-9A-F]+)", text):
+        off = int(m.group(2), 16) - base
+        if 0 <= off < _SHADOW_LIMIT:
             out[m.group(1)] = off
     return out
 

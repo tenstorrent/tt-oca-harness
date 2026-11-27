@@ -3,10 +3,13 @@
 
 // Wrap the vendor eFuse controller for the SMC peripheral map.
 //
-// Presents the eFuse CSR window on the peripheral AXI-Lite map.
-// Bridges fuse sense, program, shadow-register, and DFT sidebands into the SMC peripheral
-// domain.
-// JTAG AXI-Lite accesses receive an error response with data 0xBADCAB1E when the SEP
+// Presents the eFuse register page and the eFuse shim window on the peripheral AXI-Lite
+// map. Bridges fuse sense, program, shadow-register, and DFT sidebands into the SMC
+// peripheral domain.
+// JTAG AXI-Lite accesses go to the eFuse controller inside the eFuse register page and the
+// supplementary fuse window, and to the shim inside the EFUSE_SHIM_SIZE bytes at the base of
+// smc_external, muxed with the functional shim port onto fuse_bank_ctrl_req_o. Every other
+// JTAG access receives SLVERR with data 0xBADCAB1E, as does every JTAG access when the SEP
 // lifecycle state is PROD or RMA_SiP or fails its integrity check, except reads of
 // JTAG_PUBLIC_IDENTITY outside an integrity error.
 // With SUPPLEMENTARY_FUSE.WORDS non-zero, the controller also serves the supplementary fuse region in its
@@ -15,6 +18,8 @@
 `include "ocah_assert.svh"
 
 module smc_efuse_wrapper #(
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Vendor eFuse shim CSR block at the base of
+                                                 // the smc_external window, in bytes.
   parameter smc_efuse_pkg::supplementary_fuse_cfg_t SUPPLEMENTARY_FUSE = '0,  // Supplementary fuse region; '0
                                                                               // omits it.
   localparam int unsigned SupplementaryPortWords =  // Supplementary shadow port width in words.
@@ -39,6 +44,13 @@ module smc_efuse_wrapper #(
                                                                    // slave (from SMC
                                                                    // peripherals xbar)
                                                                    // response.
+
+  input  smc_pkg::smc_axil_32_32_req_t               axil_efuse_shim_req_i,  // Functional eFuse
+                                                                             // shim AXI4-Lite
+                                                                             // slave request.
+  output smc_pkg::smc_axil_32_32_resp_t              axil_efuse_shim_resp_o,  // Functional eFuse
+                                                                              // shim AXI4-Lite
+                                                                              // slave response.
 
   input  smc_pkg::smc_axil_32_32_req_t               axil_smc_otp_jtag_req_i,  // JTAG AXI4-Lite slave
                                                                                // request.
@@ -133,15 +145,42 @@ module smc_efuse_wrapper #(
   // JTAG_PUBLIC_IDENTITY is 256 bits (8 x 32-bit words = 32 bytes), so its
   // byte-address range spans BASE .. BASE + 'h1F (inclusive).
 
-  smc_pkg::smc_axil_32_32_req_t  [1:0] axil_smc_otp_jtag_req_filtered;
-  smc_pkg::smc_axil_32_32_resp_t [1:0] axil_smc_otp_jtag_resp_filtered;
+  typedef enum logic [1:0] {
+    JTAG_TARGET_REGS  = 2'd0,
+    JTAG_TARGET_ERROR = 2'd1,
+    JTAG_TARGET_SHIM  = 2'd2
+  } jtag_target_e;
+
+  localparam smc_pkg::smc_axi_lite_32_addr_t EfusePageBase =
+      smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR);
+  localparam smc_pkg::smc_axi_lite_32_addr_t EfusePageLast =
+      EfusePageBase + smc_pkg::smc_axi_lite_32_addr_t'(smc_pkg::RegPageSize - 1);
+  localparam smc_pkg::smc_axi_lite_32_addr_t EfuseShimBase =
+      smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR);
+  localparam smc_pkg::smc_axi_lite_32_addr_t EfuseShimLast =
+      smc_pkg::smc_axi_lite_32_addr_t'(EfuseShimBase + EFUSE_SHIM_SIZE - 1);
+  localparam bit HasSupplementaryFuses = SUPPLEMENTARY_FUSE.WORDS > 0;
+  localparam smc_pkg::smc_axi_lite_32_addr_t SupplementaryBase = smc_pkg::smc_axi_lite_32_addr_t'(
+      smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SUPPLEMENTARY_FUSE.BASE);
+  localparam smc_pkg::smc_axi_lite_32_addr_t SupplementaryLast =
+      SupplementaryBase + smc_pkg::smc_axi_lite_32_addr_t'(4 * SupplementaryPortWords - 1);
+
+  `OCAH_ASSERT_STATIC(EfusePageAligned_A,
+                      EfusePageBase % smc_pkg::smc_axi_lite_32_addr_t'(smc_pkg::RegPageSize) == 0)
+
+  smc_pkg::smc_axil_32_32_req_t  [2:0] axil_smc_otp_jtag_req_filtered;
+  smc_pkg::smc_axil_32_32_resp_t [2:0] axil_smc_otp_jtag_resp_filtered;
 
   logic is_rd_jtag_public_identity;
   logic is_prod_or_rma_sip;
+  jtag_target_e jtag_aw_target;
+  jtag_target_e jtag_ar_target;
 
-  assign is_rd_jtag_public_identity = (axil_smc_otp_jtag_req_i.ar.addr inside
-        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR :
-          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR + 'h1F)]});
+  assign is_rd_jtag_public_identity =
+      (axil_smc_otp_jtag_req_i.ar.addr >=
+       smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR) &&
+      (axil_smc_otp_jtag_req_i.ar.addr <=
+       smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR + 'h1F);
 
   logic [smc_pkg::LcStateWidth-1:0]   lc_state_smc_raw;
   logic                               lc_sigint_err;
@@ -160,6 +199,36 @@ module smc_efuse_wrapper #(
   assign is_prod_or_rma_sip = (lc_state_smc_raw == 4'b0001) ||  // PROD
       (lc_state_smc_raw[smc_pkg::LcStateWidth-1:1] == 3'b001);  // RMA_SIP
 
+  always_comb begin
+    jtag_aw_target = JTAG_TARGET_ERROR;
+    if (!is_prod_or_rma_sip && !lc_sigint_err) begin
+      if (((axil_smc_otp_jtag_req_i.aw.addr >= EfusePageBase) &&
+           (axil_smc_otp_jtag_req_i.aw.addr <= EfusePageLast)) ||
+          (HasSupplementaryFuses &&
+           (axil_smc_otp_jtag_req_i.aw.addr >= SupplementaryBase) &&
+           (axil_smc_otp_jtag_req_i.aw.addr <= SupplementaryLast))) begin
+        jtag_aw_target = JTAG_TARGET_REGS;
+      end else if ((axil_smc_otp_jtag_req_i.aw.addr >= EfuseShimBase) &&
+                   (axil_smc_otp_jtag_req_i.aw.addr <= EfuseShimLast)) begin
+        jtag_aw_target = JTAG_TARGET_SHIM;
+      end
+    end
+
+    jtag_ar_target = JTAG_TARGET_ERROR;
+    if ((!is_prod_or_rma_sip || is_rd_jtag_public_identity) && !lc_sigint_err) begin
+      if (((axil_smc_otp_jtag_req_i.ar.addr >= EfusePageBase) &&
+           (axil_smc_otp_jtag_req_i.ar.addr <= EfusePageLast)) ||
+          (HasSupplementaryFuses &&
+           (axil_smc_otp_jtag_req_i.ar.addr >= SupplementaryBase) &&
+           (axil_smc_otp_jtag_req_i.ar.addr <= SupplementaryLast))) begin
+        jtag_ar_target = JTAG_TARGET_REGS;
+      end else if ((axil_smc_otp_jtag_req_i.ar.addr >= EfuseShimBase) &&
+                   (axil_smc_otp_jtag_req_i.ar.addr <= EfuseShimLast)) begin
+        jtag_ar_target = JTAG_TARGET_SHIM;
+      end
+    end
+  end
+
   axi_lite_demux #(
     .aw_chan_t  (smc_pkg::smc_axil_32_32_aw_chan_t),
     .w_chan_t   (smc_pkg::smc_axil_32_32_w_chan_t),
@@ -168,7 +237,7 @@ module smc_efuse_wrapper #(
     .r_chan_t   (smc_pkg::smc_axil_32_32_r_chan_t),
     .axi_req_t  (smc_pkg::smc_axil_32_32_req_t),
     .axi_resp_t (smc_pkg::smc_axil_32_32_resp_t),
-    .NoMstPorts (2),
+    .NoMstPorts (3),
     .MaxTrans   (2),
     .FallThrough(1'b1),
     .SpillAw    (1'b1),
@@ -182,15 +251,15 @@ module smc_efuse_wrapper #(
     .test_i (test_en_i),
 
     .slv_req_i      (axil_smc_otp_jtag_req_i),
-    .slv_aw_select_i(is_prod_or_rma_sip || lc_sigint_err),
-    .slv_ar_select_i((is_prod_or_rma_sip && !is_rd_jtag_public_identity) || lc_sigint_err),
+    .slv_aw_select_i(jtag_aw_target),
+    .slv_ar_select_i(jtag_ar_target),
     .slv_resp_o     (axil_smc_otp_jtag_resp_o),
 
     .mst_reqs_o (axil_smc_otp_jtag_req_filtered),
     .mst_resps_i(axil_smc_otp_jtag_resp_filtered)
   );
 
-  // Blocked path: return SLVERR with a tagged data pattern.
+  // Blocked or unmapped path: return SLVERR with a tagged data pattern.
   prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH(smc_pkg::SmcLocalAddrWidth),
     .AXI_DATA_WIDTH(smc_pkg::AxiLite32DataWidth),
@@ -204,8 +273,35 @@ module smc_efuse_wrapper #(
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_en_i  (test_en_i),
-    .axil_req_i (axil_smc_otp_jtag_req_filtered[1]),
-    .axil_resp_o(axil_smc_otp_jtag_resp_filtered[1])
+    .axil_req_i (axil_smc_otp_jtag_req_filtered[JTAG_TARGET_ERROR]),
+    .axil_resp_o(axil_smc_otp_jtag_resp_filtered[JTAG_TARGET_ERROR])
+  );
+
+  // Slave port 0 = functional shim port, slave port 1 = JTAG.
+  axi_lite_mux #(
+    .aw_chan_t  (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_axil_32_32_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_axil_32_32_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_axil_32_32_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_axil_32_32_req_t),
+    .axi_resp_t (smc_pkg::smc_axil_32_32_resp_t),
+    .NoSlvPorts (2),
+    .MaxTrans   (2),
+    .FallThrough(1'b0),
+    .SpillAw    (1'b1),
+    .SpillW     (1'b1),
+    .SpillB     (1'b1),
+    .SpillAr    (1'b1),
+    .SpillR     (1'b1)
+  ) u_efuse_shim_axi_lite_mux (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (test_en_i),
+    .slv_reqs_i ({axil_smc_otp_jtag_req_filtered[JTAG_TARGET_SHIM], axil_efuse_shim_req_i}),
+    .slv_resps_o({axil_smc_otp_jtag_resp_filtered[JTAG_TARGET_SHIM], axil_efuse_shim_resp_o}),
+    .mst_req_o  (fuse_bank_ctrl_req_o),
+    .mst_resp_i (fuse_bank_ctrl_resp_i)
   );
 
   /////////////////////////////////////////////////////////////////////////
@@ -264,14 +360,12 @@ module smc_efuse_wrapper #(
 
     .SEP_SEC_DISABLE_TOKEN       ('0), // Embedded in RTL (SEP only)
 
-    .EFUSE_MAP_REG_MAP_BASE_ADDR (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)),
-    .EFUSE_MAP_REG_MAP_SIZE      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE)),
+    .EFUSE_MAP_REG_MAP_BASE_ADDR (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR)),
+    .EFUSE_MAP_REG_MAP_SIZE      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE)),
 
     .EFUSE_MMR_REG_MAP_BASE_ADDR ('0),
-    .EFUSE_MMR_REG_MAP_SIZE      ('0),
 
-    .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
-    .EFUSE_CTRL_REG_MAP_SIZE     (32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
+    .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
 
     .SHADOW_REG_BITS             (smc_efuse_pkg::ShadowRegBits),
     .EFUSE_MACRO_WORD_WIDTH      (smc_efuse_pkg::NumFuseWordWidth),
@@ -284,7 +378,7 @@ module smc_efuse_wrapper #(
     .LC_STATE_BIT_POSITION       (0),
 
     .SUPPLEMENTARY_FUSE_WORDS          (SUPPLEMENTARY_FUSE.WORDS),
-    .SUPPLEMENTARY_REG_MAP_BASE_ADDR   (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SUPPLEMENTARY_FUSE.BASE)),
+    .SUPPLEMENTARY_REG_MAP_BASE_ADDR   (32'(SupplementaryBase)),
     .SUPPLEMENTARY_LOCKS_BIT_OFFSET    (smc_efuse_pkg::SupplementaryLocksBitOffset),
 
     .efuse_map_t                 (smc_efuse_pkg::efuse_map_t)
@@ -300,12 +394,8 @@ module smc_efuse_wrapper #(
     .axil_resp_o                        (axil_resp_o),
 
     // JTAG AXI4-Lite Post-access-control demux
-    .axil_jtag_req_i                    (axil_smc_otp_jtag_req_filtered[0]),
-    .axil_jtag_resp_o                   (axil_smc_otp_jtag_resp_filtered[0]),
-
-    // SHIM CSR
-    .fuse_bank_ctrl_req_o               (fuse_bank_ctrl_req_o),
-    .fuse_bank_ctrl_resp_i              (fuse_bank_ctrl_resp_i),
+    .axil_jtag_req_i                    (axil_smc_otp_jtag_req_filtered[JTAG_TARGET_REGS]),
+    .axil_jtag_resp_o                   (axil_smc_otp_jtag_resp_filtered[JTAG_TARGET_REGS]),
 
     // SHIM custom command interface
     .fuse_command_req_o                 (efuse_shim_command_req_o),

@@ -7,7 +7,7 @@
 package efuse_interface_ctrl_reg_pkg;
 
     localparam EFUSE_INTERFACE_CTRL_REG_DATA_WIDTH = 32;
-    localparam EFUSE_INTERFACE_CTRL_REG_MIN_ADDR_WIDTH = 6;
+    localparam EFUSE_INTERFACE_CTRL_REG_MIN_ADDR_WIDTH = 10;
     localparam EFUSE_INTERFACE_CTRL_REG_SIZE = 'h24;
 
     typedef struct {

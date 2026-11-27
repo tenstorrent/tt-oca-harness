@@ -11,7 +11,7 @@ S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the 14-bit packing of
 S3: Write PATTERN_A to MAP SPARE[0], readback OKAY + data match.
 S4: Write PATTERN_C (distinct) and readback — proves the write path is live.
 
-Address from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``.
+Address from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``.
 
 Not claimed: Force-closed OTP gate / PATTERN_B no-stick (needs LCC or Force);
 SEP OTP; series NO_INCR.
@@ -34,7 +34,7 @@ from seq_lib.smu_jtag_helpers import (
 )
 from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
-SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
+SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 PATTERN_A = 0xA5A5_5A5A
 PATTERN_C = 0x3C3C_C3C3
 OTP_POLL = 128

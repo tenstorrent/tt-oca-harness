@@ -57,7 +57,7 @@ _TERMS = {
 def _reset_words() -> tuple[int, ...]:
     """The reset word of every SMC_EFUSE_MAP word, from the generated register map."""
     instances = [
-        (reg, smc_addr(f"SMC_TOP_SMC_EFUSE_MAP_{reg}_BASE_ADDR"))
+        (reg, smc_addr(f"SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_{reg}_BASE_ADDR"))
         for reg in (
             "HARNESS_LOCKS",
             "SUPPLEMENTARY_LOCKS",
@@ -71,8 +71,8 @@ def _reset_words() -> tuple[int, ...]:
         ("SPARE_256_BITS", "SPARE"),
         ("SPARE_64_BITS", "SPARE_TAIL"),
     ):
-        sym = f"SMC_TOP_SMC_EFUSE_MAP_{name}_BASE_ADDR"
-        for k in range(smc_addr(f"SMC_TOP_SMC_EFUSE_MAP_{name}_NUM")):
+        sym = f"SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_{name}_BASE_ADDR"
+        for k in range(smc_addr(f"SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_{name}_NUM")):
             instances.append((reg, smc_indexed_addr(sym, k)))
     instances.sort(key=lambda entry: entry[1])
     assert instances[0][1] == EFUSE_MAP_BASE, f"first register at 0x{instances[0][1]:x}"

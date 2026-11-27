@@ -41,18 +41,20 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import EFUSE_MAP_BASE, efuse_preload_words
 from .smc_reset_seq_base import SmcResetSeqBase
 
-_STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
+_STATUS = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+)
 _SENSE_DONE_BM = _field_mask(
     _REPO / "hw" / "ip" / "efuse" / "regs" / "gen" / "c" / "efuse_interface_ctrl.h",
     "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm",
 )
-_MAP_PREFIX = "SMC_TOP_SMC_EFUSE_MAP_"
+_MAP_PREFIX = "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_"
 _AXI_OKAY = 0
 _STEPS = ("REFERENCE-READ", "S1", "S2", "PRESENSE-READ", "S3", "S4", "S5", "S6", "POSTSENSE-READ")
 # Harness map words plus the supplementary region of the reference wrappers
 # (hw/top/smc_supplementary_fuse_example_pkg.sv, FuseWords = 128), sensed as one linear READ.
 _SUPPLEMENTARY_WORDS = 128
-_NUM_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") // 4 + _SUPPLEMENTARY_WORDS
+_NUM_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE") // 4 + _SUPPLEMENTARY_WORDS
 _HOLD_SAMPLES = 8
 _QUIET_WINDOW = 64
 _POST_RISE_READS = 4

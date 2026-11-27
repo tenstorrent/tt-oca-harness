@@ -53,7 +53,7 @@ Checkers:
                fill word, separator 0, after the fill and after each of the two
                overruns: an overrun that writes into the full FIFO at the read
                slot, or that moves the read pointer, fails (key_manager
-               architecture.adoc:237, "A write to a full FIFO drops the incoming
+               architecture.adoc:235, "A write to a full FIFO drops the incoming
                word without changing queued data")
   INFO-OVR-QUEUE the fill digest and the overflow word; the inbound entries
                behind the head, and the absence of the overflow word among

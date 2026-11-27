@@ -34,9 +34,9 @@ single clock, `clk_i`; in the SMC that is the gated peripheral clock, and the
 bus reaches it through `smc_peripherals_cdc`. Parentheses after an
 instance name give its module or, for a block taken from another project,
 that project. The demux
-`u_axi_lite_demux`, a PULP `axi_lite_demux`, compares the address against
-the base and size of each register map and selects one of `NUM_I2CS` + 2
-ports: one per instance, the shared control map, and an error slave that
+`u_addr_demux`, a `prim_axil_addr_demux`, compares the address against
+the window of each register map and selects one of `NUM_I2CS` + 1 ports:
+one per instance and the shared control map. At any other address it
 answers DECERR with read data `0xBADCAB1E`. The SMC sets `NUM_I2CS` to 3.
 
 Each instance, `gen_i2cs[i].u_i2c`, is the OpenTitan core `u_i2c_core` with

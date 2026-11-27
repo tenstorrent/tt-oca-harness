@@ -39,47 +39,41 @@
 |0x10000000 |0x1003FFFF |256 KiB |256 KiB |sep_sram |SEP scratch SRAM. |- |-
 |0x10040000 |0x1004FFFF |64 KiB |64 KiB |sep_boot_rom |BL0 immutable instruction memory. |- |-
 |0x10050000 |0x107FFFFF |7872 KiB |7872 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10800000 |0x10800FFF |4 KiB |336 B |DMA Controller |Secure DMA control and status registers. |SLVERR, 0xFFFFFFFF / SLVERR^<<sep-components-note-1,[1]>>^ |DECERR, 0xBADCAB1E / DECERR
-|0x10801000 |0x10801FFF |4 KiB |56 B |Always-On Timer |Wakeup and watchdog timers running on a low-power, always-on clock |- |DECERR, 0xBADCAB1E / DECERR
-|0x10802000 |0x1080203F |64 B |64 B |SEP Scratch Address Map |Cold-reset scratch register bank. |- |-
-|0x10802040 |0x1080207F |64 B |64 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10802080 |0x108020BF |64 B |64 B |SEP Scratch Address Map |Warm-reset scratch register bank. |- |-
-|0x108020C0 |0x10802FFF |3904 B |3904 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10803000 |0x10803FFF |4 KiB |8 B |SEP Reset Control Address Map |Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge. |- |DECERR, 0xBADCAB1E / DECERR
+|0x10800000 |0x10800FFF |4 KiB |336 B |DMA Controller |Secure DMA control and status registers. |SLVERR, 0xFFFFFFFF / SLVERR^<<sep-components-note-1,[1]>>^ |SLVERR, 0xBADCAB1E / SLVERR^<<sep-components-note-2,[2]>>^
+|0x10801000 |0x10801FFF |4 KiB |56 B |Always-On Timer |Wakeup and watchdog timers running on a low-power, always-on clock |- |SLVERR, 0xBADCAB1E / SLVERR^<<sep-components-note-3,[3]>>^
+|0x10802000 |0x10802FFF |4 KiB |256 B |SEP Scratch Wrapper Address Map |Places the cold-reset and warm-reset scratch register banks in one 4 KiB page. |SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
+|0x10803000 |0x10803FFF |4 KiB |8 B |SEP Reset Control Address Map |Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge. |- |SLVERR, 0x0 / SLVERR
 |0x10804000 |0x108FFFFF |1008 KiB |1008 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10900000 |0x1090FFFF |64 KiB |48 KiB |OpenTitan Big Number Accelerator |Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures |SLVERR, 0xFFFFFFFF / SLVERR |DECERR, 0xBADCAB1E / DECERR
-|0x10910000 |0x10910FFF |4 KiB |140 B |AES Accelerator |AES block-cipher accelerator. |- |DECERR, 0xBADCAB1E / DECERR
+|0x10900000 |0x1090BFFF |48 KiB |48 KiB |OpenTitan Big Number Accelerator |Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures |SLVERR, 0xFFFFFFFF / SLVERR |-
+|0x1090C000 |0x1090FFFF |16 KiB |16 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10910000 |0x10910FFF |4 KiB |140 B |AES Accelerator |AES block-cipher accelerator. |- |SLVERR, 0xBADCAB1E / SLVERR^<<sep-components-note-4,[4]>>^
 |0x10911000 |0x10912FFF |8 KiB |8 KiB |HMAC Accelerator |Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function |SLVERR, 0xFFFFFFFF / SLVERR |-
 |0x10913000 |0x10913FFF |4 KiB |4 KiB |KMAC Accelerator |Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures |SLVERR, 0xFFFFFFFF / SLVERR |-
-|0x10914000 |0x10914FFF |4 KiB |4 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10915000 |0x109157FF |2 KiB |96 B |Cryptographically Secure Random Number Generator |Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software |- |DECERR, 0xBADCAB1E / DECERR
-|0x10915800 |0x10915FFF |2 KiB |72 B |Entropy Distribution Network |Distributes random numbers produced by CSRNG to hardware blocks |- |DECERR, 0xBADCAB1E / DECERR
-|0x10916000 |0x10916FFF |4 KiB |380 B |Entropy Source Address Map |Entropy-source configuration, status, and data registers. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
-|0x10917000 |0x10917FFF |4 KiB |4 KiB |External TRNG |External TRNG register passthrough; the register layout is adopter-defined |Adopter-defined^<<sep-components-note-2,[2]>>^ |-
-|0x10918000 |0x1091FFFF |32 KiB |24 B |SEP Lifecycle Control Address Map |Lifecycle state and transition control. |- |DECERR, 0xBADCAB1E / DECERR
-|0x10920000 |0x10920FFF |4 KiB |28 B |Key Manager Mailbox SEP Side |Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO) |- |DECERR, 0xBADCAB1E / DECERR
+|0x10914000 |0x10914FFF |4 KiB |72 B |Entropy Distribution Network |Distributes random numbers produced by CSRNG to hardware blocks |- |SLVERR, 0xBADCAB1E / SLVERR^<<sep-components-note-5,[5]>>^
+|0x10915000 |0x10915FFF |4 KiB |96 B |Cryptographically Secure Random Number Generator |Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software |- |SLVERR, 0xBADCAB1E / SLVERR^<<sep-components-note-6,[6]>>^
+|0x10916000 |0x10916FFF |4 KiB |380 B |Entropy Source Address Map |Entropy-source configuration, status, and data registers. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
+|0x10917000 |0x10917FFF |4 KiB |4 KiB |External TRNG |External TRNG register passthrough; the register layout is adopter-defined |Adopter-defined^<<sep-components-note-7,[7]>>^ |-
+|0x10918000 |0x10918FFF |4 KiB |24 B |SEP Lifecycle Control Address Map |Lifecycle state and transition control. |- |SLVERR, 0x0 / SLVERR
+|0x10919000 |0x1091FFFF |28 KiB |28 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10920000 |0x10920FFF |4 KiB |28 B |Key Manager Mailbox SEP Side |Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO) |- |SLVERR, 0x0 / SLVERR
 |0x10921000 |0x1092FFFF |60 KiB |60 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10930000 |0x109303FF |1 KiB |1 KiB |SEP eFuse Map Address Map |Cached eFuse shadow registers. |- |-
-|0x10930400 |0x109304FF |256 B |36 B |eFuse Interface Control Address Map |eFuse command and status registers. |- |SLVERR, 0xBADCAB1E / SLVERR
-|0x10930500 |0x109305FF |256 B |116 B |eFuse Token Registers Address Map |eFuse security-token registers. |- |DECERR, 0xBADCAB1E / DECERR
-|0x10930600 |0x1093FFFF |64000 B |64000 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10940000 |0x1094FFFF |64 KiB |49176 B |abr |Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
-|0x10950000 |0x1095FFFF |64 KiB |24 B |SEP Entropy Pool |Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR. |- |SLVERR, 0x0 / SLVERR^<<sep-components-note-3,[3]>>^
-|0x10960000 |0x109FFFFF |640 KiB |640 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10A00000 |0x10A0FFFF |64 KiB |30800 B |SEP AXI-Lite Mailbox Wrapper Address Map |Eight bidirectional mailbox pairs. |SLVERR, 0x0 / SLVERR |SLVERR, 0x0 / SLVERR
-|0x10A10000 |0x10A101FF |512 B |512 B |AXI Alias Remap Wrapper Address Map |Wrapper address map instantiating one alias remap register block per remap region. |OKAY, 0x0 / OKAY |-
-|0x10A10200 |0x10A1027F |128 B |128 B |Output Remap Wrapper Address Map |Wrapper address map instantiating one output remap register block per remap region. |- |-
-|0x10A10280 |0x10A102FF |128 B |128 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10A10300 |0x10A1037F |128 B |128 B |Output Remap Wrapper Address Map |Wrapper address map instantiating one output remap register block per remap region. |- |-
-|0x10A10380 |0x10A1FFFF |64640 B |64640 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10A20000 |0x10A203FF |1 KiB |1 KiB |AXI Filter Wrapper Address Map |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |-
-|0x10A20400 |0x10A20FFF |3 KiB |3 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10A21000 |0x10A211FF |512 B |512 B |AXI Filter Wrapper Address Map |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |-
-|0x10A21200 |0x10A2FFFF |60928 B |60928 B |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10A30000 |0x10A31FFF |8 KiB |4104 B |SEP CPU Control Address Map |SEP CPU control and interrupt registers. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|0x10930000 |0x10930FFF |4 KiB |4 KiB |SEP eFuse Wrapper Address Map |Places the SEP eFuse controller, its security-token registers and its shadow registers in one 4 KiB page. |past efuse_interface_ctrl registers: SLVERR, 0x0 / SLVERR; past efuse_mmr registers: SLVERR, 0x0 / SLVERR; past sep_efuse_map registers: SLVERR, 0xBADCAB1E / SLVERR |-
+|0x10931000 |0x1093FFFF |60 KiB |60 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10940000 |0x1094CFFF |52 KiB |49176 B |abr |Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM. |OKAY, 0x0 / OKAY |SLVERR, 0xBADCAB1E / SLVERR
+|0x1094D000 |0x1094FFFF |12 KiB |12 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10950000 |0x10950FFF |4 KiB |24 B |SEP Entropy Pool |Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR. |- |SLVERR, 0x0 / SLVERR^<<sep-components-note-8,[8]>>^
+|0x10951000 |0x109FFFFF |700 KiB |700 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10A00000 |0x10A07FFF |32 KiB |32 KiB |SEP AXI-Lite Mailbox Wrapper Address Map |Eight bidirectional mailbox pairs. |SLVERR, 0x0 / SLVERR |-
+|0x10A08000 |0x10A0FFFF |32 KiB |32 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10A10000 |0x10A10FFF |4 KiB |896 B |SEP Remap Wrapper Address Map |Places the local-master alias remap and the AP and STEE output remap registers in one 4 KiB page. |between sub-blocks: DECERR, 0xBADCAB1E / DECERR; between instances: OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|0x10A11000 |0x10A1FFFF |60 KiB |60 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10A20000 |0x10A20FFF |4 KiB |1 KiB |AXI Filter Wrapper Address Map |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|0x10A21000 |0x10A21FFF |4 KiB |512 B |AXI Filter Wrapper Address Map |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|0x10A22000 |0x10A2FFFF |56 KiB |56 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10A30000 |0x10A31FFF |8 KiB |4104 B |SEP CPU Control Address Map |SEP CPU control and interrupt registers. |OKAY, 0x0 / OKAY |SLVERR, 0x0 / SLVERR
 |0x10A32000 |0x10AFFFFF |824 KiB |824 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
-|0x10B00000 |0x10BFFFFF |1 MiB |56 B |SPI Host |External I/O SPI controller bridge. |- |DECERR, 0xBADCAB1E / DECERR
-|0x10C00000 |0x10FFFFFF |4 MiB |4 MiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
+|0x10B00000 |0x10B00FFF |4 KiB |56 B |SPI Host |External I/O SPI controller bridge. |- |SLVERR, 0xBADCAB1E / SLVERR^<<sep-components-note-9,[9]>>^
+|0x10B01000 |0x10FFFFFF |5116 KiB |5116 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
 |0x11000000 |0x117FFFFF |8 MiB |8 MiB |ap_region |Address region whose accesses an output remap redirects. |Forwarded |-
 |0x11800000 |0x11FFFFFF |8 MiB |8 MiB |stee_region |Address region whose accesses an output remap redirects. |Forwarded |-
 |0x12000000 |0x1FFFFFFF |224 MiB |224 MiB |Reserved |Reserved |DECERR, 0xBADCAB1E / DECERR |-
@@ -91,6 +85,12 @@
 
 .Notes
 [[sep-components-note-1]]^[1]^ An access to an unmapped offset also latches PIC source 41. +
-[[sep-components-note-2]]^[2]^ With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR. +
-[[sep-components-note-3]]^[3]^ A 32-bit read of the upper word of a register also answers SLVERR, 0x0.
+[[sep-components-note-2]]^[2]^ Up to offset 0x1FF the DMA answers with read data 0xFFFFFFFF and also latches PIC source 41. +
+[[sep-components-note-3]]^[3]^ Up to offset 0x3F the timer answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.wdt, one of the bits behind PIC source 43. +
+[[sep-components-note-4]]^[4]^ Up to offset 0xFF the AES answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.aes, one of the bits behind PIC source 43. +
+[[sep-components-note-5]]^[5]^ Up to offset 0x7F the EDN answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.edn, one of the bits behind PIC source 43. +
+[[sep-components-note-6]]^[6]^ Up to offset 0x7F the CSRNG answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.csrng, one of the bits behind PIC source 43. +
+[[sep-components-note-7]]^[7]^ With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR. +
+[[sep-components-note-8]]^[8]^ A 32-bit read of the upper word of a register also answers SLVERR, 0x0. +
+[[sep-components-note-9]]^[9]^ Up to offset 0x3F the SPI controller answers with read data 0xFFFFFFFF.
 // end::sep-components[]

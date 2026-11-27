@@ -63,7 +63,7 @@ RAIL_ALL_ONES = 0xFFFF_FFFF
 # not bad luck: each try fails with probability below 2^-29.
 _DRAW_TRIES = 16
 
-_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
+_EFUSE_MAP = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP")
 
 
 def _load_km_csr_reg() -> ModuleType:

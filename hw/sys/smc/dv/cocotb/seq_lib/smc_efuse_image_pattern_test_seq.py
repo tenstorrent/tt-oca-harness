@@ -21,7 +21,7 @@ the DUT:
 * data words -- word ``n`` of the image backs ``SMC_EFUSE_MAP_BASE + 4*n``.
 * lock slots -- the region of each word and its ``*_WRITE_LOCK`` /
   ``*_READ_LOCK`` bit come from ``smc_addr.h`` and ``blocks/smc_efuse_map.h``.
-  The LOCKS words (HARNESS_LOCKS at ``SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR``
+  The LOCKS words (HARNESS_LOCKS at ``SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR``
   and SUPPLEMENTARY_LOCKS after it) are set-only and carry no lock of their own.
   Every other region follows its HARNESS_LOCKS bits: the RDL LOCKS
   description says a write-locked field "is not programmable" and a read-locked
@@ -70,11 +70,15 @@ _SMC_EFUSE_MAP_H = (
 )
 _WORD_MASK = 0xFFFF_FFFF
 EFUSE_MAP_WORDS = EFUSE_MAP_SIZE // 4
-_LOCKS_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
+_LOCKS_BASE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 #: Map words that hold LOCKS, low word first.
 LOCKS_WORDS = range(
     (_LOCKS_BASE - EFUSE_MAP_BASE) // 4,
-    (smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR") - EFUSE_MAP_BASE) // 4,
+    (
+        smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
+        - EFUSE_MAP_BASE
+    )
+    // 4,
 )
 #: Every map word outside LOCKS.
 DATA_WORDS = tuple(w for w in range(EFUSE_MAP_WORDS) if w not in LOCKS_WORDS)
@@ -98,20 +102,34 @@ def _lock(name: str, kind: str) -> int:
 def _regions() -> tuple[_Region, ...]:
     """Every lockable region of the map, in address order, from the generated map."""
     starts = [
-        ("JTAG_PUBLIC_IDENTITY", smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")),
-        ("I2C_I3C_ID", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0)),
-        ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
+        (
+            "JTAG_PUBLIC_IDENTITY",
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
+        ),
+        (
+            "I2C_I3C_ID",
+            smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0),
+        ),
+        ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")),
         (
             "OCCP_TRANSPORT_TIMEOUT",
-            smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
         ),
     ]
-    for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")):
-        starts.append((f"SPARE{k}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k)))
-    # The three SPARE_TAIL entries share one lock pair.
-    for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")):
+    for k in range(smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM")):
         starts.append(
-            (f"SPARE_TAIL{k}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k))
+            (
+                f"SPARE{k}",
+                smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k),
+            )
+        )
+    # The three SPARE_TAIL entries share one lock pair.
+    for k in range(smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")):
+        starts.append(
+            (
+                f"SPARE_TAIL{k}",
+                smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k),
+            )
         )
     regions = []
     for idx, (name, addr) in enumerate(starts):
@@ -190,28 +208,30 @@ def check_schema_against_map() -> int:
         schema = tomllib.load(handle)
 
     def _array(name: str) -> tuple[int, int]:
-        sym = f"SMC_TOP_SMC_EFUSE_MAP_{name}_BASE_ADDR"
+        sym = f"SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_{name}_BASE_ADDR"
         base = smc_indexed_addr(sym, 0)
         stride = smc_indexed_addr(sym, 1) - base
-        return base, stride * smc_addr(f"SMC_TOP_SMC_EFUSE_MAP_{name}_NUM")
+        return base, stride * smc_addr(f"SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_{name}_NUM")
 
     def _single(name: str, next_base: int) -> tuple[int, int]:
-        base = smc_addr(f"SMC_TOP_SMC_EFUSE_MAP_{name}_BASE_ADDR")
+        base = smc_addr(f"SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_{name}_BASE_ADDR")
         return base, next_base - base
 
     i2c = _array("I2C_I3C_ID")
     spare = _array("SPARE")
     tail = _array("SPARE_TAIL")
-    smc_config = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")
-    supplementary = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR")
+    smc_config = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")
+    supplementary = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR")
     expected = {
         "LOCKS": _single(
-            "HARNESS_LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
+            "HARNESS_LOCKS",
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
         ),
         "JTAG_PUBLIC_IDENTITY": _single("JTAG_PUBLIC_IDENTITY", i2c[0]),
         "I2C_I3C_ID": i2c,
         "SMC_CONFIG": _single(
-            "SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR")
+            "SMC_CONFIG",
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
         ),
         "OCCP_TRANSPORT_TIMEOUT": _single("OCCP_TRANSPORT_TIMEOUT", spare[0]),
         "SPARE": (spare[0], spare[1] + tail[1]),
@@ -241,7 +261,9 @@ def check_schema_against_map() -> int:
                 f"{bit}; the map has mask 0x{_lock(lock_name, kind):x}"
             )
     spare_slot = len(expected) - 2
-    tail_names = [f"SPARE{k}" for k in range(1, smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM"))]
+    tail_names = [
+        f"SPARE{k}" for k in range(1, smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM"))
+    ]
     tail_names.append("SPARE_TAIL")
     for step, lock_name in enumerate(tail_names, start=1):
         for kind, bit in (

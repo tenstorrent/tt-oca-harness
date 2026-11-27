@@ -12,7 +12,7 @@ legal access: it completes with OKAY and latches nothing.
 The probe of both blocks runs twice. The first pass runs with the coverage window
 closed. Both latches are then cleared through DMA_BUS_ERR_CLEAR.clr and
 PERIPH_BUS_ERR_CLEAR.hmac (write 1 clears:
-hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:381, :467) and graded back to
+hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388, :484) and graded back to
 zero, and the second pass repeats the same accesses from the same state with the
 window open over the probe of each block, from its aligned read to its last check.
 The cp_partial_narrow outcomes of a probe sample only on the pass label

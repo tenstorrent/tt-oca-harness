@@ -548,9 +548,10 @@ static void report_rom_hash(void) {
 }
 
 static bool rom_status_reporting_enabled(const struct boot_straps *straps) {
-    const uint32_t status_rpt = (mmio_read32(SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR) &
-                                 SEP_EFUSE_MAP__STATUS_RPT__RPT_bm) >>
-                                SEP_EFUSE_MAP__STATUS_RPT__RPT_bp;
+    const uint32_t status_rpt =
+        (mmio_read32(SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR) &
+         SEP_EFUSE_MAP__STATUS_RPT__RPT_bm) >>
+        SEP_EFUSE_MAP__STATUS_RPT__RPT_bp;
 
     if (status_rpt == 0u) {
         return !straps->status_report_disable;

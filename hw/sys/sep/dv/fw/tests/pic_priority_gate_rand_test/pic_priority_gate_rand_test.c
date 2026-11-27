@@ -38,7 +38,7 @@
 //                            nests once; meicidpl holds the level of the
 //                            claimed source with no meicpct write (fast
 //                            interrupt redirect, PRM sections 8.6.1, 8.12.9;
-//                            hw/sys/sep/doc/interrupts.adoc:387 names the
+//                            hw/sys/sep/doc/interrupts.adoc:400 names the
 //                            fast-interrupt path of this core)
 //   CHK-TIMER-PIN            the timer_int pin drives mip.MTIP: with mie.MTIE 0
 //                            it takes no trap; with mie.MTIE 1 and mstatus.MIE
@@ -89,7 +89,7 @@
 // meipt and meicurpl only with mstatus.MIE 0.
 //
 // Internal timers. The interrupt chapter of the SEP spec
-// (hw/sys/sep/doc/interrupts.adoc:294-299) states mip.MITIP0 bit 29 and
+// (hw/sys/sep/doc/interrupts.adoc:307-312) states mip.MITIP0 bit 29 and
 // mip.MITIP1 bit 28, the enables mie.MITIE0 and mie.MITIE1 at the same bits,
 // the cause codes 0x1D and 0x1C with the interrupt bit, and that mie.MTIE and
 // mie.MSIE do not enable them. The CSRs and their behaviour come from the
@@ -213,7 +213,7 @@ volatile uint32_t g_prm[P_WORDS] = {
 // mitctl1.cascade, bit 3, mitctl1 only (VeeR EL2 PRM chapter 6, mitctl table).
 #define MITCTL1_CASCADE (1u << 3)
 #define MITB_RESET 0xFFFFFFFFu // mitb reset value
-// hw/sys/sep/doc/interrupts.adoc:294-298: pending and enable bits, cause codes.
+// hw/sys/sep/doc/interrupts.adoc:307-311: pending and enable bits, cause codes.
 #define MIP_MITIP0 (1u << 29)
 #define MIP_MITIP1 (1u << 28)
 #define MIE_MITIE0 (1u << 29)
@@ -1375,7 +1375,7 @@ static void leg_mie_meie(void) {
     chk_end(pass);
 }
 
-// Timer pin (hw/sys/sep/doc/interrupts.adoc:291: the timer_int pin drives
+// Timer pin (hw/sys/sep/doc/interrupts.adoc:304: the timer_int pin drives
 // mip.MTIP; EL2 PRM tables 13.1 and 13.2: mie.mtie enables and mip.mtip
 // reports the machine timer interrupt; table 13.3: mcause 0x8000_0007). The
 // host drives timer_int_i on each REQ tint line.
@@ -1413,7 +1413,7 @@ static void leg_timer_pin(void) {
     chk_end(pass);
 }
 
-// Software pin (hw/sys/sep/doc/interrupts.adoc:291-292: the soft_int pin
+// Software pin (hw/sys/sep/doc/interrupts.adoc:304-305: the soft_int pin
 // drives mip.MSIP; :261: the pin bypasses the PIC; RISC-V privileged spec
 // section 3.1.9: a pending MSIP with mie.MSIE 0 takes no trap). The host
 // drives soft_int_i on each REQ sint line. mcgc.picio 1 reports disabled

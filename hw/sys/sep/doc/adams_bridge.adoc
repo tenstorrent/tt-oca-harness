@@ -54,7 +54,8 @@ design, so its bus pipeline ends in AHB-lite rather than TL-UL.
 converts it to AXI4-lite, and drives `abr_top` through `axi_lite_to_ahb`, which
 issues one single AHB transfer at a time and returns its response before it
 accepts the next access. The wrapper is port `SEP_CRYPTO_AXI_ABR` of the crypto
-demux and occupies a 64 kB aperture at `0x1094_0000`.
+demux and occupies a 52 kB aperture at `0x1094_0000`, from the base of the
+register map to the end of the last 4 kB page it reaches.
 
 [[abr-access-size,ABR access size]]
 Every ABR register is 32 bits wide, and the aperture is accessed in words:
@@ -78,9 +79,9 @@ of masters. They are performed one at a time, and each returns the value of the
 address it names.
 
 [[abr-aperture-decode]]
-The crypto demux decodes the aperture only as far as the register map extends.
+The wrapper decodes the aperture only as far as the register map extends.
 It forwards an offset inside that extent to ABR and answers every access past
-it with DECERR itself, whatever its size or strobes.
+it with SLVERR and read data `0xBADCAB1E` itself, whatever its size or strobes.
 
 Inside the extent there is no further decode. The vendored register block
 consumes every offset bit and applies no address-validity or permission check,

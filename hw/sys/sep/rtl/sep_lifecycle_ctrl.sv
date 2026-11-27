@@ -214,12 +214,15 @@ module sep_lifecycle_ctrl #(
   assign demote_reg_2.lock   = lifecycle_ctrl_hwif_out.DEMOTE_2.lock.value;
   assign demote_reg_2.rsvd   = lifecycle_ctrl_hwif_out.DEMOTE_2.rsvd.value;
 
+  localparam int unsigned LifecycleRegAddrW =
+      sep_lifecycle_ctrl_reg_pkg::SEP_LIFECYCLE_CTRL_REG_MIN_ADDR_WIDTH;
+
   sep_lifecycle_ctrl_reg u_sep_lifecycle_ctrl_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
     .s_axil_awready(lifecycle_axil_resp.aw_ready),
     .s_axil_awvalid(lifecycle_axil_req.aw_valid),
-    .s_axil_awaddr(lifecycle_axil_req.aw.addr[4:0]),
+    .s_axil_awaddr(lifecycle_axil_req.aw.addr[LifecycleRegAddrW-1:0]),
     .s_axil_awprot(lifecycle_axil_req.aw.prot),
     .s_axil_wready(lifecycle_axil_resp.w_ready),
     .s_axil_wvalid(lifecycle_axil_req.w_valid),
@@ -230,7 +233,7 @@ module sep_lifecycle_ctrl #(
     .s_axil_bresp(lifecycle_axil_resp.b.resp),
     .s_axil_arready(lifecycle_axil_resp.ar_ready),
     .s_axil_arvalid(lifecycle_axil_req.ar_valid),
-    .s_axil_araddr(lifecycle_axil_req.ar.addr[4:0]),
+    .s_axil_araddr(lifecycle_axil_req.ar.addr[LifecycleRegAddrW-1:0]),
     .s_axil_arprot(lifecycle_axil_req.ar.prot),
     .s_axil_rready(lifecycle_axil_req.r_ready),
     .s_axil_rvalid(lifecycle_axil_resp.r_valid),

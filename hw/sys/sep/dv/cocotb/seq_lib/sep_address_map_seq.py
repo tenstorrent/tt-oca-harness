@@ -216,8 +216,8 @@ FABRIC_BLOCKS = [
         SECURE_DMA.reset32("HANDSHAKE_INTR_ENABLE"),
     ),
     ("WDT_TIMER", WDT_TIMER.addr("WDOG_REGWEN"), WDT_TIMER.reset32("WDOG_REGWEN")),
-    ("SEP_SCRATCH_COLD", sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"), None),
-    ("SEP_SCRATCH_WARM", sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"), None),
+    ("SEP_SCRATCH_WRAP_SCRATCH_COLD", sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR"), None),
+    ("SEP_SCRATCH_WRAP_SCRATCH_WARM", sym("SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR"), None),
     # SW_RESET_N resets with KM[0]=0 and OTBN/AES/HMAC/KMAC/TRNG/ABR[6:1]=1. An external
     # AXI walk cannot reach it; a CPU LSU read is safe because only a write clears reset.
     (
@@ -247,7 +247,7 @@ FABRIC_BLOCKS = [
     # SEP_STATUS holds hw=w FIFO flags that move once the Key Manager uses the
     # mailbox after boot, so its RDL reset is not the read value.
     ("KM_MAILBOX", sym("KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR"), None),
-    ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
+    ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
     # STATUS resets to the empty flag; nothing in this test writes the mailbox.
     (
         "AXIL_MAILBOX",
@@ -257,10 +257,14 @@ FABRIC_BLOCKS = [
     ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),
     (
         "ALIAS_REMAP",
-        sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR"),
+        sym("SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR"),
         None,
     ),
-    ("AP_OUTPUT_REMAP", sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR"), None),
+    (
+        "AP_OUTPUT_REMAP",
+        sym("SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR"),
+        None,
+    ),
     ("OT_SPI_HOST", SPI_CONTROLLER.addr("CONTROL"), SPI_CONTROLLER.reset32("CONTROL")),
 ]
 

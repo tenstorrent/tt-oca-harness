@@ -16,6 +16,14 @@ package sep_pkg;
 
   parameter bit EN_EXTERNAL_MST = 1'b1;
 
+  // An AXI burst never crosses one of these pages, so a crossbar rule that starts and ends on
+  // them keeps a burst on one target.
+  localparam longint unsigned RegPageSize = 64'h1000;
+
+  function automatic longint unsigned reg_page_end(longint unsigned base, longint unsigned size);
+    return (base + size + RegPageSize - 1) & ~(RegPageSize - 1);
+  endfunction
+
   //////////
   // AXI4 main types (decoupled from old xbar config)
   //////////
@@ -101,22 +109,6 @@ package sep_pkg;
 
   `AXI_TYPEDEF_ALL(sep_56_64_7_12_axi, sep_56_64_7_12_axi_addr_t, sep_56_64_7_12_axi_id_t,
                    sep_56_64_7_12_axi_data_t, sep_56_64_7_12_axi_strb_t, sep_56_64_7_12_axi_user_t)
-
-  // 32/64/7/1 (system peripherals xbar slave 32-bit addr)
-  parameter int unsigned SEP_32_64_7_12_ADDR_WIDTH = 32;
-  parameter int unsigned SEP_32_64_7_12_DATA_WIDTH = 64;
-  parameter int unsigned SEP_32_64_7_12_STRB_WIDTH = SEP_32_64_7_12_DATA_WIDTH / 8;
-  parameter int unsigned SEP_32_64_7_12_USER_WIDTH = 12;
-  parameter int unsigned SEP_32_64_7_12_ID_WIDTH = 7;
-
-  typedef logic [SEP_32_64_7_12_ADDR_WIDTH-1:0] sep_32_64_7_12_axi_addr_t;
-  typedef logic [SEP_32_64_7_12_DATA_WIDTH-1:0] sep_32_64_7_12_axi_data_t;
-  typedef logic [SEP_32_64_7_12_STRB_WIDTH-1:0] sep_32_64_7_12_axi_strb_t;
-  typedef logic [SEP_32_64_7_12_USER_WIDTH-1:0] sep_32_64_7_12_axi_user_t;
-  typedef logic [SEP_32_64_7_12_ID_WIDTH-1:0] sep_32_64_7_12_axi_id_t;
-
-  `AXI_TYPEDEF_ALL(sep_32_64_7_12_axi, sep_32_64_7_12_axi_addr_t, sep_32_64_7_12_axi_id_t,
-                   sep_32_64_7_12_axi_data_t, sep_32_64_7_12_axi_strb_t, sep_32_64_7_12_axi_user_t)
 
   // 56/64/8/1 (system peripherals outbound)
   parameter int unsigned SEP_56_64_8_12_ADDR_WIDTH = 56;
@@ -285,7 +277,7 @@ OutboundFilterMuxPorts
   localparam int unsigned MailboxSize = sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb.
 
   // System CSRs
-  localparam int unsigned SystemCsrDemuxPorts = 9;
+  localparam int unsigned SystemCsrDemuxPorts = 8;
 
   typedef enum logic [$clog2(
 SystemCsrDemuxPorts
@@ -297,8 +289,7 @@ SystemCsrDemuxPorts
     INBOUND_FILTER = 4,
     SEP_CPU_CTRL = 5,
     SEP_SCRATCH_COLD = 6,
-    SEP_SCRATCH_WARM = 7,
-    ERR_SLV = 8
+    SEP_SCRATCH_WARM = 7
   } system_csr_demux_select_e;
 
   //////////

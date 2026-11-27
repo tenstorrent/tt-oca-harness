@@ -251,8 +251,10 @@ class sep_address_map_test_seq extends sep_base_test_seq;
                    32'(SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_DEFAULT)});
     rows.push_back('{"WDT_TIMER", 64'(WDT_TIMER_WDOG_REGWEN_REG_ADDR), 1'b1,
                    32'(AON_TIMER_WDOG_REGWEN_REG_DEFAULT)});
-    rows.push_back('{"SEP_SCRATCH_COLD", 64'(SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
-    rows.push_back('{"SEP_SCRATCH_WARM", 64'(SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
+    rows.push_back('{"SEP_SCRATCH_WRAP_SCRATCH_COLD",
+                   64'(SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
+    rows.push_back('{"SEP_SCRATCH_WRAP_SCRATCH_WARM",
+                   64'(SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
     rows.push_back('{"SEP_RESET_CTRL", 64'(SEP_RESET_CTRL_SW_RESET_N_REG_ADDR), 1'b1,
                    32'(SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT)});
     rows.push_back('{"OTBN", 64'(OTBN_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
@@ -270,17 +272,19 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     rows.push_back('{"ENTROPY_POOL", 64'(ENTROPY_POOL_STATUS_REG_ADDR), 1'b0, 32'h0});
     rows.push_back('{"SEP_LIFECYCLE", 64'(SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
     rows.push_back('{"KM_MAILBOX", 64'(KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR), 1'b0, 32'h0});
-    rows.push_back('{"SEP_EFUSE_SHADOW", 64'(SEP_EFUSE_MAP_LC_STATE_REG_ADDR), 1'b0, 32'h0});
+    rows.push_back('{"SEP_EFUSE_SHADOW", 64'(SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR), 1'b0,
+                   32'h0});
     rows.push_back('{"AXIL_MAILBOX", 64'(AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_REG_ADDR), 1'b1,
                    32'(AXIL_MAILBOX_STATUS_REG_DEFAULT)});
     rows.push_back('{"INBOUND_FILTER",
                    64'(INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR), 1'b1,
                    32'(FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT)});
     rows.push_back('{"ALIAS_REMAP",
-                   64'(LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR), 1'b0,
-                   32'h0});
+                   64'(SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR),
+                   1'b0, 32'h0});
     rows.push_back('{"AP_OUTPUT_REMAP",
-                   64'(AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR), 1'b0, 32'h0});
+                   64'(SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR), 1'b0,
+                   32'h0});
     rows.push_back('{"OT_SPI_HOST", 64'(SPI_CONTROLLER_CONTROL_REG_ADDR), 1'b1,
                    32'(SPI_CONTROLLER_CONTROL_REG_DEFAULT)});
   endfunction
@@ -492,10 +496,10 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     csr_write(sw_addr, sw_restore, "SEP_SW_DEBUG.restore");
   endtask
 
-  // ext_demux_decode() selects the eFuse-shim port for the shim window and
-  // sends the next word out of SEP to the extension error slave. The value
-  // behind the shim is adopter-owned and is not graded, only which port the
-  // decode selected.
+  // The local crossbar's efuse_shim rule selects the eFuse-shim port for the
+  // shim window and sends the next word out of SEP to the extension error
+  // slave. The value behind the shim is adopter-owned and is not graded, only
+  // which port the decode selected.
   task ext_demux_bound();
     bit [63:0]    base = 64'(SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR);
     bit [63:0]    past = base + 64'(SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE);

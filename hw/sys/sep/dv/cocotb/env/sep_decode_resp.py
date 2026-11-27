@@ -14,8 +14,11 @@ access that no register or memory backs, as seen at the SEP inbound AXI port:
 
 A response gives the read code, the RDL read data and the write code
 (``doc/trm/src/memory_map.adoc``, Decode Response Codes). A row with no
-response has no such offset. The RDL notes on a row qualify its responses, and
-this module models none of them.
+response has no such offset. The RDL notes on a row qualify its responses. A
+Past Extent note of the form "Up to offset X the <unit> answers with read data
+D [and also latches F]." splits the cell: from the end of the extent to offset
+X the unit's own decoder answers with the cell's codes and read data D, and
+latches F; past X the cell applies as stated. This module models no other note.
 
 ``rdata`` in ``sep_memory_map.rdl`` is a 64-bit field (``ocah_resp`` in
 ``hw/common/regs/regblock_udps.rdl``). A 64-bit RDL rdata states both words:
@@ -25,13 +28,19 @@ An RDL rdata that carries no upper word (a 32-bit value such as
 (the ``ocah_resp.rdata`` definition and Decode Response Codes in
 ``doc/trm/src/memory_map.adoc``), so every read has one stated word.
 
-A lookup that meets a note, a row with more than one hole response, or
+A wrapper unit in ``WRAPPERS`` has one row covering its page. It is split into
+a row per sub-block, with the sub-block windows and sizes from ``sep_addr.h``,
+and a Reserved row for the space between and past them, each with the part of
+the wrapper's responses that applies there.
+
+A lookup that meets any other note, a row with more than one hole response, or
 a response that is not a bus response (``FORWARD``, ``ADOPTER``) raises: the
 expectation is not modeled, so the caller must not probe there.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
@@ -44,15 +53,24 @@ if _GEN_PY.is_dir() and str(_GEN_PY) not in sys.path:
 import sep_memory_map  # noqa: E402  (path bootstrap must precede the import)
 
 _VIEW = "sep-components"
+_SEP_ADDR_H = _GEN_PY.parent / "c" / "sep_addr.h"
+WRAPPERS = ("sep_scratch_wrap", "sep_efuse_wrap", "sep_remap_wrap")
 
 # AMBA AXI4 (IHI 0022) response codes.
 RESP_CODE = {"OKAY": 0, "SLVERR": 2, "DECERR": 3}
+
+_NEAR_NOTE = re.compile(
+    r"Up to offset (0x[0-9A-Fa-f]+) the .+? answers with read data (0x[0-9A-Fa-f]+)"
+    r"(?: and also latches (.+?))?\.$"
+)
 
 
 @dataclass(frozen=True)
 class Cell:
     """One response: the RDL read data as ``rdata_hi:rdata_lo``, where
-    ``hi_noted`` says the RDL rdata states ``rdata_hi``."""
+    ``hi_noted`` says the RDL rdata states ``rdata_hi``. Row offsets from the
+    end of the extent below ``near_end`` answer with ``near_rdata`` and latch
+    ``near_latch`` (a Past Extent note); 0 means no such span."""
 
     text: str
     rresp: str | None = None
@@ -61,6 +79,9 @@ class Cell:
     hi_noted: bool = False
     bresp: str | None = None
     unmodeled: str = ""
+    near_end: int = 0
+    near_rdata: int = 0
+    near_latch: str = ""
 
 
 @dataclass(frozen=True)
@@ -72,6 +93,12 @@ class MapRow:
     hole: Cell | None
     past: Cell | None
 
+    @property
+    def past_from(self) -> int:
+        """First address where the Past Extent cell applies as stated, past any note's span."""
+        near = self.past.near_end if self.past is not None else 0
+        return self.base + max(self.extent, near)
+
 
 @dataclass(frozen=True)
 class Expected:
@@ -82,6 +109,7 @@ class Expected:
     row: str
     column: str
     cell: str
+    latch: str = ""  # the flag the access also latches, from the row's note
 
 
 def _cell(parts: tuple, notes: tuple[str, ...]) -> Cell | None:
@@ -95,7 +123,8 @@ def _cell(parts: tuple, notes: tuple[str, ...]) -> Cell | None:
     if resp["rresp"] not in RESP_CODE or resp["bresp"] not in RESP_CODE:
         return Cell(text, unmodeled=f"cell {text!r} is not a bus response")
     rdata = int(resp["rdata"])
-    unmodeled = f"note {notes[0]!r}" if notes else ""
+    near = _NEAR_NOTE.fullmatch(notes[0]) if len(notes) == 1 else None
+    unmodeled = f"note {notes[0]!r}" if notes and near is None else ""
     return Cell(
         text,
         resp["rresp"],
@@ -104,7 +133,59 @@ def _cell(parts: tuple, notes: tuple[str, ...]) -> Cell | None:
         bool(rdata >> 32),
         resp["bresp"],
         unmodeled,
+        int(near[1], 16) + 1 if near else 0,
+        int(near[2], 16) if near else 0,
+        near[3] or "" if near else "",
     )
+
+
+@lru_cache(maxsize=1)
+def _addr_defines() -> dict[str, int]:
+    text = _SEP_ADDR_H.read_text(encoding="utf-8")
+    return {
+        m[1]: int(m[2], 0) for m in re.finditer(r"^#define (\w+) (0x[0-9A-Fa-f]+)$", text, re.M)
+    }
+
+
+def sub_block_rows(r: dict) -> list[MapRow]:
+    """The rows of wrapper row ``r``: one per sub-block, and Reserved rows between and past them."""
+    defines = _addr_defines()
+    prefix = f"SEP_TOP_{r['key'].rsplit(':', 1)[-1].upper()}_"
+    sizes = (re.fullmatch(rf"{prefix}(\w+)_SIZE", n) for n in defines)
+    names = {m[1] for m in sizes if m and f"{prefix}{m[1]}_BASE_ADDR" in defines}
+    children = sorted(
+        (c for c in names if not any(c.startswith(f"{o}_") for o in names)),
+        key=lambda c: defines[f"{prefix}{c}_BASE_ADDR"],
+    )
+    if not children:
+        raise ValueError(f"sep_addr.h: no sub-blocks under {prefix}")
+    notes = tuple(r["hole_notes"])
+    parts = {label: _cell(((label, resp),), notes) for label, resp in r["hole_responses"]}
+    bases = [defines[f"{prefix}{c}_BASE_ADDR"] for c in children]
+    extent_end = r["base"] + r["occupied_size"]
+    rows = []
+    for c, base, next_base in zip(children, bases, [*bases[1:], extent_end]):
+        size = defines[f"{prefix}{c}_SIZE"]
+        padded = any(
+            n.startswith(f"{prefix}{c}_")
+            and n.endswith("_STRIDE")
+            and v > defines.get(n.removesuffix("STRIDE") + "SIZE", v)
+            for n, v in defines.items()
+        )
+        past_part = parts.get(f"past {c.lower()} registers", parts.get("past sub-block registers"))
+        end = next_base - 1 if past_part else base + size - 1
+        hole = parts.get("between instances") if padded else None
+        rows.append(MapRow(base, end, size, c.lower(), hole, past_part))
+        if end + 1 < next_base:
+            gap = next_base - end - 1
+            rows.append(
+                MapRow(end + 1, next_base - 1, gap, "Reserved", parts["between sub-blocks"], None)
+            )
+    if extent_end <= r["end"]:
+        past_notes = (r["past_note"],) if r["past_note"] else ()
+        past = _cell((("", r["past_response"]),), past_notes)
+        rows.append(MapRow(extent_end, r["end"], r["end"] + 1 - extent_end, "Reserved", past, None))
+    return rows
 
 
 @lru_cache(maxsize=1)
@@ -118,6 +199,9 @@ def sep_map_rows() -> tuple[MapRow, ...]:
     for r in view["rows"]:
         if r["end"] != r["base"] + r["aperture_size"] - 1:
             raise ValueError(f"sep_memory_map.py: {r['label']} size disagrees with its bounds")
+        if r["key"].rsplit(":", 1)[-1] in WRAPPERS:
+            rows.extend(sub_block_rows(r))
+            continue
         past = () if r["past_response"] is None else (("", r["past_response"]),)
         past_notes = (r["past_note"],) if r["past_note"] else ()
         rows.append(
@@ -164,6 +248,10 @@ def expected_unbacked(addr: int, op: str) -> Expected:
         raise ValueError(f"{where}: the map gives no response here; nothing unbacked to probe")
     if cell.unmodeled:
         raise ValueError(f"{where}: {cell.unmodeled} is not modeled")
+    if not in_extent and addr - row.base < cell.near_end:
+        rdata = cell.near_rdata if op == "r" else None
+        code = cell.rresp if op == "r" else cell.bresp
+        return Expected(RESP_CODE[code], rdata, row.unit, column, cell.text, cell.near_latch)
     if op == "r":
         # A 32-bit rdata answers on both halves; a 64-bit rdata gives the upper
         # word for address bit 2.

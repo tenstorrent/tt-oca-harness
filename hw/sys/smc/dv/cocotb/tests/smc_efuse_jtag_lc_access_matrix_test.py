@@ -69,8 +69,10 @@ from smc_base_test import smc_base_test
 from smc_efuse_jtag_lc_image import word_index, write_unlocked_image
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
-EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
-EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
+EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
+EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"
+)
 
 # Non-identity address class (RAND-REP): the seed draws, per lifecycle image, the register the
 # non-identity read probes from the map registers outside JTAG_PUBLIC_IDENTITY whose read lock
@@ -79,25 +81,35 @@ EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDE
 # the one I2C_I3C_ID read lock and every SPARE element under its own, so each element is a
 # candidate under its lock. The write probe stays on LOCKS with data 0 (write-set-only, so
 # the map is left as sensed).
-NUM_SPARE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")
-NUM_I2C_I3C_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM")
+NUM_SPARE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM")
+NUM_I2C_I3C_ID = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM")
 
 
 def _non_id_candidates(image: EfuseImage) -> list[tuple[str, int]]:
     rows = [("LOCKS", EFUSE_MAP_NON_ID)]
     for n in range(NUM_I2C_I3C_ID):
         rows.append(
-            (f"I2C_I3C_ID{n}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", n))
+            (
+                f"I2C_I3C_ID{n}",
+                smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", n),
+            )
         )
-    rows.append(("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")))
+    rows.append(
+        ("SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR"))
+    )
     rows.append(
         (
             "OCCP_TRANSPORT_TIMEOUT",
-            smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+            smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
         )
     )
     for n in range(NUM_SPARE):
-        rows.append((f"SPARE{n}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", n)))
+        rows.append(
+            (
+                f"SPARE{n}",
+                smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", n),
+            )
+        )
     return [(name, addr) for name, addr in rows if not image.read_locked(word_index(addr))]
 
 

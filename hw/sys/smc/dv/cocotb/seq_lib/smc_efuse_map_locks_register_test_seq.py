@@ -246,7 +246,7 @@ class smc_efuse_map_locks_register_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
         assert len(self.fields) == _SLOTS, f"{len(self.fields)} lock slots, expected {_SLOTS}"
         assert list(LOCKS_WORDS) == [0, 1, 2, 3] and word_addr(LOCKS_WORDS[2]) == smc_addr(
-            "SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR"
+            "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR"
         ), f"LOCKS words {list(LOCKS_WORDS)}; SUPPLEMENTARY_LOCKS is not words 2 and 3"
         for name, mask in (
             ("REGION16_WRITE_LOCK", _SUPP_HIGH_WORD_BIT << 32),

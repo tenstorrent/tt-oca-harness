@@ -7,7 +7,7 @@ rom.adoc, Fuse and System State, Lifecycle State ([S11]):
 * SEP-ROM-FUSE-030: "The validated LC state shall be recorded in `bl0_state.lc_state` for
   consumption by later stages and by BL1, and shall be reported on the status channel."
 * "The 4-bit lifecycle state is read from the low nibble of `SEP_EFUSE_MAP_LC_STATE`
-  (`0x1093_000C`)." Legal raw values (Lifecycle states table): `TEST_DEV` `0x0`, `PROD` `0x1`,
+  (`0x1093_080C`)." Legal raw values (Lifecycle states table): `TEST_DEV` `0x0`, `PROD` `0x1`,
   `RMA_SiP` `0x2`-`0x3`, `RMA_CHIPLET` `0x6`-`0x7`, `PROD_END` `0x8`.
 
 rom.adoc, `bl0_state` Hand-off Block: "placed at the very top of DCCM (`0xC0040000 + 0x20000 −
@@ -47,7 +47,7 @@ from rom_fw.sep_rom_observe_base import sep_rom_observe_base
 from sep_reg_meta import sym
 
 _LC_PLUSARG = "sep_rom_lc"
-_LC_REG = sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
+_LC_REG = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
 _SHADOW = "efuse_shadow_probe_o"
 _WORD = 0xFFFF_FFFF
 # PR-TCM DCCM geometry: 2 banks, bank = byte offset bit 2, row = byte offset bits 16:3.

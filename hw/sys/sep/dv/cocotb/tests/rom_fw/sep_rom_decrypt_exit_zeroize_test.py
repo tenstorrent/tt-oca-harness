@@ -12,7 +12,7 @@ rom.adoc, Payload Decryption and the security inventory, which name the steps of
 the ways it fails:
 
     * *Key derivation:* the AES-256 key (32 bytes) is derived from the `CLASS_KEY` fuse secret
-      (`0x10930064`, 32 bytes) and the manifest's `encryption_kdf_input`.
+      (`0x10930868`, 32 bytes) and the manifest's `encryption_kdf_input`.
     [SEP-ROM-PL-070] Decryption shall require a non-zero programmed `CLASS_KEY`; an all-zero
     (unprogrammed) class key shall fail the decryption stage.
     * *Padding:* PKCS#7, removed after decryption; a malformed pad is a decryption failure.

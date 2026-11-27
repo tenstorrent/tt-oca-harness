@@ -8,40 +8,45 @@ refused with the response the memory map sets. Truncating the address,
 wrapping it onto a live register and answering OKAY is what this sequence
 exists to catch.
 
-Every block window except TRNG has a past-extent response in
-``hw/sys/sep/regs/include/sep_memory_map.rdl``: ``<unit>->ocah_past_extent_resp``, with no path
-qualifier. Each probe there is graded exactly against it: a read answers the
-RDL ``rresp`` with the RDL ``rdata`` word, and a write answers the RDL
-``bresp``. For every one of these windows that is DECERR, ``0xBADCAB1E`` /
-DECERR. The values come from ``hw/sys/sep/regs/gen/py/sep_memory_map.py``,
-generated from ``sep.rdl`` and read through ``env/sep_decode_resp.py``
-(``expected_unbacked``), so no code or word is typed here. Every probe goes
-through the CPU-LSU splice (``s_axi``, ``SepBaseTest.start_seq``).
+Every probe outside the TRNG window is graded exactly against the cell the
+generated memory map states for its word: the Past Extent cell of the block's
+row (``hw/sys/sep/regs/include/sep_memory_map.rdl``,
+``<unit>->ocah_past_extent_resp``), or the cell of the Reserved row between the
+end of that row and the next block. A read answers the stated read code with
+the stated ``rdata`` word, and a write answers the stated write code. The
+values come from ``hw/sys/sep/regs/gen/py/sep_memory_map.py``, generated from
+``sep.rdl`` and read through ``env/sep_decode_resp.py`` (``expected_unbacked``),
+so no code or word is typed here. Where a Past Extent note states that the
+block answers up to an offset with read data ``0xFFFFFFFF`` and latches a
+bus-error flag (DMA, watchdog timer, AES, CSRNG, EDN, SPI controller), a word
+in that span is graded against the note's read data; the flag it latches is
+not graded here. Every probe goes through the CPU-LSU splice (``s_axi``,
+``SepBaseTest.start_seq``).
 
-Two windows also have the code in prose, and the window build checks that the
-RDL agrees:
+Two windows also have the past-extent response in prose, and the window build
+checks that the RDL agrees at the first word past any note's span:
 
-* ABR: ``hw/sys/sep/doc/adams_bridge.adoc`` ("abr-aperture-decode") -- the
-  crypto demux answers every access past the register map with DECERR.
-* SPI controller: ``hw/sys/sep/doc/peripheral_subsystem.adoc`` -- the local
-  crossbar answers the rest of the SPI aperture with DECERR on reads and
-  writes.
+* ABR: ``hw/sys/sep/doc/adams_bridge.adoc`` ("abr-aperture-decode") -- the ABR
+  wrapper answers every access past the register map with SLVERR and read data
+  ``0xBADCAB1E``.
+* SPI controller: ``hw/sys/sep/doc/peripheral_subsystem.adoc`` -- ``sep_io``
+  answers the rest of the SPI page with SLVERR and read data ``0xBADCAB1E``.
 
 The TRNG window has no past-extent response in ``sep.rdl`` (see below); for it
 the INFO-DEADSPACE-CODE line logs the code and read data of every probe, which
 CHK-TRNG-UNOWNED grades.
 
 Allocated size comes from the generated export (or the OT/IP header for
-CSRNG / EDN / entropy_source). Window end comes from
-``hw/sys/sep/doc/memory_map.adoc``. RTL decode width is never the judge
-of legality.
+CSRNG / EDN / entropy_source). Window end is the next block's base, or the end
+of the block's memory-map row where no block follows (KM mailbox, SPI
+controller). RTL decode width is never the judge of legality.
 
-Windows cover CSR apertures whose memory-map window is larger than
-``REG_MAP_SIZE`` (DMA, WDT, AES, OTBN, ABR, CSRNG, EDN, ESRC, KM mailbox,
-lifecycle, SPI). HMAC/KMAC fill
-their map window so they have no intra-window dead span here. Remap / filter
-arrays and scratch are owned elsewhere for live programming. These tests grade
-the past-extent cells of the other windows: reset control
+Windows cover CSR blocks with unbacked space between their registers and the
+window end (DMA, WDT, AES, OTBN, ABR, CSRNG, EDN, ESRC, KM mailbox,
+lifecycle, SPI). The OTBN dead span is the Reserved row past its row. HMAC/KMAC
+run up to the next block so they have no dead span here. Remap / filter arrays
+and scratch are owned elsewhere for live programming. These tests grade the
+past-extent cells of the other windows: reset control
 (sep_fabric_row_response_matrix_test); eFuse interface control, eFuse token and
 SEP CPU control (sep_unmapped_access_policy_test); the AXI-Lite mailbox
 (sep_mailbox_access_error_inject_test, sep_unmapped_access_policy_test); the
@@ -66,7 +71,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from env.sep_decode_resp import expected_unbacked, sep_map_row
+from env.sep_decode_resp import expected_unbacked, sep_map_row, sep_map_rows
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import (
     block_size,
@@ -83,11 +88,11 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE
 
 RESP_OKAY = 0
+RESP_SLVERR = 2
 RESP_DECERR = 3
 
-# Specification of record for the past-extent response of every non-adopter
-# window.
-RDL_REF = "hw/sys/sep/regs/include/sep_memory_map.rdl (ocah_past_extent_resp)"
+# Specification of record for the response of every non-adopter dead word.
+RDL_REF = "hw/sys/sep/regs/include/sep_memory_map.rdl (generated sep_memory_map.py)"
 
 # Data of the two issues of every write probe and write burst. The words are
 # complementary, so a stored write differs from the snapshot of any read-write
@@ -144,10 +149,12 @@ class DeadWindow:
     # of every probe.
     adopter: bool = False
     watch_from: str = ""
-    # Past-extent response code that a prose specification also states for this
-    # window (both channels), or None. ``stated_ref`` names that file. The
-    # graded value is the sep.rdl one; dead_windows() checks that they agree.
+    # Past-extent response that a prose specification also states for this
+    # window: the code on both channels and the read word, or None.
+    # ``stated_ref`` names that file. The graded value is the sep.rdl one;
+    # dead_windows() checks that they agree.
     stated_resp: int | None = None
+    stated_rdata: int | None = None
     stated_ref: str = ""
 
     @property
@@ -255,29 +262,52 @@ def in_crypto_region(addr: int) -> bool:
     return CRYPTO_LO <= addr < CRYPTO_HI
 
 
+def graded_dead(win, exp) -> bool:
+    """True when ``exp`` is a cell the dead span of ``win`` may hold: the Past
+    Extent of the block's own row, or a Reserved row."""
+    if exp.row == "Reserved":
+        return True
+    return exp.column == "Past Extent" and exp.row == sep_map_row(win.base).unit
+
+
 def dead_windows() -> tuple[DeadWindow, ...]:
     """Source-derived windows. Allocated size is never the RTL truncate width.
 
-    Raises if a non-adopter window's dead span is not the Past Extent of its
-    sep.rdl row, or if a prose-stated code disagrees with the RDL one.
+    Raises if a word of a non-adopter window's dead span is neither in the
+    Past Extent of its sep.rdl row nor in a Reserved row, or if a prose-stated
+    response disagrees with the RDL one.
     """
     windows = _dead_windows()
     for win in windows:
         if win.adopter or win.dead_lo >= win.dead_hi:
             continue
-        for addr in (win.dead_lo, win.dead_hi - 4):
+        # The Past Extent of a row is contiguous and a Reserved row has one
+        # cell, so the first dead word of each row the span meets covers it.
+        firsts = [
+            max(row.base, win.dead_lo)
+            for row in sep_map_rows()
+            if row.end >= win.dead_lo and row.base < win.dead_hi
+        ]
+        for addr in firsts:
             for op in ("r", "w"):
                 exp = expected_unbacked(addr, op)
-                if exp.column != "Past Extent":
+                if not graded_dead(win, exp):
                     raise RuntimeError(
                         f"{win.name}: 0x{addr:08x} is in the {exp.column} column of "
-                        f"{exp.row}, not Past Extent ({RDL_REF})"
+                        f"{exp.row}, neither Past Extent nor Reserved ({RDL_REF})"
                     )
-                if win.stated_resp is not None and exp.resp != win.stated_resp:
-                    raise RuntimeError(
-                        f"{win.name}: {RDL_REF} gives code {exp.resp} for {op} "
-                        f"0x{addr:08x}, {win.stated_ref} states {win.stated_resp}"
-                    )
+        if win.stated_resp is None:
+            continue
+        addr = sep_map_row(win.base).past_from
+        for op in ("r", "w"):
+            exp = expected_unbacked(addr, op)
+            want = win.stated_rdata if op == "r" else None
+            if exp.column != "Past Extent" or exp.resp != win.stated_resp or exp.rdata != want:
+                raise RuntimeError(
+                    f"{win.name}: {RDL_REF} gives {exp.column} code {exp.resp} rdata "
+                    f"{exp.rdata} for {op} 0x{addr:08x}, {win.stated_ref} states code "
+                    f"{win.stated_resp} rdata {want}"
+                )
     return windows
 
 
@@ -294,7 +324,7 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "wdt_timer",
             sym("WDT_TIMER_REG_MAP_BASE_ADDR"),
-            sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"),
+            sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR"),
             block_size("WDT_TIMER"),
             _sep_watch(sym("WDT_TIMER_REG_MAP_BASE_ADDR"), block_size("WDT_TIMER")),
         ),
@@ -318,20 +348,21 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
             sym("ENTROPY_POOL_REG_MAP_BASE_ADDR"),
             block_size("ABR"),
             _sep_watch(_ABR, block_size("ABR")),
-            stated_resp=RESP_DECERR,
+            stated_resp=RESP_SLVERR,
+            stated_rdata=0xBADC_AB1E,
             stated_ref="hw/sys/sep/doc/adams_bridge.adoc (abr-aperture-decode)",
         ),
         DeadWindow(
             "csrng",
             CSRNG_BASE,
-            EDN_BASE,
+            esrc_base,
             ot_reg_map_size("csrng"),
             _ot_watch("csrng", CSRNG_BASE, ot_reg_map_size("csrng")),
         ),
         DeadWindow(
             "edn",
             EDN_BASE,
-            esrc_base,
+            CSRNG_BASE,
             ot_reg_map_size("edn"),
             _ot_watch("edn", EDN_BASE, ot_reg_map_size("edn")),
         ),
@@ -387,7 +418,8 @@ def _dead_windows() -> tuple[DeadWindow, ...]:
                 sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
                 block_size("SPI_CONTROLLER"),
             ),
-            stated_resp=RESP_DECERR,
+            stated_resp=RESP_SLVERR,
+            stated_rdata=0xBADC_AB1E,
             stated_ref="hw/sys/sep/doc/peripheral_subsystem.adoc (SEP peripheral extension port)",
         ),
         DeadWindow(
@@ -439,16 +471,18 @@ DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("wdt_timer", _WDT + 0x428, "w"),
     ("wdt_timer", _WDT + 0x81C, "w"),
     ("wdt_timer", _WDT + 0xC0C, "w"),
-    ("edn", EDN_BASE + 0x234, "w"),
-    ("edn", EDN_BASE + 0x610, "w"),
+    ("edn", EDN_BASE + 0xA34, "w"),
+    ("edn", EDN_BASE + 0xE10, "w"),
     ("csrng", CSRNG_BASE + 0x248, "w"),
     ("entropy_src", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR") + 0x51C, "w"),
     ("secure_dma", sym("SECURE_DMA_REG_MAP_BASE_ADDR") + 0x8A8, "w"),
-    # First word past the ABR map, error_intr_en_r with offset bit 14 set, and
-    # the last word of the ABR window.
+    # First word past the ABR map, error_intr_en_r with offset bit 14 set, the
+    # last word of the ABR row and the last word of the ABR window, in the
+    # Reserved row that follows.
     ("abr", _ABR + block_size("ABR"), "r"),
     ("abr", _ABR + block_size("ABR"), "w"),
     ("abr", sym("ABR_INTR_BLOCK_RF_ERROR_INTR_EN_R_REG_ADDR") | 0x4000, "w"),
+    ("abr", sep_map_row(_ABR).end + 1 - 4, "w"),
     ("abr", sym("ENTROPY_POOL_REG_MAP_BASE_ADDR") - 4, "w"),
     # First word past the AES and OTBN maps, and the first and last word of the
     # lifecycle dead span: these windows get a write every seed.
@@ -813,12 +847,15 @@ class SepDeadspace:
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
         """Return failure strings. Empty means this probe matched the spec.
 
-        A non-adopter window is graded exactly against the Past Extent response
-        of its ``hw/sys/sep/regs/include/sep_memory_map.rdl`` row (``ocah_past_extent_resp``): a
-        read must answer the RDL ``rresp`` with the RDL ``rdata`` word, and a
-        write the RDL ``bresp``. The adopter (TRNG) window has no such
-        response; the caller grades its code, and this method fails it on OKAY
-        and on a read word equal to a live register value.
+        A non-adopter window is graded exactly against the cell the memory map
+        states for the word (``expected_unbacked``): the Past Extent cell of
+        its ``hw/sys/sep/regs/include/sep_memory_map.rdl`` row, with the read
+        data of a Past Extent note where the word is in the note's span, or
+        the cell of the Reserved row after it. A read must answer the stated
+        read code with the stated ``rdata`` word, and a write the stated write
+        code. The adopter (TRNG) window has no such response; the caller grades
+        its code, and this method fails it on OKAY and on a read word equal to
+        a live register value.
 
         A write is issued once with each ``WRITE_PATTERNS`` word, all ones then
         all zeros. Each issue gets its own response grade and its own change
@@ -850,10 +887,10 @@ class SepDeadspace:
         exp = None
         if not win.adopter:
             exp = expected_unbacked(item.addr, item.op)
-            if exp.column != "Past Extent":
+            if not graded_dead(win, exp):
                 raise RuntimeError(
                     f"{win.name} {item.op} 0x{item.addr:08x} is in the {exp.column} "
-                    f"column of {exp.row}, not Past Extent ({RDL_REF})"
+                    f"column of {exp.row}, neither Past Extent nor Reserved ({RDL_REF})"
                 )
         mon = self.test.env.axi_monitor
         # Arm one credit for a DECERR refuse. Hand it back unless this beat
@@ -920,7 +957,7 @@ class SepDeadspace:
             accepted = " resp=OKAY" if resp == RESP_OKAY else ""
             fails.append(
                 f"{win.name} {what} answered {got}, expected "
-                f"{want} ({RDL_REF}, {exp.row} Past Extent, allocated ends at "
+                f"{want} ({RDL_REF}, {exp.row} {exp.column}, allocated ends at "
                 f"+0x{win.alloc:x}){accepted}"
             )
         # A read of a dead offset must not return a live register's value, and

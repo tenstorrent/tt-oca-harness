@@ -7,7 +7,7 @@
 package efuse_mmr_reg_pkg;
 
     localparam EFUSE_MMR_REG_DATA_WIDTH = 32;
-    localparam EFUSE_MMR_REG_MIN_ADDR_WIDTH = 7;
+    localparam EFUSE_MMR_REG_MIN_ADDR_WIDTH = 10;
     localparam EFUSE_MMR_REG_SIZE = 'h74;
 
     typedef struct packed {

@@ -30,7 +30,7 @@ technology-specific fuse interface.
 
 [[sep-efuse-interface-diagram]]
 .eFuse controller and technology-specific interface shim
-image::sep-efuse-interface.svg[alt="eFuse wrapper front end, efuse_interface_controller with its register windows, command path and guard, and the interface shim in front of the fuse bank, with the SEP-only logic outlined dashed",width=100%,pdfwidth=100%]
+image::sep-efuse-interface.svg[alt="eFuse wrapper front end with the JTAG demultiplexer and the shim multiplexer, efuse_interface_controller with its register windows, command path and guard, and the interface shim in front of the fuse bank, with the SEP-only logic outlined dashed",width=100%,pdfwidth=100%]
 
 The figure reads from the bus ports on the left to the fuse bank at the
 bottom. Thick arrows are AXI4, AXI-Lite or APB, and thin double-headed arrows
@@ -38,16 +38,16 @@ carry a fuse command and its response. The dashed line separates the OCAH
 controller from the interface shim, which an adopter replaces with one for its
 fuse technology.
 
-Both `sep_efuse_wrapper` and `smc_efuse_wrapper` pass the OTP JTAG port through
-a lifecycle filter that answers a blocked access with SLVERR and read data
-`0xBADCAB1E`. Inside the controller, an AXI-Lite
-multiplexer merges the functional and JTAG ports. Addresses from the MAP window
-to the end of the last register window go through the AXI-Lite to APB bridge,
-and all others go to the shim's bank control registers. The APB decode answers
-any address in that span outside the register windows with SLVERR. The command
-multiplexer gives automatic sensing priority until it completes, then gives
-programming priority over reading, and `efuse_guard` filters every command
-before it reaches the shim.
+Both `sep_efuse_wrapper` and `smc_efuse_wrapper` decode the OTP JTAG port
+behind a lifecycle filter. The eFuse register page and, in the SMC, the supplementary fuse
+window go to the controller, the shim CSR window to the shim's bank control registers
+through a multiplexer shared with the functional shim port, and any other or blocked access
+answers SLVERR with read data `0xBADCAB1E`. In the controller, an AXI-Lite multiplexer
+merges the functional and JTAG ports into the AXI-Lite to APB bridge. The
+control and MMR blocks answer SLVERR with read data 0 past their last register,
+and the APB decode answers SLVERR with `0xBADCAB1E` elsewhere in the page. The
+command multiplexer gives automatic sensing priority until it completes, then
+programming over reading, and `efuse_guard` filters every command before the shim.
 
 The SMC reuses the controller in `smc_efuse_wrapper` with `HAS_LC_STATE=0`, so
 the logic with a dashed outline is absent there:
@@ -476,6 +476,20 @@ mode, not by the detailed map; no register RTL is generated from it for these
 shadow registers.
 
 === Detailed Register Map
+
+The eFuse control registers, the security-token registers and the shadow
+registers share one 4 KiB page, placed by the wrapper below. The section that
+follows defines each shadow register and its fields.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_efuse_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_efuse_wrap.adoc[leveloffset=+2]
+endif::backend-pdf[]
 
 ifdef::backend-html5[]
 ++++

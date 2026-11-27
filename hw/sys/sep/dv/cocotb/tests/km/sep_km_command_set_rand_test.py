@@ -1344,10 +1344,10 @@ class sep_km_command_set_rand_test(sep_base_test):
         assert flushed_post == exp_post, (
             f"CHK-SEP-FLUSH-NO-PEER FAIL: SEP_IRQ_STATUS=0x{irq_post:08x} after the SEP flush "
             f"has flushed_by_km={flushed_post}, expected {exp_post} (firmware.adoc:983,1112-1113; "
-            "architecture.adoc:240-241)"
+            "architecture.adoc:238-239)"
         )
         self.logger.info(
-            "CHK-SEP-FLUSH-NO-PEER PASS: contract=key_manager/doc/architecture.adoc:240-241"
+            "CHK-SEP-FLUSH-NO-PEER PASS: contract=key_manager/doc/architecture.adoc:238-239"
             "(mailbox_flush),firmware.adoc:983(flushed_by_sep),:1112-1113 "
             "SEP_IRQ_STATUS=0x%08x flushed_by_km=%d exp_flushed_by_km=%d",
             irq_post,
@@ -1532,7 +1532,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info(
             "CHK-BOOT-SRAM-LOCK-NOWR PASS: contract=key_manager/doc/firmware.adoc:1341-1394"
-            "(Boot_Sequence),architecture.adoc:1140-1145(Write-lock_policy) "
+            "(Boot_Sequence),architecture.adoc:1138-1143(Write-lock_policy) "
             "sram_lock_stores=%d exp=%d window=release..RESP_KM_READY",
             n_lock,
             exp_lock,
@@ -1629,7 +1629,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         self.logger.info(
             "CHK-VAULT-FILL PASS: contract=key_manager/doc/firmware.adoc:1929-1931"
             "(Key_Management_Load),:396-397(0x22_CMD_KEY_GENERATE),"
-            "architecture.adoc:414(KPV) generated=%d exp_generated=%d rc=0 all "
+            "architecture.adoc:412(KPV) generated=%d exp_generated=%d rc=0 all "
             "new_handles=%d",
             free - len(bad),
             free,
@@ -1752,7 +1752,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         self.logger.info(
             "CHK-SHRED-FILL PASS: contract=key_manager/doc/firmware.adoc:1803-1805"
             "(Crypto_Engine_Drivers_Shred),:1447-1453(Firmware_PRNG),"
-            "architecture.adoc:292-294(Key_Delivery) shred=%d aw=%d w=%d xz=0 "
+            "architecture.adoc:290-292(Key_Delivery) shred=%d aw=%d w=%d xz=0 "
             "share_offsets=%d all_lanes_written=1 drbg_beats=%d exp_drbg_beats>=%d "
             "share0!=key share1!=key xor!=key distinct_share0_values=%d "
             "distinct_share1_values=%d exp_each>1 differs_from_prev=%s "
@@ -1838,11 +1838,11 @@ class sep_km_command_set_rand_test(sep_base_test):
         assert flushed_reset == exp_reset, (
             f"CTRL-FLUSHED-BY-KM-RESET FAIL: SEP_IRQ_STATUS=0x{irq_reset:08x} after the KM "
             f"warm reset and RESP_KM_READY has flushed_by_km={flushed_reset}, expected "
-            f"{exp_reset} (firmware.adoc:1384; architecture.adoc:240-241)"
+            f"{exp_reset} (firmware.adoc:1384; architecture.adoc:238-239)"
         )
         self.logger.info(
             "CTRL-FLUSHED-BY-KM-RESET PASS: contract=key_manager/doc/firmware.adoc:1384"
-            "(Boot_Sequence),architecture.adoc:240-241(mailbox_flush) "
+            "(Boot_Sequence),architecture.adoc:238-239(mailbox_flush) "
             "SEP_IRQ_STATUS=0x%08x flushed_by_km=%d exp_flushed_by_km=%d",
             irq_reset,
             flushed_reset,
@@ -1903,7 +1903,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             "(Boot_Sequence),:1889-1895(Key_Registry),:690-691(0x26_CMD_KEY_LOAD),"
             ":1763-1764(KPV_Driver),:1069-1070(Key_Transfer_and_Sideload_Purge),"
             ":491-499(0x24_CMD_KEY_TRANSFER_Response),"
-            ":504-513(Key_Transfer_Success_Response),architecture.adoc:441(KPV) %s "
+            ":504-513(Key_Transfer_Success_Response),architecture.adoc:439(KPV) %s "
             "stale_handle=0x%02x stale_rc=%d exp_stale_rc=%d stale_arg=%s exp_stale_arg=none "
             "xfer_rc=%d exp_xfer_rc=%d xfer_arg=0x%08x xfer_handle=0x%02x exp_xfer_handle=0x%02x "
             "xfer_dest=0x%02x exp_xfer_dest=0x%02x",

@@ -22,7 +22,7 @@ error", and the whole vector for CHK-SRC31-EXCL), the SEP output field
 (``km_engine_key_valid_o``), ``KM-KPV`` (``km_kpv_words_o``, the plain-reset
 control of CHK-TRAP-WIPE) and ``KM-CSR`` (``km_csr_irq_status_o``). No inject.
 
-Port golden: ``hw/sys/sep/doc/interrupts.adoc:169-171`` (source 31, "KM
+Port golden: ``hw/sys/sep/doc/interrupts.adoc:177-179`` (source 31, "KM
 unrecoverable error", "also exported as a SEP output port") and
 ``hw/sys/sep/doc/port_table.adoc:130`` (``sep_ras_o.km_uncorrectable``, output field, 1 bit).
 So the port equals PIC-IRQ bit 30 on every clock. A watcher compares the two on
@@ -233,7 +233,7 @@ KM_VALID_HMAC_BIT = 0
 # PIC-IRQ: aggregator bit of PIC source "KM unrecoverable error" (bit 30).
 KM_UNREC_BIT = agg_from_pic("KM unrecoverable error")
 # CHK-SRC31-EXCL: bits not compared at the bit 30 rise besides the six idle
-# bits of pic_vector_watch: source 33 ("Crypto alert", interrupts.adoc:177-181,
+# bits of pic_vector_watch: source 33 ("Crypto alert", interrupts.adoc:185-189,
 # the combined crypto alert and integrity fails), which a Key Manager fault may
 # raise in the same clock. Not graded: the leaf states no golden for it.
 SRC31_SAME_CLOCK = vec_mask([pic("Crypto alert")])
@@ -1211,7 +1211,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
     async def _plain_reset_kpv_control(self, kind: str) -> None:
         """Control of CHK-TRAP-WIPE: a reset with no trap keeps the KPV words.
 
-        architecture.adoc:474 ("Key and Policy Vault (KPV)"): cold or warm reset
+        architecture.adoc:472 ("Key and Policy Vault (KPV)"): cold or warm reset
         alone does not overwrite their contents. One slot per lock kind of the
         trap witnesses (lock_write, lock_use, seal) is written, read back,
         locked, and reset with no trap. A zero after a trap and the same kind of
@@ -1332,9 +1332,9 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         EXEC runs its entry with every CPU interrupt masked (``km_rom_poke.S``, op
         EXEC), so the illegal instruction takes the PicoRV32 trap state: the CPU
         halts and ``unrecoverable_err_o`` asserts. Golden:
-        ``hw/ip/key_manager/doc/architecture.adoc:781-785`` (illegal instruction
-        with its interrupt masked), ``:532-533`` and ``:744-746`` (the trap halts
-        the CPU and asserts ``unrecoverable_err_o``), ``:1063-1066`` (custom0
+        ``hw/ip/key_manager/doc/architecture.adoc:779-783`` (illegal instruction
+        with its interrupt masked), ``:530-531`` and ``:742-744`` (the trap halts
+        the CPU and asserts ``unrecoverable_err_o``), ``:1061-1064`` (custom0
         encodings other than the CRC ones take illegal-instruction handling), and
         ``hw/ip/key_manager/doc/assets/km-architecture.svg:97`` (RV32EMC).
         """

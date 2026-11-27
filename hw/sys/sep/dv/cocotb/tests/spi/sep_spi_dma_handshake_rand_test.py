@@ -211,11 +211,11 @@ Checkers:
                   Contract: "configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`,
                   `INTR_SRC_ADDR` and `INTR_SRC_WR_VAL` for the connected host
                   port (`CLEAR_INTR_BUS` bit 0 = 1)"
-                  (``doc/programmer/src/sep-programming.adoc:800-803``); "DMA
+                  (``doc/programmer/src/sep-programming.adoc:809-812``); "DMA
                   issues writes with address from INTR_SRC_ADDR and write value
                   from INTR_SRC_WR_VAL corresponding to each bit set in this
                   register" (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
-                  dma.hjson:756-757``, CLEAR_INTR_SRC). Control: the handshake run
+                  dma.hjson:758-759``, CLEAR_INTR_SRC). Control: the handshake run
                   (CLEAR_INTR_SRC = 0 from reset) moves its chunks with no AW to
                   that address. The clock of each clear write, the count of clear
                   writes and the WSTRB of the paired W beat are logged
@@ -231,12 +231,12 @@ Checkers:
                   with address from INTR_SRC_ADDR and write value from
                   INTR_SRC_WR_VAL corresponding to each bit set in this
                   register" (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/
-                  data/dma.hjson:755-757``, CLEAR_INTR_SRC; NumIntClearSources
+                  data/dma.hjson:757-759``, CLEAR_INTR_SRC; NumIntClearSources
                   11, ``:28-33``), CLEAR_INTR_BUS "1: OT-internal crossbar"
-                  (``:771-773``) and ``hw/sys/sep/doc/dma.adoc:61-62`` (the
+                  (``:771-773``) and ``hw/sys/sep/doc/dma.adoc:65-66`` (the
                   internal host port is the only route). No source runs on
                   bus 0 here: a write there goes to the tied-off CTN port,
-                  which "does not complete" (``hw/sys/sep/doc/dma.adoc:70``),
+                  which "does not complete" (``hw/sys/sep/doc/dma.adoc:74``),
                   and neither the tap nor the SRAM word would see it; bus 0 is
                   graded for source 0 by CHK-DMA-CLR-BUS0. Every
                   clear address lies inside the enabled range. Controls:
@@ -263,10 +263,10 @@ Checkers:
                   word still holds its sentinel after the run. Contract:
                   CLEAR_INTR_BUS "0: CTN/System fabric 1: OT-internal
                   crossbar" (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/
-                  data/dma.hjson:771-773``) and "Address-space ID ``0x7``
+                  data/dma.hjson:773-775``) and "Address-space ID ``0x7``
                   selects the core's internal host port, the only route in
                   this wrapper. The upstream SoC control and system ports are
-                  tied off" (``hw/sys/sep/doc/dma.adoc:61-62``), so a clear
+                  tied off" (``hw/sys/sep/doc/dma.adoc:65-66``), so a clear
                   write on bus 0 never reaches the host port. Control:
                   CHK-HS-CLR (bus 1, same tap and word),
                   ``CTRL-DMA-CLR-RANGE`` and ``CTRL-DMA-CLR-BUS0``: in the same
@@ -275,7 +275,7 @@ Checkers:
                   marks taken together before GO; BUSY "may be set as long as
                   hardware handshake mode is active and triggered",
                   ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
-                  dma.hjson:615-617``), or the tap shows at least one AR (the
+                  dma.hjson:617-619``), or the tap shows at least one AR (the
                   source read follows the clear stage), so the engine took the
                   trigger; else ``CTRL-MISSING CHK-DMA-CLR-BUS0``. BUSY and GO
                   levels are logged.
@@ -394,7 +394,8 @@ TEST = "sep_spi_dma_handshake_rand_test"
 M32 = 0xFFFF_FFFF
 SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
-# Handshake range: the SRAM base to the end of the SPI window (memory_map.adoc).
+# Handshake range: the SRAM base to 0x10BF_FFFF, which holds the SPI host page
+# and the SRAM destination (memory_map.adoc).
 HS_RANGE_BASE = SRAM_BASE
 HS_RANGE_LIMIT = 0x10BF_FFFF
 # Normal-mode range: the SEP SRAM.
@@ -1266,7 +1267,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
                 self._ctrl_missing("CHK-DMA-CLR-BUS0", reach)
             self.logger.info("CTRL-DMA-CLR-BUS0 PASS seed=%d %s", cfg.seed, reach)
             line = (
-                f"contract=dma.hjson:771-773,hw/sys/sep/doc/dma.adoc:61-62 variant={variant} "
+                f"contract=dma.hjson:773-775,hw/sys/sep/doc/dma.adoc:65-66 variant={variant} "
                 f"clear_aw={len(clr_idx)} expect_aw=0 clear_word=0x{clr_rb:08x} "
                 f"expect=0x{self.sentinel:08x}"
             )

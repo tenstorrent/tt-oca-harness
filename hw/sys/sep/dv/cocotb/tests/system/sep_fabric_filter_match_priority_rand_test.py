@@ -145,15 +145,17 @@ _MAX_SENSE_CYCLES = 20_000
 # Units (hw/sys/sep/regs/gen/adoc/memory_map.adoc).
 SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
-SCRATCH_BASE = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
-SCRATCH_BYTES = sym("SEP_SCRATCH_COLD_REG_MAP_SIZE")
+SCRATCH_BASE = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+SCRATCH_BYTES = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_SIZE")
 # Entry ranges of a scratch cell are placed from the scratch-cold base to the
 # end of the scratch-warm block: the filter compares addresses only, and the
 # block above holds the ranges that do not cover the probe. No probe targets
 # scratch-warm.
 SCRATCH_PLACE_LO = SCRATCH_BASE
 SCRATCH_PLACE_HI = (
-    sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR") + sym("SEP_SCRATCH_WARM_REG_MAP_SIZE") - 1
+    sym("SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_BASE_ADDR")
+    + sym("SEP_SCRATCH_WRAP_SCRATCH_WARM_REG_MAP_SIZE")
+    - 1
 )
 MBOX_WORD = sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")
 CRYPTO_WORD = sym("AES_REG_MAP_BASE_ADDR")

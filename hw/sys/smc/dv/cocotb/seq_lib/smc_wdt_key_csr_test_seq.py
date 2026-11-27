@@ -85,7 +85,7 @@ class smc_wdt_key_csr_test_seq(SmcCsrSeq):
         self.width_proven: list[int] = []
 
     def _reg(self, core: int, reg: str) -> int:
-        return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_{reg}_BASE_ADDR")
+        return smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{core}_WDT_{reg}_BASE_ADDR")
 
     async def _unlock(self, label: str, core: int) -> None:
         await self.csr_write(label, self._reg(core, "KEY"), WDT_MAGIC_KEY)

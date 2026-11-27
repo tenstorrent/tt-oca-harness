@@ -315,7 +315,7 @@ class sep_address_map_test(sep_base_test):
             sw_after,
         )
 
-        # CHK-EXT-DEMUX-BOUND. ext_demux_decode() in sep.sv is Tenstorrent-owned
+        # CHK-EXT-DEMUX-BOUND. The local crossbar's efuse_shim rule is Tenstorrent-owned
         # decode on an adopter-owned aperture: the first word selects the eFuse
         # shim port and the next word answers DECERR. The two responses must
         # differ. CTRL-EXT-DEMUX-PORT shows on the PR-EXT tap that the next word

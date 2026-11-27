@@ -28,7 +28,7 @@ from sep_reg_meta import sym
 
 # SEP local fabric addresses (sep_local_axi_xbar / sep_addr.h). The LCC
 # register map lives in env.sep_lcc_golden (single source of truth).
-LC_STATE_SHADOW = sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
+LC_STATE_SHADOW = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
 
 
 class sep_lcc_stitch_check_seq(uvm_sequence):

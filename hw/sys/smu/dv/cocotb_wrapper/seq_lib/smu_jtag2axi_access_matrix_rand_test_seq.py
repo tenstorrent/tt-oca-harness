@@ -167,11 +167,15 @@ EXTRA_KINDS = (
 )
 # hw/ip/efuse/regs/efuse_mmr.rdl: TOKEN_EOP is write-only (sw = w), so no read verdict is
 # stated for it.
-WRITE_ONLY_WORDS = frozenset({c_header_u32(_SEP_ADDR_H, "SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR")})
+WRITE_ONLY_WORDS = frozenset(
+    {c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR")}
+)
 #: The SEP LC_STATE shadow word: the preload's low 2 x LcStateWidth bits are replaced by the
 #: differential encoder's output (efuse_shadow_regs.sv, preload_shadow_regs), so the word read
 #: back is not the image line; lc_state_o grades that word at the entry.
-SEP_LC_STATE_ADDR = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
+SEP_LC_STATE_ADDR = c_header_u32(
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR"
+)
 
 _STRUCT_MEMBER = re.compile(r"^\s*(\w+)\s+(\w+)(?:\[(\d+)\])?(?:\[(\d+)\])?;")
 _INT_BYTES = {"uint32_t": 4, "uint64_t": 8}
@@ -254,11 +258,11 @@ def smc_otp_words(image: str) -> list[tuple[str, int]]:
     smc_efuse_map.rdl: a register whose read lock is set is not readable, with no response
     stated, so a word whose read lock the Run mode's shadow image sets is not drawn.
     """
-    words = _block_words(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_MAP", _SMC_EFUSE_MAP_H)
-    lo, hi = _image_words(image, 2)
-    locks = {"LOCKS": lo | (hi << 32)}
+    words = _block_words(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP", _SMC_EFUSE_MAP_H)
+    w = _image_words(image, 4)
+    locks = {"HARNESS_LOCKS": w[0] | (w[1] << 32), "SUPPLEMENTARY_LOCKS": w[2] | (w[3] << 32)}
     words = [(n, a) for n, a in words if not _read_locked(_SMC_EFUSE_MAP_H, n, locks)]
-    words += _block_words(_SMC_ADDR_H, "SMC_TOP_EFUSE_INTERFACE_CTRL", None)
+    words += _block_words(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL", None)
     return words
 
 
@@ -278,12 +282,12 @@ def image_map(image: str, header: Path, prefix: str, skip: tuple[int, ...] = ())
 
 def sep_otp_words(image: str) -> list[tuple[str, int]]:
     """SEP OTP register words: the eFuse map, interface-control and MMR blocks of sep_addr.h."""
-    words = _block_words(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP", _SEP_EFUSE_MAP_H)
+    words = _block_words(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP", _SEP_EFUSE_MAP_H)
     w = _image_words(image, 3)
     locks = {"LOCKS": w[0] | (w[1] << 32), "LOCKS_SPARE": w[2]}
     words = [(n, a) for n, a in words if not _read_locked(_SEP_EFUSE_MAP_H, n, locks)]
-    words += _block_words(_SEP_ADDR_H, "SEP_TOP_EFUSE_INTERFACE_CTRL", None)
-    words += _block_words(_SEP_ADDR_H, "SEP_TOP_EFUSE_MMR", None)
+    words += _block_words(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL", None)
+    words += _block_words(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR", None)
     return [(n, a) for n, a in words if a not in WRITE_ONLY_WORDS]
 
 
@@ -401,9 +405,9 @@ def draw_plan(seed: int, smc_words, sep_words, images: dict[str, dict[int, int]]
     """Every cell of the run from the seed alone; pinned corners first, drawn cells after.
 
     The pinned OTP cell of each bridge is drawn among the words whose ``images`` word is
-    non-zero. In the default SMC image that is the low LOCKS word, which holds the
-    JTAG_PUBLIC_IDENTITY read lock (0x2); LOCKS itself is sw = rw and carries no read lock
-    (hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl:28-44).
+    non-zero. In the default SMC image that is the low HARNESS_LOCKS word, which holds the
+    JTAG_PUBLIC_IDENTITY read lock (0x2); HARNESS_LOCKS itself is sw = rw and carries no read
+    lock (hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl:29-53).
     """
     rng = random.Random(seed)
     spans, gaps = adopter_spans(), fabric_gaps()
@@ -757,9 +761,12 @@ class smu_jtag2axi_access_matrix_rand_test_seq:
         smc_image = str(cocotb.plusargs["smc_shadow_reg_preload"])
         sep_image = str(cocotb.plusargs["sep_shadow_reg_preload"])
         self.otp_image = {
-            "smc_otp": image_map(smc_image, _SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_MAP"),
+            "smc_otp": image_map(smc_image, _SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP"),
             "sep_otp": image_map(
-                sep_image, _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP", skip=(SEP_LC_STATE_ADDR,)
+                sep_image,
+                _SEP_ADDR_H,
+                "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP",
+                skip=(SEP_LC_STATE_ADDR,),
             ),
         }
         self.plan = draw_plan(

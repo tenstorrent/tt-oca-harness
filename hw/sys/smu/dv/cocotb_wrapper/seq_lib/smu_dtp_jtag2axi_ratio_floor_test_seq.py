@@ -49,7 +49,7 @@ from seq_lib.smu_jtag_helpers import (
     unpack_smc_series_ctrl,
 )
 
-# hw/sys/smc/regs/gen/c/smc_addr.h: SCRATCH_COLD_WARM is eight 32-bit words at 0xC0002880
+# hw/sys/smc/regs/gen/c/smc_addr.h: SCRATCH_COLD_WARM is eight 32-bit words at 0xC000D080
 # (hw/sys/smc/regs/blocks/scratch/scratch.rdl).
 _SCRATCH_WARM = "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR"
 # Words of one series.

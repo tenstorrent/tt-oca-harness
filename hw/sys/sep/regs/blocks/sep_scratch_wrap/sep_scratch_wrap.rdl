@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SEP_SCRATCH_WRAP_RDL
+`define SEP_SCRATCH_WRAP_RDL
+
+`include "sep_scratch.rdl"
+
+
+addrmap sep_scratch_wrap {
+    name = "SEP Scratch Wrapper Address Map";
+    desc = "Places the cold-reset and warm-reset scratch register banks in one 4 KiB page.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    sep_scratch     scratch_cold    @0x000_0000;
+    sep_scratch     scratch_warm    @0x000_0080;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    scratch_cold->ocah_aperture_size = 0x80;
+    scratch_cold->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    scratch_cold->desc = "Cold-reset scratch register bank.";
+    scratch_warm->ocah_aperture_size = 0x80;
+    scratch_warm->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+    scratch_warm->desc = "Warm-reset scratch register bank.";
+`endif
+};
+
+`endif

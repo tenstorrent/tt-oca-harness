@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse shim response stream against the SMC eFuse map read back over JTAG2AXI.
 
-Spec: smc.rdl smc_efuse_map at 0xC0007000 and efuse_interface_ctrl at 0xC0008000;
-smc_efuse_map.rdl Address Map; smu-smc.adoc 64 harness plus 128 supplementary 32-bit words per instance; interface.adoc
+Spec: smc.rdl smc_efuse_map at 0xC0007800 and efuse_interface_ctrl at 0xC0007000;
+smc_efuse_map.rdl Address Map; smu-smc.adoc 64 harness plus 128 supplementary 32-bit words
+per instance; interface.adoc
 fuse_command_resp_t {data, status, valid}; efuse_interface_ctrl.rdl efuse_sense_done bit 0.
 
 The stream is captured at the SMU boundary during the shared bring-up. Sixteen of the 64
@@ -39,13 +40,15 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
 )
 
-MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
-STATUS_ADDR = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
+MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
+STATUS_ADDR = smc_addr(
+    "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+)
 # Harness map words plus the supplementary region of the reference wrappers ("128 words in three
 # lock regions", hw/ip/efuse/doc/architecture.adoc, Supplementary Fuse Region: Configuration),
 # sensed as one linear READ.
 SUPPLEMENTARY_WORDS = 128
-MAP_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") // 4
+MAP_WORDS = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE") // 4
 STREAM_WORDS = MAP_WORDS + SUPPLEMENTARY_WORDS
 RESP_WIDTH = 34
 VALID_BIT = 0
@@ -54,13 +57,25 @@ DATA_LSB = 2
 WORD_MASK = 0xFFFF_FFFF
 SAMPLED_WORDS = 16
 ELEMENT_CELLS = (
-    ("harness_locks_0x0", "SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR", None),
-    ("supplementary_locks_0x8", "SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR", None),
-    ("jtag_public_identity_0x10", "SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR", None),
-    ("i2c_i3c_id_0x30", "SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0),
-    ("smc_config_0x78", "SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR", None),
-    ("occp_timeout_0x80", "SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR", None),
-    ("spare_0x88_to_0xe7", "SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0),
+    ("harness_locks_0x0", "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR", None),
+    (
+        "supplementary_locks_0x8",
+        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR",
+        None,
+    ),
+    (
+        "jtag_public_identity_0x10",
+        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR",
+        None,
+    ),
+    ("i2c_i3c_id_0x30", "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", 0),
+    ("smc_config_0x78", "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR", None),
+    (
+        "occp_timeout_0x80",
+        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR",
+        None,
+    ),
+    ("spare_0x88_to_0xe7", "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0),
 )
 ELEMENT_INDICES = tuple(
     ((smc_addr(symbol) if index is None else smc_indexed_addr(symbol, index)) - MAP_BASE) // 4

@@ -42,8 +42,8 @@ SIZE_BYTES = {0: 1, 1: 2, 2: 4}
 
 # Scratch words are plain RW storage in the SEP local map. Not restored:
 # nothing downstream reads them back.
-SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR")
-SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR")
+SCRATCH_COLD_0 = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_0__REG_ADDR")
+SCRATCH_WARM_0 = sym("SEP_SCRATCH_WRAP_SCRATCH_WARM_SCRATCH_0__REG_ADDR")
 
 # Memory-mapped windows: apertures behind an SRAM-style adapter rather than a
 # register adapter.

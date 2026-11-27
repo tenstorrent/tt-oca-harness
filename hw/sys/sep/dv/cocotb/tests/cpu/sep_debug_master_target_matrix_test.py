@@ -134,7 +134,7 @@ Checks:
                   ``sep_cpu_reset_n`` and ``sep_reset_n`` taps stay high from
                   the start of the pulse to the readback
                   (``hw/sys/sep/doc/reset_controller.adoc:45-53``, the terms of
-                  ``sep_reset_n`` and ``sep_cpu_reset_n``; ``:81``,
+                  ``sep_reset_n`` and ``sep_cpu_reset_n``; ``:80``,
                   ``dbg_rstb_i``). Controls:
                   ``dmactive`` reads 1 before the pulse; the ``wdt_rst_ni_i``
                   pulse of step 12 drops the ``sep_cpu_reset_n`` tap; the cold
@@ -189,10 +189,10 @@ Checks:
                   bench responder set to OKAY and once to SLVERR. Each access
                   leaves once on PR-EXT at the issued address (AR with ARLEN 0
                   and ARSIZE 3, or AW and one W beat with the written data and
-                  all strobes) (``hw/sys/sep/doc/fabric.adoc:162-164``), and the
+                  all strobes) (``hw/sys/sep/doc/fabric.adoc:167-170``), and the
                   PR-DBG-SB R or B beat carries the code the port returned, and
-                  the R beat its word (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:86``
-                  "Adopter-defined", ``doc/trm/src/memory_map.adoc:111-112``: the
+                  the R beat its word (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:80``
+                  "Adopter-defined", ``doc/trm/src/memory_map.adoc:188``: the
                   adopter's implementation answers). ``sberror`` is 0 for OKAY
                   and not 0 for SLVERR; an OKAY read returns the word in
                   ``sbdata``. The reply on PR-EXT-RSP is the bench value (CTL).
@@ -202,7 +202,7 @@ Checks:
                   and its returned R or B beat, while PR-ROM and PR-XBAR-TCM take
                   no handshake (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg``:
                   the ``cpu_tcm`` row, ``:93-98``, has only the DMA dot, and the
-                  boot ROM row, ``:159-162``, the IFU and LSU dots). Positive
+                  boot ROM row, ``:166-169``, the IFU and LSU dots). Positive
                   probes on the same tap objects, before the graded accesses and
                   outside every window: an LSU read of the boot ROM base gives a
                   PR-ROM request, and a secure DMA copy of one SRAM word to the
@@ -218,7 +218,7 @@ Checks:
                   ``{O[55:19], a[18:0]}`` with AxUSER 0 in all 12 bits (``OTHERS``)
                   and NS 1 (AP) or the inverse of bit 55 of the remapped address
                   (STEE), and the W beat carries the written word
-                  (``hw/sys/sep/doc/fabric.adoc:178-181``, ``:314-315``,
+                  (``hw/sys/sep/doc/fabric.adoc:184-187``, ``:320-321``,
                   ``:320``). The reply on PR-OUT-RSP is the bench outbound
                   responder's (CTRL-DBG-REMAP-RSP: one B beat, or one R beat with
                   ``last`` 1, that answers OKAY).
@@ -230,9 +230,9 @@ Checks:
                   4-byte read and write of HMAC ``MSG_LENGTH_LOWER`` each show
                   one R or B beat on PR-DBG-SB that answers SLVERR, the R beat
                   carries 0x1501A7ED in the 32-bit lane of the access, and
-                  ``sberror`` is not 0 (``hw/sys/sep/doc/reset_controller.adoc:139-141``:
+                  ``sberror`` is not 0 (``hw/sys/sep/doc/reset_controller.adoc:138-140``:
                   new transactions on an isolated path complete with SLVERR and
-                  that read data; the HMAC host path is isolated, ``:153``;
+                  that read data; the HMAC host path is isolated, ``:152``;
                   the debug master reaches ``sep_crypto``,
                   ``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:129``).
   CHK-DBG-SBA-REG: (entry S) 64-bit debug-master read and write of
@@ -251,7 +251,7 @@ Checks:
                   ``onwrite = woset``,
                   ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:22-45``).
                   The debug master reaches the system CSRs and ``sep_crypto``
-                  (``hw/sys/sep/doc/fabric.adoc:139-140``;
+                  (``hw/sys/sep/doc/fabric.adoc:143-144``;
                   ``sep_axi_connectivity.svg:129``, ``:136``).
   CHK-DBG-AXPROT: (entry S) every AR and AW of each debug-master instance on
                   PR-DBG-SB carries AxPROT 0b001
@@ -354,8 +354,8 @@ from env.sep_seeded_rng import SepSeededRng
 from ocah_jtag_vip import OcahJtagMasterDriver
 from sep_base_test import sep_base_test
 from sep_reg_meta import (
-    AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0,
     INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
+    SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0,
     SEP_RESET_CTRL,
     RegBlock,
     sym,
@@ -404,7 +404,7 @@ COUNT_MASK = 0xFFFF_FFFF
 DMSTATUS_ALLHALTED = 1 << 9
 DMSTATUS_ALLRESUMEACK = 1 << 17
 _HMAC = RegBlock("HMAC")
-_COLD = RegBlock("SEP_SCRATCH_COLD")
+_COLD = RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD")
 _DMA = RegBlock("SECURE_DMA")
 _SPI = RegBlock("SPI_CONTROLLER")
 _POOL = RegBlock("SEP_ENTROPY_POOL")
@@ -477,7 +477,7 @@ APPENDED_TARGETS = (
 POOL_STATUS = sym("ENTROPY_POOL_STATUS_REG_ADDR")
 POOL_STATUS_MASK = _POOL.mask("STATUS")
 
-# Extension window above the eFuse shim (hw/sys/sep/doc/fabric.adoc:162-164).
+# Extension window above the eFuse shim (hw/sys/sep/doc/fabric.adoc:167-170).
 EXT_BASE = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR")
 EXT_FIRST = (EXT_BASE + sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE") + 7) & ~7
 EXT_LAST = EXT_BASE + sym("SEP_EXTERNAL_REG_MAP_SIZE") - 8
@@ -500,7 +500,7 @@ HOLE_LAST = 0x108F_FFF8
 DMA_PAST = sym("SECURE_DMA_REG_MAP_BASE_ADDR") + sym("SECURE_DMA_REG_MAP_SIZE")
 HMAC_RST_FIELD = SEP_RESET_CTRL.field_mask("SW_RESET_N", "hmac_sw_rst_n")
 # A new transaction on an isolated path completes SLVERR with this read data in
-# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:139-141).
+# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:138-140).
 ISO_DATA = 0x1501_A7ED
 # Every DEMOTE_2 field is sw=rw with onwrite=woset
 # (hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:22-45), so a
@@ -508,15 +508,15 @@ ISO_DATA = 0x1501_A7ED
 DEMOTE_2 = sym("SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR")
 F_LOCKED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "locked")
 
-# AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:178-181, :314-315).
-REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+# AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:184-187, :320-321).
+REMAP_OFFSET_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "offset"
 )
-REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+REMAP_VALID_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "valid"
 )
 REGION_MASK = (1 << IDX_START) - 1
-ADDR_BITS = 56  # the outbound address width (hw/sys/sep/doc/fabric.adoc:172-173)
+ADDR_BITS = 56  # the outbound address width (hw/sys/sep/doc/fabric.adoc:178-179)
 # (path, region window base, remap CSR base, outbound filter pair)
 REMAP_PATHS = (
     ("ap", AP_REGION_BASE, AP_BASE, (0, 1)),

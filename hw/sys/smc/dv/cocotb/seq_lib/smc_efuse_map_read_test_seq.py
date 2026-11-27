@@ -17,7 +17,7 @@ literal and none is locked to an observed read:
 
 * readable words -- ``efuse_preload_word_at(addr)`` parses
   ``hw/sys/smc/dv/assets/smc_efuse_default.hex`` at run time and indexes it by
-  ``(addr - SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)/4``, the same word ordering
+  ``(addr - SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR)/4``, the same word ordering
   ``efuse_bank_model.sv`` uses. Regenerating the asset moves the
   expectation with it instead of leaving a stale literal asserting a false
   identity.
@@ -50,7 +50,7 @@ from .smc_efuse_vip_utils import (
     efuse_preload_word_at,
 )
 
-_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
+_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 #: AXI response of a read-locked shadow read (smc_efuse_map.rdl, LOCKS).
 _RESP_SLVERR = 2
 
@@ -81,17 +81,17 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
 _MAP_REGIONS = (
     (
         "JTAG_PUBLIC_IDENTITY",
-        "SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR",
+        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR",
         "SMC_EFUSE_MAP__HARNESS_LOCKS__JTAG_PUBLIC_IDENTITY_READ_LOCK_bm",
     ),
     (
         "SMC_CONFIG",
-        "SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR",
+        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR",
         "SMC_EFUSE_MAP__HARNESS_LOCKS__SMC_CONFIG_READ_LOCK_bm",
     ),
     (
         "OCCP_TRANSPORT_TIMEOUT",
-        "SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR",
+        "SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR",
         "SMC_EFUSE_MAP__HARNESS_LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bm",
     ),
 )
@@ -115,7 +115,7 @@ for _rname, _asym, _lsym in _MAP_REGIONS:
     _a = smc_addr(_asym)
     EFUSE_MAP_READS.append((f"EFUSE_MAP_{_rname}", _a, *_map_expect(_a, _lsym)))
 for _i in range(_I2C_I3C_ID_COUNT):
-    _a = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", _i)
+    _a = smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", _i)
     EFUSE_MAP_READS.append(
         (
             f"EFUSE_MAP_I2C_I3C_ID_{_i}",
@@ -124,7 +124,7 @@ for _i in range(_I2C_I3C_ID_COUNT):
         )
     )
 for _i in range(_SPARE_PROBE_COUNT):
-    _a = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", _i)
+    _a = smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", _i)
     _lsym = f"SMC_EFUSE_MAP__HARNESS_LOCKS__SPARE{_i}_READ_LOCK_bm"
     EFUSE_MAP_READS.append((f"EFUSE_MAP_SPARE_{_i}", _a, *_map_expect(_a, _lsym)))
 

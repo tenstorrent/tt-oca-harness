@@ -15,9 +15,6 @@
 //     condition vectors that need a stall, and the stall-else arms of the
 //     AXI4-Lite request dispatch. Blocks whose stall follows external_pending
 //     (efuse_mmr_reg, entropy_source_reg, km_kpv_reg) are NOT listed.
-//   - Regblocks that decode no error: the pslverr vectors with a 1 operand
-//     (APB), and the error-response lines and branches of sep_cpu_ctrl_reg
-//     and entropy_source_reg (AXI-Lite).
 //   - Regblock load_next nets that the generator assigns '1 in both arms: the
 //     implicit else of the load_next branch (sep_cpu_ctrl_reg,
 //     filter_ctrl_reg).
@@ -377,18 +374,6 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 
-CHECKSUM: "937729671 1625737755"
-MODULE: efuse_interface_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-APB-NOERR: hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv:78 (s_apb_pslverr), :633 cpuif_wr_err=0, :688 readback_err=0, :693 cpuif_rd_err=readback_err; the block sets is_valid_addr/is_valid_rw to '1 (no address or RW check), so both operands of cpuif_rd_err | cpuif_wr_err are constant 0 and the vectors with a 1 operand cannot occur."
-Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
-Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
-
-CHECKSUM: "3827308321 2896595"
-MODULE: efuse_mmr_reg
-ANNOTATION: "SEP-REGBLOCK-A2-APB-NOERR: hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv:78 (s_apb_pslverr), :320 cpuif_wr_err=0, :394 readback_err=0, :400 cpuif_rd_err=readback_err; the block sets is_valid_addr/is_valid_rw to '1 (no address or RW check), so both operands of cpuif_rd_err | cpuif_wr_err are constant 0 and the vectors with a 1 operand cannot occur."
-Condition 32 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
-Condition 32 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
-
 CHECKSUM: "2137400323 2929689567"
 MODULE: picorv32_wrapper
 ANNOTATION: "KM-VROM-NOT-DECODED: without the simulation-only OCAH_KM_VROM define (not set by SEP DV, and rejected with $error under SYNTHESIS/EMULATION, hw/ip/key_manager/rtl/picorv32_wrapper.sv:323-339) hw/ip/key_manager/rtl/picorv32_wrapper.sv:344-345 tie is_vrom_addr and is_la_vrom_addr to 1'b0 and hw/ip/key_manager/rtl/picorv32_wrapper.sv:597 ties vrom_mem_ready to 1'b0. A term that needs one of these to be 1 (or !is_vrom_addr to be 0) cannot occur. NOT waived: the ROM, SRAM and peripheral decode terms."
@@ -442,25 +427,25 @@ Branch 1 "844865755" "idx" (12) "idx default"
 
 CHECKSUM: "2097437693 2178003635"
 MODULE: axi_lite_to_tlul
-ANNOTATION: "AXI2TLUL-INTG-GEN-PARAM: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN default to 1 (hw/common/axi/axi_lite_to_tlul.sv:28-29); every SEP instance keeps the default or passes 1 (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from hw/sys/sep/rtl/sep.sv:1201 ENABLE_DATA_INTG_GEN=1), so the else arms at :251/:267 are elaboration-dead."
+ANNOTATION: "AXI2TLUL-INTG-GEN-PARAM: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN default to 1 (hw/common/axi/axi_lite_to_tlul.sv:28-29); every SEP instance keeps the default or passes 1 (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from hw/sys/sep/rtl/sep.sv:1136 ENABLE_DATA_INTG_GEN=1), so the else arms at :251/:267 are elaboration-dead."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 1300994536"
 MODULE: tlul_to_axi_lite
-ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1201, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
+ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1136, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "486751003 1618864423"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_guard
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (efuse_interface_controller.sv:722), efuse_guard (efuse_interface_controller.sv:814) and on to efuse_shadow_reg_access_control (efuse_shadow_regs.sv:286). The HAS_LC_STATE=0 arms of efuse_guard at lines 102, 110 belong to the SMC elaboration and are dead here."
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (efuse_interface_controller.sv:666), efuse_guard (efuse_interface_controller.sv:758) and on to efuse_shadow_reg_access_control (efuse_shadow_regs.sv:286). The HAS_LC_STATE=0 arms of efuse_guard at lines 102, 110 belong to the SMC elaboration and are dead here."
 Branch 0 "4169860434" "HAS_LC_STATE" (3) "HAS_LC_STATE 0,-,-"
 Branch 1 "4285556711" "HAS_LC_STATE" (4) "HAS_LC_STATE 0,-,-"
 
 CHECKSUM: "3937190293 4074944007"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (efuse_interface_controller.sv:722), efuse_guard (efuse_interface_controller.sv:814) and on to efuse_shadow_reg_access_control (efuse_shadow_regs.sv:286). The HAS_LC_STATE=0 arms of efuse_interface_controller at lines 273, 291, 403 belong to the SMC elaboration and are dead here."
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (efuse_interface_controller.sv:666), efuse_guard (efuse_interface_controller.sv:758) and on to efuse_shadow_reg_access_control (efuse_shadow_regs.sv:286). The HAS_LC_STATE=0 arms of efuse_interface_controller at lines 273, 291, 403 belong to the SMC elaboration and are dead here."
 Branch 0 "3458527583" "HAS_LC_STATE" (2) "HAS_LC_STATE 0,-,1"
 Branch 0 "3458527583" "HAS_LC_STATE" (3) "HAS_LC_STATE 0,-,0"
 Branch 1 "221850953" "HAS_LC_STATE" (2) "HAS_LC_STATE 0,-,1"
@@ -471,24 +456,24 @@ Branch 2 "1075115012" "HAS_LC_STATE" (6) "HAS_LC_STATE 0,-,-,-,0,0"
 
 CHECKSUM: "3804881079 3321935136"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (efuse_interface_controller.sv:722), efuse_guard (efuse_interface_controller.sv:814) and on to efuse_shadow_reg_access_control (efuse_shadow_regs.sv:286). The HAS_LC_STATE=0 arms of efuse_shadow_reg_access_control at lines 146 belong to the SMC elaboration and are dead here."
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (efuse_interface_controller.sv:666), efuse_guard (efuse_interface_controller.sv:758) and on to efuse_shadow_reg_access_control (efuse_shadow_regs.sv:286). The HAS_LC_STATE=0 arms of efuse_shadow_reg_access_control at lines 146 belong to the SMC elaboration and are dead here."
 Branch 1 "465878905" "HAS_LC_STATE" (4) "HAS_LC_STATE 0,-,-"
 
 CHECKSUM: "1922851758 222844965"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (efuse_interface_controller.sv:722), efuse_guard (efuse_interface_controller.sv:814) and on to efuse_shadow_reg_access_control (efuse_shadow_regs.sv:286). The HAS_LC_STATE=0 arms of efuse_shadow_regs at lines 218, 336 belong to the SMC elaboration and are dead here."
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (efuse_interface_controller.sv:666), efuse_guard (efuse_interface_controller.sv:758) and on to efuse_shadow_reg_access_control (efuse_shadow_regs.sv:286). The HAS_LC_STATE=0 arms of efuse_shadow_regs at lines 218, 336 belong to the SMC elaboration and are dead here."
 Branch 2 "3908413232" "HAS_LC_STATE" (2) "HAS_LC_STATE 0,-,1"
 Branch 2 "3908413232" "HAS_LC_STATE" (3) "HAS_LC_STATE 0,-,0"
 Branch 4 "379866125" "HAS_LC_STATE" (14) "HAS_LC_STATE 0,-,-,-,-,-,-,-,-,-,-,-,-"
 
 CHECKSUM: "2906880031 3354473903"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (hw/common/axi/axi_lite_to_tlul.sv:30; hw/sys/sep/rtl/aes_wrapper.sv:60-67), so the zero-strobe early-OKAY path at hw/common/axi/axi_lite_to_tlul.sv:158-162 is dead by parameter: its statements and its IDLE branch arm cannot occur. NOT waived: the TL_PUT_REQ write path, the PUT_PARTIAL_DATA path and every other IDLE arm."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (hw/common/axi/axi_lite_to_tlul.sv:30; hw/sys/sep/rtl/aes_wrapper.sv:97-104), so the zero-strobe early-OKAY path at hw/common/axi/axi_lite_to_tlul.sv:158-162 is dead by parameter: its statements and its IDLE branch arm cannot occur. NOT waived: the TL_PUT_REQ write path, the PUT_PARTIAL_DATA path and every other IDLE arm."
 Block 12 "2970101142" "req_error_d = 1'b0;"
 
 CHECKSUM: "2906880031 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul
-ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (hw/common/axi/axi_lite_to_tlul.sv:30; hw/sys/sep/rtl/aes_wrapper.sv:60-67), so the zero-strobe early-OKAY path at hw/common/axi/axi_lite_to_tlul.sv:158-162 is dead by parameter: its statements and its IDLE branch arm cannot occur. NOT waived: the TL_PUT_REQ write path, the PUT_PARTIAL_DATA path and every other IDLE arm."
+ANNOTATION: "SEP-A2T-ACKZERO-OFF: this instance keeps ACK_ZERO_STROBE_WRITE at its default 0 (hw/common/axi/axi_lite_to_tlul.sv:30; hw/sys/sep/rtl/aes_wrapper.sv:97-104), so the zero-strobe early-OKAY path at hw/common/axi/axi_lite_to_tlul.sv:158-162 is dead by parameter: its statements and its IDLE branch arm cannot occur. NOT waived: the TL_PUT_REQ write path, the PUT_PARTIAL_DATA path and every other IDLE arm."
 Branch 2 "3464338896" "state_q" (1) "state_q IDLE ,0,1,1,-,-,-,-,-,-,-,-,-"
 
 CHECKSUM: "2906880031 3354473903"
@@ -543,7 +528,7 @@ Branch 2 "3464338896" "state_q" (1) "state_q IDLE ,0,1,1,-,-,-,-,-,-,-,-,-"
 
 CHECKSUM: "2906880031 3354473903"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan.u_aes_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN keep their default 1 for this instance (hw/common/axi/axi_lite_to_tlul.sv:28-29; hw/sys/sep/rtl/aes_wrapper.sv:60-67), so the else arms at hw/common/axi/axi_lite_to_tlul.sv:263,273 that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms at :255,:270."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN keep their default 1 for this instance (hw/common/axi/axi_lite_to_tlul.sv:28-29; hw/sys/sep/rtl/aes_wrapper.sv:97-104), so the else arms at hw/common/axi/axi_lite_to_tlul.sv:263,273 that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms at :255,:270."
 Block 39 "915842203" "cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH {1'b1}};"
 Block 42 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
@@ -641,30 +626,20 @@ Condition 2 "750180934" "(pop_i & ((~empty_prim)) & ((~counter_err)) & ((~clr_i)
 Condition 3 "3059300984" "(push_i & full_prim & ((~clr_i))) 1 -1" (3 "110")
 Condition 4 "1666963403" "(pop_i & empty_prim & ((~clr_i))) 1 -1" (3 "110")
 
-CHECKSUM: "560690602 2370236681"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_source_reg
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg sets cpuif_wr_err='0, readback_err='0 and cpuif_rd_err=readback_err, so axil_resp_buffer_err resets to 0 and loads only 0; the SLVERR arm never executes and BRESP/RRESP hold 2'b00. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:158,168,173,200-205,3220,3511,3517. NOT waived: the OKAY arm, RDATA and the stall from external_pending."
-Block 66 "4057615334" "s_axil.BRESP = 2'b10;"
-
-CHECKSUM: "560690602 2636490419"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_source_reg
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg sets cpuif_wr_err='0, readback_err='0 and cpuif_rd_err=readback_err, so axil_resp_buffer_err resets to 0 and loads only 0; the SLVERR arm never executes and BRESP/RRESP hold 2'b00. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:158,168,173,200-205,3220,3511,3517. NOT waived: the OKAY arm, RDATA and the stall from external_pending."
-Branch 8 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-
 CHECKSUM: "3497888529 4220762321"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_pool_s3c_scan
-ANNOTATION: "SEP-EDN-POOL-CANCEL-TIE: sep_crypto ties endpoint_cancel_i of the pool EDN adapter to '0, so the cancel input and the flush row with clear_i=0, endpoint_cancel_i=1 cannot occur. hw/sys/sep/rtl/sep_crypto.sv:1005; hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:166. NOT waived: clear_i and its flush row, and the crypto EDN adapter cancel input, which is live (hw/sys/sep/rtl/sep_crypto.sv:981)."
+ANNOTATION: "SEP-EDN-POOL-CANCEL-TIE: sep_crypto ties endpoint_cancel_i of the pool EDN adapter to '0, so the cancel input and the flush row with clear_i=0, endpoint_cancel_i=1 cannot occur. hw/sys/sep/rtl/sep_crypto.sv:940; hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:166. NOT waived: clear_i and its flush row, and the crypto EDN adapter cancel input, which is live (hw/sys/sep/rtl/sep_crypto.sv:916)."
 Condition 6 "4163802455" "(clear_i || endpoint_cancel_i[0]) 1 -1" (2 "01")
 
 CHECKSUM: "1557237986 1319700504"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1090 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. So filter_skip_i is 0 and the skip arm of the isolate_write/isolate_read ternaries (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224,234) cannot occur. NOT waived: the filter_skip_i = 0 vectors and the nested no-match/allow conditions, which filter traffic moves."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1025 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. So filter_skip_i is 0 and the skip arm of the isolate_write/isolate_read ternaries (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224,234) cannot occur. NOT waived: the filter_skip_i = 0 vectors and the nested no-match/allow conditions, which filter traffic moves."
 Condition 65 "1848364127" "(filter_skip_i ? 1'b0 : (no_write_filter_matches ? BLOCK_BY_DEFAULT : ((!allow_write[write_filter_hit_idx])))) 1 -1" (2 "1")
 Condition 67 "2709885922" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? BLOCK_BY_DEFAULT : ((!allow_read[read_filter_hit_idx])))) 1 -1" (2 "1")
 
 CHECKSUM: "1557237986 4093739576"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1090 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:433 connects it to filter_skip_i, the only driver of that net. So the filter_skip_i = 1 arm of hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224 and :234 is unreachable. NOT waived: the two filter_skip_i = 0 arms (no-match and hit), which filter traffic reaches."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1025 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. So the filter_skip_i = 1 arm of hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224 and :234 is unreachable. NOT waived: the two filter_skip_i = 0 arms (no-match and hit), which filter traffic reaches."
 Branch 0 "572651959" "filter_skip_i" (0) "filter_skip_i 1,-"
 Branch 1 "2652501629" "filter_skip_i" (0) "filter_skip_i 1,-"
 
@@ -676,33 +651,23 @@ Branch 24 "3372078797" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "2368045406 2525155830"
 MODULE: output_remap_reg
-ANNOTATION: "SEP-OUTREMAP-ADDR3-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:389,400,458,469 drive s_axil_awaddr/araddr of every output_remap_reg instance as {1'b0, addr[2:0]}, so address bit 3 is 0; hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:137,142,147 build cpuif_addr as {addr[3], 3'b0}, so cpuif_addr, decoded_addr and rd_mux_addr are 0 on every access. The (cpuif_addr == 0) term at hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:247 is never 0. NOT waived: the cpuif_req_masked = 0 vector and the (1 1) vector, which every access moves."
+ANNOTATION: "SEP-OUTREMAP-ADDR3-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:357,368,426,437 drive s_axil_awaddr/araddr of every output_remap_reg instance as {1'b0, addr[2:0]}, so address bit 3 is 0; hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:137,142,147 build cpuif_addr as {addr[3], 3'b0}, so cpuif_addr, decoded_addr and rd_mux_addr are 0 on every access. The (cpuif_addr == 0) term at hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:247 is never 0. NOT waived: the cpuif_req_masked = 0 vector and the (1 1) vector, which every access moves."
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "2368045406 1795492639"
 MODULE: output_remap_reg
-ANNOTATION: "SEP-OUTREMAP-ADDR3-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:389,400,458,469 drive s_axil_awaddr/araddr of every output_remap_reg instance as {1'b0, addr[2:0]}, so address bit 3 is 0; hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:137,142,147 build cpuif_addr as {addr[3], 3'b0}, so cpuif_addr, decoded_addr and rd_mux_addr are 0 on every access. The rd_mux_addr != 0 arm at hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:358 is unreachable. NOT waived: the rd_mux_addr == 0 arm."
+ANNOTATION: "SEP-OUTREMAP-ADDR3-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:357,368,426,437 drive s_axil_awaddr/araddr of every output_remap_reg instance as {1'b0, addr[2:0]}, so address bit 3 is 0; hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:137,142,147 build cpuif_addr as {addr[3], 3'b0}, so cpuif_addr, decoded_addr and rd_mux_addr are 0 on every access. The rd_mux_addr != 0 arm at hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv:358 is unreachable. NOT waived: the rd_mux_addr == 0 arm."
 Branch 9 "598101187" "(rd_mux_addr == 4'b0)" (1) "(rd_mux_addr == 4'b0) 0"
 
 CHECKSUM: "2196427632 1402944094"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
-ANNOTATION: "SEP-CPU-IFU-AW-ZERO: the VeeR IFU drives awaddr = '0 (vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/ifu/el2_ifu_mem_ctl.sv:1087), and region_size_i is the literal 0x3000_0000 (hw/sys/sep/rtl/sep_cpu.sv:544, hw/sys/sep/rtl/sep_pkg.sv:485). With addr 0, addr >= base holds only for base 0, and then 0 < base + size holds (hw/ip/axi_window_remap/rtl/axi_window_remap.sv:37,42-43), so the (1 0) vector cannot occur. NOT waived: the (0 1) and (1 1) vectors, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-CPU-IFU-AW-ZERO: the VeeR IFU drives awaddr = '0 (vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/ifu/el2_ifu_mem_ctl.sv:1087), and region_size_i is the literal 0x3000_0000 (hw/sys/sep/rtl/sep_cpu.sv:544, hw/sys/sep/rtl/sep_pkg.sv:477). With addr 0, addr >= base holds only for base 0, and then 0 < base + size holds (hw/ip/axi_window_remap/rtl/axi_window_remap.sv:37,42-43), so the (1 0) vector cannot occur. NOT waived: the (0 1) and (1 1) vectors, which SEP_LOCAL_BASE_ADDR moves."
 Condition 1 "1033715818" "((slv_req_i.aw.addr >= local_alias_base_i) && ({1'b0, slv_req_i.aw.addr} < local_alias_end)) 1 -1" (2 "10")
 
-CHECKSUM: "2905179362 847969879"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-LINE: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:313, :1530 and :1652,1657 assign decoded_err, cpuif_wr_err, cpuif_rd_err and readback_err to constant '0. axil_resp_buffer_err resets to 0 (:167) and loads only these constants (:174-182), so the SLVERR statements at :210-211 never execute. NOT waived: the OKAY statements at :213-214 and all other response-path lines."
-Block 66 "3040295231" "s_axil_bresp = 2'b10;"
-
 CHECKSUM: "2905179362 3747101343"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-A2-NOERROR-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:313, :1530 and :1652,1657 assign the decode, write and read error terms to constant '0, and axil_resp_buffer_err loads only these constants (:167, :174-182), so the true arm of 'if(axil_resp_buffer_err[...])' at :209 never executes. NOT waived: the false (OKAY) arm."
-Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-
-CHECKSUM: "2905179362 3747101343"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1021/1024, :1324/1327, :1350/1353, :1376/1379, :1402/1405, :1428/1431, :1454/1457, :1480/1483 and :1506/1509 assign load_next_c = '1 in both arms of the SW-write test, so load_next is constant 1 for TIMEOUT_CLEAR, DMA_BUS_ERR_CLEAR and the seven PERIPH_BUS_ERR_CLEAR fields, and the implicit else of 'if(load_next)' at :1033, :1336, :1362, :1388, :1414, :1440, :1466, :1492 and :1518 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1028/1024, :1331/1327, :1357/1353, :1383/1379, :1409/1405, :1435/1431, :1461/1457, :1487/1483 and :1513/1509 assign load_next_c = '1 in both arms of the SW-write test, so load_next is constant 1 for TIMEOUT_CLEAR, DMA_BUS_ERR_CLEAR and the seven PERIPH_BUS_ERR_CLEAR fields, and the implicit else of 'if(load_next)' at :1040, :1343, :1369, :1395, :1421, :1447, :1473, :1499 and :1525 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test."
 Branch 34 "4266396544" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 60 "3588033518" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 62 "884099970" "(~arst_n)" (2) "(~arst_n) 0,0"
@@ -715,12 +680,12 @@ Branch 74 "2747625622" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "2905179362 3747101343"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:718 and :721 assign load_next_c = '1 in both arms, so REFERENCE_COUNTER load_next is constant 1 and the implicit else of 'if(load_next)' at :730 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test at :716."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:725 and :728 assign load_next_c = '1 in both arms, so REFERENCE_COUNTER load_next is constant 1 and the implicit else of 'if(load_next)' at :737 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test at :720."
 Branch 8 "2691458842" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "2905179362 3747101343"
 MODULE: sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-BRANCH: in each of these field combos every path sets load_next_c to '1 (for example hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:718,721 and :1021,1024 and :1324,1327), so the implicit else of 'if(field_combo.*.load_next)' in the storage flop at lines 730, 1033, 1336, 1362, 1388, 1414, 1440, 1466, 1492 and 1518 is unreachable. NOT waived: the reset arm and the load arm of each flop, and the load_next branches of fields that software alone loads."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-BRANCH: in each of these field combos every path sets load_next_c to '1 (for example hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:725,728 and :1028,1031 and :1331,1334), so the implicit else of 'if(field_combo.*.load_next)' in the storage flop at lines 730, 1033, 1336, 1362, 1388, 1414, 1440, 1466, 1492 and 1518 is unreachable. NOT waived: the reset arm and the load arm of each flop, and the load_next branches of fields that software alone loads."
 Branch 8 "2691458842" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 34 "4266396544" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 60 "3588033518" "(~arst_n)" (2) "(~arst_n) 0,0"
@@ -734,13 +699,7 @@ Branch 74 "2747625622" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "3937190293 1840328202"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:722), efuse_guard (:814) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_interface_controller.sv:280-284, :298-302 and :413-419 belong to the SMC elaboration and do not execute here. NOT waived: the HAS_LC_STATE=1 address-decode statements at :274-278, :292-296 and :404-412."
-Block 5 "1977898423" "if ((axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"
-Block 6 "1893830314" "efuse_req_decode_select_aw = INTERFACE_SEL;"
-Block 7 "1835296389" "efuse_req_decode_select_aw = SHIM_SEL;"
-Block 12 "2676881816" "if ((axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"
-Block 13 "3347644321" "efuse_req_decode_select_ar = INTERFACE_SEL;"
-Block 14 "1855215342" "efuse_req_decode_select_ar = SHIM_SEL;"
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:666), efuse_guard (:758) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_interface_controller.sv:281-285, :299-303 and :413-419 belong to the SMC elaboration and do not execute here. NOT waived: the HAS_LC_STATE=1 address-decode statements at :275-279, :293-297 and :404-412."
 Block 23 "1518193479" "if ((apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}))"
 Block 24 "3333382630" "efuse_reg_select = SHADOW_REG_MAP;"
 Block 25 "2891404597" "if ((apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"
@@ -749,23 +708,23 @@ Block 27 "3360606802" "efuse_reg_select = ERR_DECODE;"
 
 CHECKSUM: "486751003 420603909"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_guard
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:722), efuse_guard (:814) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statement in the HAS_LC_STATE=0 arm at hw/ip/efuse/rtl/efuse_guard.sv:116-117 belongs to the SMC elaboration and does not execute here. NOT waived: the HAS_LC_STATE=1 lock statements at :112-113."
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:666), efuse_guard (:758) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statement in the HAS_LC_STATE=0 arm at hw/ip/efuse/rtl/efuse_guard.sv:116-117 belongs to the SMC elaboration and does not execute here. NOT waived: the HAS_LC_STATE=1 lock statements at :112-113."
 Block 10 "2670421632" "pro_read_intf_rm_lc_state_write_lock = efuse_guard.entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);"
 
 CHECKSUM: "171941408 446195242"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:722), efuse_guard (:814) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_shadow_regs.sv:229-232 (SMC preload) and :755-760 (SMC APB response reset) do not execute here. NOT waived: the SEP preload statement at :221-225 and the LC_STATE access arm at :728-752."
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:666), efuse_guard (:758) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_shadow_regs.sv:229-232 (SMC preload) and :755-760 (SMC APB response reset) do not execute here. NOT waived: the SEP preload statement at :221-225 and the LC_STATE access arm at :728-752."
 Block 18 "3048384116" "if (((sim_skip_fuse_sense == 1'b1) && $value$plusargs(\"smc_shadow_reg_preload=%s\", smc_shadow_reg_preload)))"
 Block 155 "4129704973" "apb_resp_from_ac.pready <= 1'b0;"
 
 CHECKSUM: "3595078827 3812065443"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:722), efuse_guard (:814) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statement in the HAS_LC_STATE=0 arm at hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:152-153 belongs to the SMC elaboration and does not execute here. NOT waived: the HAS_LC_STATE=1 lock statements at :148-149."
+ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:368 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:666), efuse_guard (:758) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:286). The statement in the HAS_LC_STATE=0 arm at hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:152-153 belongs to the SMC elaboration and does not execute here. NOT waived: the HAS_LC_STATE=1 lock statements at :148-149."
 Block 8 "4131875210" "is_write_locked = efuse_shadow_reg_access_control.write_locked(field_index);"
 
 CHECKSUM: "3595078827 2100095224"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-SW-LOCK-CONST: sw_lock_bits comes only from find_efuse_sw_lock over the constant field map, or the default 0 (hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:144, :251-260). All 42 map entries are WriteUnlock or WriteSetOnly with ReadUnlock (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525-990), so sw_lock_bits[1] and sw_lock_bits[0] are always 0. The excluded vectors at :161-162 need (sw_lock_bits[2:1] == 2'b11) or sw_lock_bits[0] to be 1. NOT waived: the is_write_locked, is_read_locked, sw_lock_bits[3] and secure_tm_i vectors."
+ANNOTATION: "SEP-EFUSE-SW-LOCK-CONST: sw_lock_bits comes only from find_efuse_sw_lock over the constant field map, or the default 0 (hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:144, :251-260). All 42 map entries are WriteUnlock or WriteSetOnly with ReadUnlock (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:521-1124), so sw_lock_bits[1] and sw_lock_bits[0] are always 0. The excluded vectors at :161-162 need (sw_lock_bits[2:1] == 2'b11) or sw_lock_bits[0] to be 1. NOT waived: the is_write_locked, is_read_locked, sw_lock_bits[3] and secure_tm_i vectors."
 Condition 15 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (3 "010")
 Condition 16 "1024332690" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
 Condition 17 "57363498" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11)) 1 -1" (2 "01")
@@ -774,7 +733,7 @@ Condition 19 "2025791036" "(is_read_locked | sw_lock_bits[0]) 1 -1" (2 "01")
 
 CHECKSUM: "1800326492 906278174"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
-ANNOTATION: "SEP-SEC-DIS-REV-CELL-HIGH: hw/ip/efuse/rtl/efuse_token_processing.sv:322-329 feed in_i[0] from high[0] with src_high_i tied to 1'b1. prim_rev_cell drives hi_o from src_high_i and out_o from in_i (hw/common/ocah_prim/rtl/prim_rev_cell.sv), so tt_rev_d_out[0] is always 1 and the vector with tt_rev_d_out[0]=0 at :331 cannot occur. NOT waived: the vectors where sec_disable_token_match moves."
+ANNOTATION: "SEP-SEC-DIS-REV-CELL-HIGH: hw/ip/efuse/rtl/efuse_token_processing.sv:323-330 feed in_i[0] from high[0] with src_high_i tied to 1'b1. prim_rev_cell drives hi_o from src_high_i and out_o from in_i (hw/common/ocah_prim/rtl/prim_rev_cell.sv), so tt_rev_d_out[0] is always 1 and the vector with tt_rev_d_out[0]=0 at :331 cannot occur. NOT waived: the vectors where sec_disable_token_match moves."
 Condition 28 "3040491567" "(tt_rev_d_out[0] && (sec_disable_token_match == TOKEN_MATCH_CODE)) 1 -1" (1 "01")
 
 CHECKSUM: "2110255361 1037641077"
@@ -792,7 +751,7 @@ Condition 9 "2824659452" "((mem_la_addr >= RomBase) && (mem_la_addr <= RomEnd)) 
 
 CHECKSUM: "483690867 2268580589"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_xbar
-ANNOTATION: "SEP-KM-XBAR-ELAB-ONLY-FUNC: km_addr_map_aligned and km_addr_map_disjoint read only the elaborated localparams XbarCfg and AddrMap (hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:111-171) and run only in the init assertions at :210-211, so the return 1'b0 statements at :190-192 and :203 never execute while those assertions pass. NOT waived: the loop, compare and return 1'b1 statements."
+ANNOTATION: "SEP-KM-XBAR-ELAB-ONLY-FUNC: km_addr_map_aligned and km_addr_map_disjoint read only the elaborated localparams XbarCfg and AddrMap (hw/ip/key_manager/rtl/km_axi_lite_xbar.sv:110-170) and run only in the init assertions at :209-210, so the return 1'b0 statements at :189-191 and :202 never execute while those assertions pass. NOT waived: the loop, compare and return 1'b1 statements."
 Block 3 "697137630" "return 1'b0;"
 Block 6 "3483238939" "return 1'b0;"
 Block 9 "2621016357" "return 1'b0;"

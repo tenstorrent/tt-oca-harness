@@ -1,0 +1,232 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-smc_cluster_wdt_wrap">SMC Cluster Watchdog Wrapper Address Map</h2>
+<p>Places the per-core watchdog timers of the SMC CPU cluster in one 4 KiB page.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#core0_wdt.CTRL">core0_wdt.CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+<tr><td>0x8</td><td><a href="#core0_wdt.COUNT">core0_wdt.COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#core0_wdt.COUNT_HI">core0_wdt.COUNT_HI</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#core0_wdt.SCALED_COUNT">core0_wdt.SCALED_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#core0_wdt.FEED">core0_wdt.FEED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C</td><td><a href="#core0_wdt.KEY">core0_wdt.KEY</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#core0_wdt.CMP">core0_wdt.CMP</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x400</td><td><a href="#core1_wdt.CTRL">core1_wdt.CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+<tr><td>0x408</td><td><a href="#core1_wdt.COUNT">core1_wdt.COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40C</td><td><a href="#core1_wdt.COUNT_HI">core1_wdt.COUNT_HI</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x410</td><td><a href="#core1_wdt.SCALED_COUNT">core1_wdt.SCALED_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x418</td><td><a href="#core1_wdt.FEED">core1_wdt.FEED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x41C</td><td><a href="#core1_wdt.KEY">core1_wdt.KEY</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x420</td><td><a href="#core1_wdt.CMP">core1_wdt.CMP</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x800</td><td><a href="#core2_wdt.CTRL">core2_wdt.CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+<tr><td>0x808</td><td><a href="#core2_wdt.COUNT">core2_wdt.COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80C</td><td><a href="#core2_wdt.COUNT_HI">core2_wdt.COUNT_HI</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x810</td><td><a href="#core2_wdt.SCALED_COUNT">core2_wdt.SCALED_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x818</td><td><a href="#core2_wdt.FEED">core2_wdt.FEED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x81C</td><td><a href="#core2_wdt.KEY">core2_wdt.KEY</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x820</td><td><a href="#core2_wdt.CMP">core2_wdt.CMP</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC00</td><td><a href="#core3_wdt.CTRL">core3_wdt.CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+<tr><td>0xC08</td><td><a href="#core3_wdt.COUNT">core3_wdt.COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC0C</td><td><a href="#core3_wdt.COUNT_HI">core3_wdt.COUNT_HI</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xC10</td><td><a href="#core3_wdt.SCALED_COUNT">core3_wdt.SCALED_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC18</td><td><a href="#core3_wdt.FEED">core3_wdt.FEED</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC1C</td><td><a href="#core3_wdt.KEY">core3_wdt.KEY</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC20</td><td><a href="#core3_wdt.CMP">core3_wdt.CMP</a></td><td>RW</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="core0_wdt.CTRL">core0_wdt.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>rsvd3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.<br>To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</td></tr>
+<tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
+<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</td></tr>
+<tr><td>11:10</td><td>rsvd1</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>9</td><td>wdogzerocmp</td><td>RW</td><td>0x0</td><td>Enable cycle counter to be reset to 0 when compare value has been reached</td></tr>
+<tr><td>8</td><td>wdogrsten</td><td>RW</td><td>0x0</td><td>Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt</td></tr>
+<tr><td>7:4</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>wdogscale</td><td>RW</td><td>0x0</td><td>WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value</td></tr>
+</table>
+<h3 id="core0_wdt.COUNT">core0_wdt.COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:0</td><td>wdogcount</td><td>RW</td><td>0x0</td><td>31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core0_wdt.COUNT_HI">core0_wdt.COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogcounthi</td><td>W</td><td>0x0</td><td>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</td></tr>
+</table>
+<h3 id="core0_wdt.SCALED_COUNT">core0_wdt.SCALED_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogs</td><td>RW</td><td>0x0</td><td>Scaled value of wdt counter. (i.e. count &gt;&gt; wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core0_wdt.FEED">core0_wdt.FEED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core0_wdt.KEY">core0_wdt.KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogkey</td><td>RW</td><td>0x0</td><td>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it<br>is unlocked, 0 otherwise.</td></tr>
+</table>
+<h3 id="core0_wdt.CMP">core0_wdt.CMP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogcmp0</td><td>RW</td><td>0x1000</td><td>Compare register. Value that gets compared to wdogs.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core1_wdt.CTRL">core1_wdt.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>rsvd3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.<br>To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</td></tr>
+<tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
+<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</td></tr>
+<tr><td>11:10</td><td>rsvd1</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>9</td><td>wdogzerocmp</td><td>RW</td><td>0x0</td><td>Enable cycle counter to be reset to 0 when compare value has been reached</td></tr>
+<tr><td>8</td><td>wdogrsten</td><td>RW</td><td>0x0</td><td>Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt</td></tr>
+<tr><td>7:4</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>wdogscale</td><td>RW</td><td>0x0</td><td>WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value</td></tr>
+</table>
+<h3 id="core1_wdt.COUNT">core1_wdt.COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:0</td><td>wdogcount</td><td>RW</td><td>0x0</td><td>31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core1_wdt.COUNT_HI">core1_wdt.COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogcounthi</td><td>W</td><td>0x0</td><td>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</td></tr>
+</table>
+<h3 id="core1_wdt.SCALED_COUNT">core1_wdt.SCALED_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogs</td><td>RW</td><td>0x0</td><td>Scaled value of wdt counter. (i.e. count &gt;&gt; wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core1_wdt.FEED">core1_wdt.FEED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core1_wdt.KEY">core1_wdt.KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogkey</td><td>RW</td><td>0x0</td><td>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it<br>is unlocked, 0 otherwise.</td></tr>
+</table>
+<h3 id="core1_wdt.CMP">core1_wdt.CMP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogcmp0</td><td>RW</td><td>0x1000</td><td>Compare register. Value that gets compared to wdogs.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core2_wdt.CTRL">core2_wdt.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>rsvd3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.<br>To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</td></tr>
+<tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
+<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</td></tr>
+<tr><td>11:10</td><td>rsvd1</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>9</td><td>wdogzerocmp</td><td>RW</td><td>0x0</td><td>Enable cycle counter to be reset to 0 when compare value has been reached</td></tr>
+<tr><td>8</td><td>wdogrsten</td><td>RW</td><td>0x0</td><td>Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt</td></tr>
+<tr><td>7:4</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>wdogscale</td><td>RW</td><td>0x0</td><td>WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value</td></tr>
+</table>
+<h3 id="core2_wdt.COUNT">core2_wdt.COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:0</td><td>wdogcount</td><td>RW</td><td>0x0</td><td>31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core2_wdt.COUNT_HI">core2_wdt.COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogcounthi</td><td>W</td><td>0x0</td><td>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</td></tr>
+</table>
+<h3 id="core2_wdt.SCALED_COUNT">core2_wdt.SCALED_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogs</td><td>RW</td><td>0x0</td><td>Scaled value of wdt counter. (i.e. count &gt;&gt; wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core2_wdt.FEED">core2_wdt.FEED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core2_wdt.KEY">core2_wdt.KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogkey</td><td>RW</td><td>0x0</td><td>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it<br>is unlocked, 0 otherwise.</td></tr>
+</table>
+<h3 id="core2_wdt.CMP">core2_wdt.CMP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogcmp0</td><td>RW</td><td>0x1000</td><td>Compare register. Value that gets compared to wdogs.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core3_wdt.CTRL">core3_wdt.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>rsvd3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.<br>To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</td></tr>
+<tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
+<tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</td></tr>
+<tr><td>11:10</td><td>rsvd1</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>9</td><td>wdogzerocmp</td><td>RW</td><td>0x0</td><td>Enable cycle counter to be reset to 0 when compare value has been reached</td></tr>
+<tr><td>8</td><td>wdogrsten</td><td>RW</td><td>0x0</td><td>Enables a sticky reset signal to outputted to top level, can be used for a second stage wdt</td></tr>
+<tr><td>7:4</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3:0</td><td>wdogscale</td><td>RW</td><td>0x0</td><td>WDT counter scale value. Scales the current cycle count (time) by count / 2 ^ wdogscale value</td></tr>
+</table>
+<h3 id="core3_wdt.COUNT">core3_wdt.COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:0</td><td>wdogcount</td><td>RW</td><td>0x0</td><td>31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core3_wdt.COUNT_HI">core3_wdt.COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogcounthi</td><td>W</td><td>0x0</td><td>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</td></tr>
+</table>
+<h3 id="core3_wdt.SCALED_COUNT">core3_wdt.SCALED_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogs</td><td>RW</td><td>0x0</td><td>Scaled value of wdt counter. (i.e. count &gt;&gt; wdogscale). Writing to this reg has no effect, but will lock the WDT (meaning KEY must be written to KEY reg to unlock it again).<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core3_wdt.FEED">core3_wdt.FEED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<h3 id="core3_wdt.KEY">core3_wdt.KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogkey</td><td>RW</td><td>0x0</td><td>Key register. Magic key (0x51F15E) must be written to this register before a write to any other register in this addrmap. Must be written every time. Reading this reg returns 1 if key has been written to it and it<br>is unlocked, 0 otherwise.</td></tr>
+</table>
+<h3 id="core3_wdt.CMP">core3_wdt.CMP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>wdogcmp0</td><td>RW</td><td>0x1000</td><td>Compare register. Value that gets compared to wdogs.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+</div>

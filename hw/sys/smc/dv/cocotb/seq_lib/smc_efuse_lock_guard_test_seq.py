@@ -52,7 +52,7 @@ from .smc_addr_map import smc_addr, smc_efuse_map_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA, efuse_preload_word_at
 
-LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
+LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 #: AXI response of a locked shadow access (smc_efuse_map.rdl, LOCKS).
 _RESP_SLVERR = 2
 _MASK32 = 0xFFFF_FFFF
@@ -63,7 +63,7 @@ _WORD_BYTES = 8
 
 
 def _spare(index: int) -> int:
-    return smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", index)
+    return smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", index)
 
 
 # (label, field address, write-lock mask, read-lock mask, pattern, second pattern).
@@ -88,7 +88,7 @@ _FIELDS: tuple[tuple[str, int, int, int, int, int], ...] = (
     ),
     (
         "OCCP_TRANSPORT_TIMEOUT",
-        smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+        smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
         smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__OCCP_TRANSPORT_TIMEOUT_WRITE_LOCK_bm"),
         smc_efuse_map_u32("SMC_EFUSE_MAP__HARNESS_LOCKS__OCCP_TRANSPORT_TIMEOUT_READ_LOCK_bm"),
         0x0F0F_F0F0_C0DE_0002,

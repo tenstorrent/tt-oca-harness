@@ -42,8 +42,9 @@ illegal state itself issues a request; the error term carries that check.
 
 The leaf also grades the read-error lifecycle on the same interface:
 
-* a read with the timeout enabled at its reset count completes without error
-  and returns the sensed word, a read that outlives a short
+* a read of a spare word leaves that word in the read data, so a read with the
+  timeout enabled at its reset count that completes without error and returns
+  the sensed control word cannot pass on stale data; a read that outlives a short
   EFUSE_READ_REQ_TIMEOUT retires with the error set, and the next legal read,
   of a different spare word staged with a different value, completes with no
   error and that word's sensed value, not the timed-out word; a second
@@ -95,7 +96,7 @@ _RECOVERY_FIELD = "SPARE1"
 
 # A SPARE word: programming one bit of it disturbs no graded field, and OTP is
 # write-once so the control must pick a fresh bit each time it runs.
-_CONTROL_PROGRAM_WORD = sym("SEP_EFUSE_MAP_SPARE7_REG_OFFSET") // 4
+_CONTROL_PROGRAM_WORD = sym("SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE7_REG_OFFSET") // 4
 
 _READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
 _READ_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_ADDR")
@@ -241,6 +242,18 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         second retries the timed-out word (CHK-READ-ERR-CLEAR-SUCCESS). Both
         enter with the error at 1, so each fails on RTL that keeps it.
         """
+        # The read before the armed one is of the recovery word, so the read
+        # data it leaves differs from the control word the armed read must
+        # return.
+        await self.start_seq(sep_efuse_direct_read_seq(self._recovery_word))
+        _, _, _, data = await self._read_probe()
+        rd_data = await self._csr(SepAxiOp.READ, _READ_DATA)
+        assert data == rd_data == self._sensed_recovery_word, (
+            f"CHK-READ-ERR-TIMEOUT-ARMED FAIL: the read before the armed read left "
+            f"data={data:#010x} read_data={rd_data:#010x}, expected the recovery word "
+            f"{self._sensed_recovery_word:#010x}"
+        )
+
         # With the timeout enabled at its reset count, a read completes
         # without error and returns the sensed word.
         await self._read_with_reset_timeout()

@@ -87,7 +87,7 @@ Checkers:
                     moved-SMU legs take the same compare, logged under
                     CHK-OUT-SMU-MOVED and CHK-OUT-SMU-FIRST. The predicted
                     address of an AP or STEE capture replaces the address with
-                    the programmed region offset (``fabric.adoc:178-179``): the
+                    the programmed region offset (``fabric.adoc:184-185``): the
                     offset bits above the 512 KiB region granule and the
                     issued address below it
                     (``hw/ip/output_remap/regs/output_remap.rdl:22-25``). An AP
@@ -121,7 +121,7 @@ Checkers:
                     with no PR-OUT capture while an enabled pair covers them.
                     Each such address is at or above 0x4000_0000 and outside
                     every window, so it returns to the peripheral crossbar,
-                    which answers DECERR (fabric.adoc:145-146, :181-182).
+                    which answers DECERR (fabric.adoc:147-149, :187-188).
   CHK-OUT-SMU-FIRST with the SMU window over AP region 0 (valid, offset not
                     the identity), LSU reads and writes of an AP region 0 word
                     leave once on PR-OUT untranslated, with SEP's ID and NS 1.
@@ -192,9 +192,9 @@ from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, lc_state_name
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import (
-    AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0,
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0,
     SEP_CPU_CTRL,
+    SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0,
+    SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0,
     RegBlock,
     sym,
 )
@@ -234,21 +234,23 @@ SMU_SIZE = SEP_CPU_CTRL.reset("SMU_REGION_SIZE")
 SMU_LAST = SMU_BASE + SMU_SIZE - 1
 SMU_MID = SMU_BASE + SMU_SIZE // 2
 SMU_WORDS = (("first", SMU_BASE), ("middle", SMU_MID), ("last", SMU_LAST - 7))
-LOCAL_LO = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+LOCAL_LO = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
 # The pair covers cold scratch up to the last byte of the SEP_CPU_CTRL pages.
 _CPU_CTRL_END = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR") + sym("SEP_CPU_CTRL_REG_MAP_SIZE")
 LOCAL_HI = ((_CPU_CTRL_END + 0xFFF) & ~0xFFF) - 1
 IN_REGION = 0x100  # word address a inside a remap region (below 0x8_0000)
-COLD_SCRATCH = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+COLD_SCRATCH = sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
 SW_DEBUG = SEP_CPU_CTRL.addr("SEP_SW_DEBUG")
 SW_DEBUG_FIELD = SEP_CPU_CTRL.field_mask("SEP_SW_DEBUG", "sep_sw_debug")
-SCRATCH_FIELD = RegBlock("SEP_SCRATCH_COLD").field_mask("SCRATCH_0_", "data") & 0xFFFF_FFFF
+SCRATCH_FIELD = (
+    RegBlock("SEP_SCRATCH_WRAP_SCRATCH_COLD").field_mask("SCRATCH_0_", "data") & 0xFFFF_FFFF
+)
 SMU_BASE_REG = SEP_CPU_CTRL.addr("SMU_GLOBAL_BASE_ADDR")
 SMU_SIZE_REG = SEP_CPU_CTRL.addr("SMU_REGION_SIZE")
-REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+REMAP_OFFSET_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "offset"
 )
-REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+REMAP_VALID_FIELD = SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_0.field_mask(
     "REGION_REGION_ATTRS", "valid"
 )
 REGION_MASK = (1 << IDX_START) - 1
@@ -257,7 +259,7 @@ _MBX_MAGIC = OUTBOUND_MBX_MAGIC
 BIT55 = 1 << 55
 # Alias region 0 maps this SMU page, clear of the three SMU_WORDS, onto the
 # same page with address bit 55 set.
-_ALIAS = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0
+_ALIAS = SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_0
 ALIAS_PAGE = SMU_MID + 0x1000
 ALIAS_VALID_FIELD = _ALIAS.field_mask("REGION_REGION_ATTRS", "valid")
 ALIAS_OFFSET_FIELD = _ALIAS.field_mask("REGION_REGION_ATTRS", "offset")
@@ -292,7 +294,7 @@ LOWADDR_HI = 0x0FFF_FFFF
 SMU_BASE_FIELD = SEP_CPU_CTRL.field_mask("SMU_GLOBAL_BASE_ADDR", "addr")
 SMU_SIZE_FIELD = SEP_CPU_CTRL.field_mask("SMU_REGION_SIZE", "size")
 # The moved SMU pair: base and size are software fields (sw = rw,
-# hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:202-218). The window
+# hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:208-224). The window
 # sits above the SMC aperture of the SMC memory-model bench, 0x4000_0000 +
 # 16 MiB (hw/sys/sep/dv/tb/tb_top.sv:660-661), and below the reset SMU pair.
 SMU_MOVED_BASE = 0x4100_0000
@@ -1079,7 +1081,12 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         """Steps 20 to 24."""
         feat0 = await self._rd64(LCC_FEAT_CTRL)
         self.logger.info("INFO-FEAT-CTRL before DEMOTE_1 feat_ctrl=0x%016x", feat0)
-        await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_before_demote")
+        before = await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_before_demote")
+        if before == RESP_OKAY:
+            # The bypass below must come from the demote, or the outbound check runs
+            # with no debug bypass to leak.
+            self.logger.error("CHK-OUT-NOBYPASS FAIL: bypass_before_demote")
+            raise AssertionError("CHK-OUT-NOBYPASS FAIL: bypass_before_demote")
         demote = SepLccDemoteSeq(1)
         await self.start_seq(demote)
         self.logger.info("INFO-DEMOTE demote=%s lock=%s", demote.demote, demote.lock)

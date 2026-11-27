@@ -277,10 +277,10 @@ mechanism is adopter-defined
 
 The eFuse SHIM control CSRs must sit at the base of the mandatory region.
 In each subsystem, the internal fabric routes the first `*_EFUSE_SHIM_SIZE`
-bytes of the window into the eFuse controller, so the controller's lifecycle
-access control applies to them. The accesses then leave on the dedicated eFuse
-bank port, `smc_efuse_bank_ctrl_req_o` or `sep_efuse_bank_ctrl_req_o`, instead
-of `smc_external_req_o` or `sep_external_req_o`. See <<efuse-bank-ctrl-window>>.
+bytes of the window to the eFuse wrapper, which sends them out on the dedicated
+eFuse bank port, `smc_efuse_bank_ctrl_req_o` or `sep_efuse_bank_ctrl_req_o`,
+instead of `smc_external_req_o` or `sep_external_req_o`. See
+<<efuse-bank-ctrl-window>>.
 
 [[smc-external-supplementary]]
 ==== Supplementary Region
@@ -365,10 +365,10 @@ program state machines, not as a template for macro-side timing.
 *SHIM control address window.* The SHIM control CSRs are defined by the
 adopter, but their addresses sit at the base of the subsystem's adopter
 external window. The fabric carves that block off the window and routes it
-to the eFuse controller instead of the external port. The controller does not
-decode it; it forwards every access outside its own register blocks to
-`efuse_bank_ctrl` unchanged. The rest of the external window leaves on the
-subsystem's external port as usual.
+to the eFuse wrapper instead of the external port. The wrapper merges it with
+JTAG accesses to the same range and forwards both to `efuse_bank_ctrl`
+unchanged. The rest of the external window leaves on the subsystem's external
+port as usual.
 
 .SHIM control address window
 [width="100%",cols="12%,30%,23%,35%",options="header"]
@@ -649,7 +649,7 @@ and apply it to SRAM arrays according to your memory architecture.
 === Status Monitoring
 
 Repair completion and success are reported through
-`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
+`DFX_CTRL_STATUS.STATUS_SMU` at `0xC001_7000`. The `mem_repair_done` bit
 indicates completion regardless of success, while `mem_repair_success` indicates
 successful repair. Both bits are set by the external repair controller. The SMC
 ROM FW monitors these bits during initialization to verify repair

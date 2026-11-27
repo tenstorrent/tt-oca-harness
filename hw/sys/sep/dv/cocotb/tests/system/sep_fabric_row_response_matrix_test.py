@@ -53,9 +53,11 @@ both channels (``hw/sys/sep/doc/otbn.adoc``, OCAH Modifications). The AxCACHE of
 each address handshake is captured on the LSU port and must equal the value of
 the instance, so a request that does not carry the value fails the check.
 
-CHK-ROW-KM: every Key Manager mailbox offset past its seven registers, and the
-reserved span after it, answers DECERR with 0xBADCAB1E, and no baseline register
-moves. The baseline control write of ``SEP_IRQ_ENABLE`` reads back.
+CHK-ROW-KM: every Key Manager mailbox offset past its seven registers answers
+SLVERR with 0, the Reserved row after the mailbox page answers DECERR with
+0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:58-59``), and no
+baseline register moves. The baseline control write of ``SEP_IRQ_ENABLE``
+reads back.
 
 CHK-ROW-BURST / CHK-ROW-BURST-CONTROL: an SI burst to the crypto region answers
 DECERR on its single B response, or on every one of its AxLEN + 1 R beats
@@ -77,8 +79,8 @@ RDL reset of ``ERROR_STATUS``); every beat past the extent answers the code and
 data of its generated memory-map cell (``rr.expected_cell``) and carries none of
 the staged non-zero register values. A write burst lands its in-extent beats,
 answers the B code of the map cell of the first past-extent word, and changes no
-other stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc``:
-the error responder of ``sep_io`` answers only the beats past the extent). The
+other stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc:43-45``:
+``sep_io`` answers the rest of the SPI host page with SLVERR). The
 past-beat codes and data are also logged as ``INFO-ROW-SPI-BURST-CODE``.
 CHK-ROW-SPI-BURST-CONTROL: the same burst shape wholly inside the extent answers
 OKAY on every beat and lands every beat.
@@ -114,7 +116,7 @@ at byte offset 2 of the watchdog ``WKUP_THOLD_LO`` word answer OKAY, and the
 writes of the same shapes answer SLVERR. "A narrow read inside a register
 returns OKAY"; a partial write, "a byte strobe that misses a byte the register
 owns", gets a TL-UL error and "the faulting access also received SLVERR
-synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``;
+synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:395-400``;
 the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
 write and the other sub-word targets are logged (``INFO-REG-SUBWORD``). Control
 CTRL-REG-SUBWORD-SHAPE: the LSU (``s_axi``) read address handshake of each shape
@@ -172,9 +174,9 @@ drawn address.
 CHK-ROW-SIZE3: an SI AxSIZE 3 read and write at the last register of the
 entropy source block (its register extent is 4 mod 8, so the upper half of the
 beat lies past the extent) answer SLVERR on RRESP and on BRESP
-(``hw/sys/sep/doc/memory_map.adoc:78-80``: a generated register block answers
+(``hw/sys/sep/doc/memory_map.adoc:80-82``: a generated register block answers
 SLVERR past its last register, "a 64-bit access to the last register of a
-block with 32-bit registers" included; ``doc/trm/src/memory_map.adoc:93-96``).
+block with 32-bit registers" included; ``doc/trm/src/memory_map.adoc:139-146``).
 The leaf derives the cell from the generated register allocation and fails
 when that extent is not 4 mod 8. The 64-bit read data has no stated value and
 is logged on ``INFO-ROW-SIZE3 kind=straddle``, as is an AES straddle read at its
@@ -259,10 +261,10 @@ POOL_WRITE_RESP = RESP_SLVERR
 POOL_UNMAPPED_RESP = RESP_SLVERR
 POOL_UNMAPPED_RDATA = 0x0
 
-# SPI host (hw/sys/sep/doc/peripheral_subsystem.adoc:43-46): the local crossbar
-# sends only the SPI host register extent to sep_io, and the error responder of
-# sep_io answers only the beats of a burst that run past the extent. The extent
-# is the generated register map size (56 B, regs/gen/adoc/memory_map.adoc:81).
+# SPI host (hw/sys/sep/doc/peripheral_subsystem.adoc:43-45): the local crossbar
+# sends the 4 KiB page of the SPI host to sep_io, which passes the SPI host only
+# its register window and answers the rest of the page with SLVERR. The extent
+# is the generated register map size (56 B, regs/gen/adoc/memory_map.adoc:75).
 SPI_BASE = sep_reg.SPI_CONTROLLER_REG_MAP_BASE_ADDR
 SPI_END = SPI_BASE + sep_reg.SPI_CONTROLLER_REG_MAP_SIZE
 SPI_CSID = sep_reg.SPI_CONTROLLER_CSID_REG_ADDR
@@ -301,7 +303,7 @@ _ATTR_SALT = 0x524F_5741
 _STRADDLE_SALT = 0x5354_5244
 # Straddle cells: an AxSIZE 3 access at the last 32-bit register of a block whose
 # register extent is 4 mod 8, so the upper half lies past that extent.
-# hw/sys/sep/doc/memory_map.adoc:78-80 states SLVERR for a block generated from
+# hw/sys/sep/doc/memory_map.adoc:80-82 states SLVERR for a block generated from
 # SystemRDL (entropy source); the AES block is bridged to TL-UL, so its read is
 # logged only and it takes no write (its last register is shadowed).
 STRADDLE_GRADED = ("esrc",)
@@ -317,19 +319,23 @@ BURST_PAST_ROWS = (
 # Sub-word LSU targets: (name, word address, whether a changed value is written
 # and the word restored after). A target without restore takes its own value.
 SUBWORD_TARGETS = (
-    ("scratch", sep_reg.SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR, True),
+    ("scratch", sep_reg.SEP_SCRATCH_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR, True),
     ("wdt_wkup_thold_lo", sep_reg.WDT_TIMER_WKUP_THOLD_LO_REG_ADDR, True),
     ("cpu_ctrl_nmi_vec", sep_reg.SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR, True),
     ("spi_csid", sep_reg.SPI_CONTROLLER_CSID_REG_ADDR, True),
     ("spi_configopts", sep_reg.SPI_CONTROLLER_CONFIGOPTS_REG_ADDR, True),
     ("km_mbox_irq_enable", rr.KM_IRQ_ENABLE, True),
     ("otbn_imem", sep_reg.OTBN_IMEM_MEM_BASE_ADDR, True),
-    ("efuse_shadow", sep_reg.SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, False),
-    ("efuse_program_ctrl", sep_reg.EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR, False),
+    ("efuse_shadow", sep_reg.SEP_EFUSE_WRAP_SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, False),
+    (
+        "efuse_program_ctrl",
+        sep_reg.SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR,
+        False,
+    ),
     ("sw_reset_n", rr.SW_RESET_N, False),
 )
 # A narrow read inside a peripheral register answers OKAY and a partial write
-# answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393;
+# answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:395-400;
 # the watchdog block is PERIPH_BUS_ERR_STATUS.wdt, :442).
 SUBWORD_GRADED = "wdt_wkup_thold_lo"
 # Sub-word targets whose unstrobed lanes are not graded: the word holds fields
@@ -903,7 +909,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 self._fail("CHK-ROW-CACHE", line + f" written=0x{w:x}")
 
     async def _reserved_leg(self) -> None:
-        """Step 10: the 8 Reserved rows from SI."""
+        """Step 10: every Reserved row of the SEP Local region from SI."""
         bases = list(rr.RESERVED_BASES)
         self.rng.shuffle(bases)
         for base in bases:
@@ -1029,18 +1035,26 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 await self._lsu_write_reg(nb, before, "abr neighbour restore")
 
     async def _past_leg(self) -> None:
-        """Step 13: past-extent cells from SI."""
+        """Step 13: past-extent cells from SI.
+
+        A row whose Past Extent note bounds the unit's own decode (``C`` > ``E``)
+        also takes the last word of the note's span and the first word past it,
+        and the drawn pair lies past the span."""
         rows = list(rr.PAST_ROWS)
         self.rng.shuffle(rows)
         for key in rows:
             row = rr.map_row(key)
             e = row.base + row.extent
-            lo = (e + 8 + 7) & ~7
+            c = row.past_from
+            lo = (c + 8 + 7) & ~7
             drawn = lo + 8 * self.rng.randrange(0, (row.end - 7 - lo) // 8 + 1)
-            self.logger.info("INFO-ROW-RAND LOG: %s past E=0x%08x drawn 0x%08x", key, e, drawn)
+            self.logger.info(
+                "INFO-ROW-RAND LOG: %s past E=0x%08x C=0x%08x drawn 0x%08x", key, e, c, drawn
+            )
+            pinned = (e, e + 4) if c == e else (e, e + 4, c - 4, c)
             for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                 d = "R" if op is SepAxiOp.READ else "W"
-                for a in (e, e + 4, drawn, drawn + 4):
+                for a in dict.fromkeys((*pinned, drawn, drawn + 4)):
                     wd = self.rng.getrandbits(32) if op is SepAxiOp.WRITE else None
                     await self._begin()
                     s = await self._si(op, a, wdata=wd or 0)
@@ -1186,9 +1200,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         sb = await self._si(SepAxiOp.READ, b)
                         v = sb.rdata & rr.reg_by_word()[b].word_mask(b)
                         same = same and sb.resp_code == OKAY and v == baseline[b]
+                    want = SLVERR if a < nxt else DECERR
                     ok = (
-                        s.resp_code == DECERR
-                        and exp.resp == DECERR
+                        s.resp_code == exp.resp == want
                         and (exp.rdata is None or got == exp.rdata)
                         and same
                     )

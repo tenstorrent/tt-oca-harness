@@ -411,7 +411,9 @@ FAULT_FORCE_CLK = 16
 FAULT_BOUND = 4
 FAULT_POST_CLK = HOLD_CLK
 # meigwclr race: the pulse clock relative to the write clock, per timed attempt
-# (attempt 0 measures the write clock), and the bound on each attempt.
+# (attempt 0 is untimed, attempt RACE_CALIB measures the write clock), and the
+# bound on each attempt.
+RACE_CALIB = 1
 RACE_OFFSETS = (0, -1, -2)
 RACE_BOUND = 4096
 # Source 17 cells: the edge pulse width (clocks; interrupts.adoc: at least two)
@@ -758,17 +760,18 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
     async def _req_race(self, kv: dict) -> None:
         """Time a one-clock pulse of boundary bit b1 against the next meigwclr write.
 
-        Clock n is the n-th rising edge after the request line. Attempt 0
-        records the clock of the write; attempt i > 0 drives the pin to 1 on
-        clock d + RACE_OFFSETS[i - 1] only, d being that write clock.
+        Clock n is the n-th rising edge after the request line. Attempt
+        RACE_CALIB records the clock of the write; attempt i > RACE_CALIB drives
+        the pin to 1 on clock d + RACE_OFFSETS[i - RACE_CALIB - 1] only, d being
+        that write clock. Attempt 0 drives nothing.
         """
         clk, pin, wsig = self.dut.clk_i, self.dut.sep_ext_interrupts_i, self.dut.pic_wr_probe_o
         i, src = int(kv["i"]), int(kv["src"])
         bit = 1 << self.wc.ext[0]
         off = GWCLR1_OFF + (src - 1) * GWCLR_STRIDE
         target = None
-        if i > 0 and self.race_d is not None:
-            target = self.race_d + RACE_OFFSETS[i - 1]
+        if i > RACE_CALIB and self.race_d is not None:
+            target = self.race_d + RACE_OFFSETS[i - RACE_CALIB - 1]
         pulse = wr = None
         n = 0
         while n < RACE_BOUND:
@@ -790,7 +793,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         if n == target:
             await RisingEdge(clk)
             pin.value = 0
-        if i == 0:
+        if i == RACE_CALIB:
             self.race_d = wr
         self.race.append((i, src, target, pulse, wr))
 
@@ -1926,13 +1929,13 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         seed = self.wc.seed
         recs = {int(kv["i"]): kv for _, kv in self._lines("GWRACE")}
         att = {a[0]: a for a in self.race}
-        n = len(RACE_OFFSETS) + 1
+        n = len(RACE_OFFSETS) + RACE_CALIB + 1
         if sorted(recs) != list(range(n)) or sorted(att) != list(range(n)):
             raise AssertionError(
                 f"CTRL-MISSING GWCLR-RACE: seed={seed} records={sorted(recs)} "
                 f"attempts={sorted(att)} want={n}"
             )
-        for i, offset in enumerate(RACE_OFFSETS, start=1):
+        for i, offset in enumerate(RACE_OFFSETS, start=RACE_CALIB + 1):
             _, src, _, pulse, wr = att[i]
             if pulse is None or wr is None or pulse - wr != offset:
                 raise AssertionError(

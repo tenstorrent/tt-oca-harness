@@ -18,7 +18,7 @@ Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
   ``sep_reset_n``, ``sep_cpu_reset_n``, ``ip_rst_n[6:0]`` (each scan bypass
   mux), ``aon_rst_n``, ``km_cond_rst[1:0]``, ``refcnt_rst[1:0]``,
   ``sep_wdt_reset_n`` and ``efuse_rst_sync``. The reset controller section
-  (``reset_controller.adoc:83``) lists all of them except ``refcnt_rst[1:0]``
+  (``reset_controller.adoc:82``) lists all of them except ``refcnt_rst[1:0]``
   and ``efuse_rst_sync``;
   ``sep_wdt_reset_n`` is the output of the scan bypass
   ``u_sep_wdt_rst_scan_bypass``, and with ``test_en_i`` low it is the 2-flop
@@ -34,7 +34,7 @@ Controller; ``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture;
   ``rst_ni`` is high. ``sep_reset_n`` and ``aon_rst_n`` rise before the next
   edge of their own clock after the ``scan_rst_ni`` rise (the synchronizer is
   not in the path). With ``test_en_i`` low, ``scan_rst_ni`` has no effect.
-* "Replaces" and "selects" (``reset_controller.adoc:82-84``,
+* "Replaces" and "selects" (``reset_controller.adoc:81-83``,
   ``clk_rst.adoc:85-86``) make each net equal ``scan_rst_ni`` whatever its
   functional reset is, so with ``scan_rst_ni`` = 1 and ``test_en_i`` = 1 the 16
   nets stay high while ``rst_ni``, which is in the functional cone of every one

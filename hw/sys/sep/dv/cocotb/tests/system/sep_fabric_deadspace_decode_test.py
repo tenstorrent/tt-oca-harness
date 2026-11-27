@@ -15,24 +15,30 @@ without a write, fails the leaf (CTRL-MISSING). Directed write anchors at the
 first word past the AES and OTBN maps and at the first and last word of the
 lifecycle dead span give those windows a write every seed.
 
-A write or read past a block's allocated size must answer the past-extent
-response of its unit, and no live register in that block may change. Each write
-probe is issued with all ones and then all zeros, and each issue is graded on
-its own, so a refused write that stores shows on a read-write bit whatever that
-bit holds. INFO-DEADSPACE-PATTERN logs, per window, the armed registers and how
-many of them hold all ones or all zeros on their read-write bits (not graded).
-CHK-DEADSPACE-REFUSE grades the response exactly in every window except TRNG:
-``hw/sys/sep/regs/include/sep_memory_map.rdl`` sets ``<unit>->ocah_past_extent_resp`` to
-``OCAH_SEP_DECERR`` (``sep_memory_map.rdl:10``: DECERR, ``0xBADCAB1E`` / DECERR) for
-secure_dma, wdt_timer, aes, otbn, abr, csrng, edn, entropy_source,
-sep_lifecycle_ctrl, km_mailbox_sep and the SPI controller, with no path
-qualifier. A read must answer DECERR with the word ``0xBADCAB1E``, and a write
-must answer DECERR. The values are read from the generated
-``regs/gen/py/sep_memory_map.py`` (built from ``sep.rdl``) through
-``env/sep_decode_resp.py``. For ABR (``adams_bridge.adoc``,
-"abr-aperture-decode") and the SPI controller
-(``hw/sys/sep/doc/peripheral_subsystem.adoc:43-44``) the prose also states DECERR, and the window build checks that the RDL agrees.
-Every probe uses the CPU-LSU splice (``s_axi``).
+A write or read between a block's allocated size and the window end must answer
+the response the memory map states for that word, and no live register in that
+block may change. Each write probe is issued with all ones and then all zeros,
+and each issue is graded on its own, so a refused write that stores shows on a
+read-write bit whatever that bit holds. INFO-DEADSPACE-PATTERN logs, per
+window, the armed registers and how many of them hold all ones or all zeros on
+their read-write bits (not graded). CHK-DEADSPACE-REFUSE grades the response
+exactly in every window except TRNG. Up to the end of the block's row the cell
+is the block's Past Extent response
+(``hw/sys/sep/regs/include/sep_memory_map.rdl``,
+``<unit>->ocah_past_extent_resp``); past it, the cell of the Reserved row that
+follows (OTBN, ABR, lifecycle). A read must answer the stated code with the
+stated word, and a write the stated code. Where a Past Extent note states that
+the block answers up to an offset with read data ``0xFFFFFFFF`` and latches a
+bus-error flag (DMA, watchdog timer, AES, CSRNG, EDN; the SPI controller
+without a flag), a word in that span is graded against the note's code and
+word; the latched flag sits outside every watched window and is not graded
+here. The values are read from the generated ``regs/gen/py/sep_memory_map.py``
+(built from ``sep.rdl``) through ``env/sep_decode_resp.py``. For ABR
+(``adams_bridge.adoc``, "abr-aperture-decode") and the SPI controller
+(``hw/sys/sep/doc/peripheral_subsystem.adoc:43-45``) the prose also states the
+past-extent response, SLVERR with read data ``0xBADCAB1E``, and the window
+build checks that the RDL agrees. Every probe uses the CPU-LSU splice
+(``s_axi``).
 
 INFO-DEADSPACE-CODE: the response code and read data of every TRNG-window
 probe, with ``chk=CHK-TRNG-UNOWNED``. ``sep.rdl`` gives that window no
@@ -51,16 +57,16 @@ CHK-TRNG-UNOWNED covers the TRNG window, which SEP forwards whole to an
 adopter endpoint. The reference integration connects no external TRNG, so no
 offset owns a register and every access must be refused: never OKAY, never
 the value of a neighbouring ESRC register, and no ESRC register moved.
-``hw/sys/sep/doc/memory_map.adoc:86-88`` states the code for that case: the
+``hw/sys/sep/doc/memory_map.adoc:88-90`` states the code for that case: the
 window ends in a DECERR slave, so a single-beat read or write answers DECERR,
 refuses the access and never aliases onto a live register. Each TRNG probe is
 graded against that code, and each TRNG read against the read word
-``0xBADCAB1E``. The TRNG note in ``hw/sys/sep/regs/include/sep_memory_map.rdl:35``
+``0xBADCAB1E``. The TRNG note in ``hw/sys/sep/regs/include/sep_memory_map.rdl:42``
 ("With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E /
 DECERR") states code and word, and ``sep_memory_map.rdl:10`` defines the same
 DECERR response. The leaf reads code and word from that note through the
 generated ``regs/gen/py/sep_memory_map.py`` and checks that the code agrees with
-``memory_map.adoc:86-88``.
+``memory_map.adoc:88-90``.
 
 CTRL-TRNG-ALIAS-ARMED (bench control, after the snapshot): a directed TRNG
 write anchor sits at the offset of the ESRC read-write register
@@ -77,8 +83,8 @@ window closed. After they pass, the leaf issues one cell probe per block
 window (a read of the first word past the extent, and a write there in the SPI
 controller and TRNG windows) twice: first with the window closed, then once
 more inside the graded window of this test. Each instance is graded at once
-under CHK-DEADSPACE-REFUSE (code and read word of the sep.rdl past-extent
-response, no live register moved) or, in the TRNG window, CHK-TRNG-UNOWNED
+under CHK-DEADSPACE-REFUSE (code and read word the memory map states for that
+word, no live register moved) or, in the TRNG window, CHK-TRNG-UNOWNED
 (the code and word of the memory-map note); the window closes on the first
 FAIL. The sampler holds the row cells of each probe in the window and samples
 them only on the pass label ``row_pass`` (1), which the leaf writes after the
@@ -123,7 +129,7 @@ CHK-TRNG-REPLY: a single-beat (AxSIZE 2) read and a single-beat write, each
 answered OKAY, SLVERR and DECERR at the port, reach the port as exactly one
 AXI-Lite access with exactly one reply beat, and the initiator receives the
 port code. SEP does not decode offsets inside the window
-(``doc/integrator/src/smu-sep.adoc:133-135``), so the address of that port
+(``doc/integrator/src/smu-sep.adoc:146-148``), so the address of that port
 access carries the issued window offset in its low 12 bits (the 4 KiB
 aperture). Besides the drawn offsets, every run issues a read and a write at
 the first word (offset 0x000), the last word (0xFFC) and one drawn interior
@@ -201,12 +207,12 @@ _RESP_NAME = {
 }
 
 _TRNG_BASE = sym("TRNG_REG_MAP_BASE_ADDR")
-# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:133); the
+# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:146); the
 # port address carries the window offset in these low bits.
 _TRNG_SIZE = sym("TRNG_REG_MAP_SIZE")
 _TRNG_OFF_MASK = _TRNG_SIZE - 1
 # Response with no TRNG fitted: the TRNG note of
-# hw/sys/sep/regs/include/sep_memory_map.rdl:35 ("DECERR, 0xBADCAB1E / DECERR"),
+# hw/sys/sep/regs/include/sep_memory_map.rdl:42 ("DECERR, 0xBADCAB1E / DECERR"),
 # read through the generated sep_memory_map.py.
 _TRNG_NOTE_RE = re.compile(
     r"answers (OKAY|SLVERR|DECERR), 0x([0-9A-Fa-f]{8}) / (OKAY|SLVERR|DECERR)\."
@@ -225,13 +231,13 @@ def _trng_unowned_expect() -> tuple[dict[str, int], int]:
 
 
 # Code per channel and read word of an unowned TRNG-window offset with no
-# external TRNG connected. hw/sys/sep/doc/memory_map.adoc:86-88 states the
+# external TRNG connected. hw/sys/sep/doc/memory_map.adoc:88-90 states the
 # DECERR code in prose; the leaf checks that the note agrees.
 TRNG_UNOWNED_RESP, TRNG_UNOWNED_RDATA = _trng_unowned_expect()
 if TRNG_UNOWNED_RESP != {"r": RESP_DECERR, "w": RESP_DECERR}:
     raise RuntimeError(
         f"sep_memory_map.py TRNG note codes {TRNG_UNOWNED_RESP} disagree with the DECERR "
-        "of hw/sys/sep/doc/memory_map.adoc:86-88"
+        "of hw/sys/sep/doc/memory_map.adoc:88-90"
     )
 # Windows where the row-cell sampler also takes an LSU write cell (the SPI
 # controller past extent and the TRNG window); elsewhere the cell is a read.
@@ -358,7 +364,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         aliased = 0
         accepted = 0
         # Probes that answered a code or read word other than the sep.rdl
-        # Past Extent response (SepDeadspace.probe(), "answered code").
+        # response for the word (SepDeadspace.probe(), "answered code").
         wrong_code = 0
         fails: list[str] = []
         # (op, addr, resp, refused, rdata) of every probe of an adopter window.
@@ -415,7 +421,13 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             burst_graded.append(win.name)
             # Across the extent where a legal burst can reach it, so the burst
             # also carries beats past the extent; otherwise at the window base.
-            crosses = win.dead_lo % 0x1000 != 0 and win.dead_lo > win.base + 8
+            # The first dead word must lie in the block's own row: a dead span
+            # that starts at a Reserved row has no live word before it.
+            crosses = (
+                win.dead_lo % 0x1000 != 0
+                and win.dead_lo > win.base + 8
+                and sep_map_row(win.dead_lo).base == win.base
+            )
             start = None if crosses else win.base
             start, _resps, timed_out, words, singles, beat_resps = await dead.burst_across_extent(
                 win, start
@@ -508,7 +520,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             )
         self.logger.info(
             "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets answered the sep.rdl "
-            "past-extent response (TRNG: refused, code graded below)",
+            "response for the word (TRNG: refused, code graded below)",
             len(cfg.probes),
         )
         self.logger.info(
@@ -657,7 +669,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         exp_d = "" if want_d is None else f" rdata=0x{want_d:08x}"
         return (
             f"{op} 0x{addr:08x} answered {_rname(resp)}{got_d}, the memory map states "
-            f"{_rname(want)}{exp_d} (hw/sys/sep/regs/include/sep_memory_map.rdl:35)"
+            f"{_rname(want)}{exp_d} (hw/sys/sep/regs/include/sep_memory_map.rdl:42)"
         )
 
     def _grade(self, ok: bool, chk: str, line: str, graded: bool) -> None:
@@ -726,7 +738,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     "CHK-DEADSPACE-REFUSE",
                     f"{tag} expected {_rname(exp.resp)}"
                     + ("" if want_rdata is None else f" rdata=0x{want_rdata:08x}")
-                    + f" ({exp.row} Past Extent), no live register moved"
+                    + f" ({exp.row} {exp.column}), no live register moved"
                     + ("; " + "; ".join(hit) if hit else ""),
                     graded,
                 )
@@ -736,7 +748,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 close_graded_window(self.logger)
         self.logger.info(
             "CHK-DEADSPACE-REFUSE PASS: %d cell probe(s) in %d window(s) answered the "
-            "past-extent or memory-map response twice, the second time in the graded window",
+            "memory-map response twice, the second time in the graded window",
             len(items),
             len(cfg.windows),
         )

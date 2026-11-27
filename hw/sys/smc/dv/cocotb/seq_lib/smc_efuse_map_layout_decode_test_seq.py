@@ -5,7 +5,7 @@
 Sources: smc_efuse_map.rdl (address map), smc.rdl (smc_efuse_map ocah_past_extent_resp).
 
 Every expected word is ``image.words[n]`` of the generated image. The past-extent responder
-answers read DECERR with data 0xBADCAB1E and write SLVERR; the items carry ``resp_code`` and
+answers read SLVERR with data 0xBADCAB1E and write SLVERR; the items carry ``resp_code`` and
 ``rdata`` for the compare.
 """
 
@@ -29,9 +29,11 @@ _STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
 _SENSE_BOUND_CYCLES = 200_000
 _AXI_OKAY = 0
 _AXI_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
-_PAST_RRESP, _PAST_BRESP = generated_past_extent_resp("smc_efuse_map")
-_PAST_DATA = _component_row("smc_efuse_map")["past_response"]["rdata"]
-_PAST_OFFSETS = (0x100, 0xFFC)
+_PAST_RRESP, _PAST_BRESP = generated_past_extent_resp("smc_efuse_wrap.smc_efuse_map")
+_MAP_ROW = _component_row("smc_efuse_wrap.smc_efuse_map")
+_PAST_DATA = _MAP_ROW["past_response"]["rdata"]
+# The first word past the extent and the last word of the window.
+_PAST_OFFSETS = (_MAP_ROW["occupied_size"], _MAP_ROW["end"] - 3 - _MAP_ROW["base"])
 _CHK_STEP = {
     "CHK-EMAP-LAYOUT-JPI-I2C": "S2",
     "CHK-EMAP-LAYOUT-CFG-OCCP": "S3",
@@ -114,33 +116,49 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         image = self.image
         assert image is not None, "the testcase module sets the image before starting"
-        self.base = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
+        self.base = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
         words = image.words
-        assert smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE") == 0x100, "SMC_EFUSE_MAP size is not 0x100"
+        assert smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE") == 0x100, (
+            "SMC_EFUSE_MAP size is not 0x100"
+        )
         bases = {
-            "HARNESS_LOCKS": (smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR"), 0x00),
+            "HARNESS_LOCKS": (
+                smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR"),
+                0x00,
+            ),
             "SUPPLEMENTARY_LOCKS": (
-                smc_addr("SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR"),
+                smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR"),
                 0x08,
             ),
-            "JPI": (smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"), 0x10),
-            "SMC_CONFIG": (smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR"), 0x78),
-            "OCCP": (smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"), 0x80),
+            "JPI": (
+                smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"),
+                0x10,
+            ),
+            "SMC_CONFIG": (
+                smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR"),
+                0x78,
+            ),
+            "OCCP": (
+                smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR"),
+                0x80,
+            ),
         }
         for name, (addr, offset) in bases.items():
             assert addr - self.base == offset, f"{name} base is +0x{addr - self.base:x}"
         i2c = [
-            smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", i) - self.base
+            smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR", i)
+            - self.base
             for i in range(9)
         ]
-        spare_num = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")
-        tail_num = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")
+        spare_num = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_NUM")
+        tail_num = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")
         spare = [
-            smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k) - self.base
+            smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k) - self.base
             for k in range(spare_num)
         ]
         tail = [
-            smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k) - self.base
+            smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k)
+            - self.base
             for k in range(tail_num)
         ]
         assert i2c == [0x30 + 8 * i for i in range(9)], f"I2C_I3C_ID offsets {i2c}"
@@ -316,10 +334,11 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
         self._done("S9")
         self._chk(
             "CHK-EMAP-PAST-READ",
-            "0xFC read marker word 63 0x%08x with OKAY; 0x100 and 0xFFC each answered "
+            "0xFC read marker word 63 0x%08x with OKAY; 0x%X and 0x%X each answered "
             "resp=%s(%d) with rdata 0x%08x / 0x%08x (smc.rdl smc_efuse_map "
             "ocah_past_extent_resp)",
             edge,
+            *_PAST_OFFSETS,
             _PAST_RRESP,
             _AXI_CODES[_PAST_RRESP],
             past[0],
@@ -337,9 +356,11 @@ class smc_efuse_map_layout_decode_test_seq(SmcCsrSeq):
         self._done("S10")
         self._chk(
             "CHK-EMAP-PAST-WRITE",
-            "0x100 bresp=%d 0xFFC bresp=%d; smc.rdl smc_efuse_map ocah_past_extent_resp declares "
+            "0x%X bresp=%d 0x%X bresp=%d; smc.rdl smc_efuse_map ocah_past_extent_resp declares "
             "%s (%d); the bresp values show which one was returned",
+            _PAST_OFFSETS[0],
             resps[0],
+            _PAST_OFFSETS[1],
             resps[1],
             _PAST_BRESP,
             _AXI_CODES[_PAST_BRESP],

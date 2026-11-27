@@ -72,8 +72,7 @@ _PERIPH_XBAR = {
     "smc_avsbus_controller",
     "smc_i2c_wrap",
     "smc_uart_wrap",
-    "smc_efuse_map",
-    "efuse_interface_ctrl",
+    "smc_efuse_wrap",
     "smc_telemetry_receiver_wrap",
     "smc_system_timer_octs",
     "dtp_ctrl_reg",
@@ -574,8 +573,8 @@ class smc_bresp_evidence_test_seq(SmcCsrSeq):
         scratch_warm_0 = smc_indexed_addr(
             "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 0
         )
-        assert scratch_cold_7 == base + 0x281C and scratch_cold_6 == base + 0x2818
-        assert scratch_warm_0 == base + 0x2880
+        assert scratch_cold_7 == base + 0xD01C and scratch_cold_6 == base + 0xD018
+        assert scratch_warm_0 == base + 0xD080
         gpio_last = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 66)
         assert gpio_last == base + 0x3428
         outfilt_last = (

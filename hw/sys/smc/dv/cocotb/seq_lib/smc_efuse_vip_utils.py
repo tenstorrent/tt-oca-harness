@@ -46,15 +46,15 @@ from .smc_addr_map import _REPO, _field_mask, smc_addr
 # The bench-wide ``+smc_efuse_hex`` plusarg (``smc_sim_cfg.toml``) makes
 # ``efuse_bank_model.sv`` ``$readmemh`` this file into the bank storage
 # at time 0, one 32-bit word per line, word ``n`` backing
-# ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + 4*n``. Tests that want an exact expectation
+# ``SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR + 4*n``. Tests that want an exact expectation
 # for a map read derive it from this file at run time, so the expectation
 # follows a regenerated asset.
 #
 # Proof class of anything checked this way is **transport**: it proves the map
 # window decodes and returns the sensed word, not that fuse programming works.
 EFUSE_DEFAULT_HEX = _REPO / "hw" / "sys" / "smc" / "dv" / "assets" / "smc_efuse_default.hex"
-EFUSE_MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
-EFUSE_MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
+EFUSE_MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
+EFUSE_MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE")
 
 _SMC_EFUSE_MAP_H = (
     _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_efuse_map.h"
@@ -100,8 +100,12 @@ def efuse_map_read_locked(lock_field_symbol: str) -> bool:
     an observed read.
     """
     mask = _field_mask(_SMC_EFUSE_MAP_H, lock_field_symbol)
-    locks_lo = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR"))
-    locks_hi = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR") + 4)
+    locks_lo = efuse_preload_word_at(
+        smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
+    )
+    locks_hi = efuse_preload_word_at(
+        smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR") + 4
+    )
     locks = (locks_hi << 32) | locks_lo
     return bool(locks & mask)
 

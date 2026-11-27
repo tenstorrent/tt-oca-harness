@@ -25,12 +25,29 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
-At the IP boundary, each region's base address and aperture size are
-integration parameters; the generated tables show the selected integration
-values. The MMR region exists only when the eFuse instance includes lifecycle
-state (`HAS_LC_STATE=1`).
+At the IP boundary, each region's base address and the size of the shadow
+register region are integration parameters; the generated tables show the
+selected integration values. The control and MMR regions span the range their
+register blocks decode. The MMR region exists only when the eFuse instance
+includes lifecycle state (`HAS_LC_STATE=1`).
 
 === Detailed Register Map
+
+==== SMC eFuse Page
+
+In the SMC, the eFuse control registers and the shadow registers share one
+4 KiB page, placed by the wrapper below. The sections that follow define each
+register and its fields.
+
+ifdef::backend-html5[]
+++++
+include::smc:partial$smc/regs/gen/html/blocks/smc_efuse_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_wrap.adoc[leveloffset=+3]
+endif::backend-pdf[]
 
 ==== Shadow Registers
 

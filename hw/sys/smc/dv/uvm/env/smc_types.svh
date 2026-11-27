@@ -53,51 +53,51 @@ typedef enum {
 localparam bit [31:0] SmcWdtMagicKey = 32'h0051_F15E;
 localparam bit [31:0] SmcWdtFeedMagic = 32'h0D09_F00D;
 localparam int unsigned SmcWdtCores = 4;
-localparam bit [63:0] SmcWdtBytes = smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE;
-localparam int unsigned SmcWdtCtrlOffset = SMC_CLUSTER_CORE0_WDT_CTRL_REG_OFFSET;
-localparam int unsigned SmcWdtCountOffset = SMC_CLUSTER_CORE0_WDT_COUNT_REG_OFFSET;
-localparam int unsigned SmcWdtCountHiOffset = SMC_CLUSTER_CORE0_WDT_COUNT_HI_REG_OFFSET;
-localparam int unsigned SmcWdtScaledCountOffset = SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_REG_OFFSET;
-localparam int unsigned SmcWdtFeedOffset = SMC_CLUSTER_CORE0_WDT_FEED_REG_OFFSET;
-localparam int unsigned SmcWdtKeyOffset = SMC_CLUSTER_CORE0_WDT_KEY_REG_OFFSET;
-localparam int unsigned SmcWdtCmpOffset = SMC_CLUSTER_CORE0_WDT_CMP_REG_OFFSET;
+localparam bit [63:0] SmcWdtBytes = smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SIZE;
+localparam int unsigned SmcWdtCtrlOffset = SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_REG_OFFSET;
+localparam int unsigned SmcWdtCountOffset = SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_REG_OFFSET;
+localparam int unsigned SmcWdtCountHiOffset = SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_HI_REG_OFFSET;
+localparam int unsigned SmcWdtScaledCountOffset = SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SCALED_COUNT_REG_OFFSET;
+localparam int unsigned SmcWdtFeedOffset = SMC_CLUSTER_WDT_WRAP_CORE0_WDT_FEED_REG_OFFSET;
+localparam int unsigned SmcWdtKeyOffset = SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_REG_OFFSET;
+localparam int unsigned SmcWdtCmpOffset = SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_REG_OFFSET;
 
 function automatic bit [63:0] smc_wdt_addr(int unsigned core, smc_wdt_reg_e reg_kind);
   case (core)
     0: case (reg_kind)
-      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR;
-      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_COUNT_BASE_ADDR;
-      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR;
-      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR;
-      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_BASE_ADDR;
-      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_FEED_BASE_ADDR;
+      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_BASE_ADDR;
+      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_BASE_ADDR;
+      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_BASE_ADDR;
+      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_BASE_ADDR;
+      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SCALED_COUNT_BASE_ADDR;
+      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_FEED_BASE_ADDR;
       default: return '1;
     endcase
     1: case (reg_kind)
-      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_CTRL_BASE_ADDR;
-      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_COUNT_BASE_ADDR;
-      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_KEY_BASE_ADDR;
-      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_CMP_BASE_ADDR;
-      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_SCALED_COUNT_BASE_ADDR;
-      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_FEED_BASE_ADDR;
+      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_CTRL_BASE_ADDR;
+      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_COUNT_BASE_ADDR;
+      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_KEY_BASE_ADDR;
+      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_CMP_BASE_ADDR;
+      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_SCALED_COUNT_BASE_ADDR;
+      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_FEED_BASE_ADDR;
       default: return '1;
     endcase
     2: case (reg_kind)
-      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_CTRL_BASE_ADDR;
-      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_COUNT_BASE_ADDR;
-      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_KEY_BASE_ADDR;
-      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_CMP_BASE_ADDR;
-      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_SCALED_COUNT_BASE_ADDR;
-      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_FEED_BASE_ADDR;
+      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_CTRL_BASE_ADDR;
+      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_COUNT_BASE_ADDR;
+      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_KEY_BASE_ADDR;
+      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_CMP_BASE_ADDR;
+      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_SCALED_COUNT_BASE_ADDR;
+      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_FEED_BASE_ADDR;
       default: return '1;
     endcase
     3: case (reg_kind)
-      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_CTRL_BASE_ADDR;
-      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_COUNT_BASE_ADDR;
-      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_KEY_BASE_ADDR;
-      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_CMP_BASE_ADDR;
-      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_SCALED_COUNT_BASE_ADDR;
-      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_FEED_BASE_ADDR;
+      WDT_CTRL: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CTRL_BASE_ADDR;
+      WDT_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_COUNT_BASE_ADDR;
+      WDT_KEY: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_KEY_BASE_ADDR;
+      WDT_CMP: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CMP_BASE_ADDR;
+      WDT_SCALED_COUNT: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SCALED_COUNT_BASE_ADDR;
+      WDT_FEED: return smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_FEED_BASE_ADDR;
       default: return '1;
     endcase
     default: return '1;

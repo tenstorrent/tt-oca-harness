@@ -96,7 +96,7 @@ FAMILIES = (
     ("timer", "smc_system_timer_octs/CTRL", 1),
     ("zeroer", "zeroer_ctrl/SIZE", 1),
     ("uart", "smc_uart_wrap/uart_log_engine_wrap[{}]/uart/LSR", 4),
-    ("efuse_ctrl", "efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", 1),
+    ("efuse_ctrl", "smc_efuse_wrap/efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT", 1),
     ("cla", "smc_cla/dst[{}]/Trdstcontrol", 1),
 )
 INSTANCES = 135

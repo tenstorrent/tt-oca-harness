@@ -54,9 +54,12 @@ RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("PIC", None): "CPU-internal PIC, not on the CPU-LSU splice",
     ("SEP_EXTERNAL", None): "adopter extension window",
     ("SEP_EXTERNAL_EFUSE_SHIM_CTRL", None): "adopter extension window",
-    ("EFUSE_INTERFACE_CTRL", None): "OTP-trigger; a program/read hangs the command mux",
-    ("EFUSE_MMR", None): "OTP-trigger",
-    ("SEP_EFUSE_MAP", None): "hw-driven shadow under +skip_fuse_sense",
+    (
+        "SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL",
+        None,
+    ): "OTP-trigger; a program/read hangs the command mux",
+    ("SEP_EFUSE_WRAP_EFUSE_MMR", None): "OTP-trigger",
+    ("SEP_EFUSE_WRAP_SEP_EFUSE_MAP", None): "hw-driven shadow under +skip_fuse_sense",
     ("SEP_LIFECYCLE_CTRL", None): "hw-driven feat_ctrl / demote",
     ("SEP_CPU_CTRL", "REFERENCE_COUNTER"): "hw-driven free-running counter",
     ("SEP_CPU_CTRL", "SEP_TEST_CTRL"): "hw-driven straps",
@@ -153,8 +156,8 @@ SIDE_EFFECT_EXCLUDE: dict[tuple[str, str | None], str] = {
 # Write bash stays on blocks whose restore cannot redirect the LSU.
 # Inbound START/END stay in the sweep; inbound_addr_expected() models the wrap.
 WRITE_SAFE_PREFIXES = (
-    "SEP_SCRATCH_COLD",
-    "SEP_SCRATCH_WARM",
+    "SEP_SCRATCH_WRAP_SCRATCH_COLD",
+    "SEP_SCRATCH_WRAP_SCRATCH_WARM",
     "SEP_CPU_CTRL",
     "INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_",
 )
@@ -261,9 +264,9 @@ _TOUCH_DENY_NAME: dict[str, str] = {
 # programmed under a random value drops live beats. No write path may enter
 # these banks, the masked storage touch included.
 SIDE_EFFECT_EXCLUDE_PREFIXES: dict[str, str] = {
-    "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_": "side-effect: alias remap rewrites LSU",
-    "AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_": "side-effect: outbound remap",
-    "STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_": "side-effect: outbound remap",
+    "SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_ALIAS_REMAP_": "side-effect: alias remap rewrites LSU",
+    "SEP_REMAP_WRAP_AP_OUTPUT_REMAP_OUTPUT_REMAP_": "side-effect: outbound remap",
+    "SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_OUTPUT_REMAP_": "side-effect: outbound remap",
     "OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_": "side-effect: outbound filter drop",
 }
 
@@ -890,7 +893,7 @@ def _selftest() -> None:
         mask_all=0xFFFF_FFFF,
     )
     scratch = RegInfo(
-        block="SEP_SCRATCH_COLD",
+        block="SEP_SCRATCH_WRAP_SCRATCH_COLD",
         name="SCRATCH_0_",
         addr=0,
         reset=0,

@@ -13,10 +13,10 @@ Contract (``vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
   * CSRNG sets ``CS_FATAL_ERR`` for a FIFO error or a fatal alert (csrng.adoc:47);
     EDN sets ``edn_fatal_err`` for a FIFO error (edn.adoc:41). Both clear by
     write-one. CSRNG fatal error is vector bit 26 and EDN fatal error vector bit 28
-    (interrupts.adoc:153-155, :161-163).
+    (interrupts.adoc:161-163, :169-171).
   * The sources that "signal a fatal alert" (CSRNG 20, 21, 22, 25, 26; EDN 20, 21,
     22) pulse the Crypto alert, vector bit 32 (csrng.adoc:381-396; edn.adoc:309-315;
-    crypto.adoc:151; interrupts.adoc:177-178).
+    crypto.adoc:151; interrupts.adoc:185-186).
   * A TRNG reset clears ``ERR_CODE`` (hw/ip/entropy_source/doc/architecture.adoc:219-223).
   * ``CTRL.CMD_FIFO_RST`` True clears both command FIFOs (edn.adoc:98-101).
   * ``RESEED_CMD`` and ``GENERATE_CMD`` take up to 13 words; a 14th sets
@@ -115,7 +115,7 @@ check on its own line (``CHK-RAS-<FIELD>-BOOT``, ``-IDLE``, ``-RISE``, ``-MODE2`
   CHK-RAS-EDN_FATAL-FIFO: the EDN FIFO errors are fatal
   (``vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc:321,326``)
   and a fatal error repeats ``edn_fatal`` until reset
-  (``hw/sys/sep/rtl/sep_pkg.sv:512-513``, delegated by ``port_table.adoc:130``).
+  (``hw/sys/sep/rtl/sep_pkg.sv:503-504``, delegated by ``port_table.adoc:130``).
   In each EDN FIFO-error cell the field rises at least twice from the
   ERR_CODE_TEST write to the end of the cell window, before its TRNG reset. In
   each EDN FIFO trial it rises at least twice from the word-14 write to the

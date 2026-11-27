@@ -15,16 +15,13 @@
 `include "sep_dccm.rdl"
 `include "sep_boot_rom.rdl"
 `include "aon_timer.rdl"
-`include "sep_efuse_map.rdl"
-`include "efuse_interface_ctrl.rdl"
-`include "efuse_mmr.rdl"
+`include "sep_efuse_wrap.rdl"
 `include "sep_lifecycle_ctrl.rdl"
 `include "km_mailbox_sep.rdl"
-`include "output_remap_wrap.rdl"
+`include "sep_remap_wrap.rdl"
 `include "remapped_region.rdl"
 
 // System Peripherals RDL files
-`include "alias_remap_wrap.rdl"
 `include "filter_ctrl_wrap.rdl"
 `include "axil_mailbox_sep_wrap.rdl"
 `include "sep_cpu_ctrl.rdl"
@@ -40,7 +37,7 @@
 `include "spi_controller.rdl"
 `include "sep_external.rdl"
 
-`include "sep_scratch.rdl"
+`include "sep_scratch_wrap.rdl"
 `include "el2_pic.rdl"
 
 addrmap sep_top #(
@@ -66,8 +63,7 @@ addrmap sep_top #(
     aon_timer                              wdt_timer                           @BASE_ADDR + 0x1080_1000;
 
     // SEP Scratch Registers
-    sep_scratch                            sep_scratch_cold                    @BASE_ADDR + 0x1080_2000;
-    sep_scratch                            sep_scratch_warm                    @BASE_ADDR + 0x1080_2080;
+    sep_scratch_wrap                       sep_scratch_wrap                    @BASE_ADDR + 0x1080_2000;
 
     // SEP Reset Controller
     sep_reset_ctrl                         sep_reset_ctrl                      @BASE_ADDR + 0x1080_3000;
@@ -88,9 +84,9 @@ addrmap sep_top #(
     // KMAC/SHA3 Accelerator
     kmac                                   kmac                                @BASE_ADDR + 0x1091_3000;
 
-    // DRBG: CSRNG and EDN share one aperture
+    // DRBG: EDN and CSRNG
+    edn                                    edn                                 @BASE_ADDR + 0x1091_4000;
     csrng                                  csrng                               @BASE_ADDR + 0x1091_5000;
-    edn                                    edn                                 @BASE_ADDR + 0x1091_5800;
 
     // Entropy Source (ESRC)
     entropy_source                         entropy_source                      @BASE_ADDR + 0x1091_6000;
@@ -104,14 +100,8 @@ addrmap sep_top #(
     // Key Manager (SEP side)
     km_mailbox_sep                         km_mailbox_sep                      @BASE_ADDR + 0x1092_0000;
 
-    // Efuse Map (OTP Shadow Memory)
-    sep_efuse_map                          sep_efuse_map                       @BASE_ADDR + 0x1093_0000;
-
     // Efuse Interface
-    efuse_interface_ctrl                   efuse_interface_ctrl                @BASE_ADDR + 0x1093_0400;
-
-    // Efuse MMR
-    efuse_mmr                              efuse_mmr                           @BASE_ADDR + 0x1093_0500;
+    sep_efuse_wrap                         sep_efuse_wrap                      @BASE_ADDR + 0x1093_0000;
 
     // Adams Bridge post-quantum cryptographic accelerator
     external abr_reg                       abr                                 @BASE_ADDR + 0x1094_0000;
@@ -126,14 +116,8 @@ addrmap sep_top #(
     // Mailbox
     axil_mailbox_sep_wrap                  axil_mailbox                        @BASE_ADDR + 0x10A0_0000;
 
-    // Local Master Alias Remap
-    alias_remap_wrap #(.NUM_REGIONS(16))   local_master_alias_remap_ctrl_wrap  @BASE_ADDR + 0x10A1_0000;
-
-    // AP Output Remap
-    output_remap_wrap #(.NUM_REGIONS(16))  ap_output_remap_ctrl_wrap           @BASE_ADDR + 0x10A1_0200;
-
-    // STEE Output Remap
-    output_remap_wrap #(.NUM_REGIONS(16))  stee_output_remap_ctrl_wrap         @BASE_ADDR + 0x10A1_0300;
+    // Local Master Alias Remap and AP and STEE Output Remaps
+    sep_remap_wrap                         sep_remap_wrap                      @BASE_ADDR + 0x10A1_0000;
 
     // Outbound Filter Control
     filter_ctrl_wrap #(.NUM_ENTRIES(32))   outbound_filter_ctrl_wrap           @BASE_ADDR + 0x10A2_0000;

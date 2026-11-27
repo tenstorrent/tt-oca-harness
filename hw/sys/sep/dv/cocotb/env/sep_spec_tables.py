@@ -112,8 +112,8 @@ class MapWindow:
 # From hw/sys/sep/doc/memory_map.adoc.
 WINDOWS = {
     "SEP Local Alias": MapWindow("SEP Local Alias", 0xD000_0000, 0x1_0000_0000, 0x3000_0000),
-    "ABR": MapWindow("ABR", 0x1094_0000, 0x1094_FFFF, 0x1_0000),
-    "EPOOL": MapWindow("EPOOL", 0x1095_0000, 0x1095_FFFF, 0x1_0000),
+    "ABR": MapWindow("ABR", 0x1094_0000, 0x1094_CFFF, 0xD000),
+    "EPOOL": MapWindow("EPOOL", 0x1095_0000, 0x1095_0FFF, 0x1000),
     "AP Remap Region": MapWindow("AP Remap Region", 0x1100_0000, 0x117F_FFFF, 0x80_0000),
     "STEE Remap Region": MapWindow("STEE Remap Region", 0x1180_0000, 0x11FF_FFFF, 0x80_0000),
 }

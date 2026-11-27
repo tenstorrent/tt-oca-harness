@@ -28,9 +28,13 @@ from sep_reg_meta import RegBlock
 
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
-_CHIPLET_DBG_BIT = RegBlock("SEP_EFUSE_MAP").field_mask("LC_DISABLE", "chiplet_dbg")
-_SIP_DIS_READ_LOCK_BIT = RegBlock("SEP_EFUSE_MAP").field_mask("LOCKS", "sip_dis_read_lock")
-_SYS_DIS_READ_LOCK_BIT = RegBlock("SEP_EFUSE_MAP").field_mask("LOCKS", "sys_dis_read_lock")
+_CHIPLET_DBG_BIT = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_mask("LC_DISABLE", "chiplet_dbg")
+_SIP_DIS_READ_LOCK_BIT = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_mask(
+    "LOCKS", "sip_dis_read_lock"
+)
+_SYS_DIS_READ_LOCK_BIT = RegBlock("SEP_EFUSE_WRAP_SEP_EFUSE_MAP").field_mask(
+    "LOCKS", "sys_dis_read_lock"
+)
 
 # [S18]'s value print, and the marker it emits when the lock is what makes this
 # TEST_DEV part enforce.

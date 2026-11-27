@@ -82,18 +82,18 @@ PROGRAM_ADDR_ERROR_CLEAR = _f("EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_E
 #: Supplementary fuse words of the reference wrappers (the WORDS parameter of the
 #: example supplementary region); the fuse array is the map plus these words.
 SUPPLEMENTARY_WORDS = 128
-SEP_EFUSE_CTRL = c_header_u32(_SEP_ADDR_H, "SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
-SEP_MAP_BITS = 8 * c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SIZE")
+SEP_EFUSE_CTRL = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
+SEP_MAP_BITS = 8 * c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIZE")
 SEP_FUSE_BITS = SEP_MAP_BITS + 32 * SUPPLEMENTARY_WORDS
-SMC_EFUSE_CTRL = c_header_u32(_SMC_ADDR_H, "SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
-SMC_MAP_BITS = 8 * smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
+SMC_EFUSE_CTRL = c_header_u32(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
+SMC_MAP_BITS = 8 * smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SIZE")
 SMC_FUSE_BITS = SMC_MAP_BITS + 32 * SUPPLEMENTARY_WORDS
 #: The spare fuse word each side programs: the middle of the SEP map, the first
 #: word of SPARE[1] on the SMC (SPARE[0] is the lock-field target of other leaves).
 SEP_SPARE_WORD = SEP_MAP_BITS // 2
 SMC_SPARE_WORD = 8 * (
-    smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 1)
-    - smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
+    smc_indexed_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 1)
+    - smc_addr("SMC_TOP_SMC_EFUSE_WRAP_SMC_EFUSE_MAP_BASE_ADDR")
 )
 
 PROGRAM_BITS = (0, 7, 18, 31)

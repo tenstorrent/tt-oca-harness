@@ -4,7 +4,7 @@
 // SEP Virtual Console scratch-register protocol.
 //
 // Encodes text and numeric output into packed 32-bit writes to
-// SEP_SCRATCH_COLD_SCRATCH_2.  A cocotb monitor decodes these writes
+// SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_2.  A cocotb monitor decodes these writes
 // and prints them to the simulation log.
 //
 // Protocol (little-endian):
@@ -34,7 +34,7 @@ static uint32_t g_vconsole_prev_val;
 
 static inline void vconsole_write_scratch2(uint32_t val) {
     if (val == g_vconsole_prev_val) val ^= 1u;
-    mmio_write32(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2), val);
+    mmio_write32(SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2), val);
     g_vconsole_prev_val = val;
 }
 

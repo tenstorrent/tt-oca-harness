@@ -130,10 +130,10 @@ VECTOR_ALL = DBG_1 | DBG_2 | FUNCTION
 assert VECTOR_ALL == (1 << 64) - 1, "LC_DISABLE fields do not cover the 64-bit register"
 
 #: Word offsets of LC_STATE, SIP_DIS and SYS_DIS in the shadow image, one 32-bit word per line.
-MAP_BASE = _sep("SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
-LC_STATE_ADDR = _sep("SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
-SIP_DIS_ADDR = _sep("SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR")
-SYS_DIS_ADDR = _sep("SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR")
+MAP_BASE = _sep("SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_BASE_ADDR")
+LC_STATE_ADDR = _sep("SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
+SIP_DIS_ADDR = _sep("SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR")
+SYS_DIS_ADDR = _sep("SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR")
 
 #: The preload set: image and the (SIP_DIS, SYS_DIS) pair each file is meant to carry. The pair
 #: is read from the file at run time and must equal this row.

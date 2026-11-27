@@ -32,14 +32,6 @@ package efuse_pkg;
   // Register Map Definitions //
   //////////////////////////////
 
-  localparam int unsigned NumEndPointsDecode = 2;
-  typedef enum logic [$clog2(
-NumEndPointsDecode
-)-1:0] {
-    INTERFACE_SEL         = 1'd0,
-    SHIM_SEL              = 1'd1
-  } efuse_req_decode_select_e;
-
   localparam int unsigned NumEndPointsReg = 5;
   typedef enum logic [$clog2(
 NumEndPointsReg

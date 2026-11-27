@@ -58,27 +58,28 @@ from seq_lib.smu_lifecycle_table import LC_STATE_PRESENSE
 _SEP_ADDR_H = Path(__file__).resolve().parents[6] / "hw/sys/sep/regs/gen/c/sep_addr.h"
 
 # hw/sys/sep/regs/gen/c/sep_addr.h: SPARE0 is a 256-bit register of the SEP shadow map; its first
-# two 32-bit words sit at 0x109302E0 and 0x109302E4.
-SPARE0_W0 = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR")
+# two 32-bit words sit at 0x10930AE0 and 0x10930AE4.
+SPARE0_W0 = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR")
 SPARE0_W1 = SPARE0_W0 + 4
 # hw/sys/sep/regs/gen/c/sep_addr.h: the EFUSE_INTERFACE_CTRL window ends at BASE + SIZE, below
 # EFUSE_MMR_BASE_ADDR; that first word owns no register. hw/sys/sep/doc/otp_fuse_controller.adoc:
 # the APB decode answers an address in the span outside the register windows with SLVERR.
-HOLE_ADDR = c_header_u32(_SEP_ADDR_H, "SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR") + c_header_u32(
-    _SEP_ADDR_H, "SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE"
-)
-EFUSE_MMR_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_EFUSE_MMR_BASE_ADDR")
+HOLE_ADDR = c_header_u32(
+    _SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR"
+) + c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE")
+EFUSE_MMR_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_WRAP_EFUSE_MMR_BASE_ADDR")
 if not HOLE_ADDR < EFUSE_MMR_BASE:
     raise RuntimeError(f"hole 0x{HOLE_ADDR:08x} is not below EFUSE_MMR 0x{EFUSE_MMR_BASE:08x}")
 # Words written to the SPARE0 words: non-zero and distinct.
 PATTERN_A = 0x1357_9BDF
 PATTERN_B = 0x2468_ACE0
 
-# hw/sys/smc/doc/memmap.adoc: LOCAL_BASE is 0xC000_0000 and a read from BASE + 0x001_7000 is an
-# address between unit apertures that answers DECERR. hw/sys/smc/regs/gen/c/smc_addr.h: CPU_CTRL
-# SCRATCH[13], 8-byte stride from 0xC0039080.
+# hw/sys/smc/doc/memmap.adoc: LOCAL_BASE is 0xC000_0000 and a read from BASE + 0x000_E000 is an
+# address between unit apertures that answers DECERR (BASE + 0x001_7000 now holds
+# dfx_ctrl_status). hw/sys/smc/regs/gen/c/smc_addr.h: CPU_CTRL SCRATCH[13], 8-byte stride from
+# 0xC0039080.
 LOCAL_BASE = 0xC000_0000
-FABRIC_GAP_ADDR = LOCAL_BASE + 0x001_7000
+FABRIC_GAP_ADDR = LOCAL_BASE + 0x000_E000
 FABRIC_SCRATCH_ADDR = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 13)
 
 # hw/ip/jtag/jtag_intf_unit/doc/interface.adoc, Instruction Encodings: SEP_OTP 0x21..0x26.

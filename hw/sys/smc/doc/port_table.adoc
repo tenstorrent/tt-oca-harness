@@ -36,8 +36,8 @@ endif::backend-html5[]
 |`sep_axi_in_resp_o` |`smc_sep_in_56_64_6_12_axi_resp_t` |Output |- |SEP AXI response. |Input Fabric → SEP |N/A, leave floating if unused
 |`output_axi_req_o` |`smc_sys_out_56_64_8_12_axi_req_t` |Output |- |Filtered and remapped AXI output request (56-bit addr, 64-bit data, 8-bit ID, 12-bit user). |Output Fabric → External system resources |N/A, leave floating if unused
 |`output_axi_resp_i` |`smc_sys_out_56_64_8_12_axi_resp_t` |Input |- |Filtered and remapped AXI output response. |External system resources → Output Fabric |N/A, tie to '0 if unused
-|`efuse_bank_ctrl_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |eFuse bank control AXI-Lite request. |eFuse controller → eFuse Shim |N/A
-|`efuse_bank_ctrl_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |eFuse bank control AXI-Lite response. |eFuse Shim → eFuse controller |N/A
+|`efuse_bank_ctrl_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |eFuse bank control AXI-Lite request. |eFuse wrapper → eFuse Shim |N/A
+|`efuse_bank_ctrl_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |eFuse bank control AXI-Lite response. |eFuse Shim → eFuse wrapper |N/A
 |`efuse_shim_command_req_o` |`smc_efuse_pkg::fuse_command_req_t` |Output |- |eFuse command interface request. |eFuse controller → eFuse Shim |N/A
 |`efuse_shim_command_resp_i` |`smc_efuse_pkg::fuse_command_resp_t` |Input |- |eFuse command interface response. |eFuse Shim → eFuse controller |N/A
 |`shadow_regs_o` |`smc_efuse_pkg::efuse_map_t` |Output |- |eFuse shadow register output. |eFuse controller → External systems |N/A

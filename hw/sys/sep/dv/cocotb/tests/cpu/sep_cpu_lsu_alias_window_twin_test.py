@@ -203,7 +203,7 @@ _WINDOW_TOP = 0xFFFF_FFFF
 
 # Unit class -> (direct address, writable). The firmware reads the same words.
 _UNITS: dict[str, tuple[int, bool]] = {
-    "scratch": (sym("SEP_SCRATCH_COLD_SCRATCH_3__REG_ADDR"), True),
+    "scratch": (sym("SEP_SCRATCH_WRAP_SCRATCH_COLD_SCRATCH_3__REG_ADDR"), True),
     "aes_word": (sym("AES_CTRL_SHADOWED_REG_ADDR"), False),
     "sys_csr": (sym("SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR"), False),
     "spi_word": (sym("SPI_CONTROLLER_CSID_REG_ADDR"), True),
