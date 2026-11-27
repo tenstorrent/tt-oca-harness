@@ -747,15 +747,6 @@ Block 25 "2891404597" "if ((apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_A
 Block 26 "357504973" "efuse_reg_select = EFUSE_CSR_REG_MAP;"
 Block 27 "3360606802" "efuse_reg_select = ERR_DECODE;"
 
-CHECKSUM: "3595078827 2100095224"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-SW-LOCK-CONST: sw_lock_bits comes only from find_efuse_sw_lock over the constant field map, or the default 0 (hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:144, :123-132). All 42 map entries are WriteUnlock or WriteSetOnly with ReadUnlock (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525-990), so sw_lock_bits[1] and sw_lock_bits[0] are always 0. The excluded vectors at :160-161 need (sw_lock_bits[2:1] == 2'b11) or sw_lock_bits[0] to be 1. NOT waived: the is_write_locked, is_read_locked, sw_lock_bits[3] and secure_tm_i vectors."
-Condition 15 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (3 "010")
-Condition 16 "1024332690" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
-Condition 17 "57363498" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11)) 1 -1" (2 "01")
-Condition 18 "1432529323" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
-Condition 19 "2025791036" "(is_read_locked | sw_lock_bits[0]) 1 -1" (2 "01")
-
 CHECKSUM: "1800326492 906278174"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
 ANNOTATION: "SEP-SEC-DIS-REV-CELL-HIGH: hw/ip/efuse/rtl/efuse_token_processing.sv:322-329 feed in_i[0] from high[0] with src_high_i tied to 1'b1. prim_rev_cell drives hi_o from src_high_i and out_o from in_i (hw/common/ocah_prim/rtl/prim_rev_cell.sv), so tt_rev_d_out[0] is always 1 and the vector with tt_rev_d_out[0]=0 at :331 cannot occur. NOT waived: the vectors where sec_disable_token_match moves."

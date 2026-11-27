@@ -350,8 +350,10 @@ Checkers:
                     and 0x4, RANGE_REGWEN reads back the written value.
                     A draw of 0x7, 0xE or 0xF grades nothing and logs
                     INFO-BLOCKED CHK-DMA-REGWEN-NONMUBI.
-                    Control: RANGE_REGWEN reads 0x6 before the write
-                    and BASE before the write differs from the value written.
+                    Control: RANGE_REGWEN reads 0x6 before the write, a
+                    BASE write after the same cold reset and before it
+                    lands, and BASE before the later write differs from
+                    the value written.
   CHK-DMA-SIZE-EDGE one copy of a drawn size 2 bytes past a multiple of 4 at
                     width encoding 2, from a cold reset with the destination
                     and both guards filled with the sentinel byte (no source
@@ -1991,6 +1993,9 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         ops = self.ops
         await self._cold_reset()
         regwen_pre = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
+        ub = c.lock_vals[1][0]
+        await self._wr_log(RANGE_BASE, ub)
+        base_open = await ops.rd(RANGE_BASE)
         resp_rw = await self._wr_log(RANGE_REGWEN, c.nonmubi << _REGWEN_LSB)
         regwen = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
         base_pre = await ops.rd(RANGE_BASE)
@@ -1998,12 +2003,13 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         resp_b = await self._wr_log(RANGE_BASE, nb)
         base = await ops.rd(RANGE_BASE)
         line = (
-            f"regwen_before=0x{regwen_pre:x}/0x{REGWEN_TRUE:x} written=0x{c.nonmubi:x} "
+            f"regwen_before=0x{regwen_pre:x}/0x{REGWEN_TRUE:x} open_base=0x{base_open:08x}/0x{ub:08x} "
+            f"written=0x{c.nonmubi:x} "
             f"regwen=0x{regwen:x} write_resp={resp_rw} base_before=0x{base_pre:08x} "
             f"base_written=0x{nb:08x} base=0x{base:08x} base_resp={resp_b} "
             f"base_landed={int(base == nb)}"
         )
-        if regwen_pre != REGWEN_TRUE or base_pre == nb:
+        if regwen_pre != REGWEN_TRUE or base_open != ub or base_pre == nb:
             self._ctrl_missing("CTRL-DMA-REGWEN-NONMUBI", f"OBS-DMA-REGWEN-NONMUBI control: {line}")
         # The field text (secure_dma.rdl:149-150) and onwrite = wzc (:146) agree that a
         # value whose bits 1 and 2 are not both set locks the range: wzc leaves
