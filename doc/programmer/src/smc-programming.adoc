@@ -39,7 +39,8 @@ aperture.
 Addresses throughout this chapter are expressed as `BASE + offset`, where
 `BASE` is either the local-alias base address `LOCAL_BASE`, or the global
 system base `GLOBAL_BASE`. `offset` is bounded by `REGION_SIZE`. The
-`GLOBAL_BASE` and `REGION_SIZE` registers are part of the CPU Control block.
+`GLOBAL_BASE`, `LOCAL_BASE` and `REGION_SIZE` registers are in the
+`smc_base_config` block at `0xC001_0000`.
 
 ifdef::backend-html5[]
 See the
@@ -59,6 +60,11 @@ the SMC window exposed by `GLOBAL_BASE` and `REGION_SIZE` is accessible
 externally, otherwise a decode error is returned. Firmware *must* program
 `GLOBAL_BASE` and `REGION_SIZE` *before any cross-subsystem AXI traffic is
 issued*.
+
+`REGION_SIZE` must be a non-zero power of two, with `GLOBAL_BASE` and
+`LOCAL_BASE` aligned to it and `LOCAL_BASE + REGION_SIZE` inside the 32-bit
+SMC-local address space. The fabric derives its local-alias address mask as
+`REGION_SIZE - 1`, so any other value misroutes accesses.
 
 Never program `REGION_SIZE` to zero. The same register sizes the SMC input
 fabric's local/global split, SMU-level routing and the SEP-to-SMC decode, so
