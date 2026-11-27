@@ -3802,10 +3802,10 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |PERMANENT-HOLE
 |"Hardware does not use the field" is a negative property over the whole design. No finite stimulus proves it.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>; <<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Secure scan chain command admission
+|Secure scan chain gating on `secure_tm`
 |-
 |PERMANENT-HOLE
-|Command admission on the secure scan chain belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the admitted command class or `secure_tm`.
+|The scan gating of the secure chain belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report scan activity on the secure chain or the state of its scan output.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`SECURE_TM` protection outputs
 |-
@@ -3910,24 +3910,24 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Scan class matrix
 |-
 |PERMANENT-HOLE
-|Command admission lives in the DFT controller outside the SEP bench.
+|The scan gating of each chain lives in the adopter DFT integration outside the SEP bench.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Class 1a and 1b scan membership
 |-
 |ACCEPT-PROBE
 |Scan-membership audit, as the row above. CHK-SCAN-N0-CLASS1 grades that the `_n0_scan` storage holds Class-1 words only, and `OBS-SCAN-N0-COMPLETE` logs the Class-1 words that the array lacks.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Secure chain test and dump command admission
+|Class 2 state and secure-chain scan output at `secure_tm = 0`
 |-
 |PERMANENT-HOLE
-|Admission belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the command class, as for secure scan chain command admission.
+|The rule that scan leaves Class 2 state unchanged and holds the secure-chain scan output constant belongs to the adopter DFT integration (`hw/sys/sep/doc/lifecycle_controller.adoc`, `secure_tm` and the Secure Scan Chain). The RTL simulation has no scan chain, so no OCAH port can report scan activity on the secure chain or the state of its scan output.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|General scan chain admission
+|General scan chain reachability
 |-
 |PERMANENT-HOLE
-|Admission is in the DFT controller. `sep_lcc_feat_ctrl_state_matrix_rand_test` grades the feature bits that gate it.
+|The scan gating is in the adopter DFT integration. `sep_lcc_feat_ctrl_state_matrix_rand_test` grades the feature bits that gate it.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Reachability versus command class
+|Reachability versus the `secure_tm` condition
 |-
 |PERMANENT-HOLE
 |`sep_lcc_feat_ctrl_state_matrix_rand_test` grades the feature-bit half (SECURE_TM is not a term).
@@ -3947,10 +3947,10 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |PERMANENT-HOLE
 |Elaboration audit.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
-|Scan test versus dump operation class
+|Scan test versus scan dump on the secure chain
 |-
 |PERMANENT-HOLE
-|Admission belongs to the adopter DFT integration (`hw/sys/sep/doc/test_mode.adoc`, Protection While Active). The RTL simulation has no scan chain, so no OCAH port can report the command class, as for secure scan chain command admission.
+|The two operations are the same shift; the secure chain is a test only at `secure_tm = 1` (`hw/sys/sep/doc/lifecycle_controller.adoc`, `secure_tm` and the Secure Scan Chain). The gating belongs to the adopter DFT integration. The RTL simulation has no scan chain, so no OCAH port can report scan activity on the secure chain or the state of its scan output.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Program and read commands that reach the bank port after the guard
 |The command at `efuse_shim_command_req_o` after the guard
@@ -4052,10 +4052,10 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |PERMANENT-HOLE
 |The state is seeded from DRBG words and written into the scrambled SRAM. No output relation can be checked without the scrambler key and the seed.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
-|Adopter DFT test-command class
-|The admitted test-command class of the adopter DFT controller
+|Adopter DFT secure-chain scan gating
+|The scan gating of the KM secure chain in the adopter DFT integration
 |PERMANENT-HOLE
-|The adopter integration owns command admission (hw/ip/key_manager/doc/architecture.adoc, sections "Wipe State", "Scan and Scan-Dump Protection"). The `secure_tm_o` port is sampled in `sep_km_otp_interface_rand_test`.
+|The adopter integration owns the scan gating of the secure chain (hw/ip/key_manager/doc/architecture.adoc, sections "Wipe State", "Scan and Scan-Dump Protection"). The `secure_tm_o` port is sampled in `sep_km_otp_interface_rand_test`.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |CPU interrupt mask restore and RX and TX indices
 |The CPU interrupt mask restore and the RX and TX buffer indices

@@ -88,7 +88,7 @@ endif::backend-html5[]
 The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
 the read-data behaviour of its memories, and the address of the eFuse controller.
 The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler macro
-`scrambler_8192x32`. The SRAM and ROM macros accept every request and must return read
+`scrambler_8192x32`. The SRAM and ROM macros accept every request and shall return read
 data on the clock after the request, because the SRAM interface descrambles and
 parity-checks each response with the address and byte strobes it captures with the
 request.
@@ -120,7 +120,7 @@ marks a crossing without connection. In test mode, `test_en_i` selects
 Cold and warm resets have different scopes. Warm reset restarts the CPU and
 its control interfaces while retaining cold-domain state and memory contents.
 Retention across warm reset does not make SRAM or registers non-volatile,
-and reset must not be treated as a key-data wipe.
+and reset shall not be treated as a key-data wipe.
 
 <<key-manager-reset-inputs-table>> identifies the two external reset inputs and their
 SEP connections.
@@ -535,8 +535,8 @@ wipe and asserts `unrecoverable_err_o` while the CPU is halted.
 An external wipe does *not* force a CPU trap in hardware. The ROM enables
 the wipe interrupt and treats it as an unrecoverable fault, but that response
 depends on interrupt delivery and execution of its handler. Software that
-masks the event or replaces ROM must not assume the CPU has stopped. The
-host/integrator must prevent continued use of the released vault after an
+masks the event or replaces ROM shall not assume the CPU has stopped. The
+host/integrator shall prevent continued use of the released vault after an
 external wipe until recovery resets the CPU. Warm reset clears the trap and
 re-enters ROM; it is not itself the KPV data erase mechanism.
 
@@ -548,16 +548,18 @@ processor, vault, KMCSR, mailbox, entropy sampler, scramblers, internal fabric,
 reset logic and register blocks. Including non-secret control state avoids
 relying on a per-register classification.
 
-* *Test scanning is permitted only in secure test mode.* The dedicated-chain
-  DFT controller admits test commands only with `secure_tm = 1`. At the eFuse
+* *Test scanning is permitted only in secure test mode.* Scan can operate on
+  the dedicated chain only with `secure_tm = 1`. At the eFuse
   shadow boundary, this mode replaces the four Class 1 sources (`*_UID` and
   `CLASS_KEY`) with valid zero values before KM captures them. Those source
   assets remain outside every scan chain. Public identities, lifecycle and
   demotion policy remain available.
-* *Scan dump is never permitted.* No lifecycle state, owner or combination
-  of `*_DBG` feature enables may turn a test command into a dump. Feature
-  controls determine whether the chain is reachable; the command-class
-  restriction enforces the no-dump policy. General-logic debug enablement
+* *Scan dump is never permitted.* With `secure_tm = 0`, scan logic shall not
+  change KM state and the chain's scan output shall be held constant, so no
+  lifecycle state, owner or combination of `*_DBG` feature enables can shift
+  live KM state out. Feature
+  controls determine whether the chain is reachable; the `secure_tm`
+  condition enforces the no-dump policy. General-logic debug enablement
   does not grant access to the KM secret-bearing chain.
 
 KM-local copies of the UIDs, class key and public identities clear on cold
@@ -566,7 +568,7 @@ bus after release. Lifecycle/demotion captures persist across warm reset.
 Firmware access locks are independent of scan protection.
 
 Writable KM SRAM is a Class 2 companion memory because it can retain key,
-message and firmware working state. Its memory-test policy must also forbid
+message and firmware working state. Its memory-test policy shall also forbid
 dump. Immutable ROM cannot retain runtime secrets and is excluded. These
 requirements define the integration boundary; the local KM RTL alone does
 not establish implementation of the external DFT controller.
@@ -1110,9 +1112,9 @@ The highest 1 KB of KM SRAM (region 31, `0x0000_FC00`–`0x0000_FFFF`) are
 reserved as a ROM-managed warm-persistent data structure (`rom_persist`). The
 mutable-firmware load area, stack, and BSS/data occupy the SRAM below it.
 
-This region is owned exclusively by ROM firmware: it holds ROM state that must
+This region is owned exclusively by ROM firmware: it holds ROM state that shall
 survive warm reset and is not general-purpose scratch for mutable (SRAM-loaded)
-firmware. Mutable firmware must not place its own data here, and once ROM
+firmware. Mutable firmware shall not place its own data here, and once ROM
 write-locks the region it cannot write it at all (see *Write-lock policy*
 below).
 
@@ -1138,7 +1140,7 @@ all fields. On a warm or soft reset, `COLD_BOOT_DONE` already reads 1 and
 |===
 
 *Write-lock policy.* Before handing control to mutable (SRAM-loaded) firmware,
-ROM must call `rom_persist_lock()`, which sets SRAM_LOCK bit 31 via a triple
+ROM shall call `rom_persist_lock()`, which sets SRAM_LOCK bit 31 via a triple
 write for glitch resistance. After locking, any write into `0xFC00`–`0xFFFF`
 is silently dropped and a `SRAM_WRITE_LOCK_VIOLATION` IRQ is raised. The lock
 is cleared on the next warm or cold reset; ROM re-establishes it
@@ -1149,7 +1151,7 @@ before transferring control to mutable code.
 
 The KM ROM can load a mutable image into SRAM and hand control to it, through
 the `CMD_SRAM_LOAD_EXEC` and `CMD_SRAM_EXEC` mailbox commands. The image is
-loaded at `0x8000`, which is also its entry point, and must fit below a static
+loaded at `0x8000`, which is also its entry point, and shall fit below a static
 load ceiling aligned to a 1 KB write-lock region, so the image never shares a
 region with the ROM stack or data. The load bounds, the key shred, the KPV
 read-lock, the image write-lock, the mailbox flush, the SRAM scramble and the

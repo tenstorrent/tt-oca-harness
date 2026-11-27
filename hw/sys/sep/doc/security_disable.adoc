@@ -24,7 +24,7 @@ regardless of the LC state and the SIP_DIS / SYS_DIS disables.
 
 SECURE_TM is not a term in the feature-control computation, so SEC_DIS neither
 qualifies nor overrides it. In particular, SEC_DIS does not open the secure scan
-chain to a dump: that chain admits only test commands, and only at
+chain to a dump: scan can operate on that chain only at
 `secure_tm = 1`, independently of the feature-control bits (see the Lifecycle
 Controller chapter, _`secure_tm` and the Secure Scan Chain_).
 
@@ -94,17 +94,17 @@ requires a SHA-256 preimage): it may be publicly known and may be carried in
 plain RTL. It resides in the fuse controller component hardware gates (_not
 the OTP fuse bank_).
 
-* The comparison logic must be purely combinational, and the
-SEP_SEC_DISABLE_TOKEN_DIGEST constant must never be latched into any
+* The comparison logic shall be purely combinational, and the
+SEP_SEC_DISABLE_TOKEN_DIGEST constant shall never be latched into any
 potentially scannable register. This is an integrity requirement, not confidentiality:
-the expected digest must not be perturbable -- for example scan-shifted --
+the expected digest shall not be perturbable -- for example scan-shifted --
 into a value whose preimage an attacker knows.
 
 * The JTAG-accessible register holding the token input values
 (SEC_DIS_TOKEN_I, RMA_SIP_TOKEN_I, and RMA_CHIPLET_TOKEN_I) *_shall not have
 a reset_*, so that the SEC_DIS state is retained across reset for early-event
-debug. That register must also not be scannable: DFT scan tests may be
-running while SEC_DIS is asserted, and a scan pattern must not inadvertently
+debug. That register shall also not be scannable: DFT scan tests may be
+running while SEC_DIS is asserted, and a scan pattern shall not inadvertently
 overwrite the register -- dropping the security unlock and stopping the test.
 
 * The secrecy of the scheme rests entirely on the SEC_DIS_TOKEN value, never

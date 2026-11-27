@@ -40,17 +40,18 @@ contract is not an unconditional hardware guarantee for a changing strap.
 
 == Protection While Active
 
-The secure-test configuration must enforce all four protections below. The
+The secure-test configuration shall enforce all four protections below. The
 adopter's DFT integration remains responsible for secure-chain separation and
-command admission.
+for the scan gating of the secure chain.
 
 [cols="2,3",options="header"]
 .Required secure-test protections
 |===
 |Protected resource |Requirement while `SECURE_TM=1`
 |Dedicated secure scan chain
-|Admit test commands only through an open, feature-gated scan path. Never admit
- dump commands. At `SECURE_TM=0`, admit no command on this chain.
+|Allow scan only through an open, feature-gated scan path. At `SECURE_TM=0`,
+ scan logic shall not change the internal state of a Class 2 asset and the
+ chain's scan output shall be held constant, so the chain cannot be dumped.
 |Protection shadows
 |Block all updates to `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS`.
 |OTP programming path |Hold the fuse macro's write-enable inputs inactive.
@@ -60,13 +61,13 @@ command admission.
 
 The eFuse controller implements request blocking and masks the designated
 secret shadow outputs to zero. Masking does not erase the stored fuse or
-shadow values, and register reads retain their normal access controls. It must
+shadow values, and register reads retain their normal access controls. It shall
 not be treated as proof that every downstream consumer has been cleared.
 These protections allow testing without exposing persistent secrets that
 cannot be erased before RMA.
 
 General scan chains follow their ordinary debug gates; the dedicated secure
-chain has the additional command restrictions above. For the normative scan
+chain has the additional restriction above. For the normative scan
 classes and access rules, see
 ifdef::backend-html5[]
 xref:sep:lifecycle_controller.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain].
