@@ -64,7 +64,7 @@ cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io
 cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*$io_budget(default)]     -clock [get_clock JTAG_TCK] [get_ports scan_rst_ni] -add_delay
 
 # Boot sequence done
-cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports ext_boot_seq_done_i] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports ext_boot_seq_done_i] -add_delay
 
 # DMI interface
 # - only SEPCLK because there is no internal synchronization like the mpc or cpu_halt

@@ -27,11 +27,10 @@ proc _sep_case { value pattern } {
 _sep_case 0 {test_en_i}
 _sep_case 0 {scan_rst_ni}
 
-# JTAG reset overrides are quasi-static debug straps; pin off for functional CDC/RDC
+# JTAG reset overrides: a debugger drives these at run time (two DR scans of the IC_RESET
+# register), but the functional scenario excludes debugger-forced resets, so override-driven
+# reset assertions are not analysed here.
 _sep_case 0 {jtag_sep_reset_ctrl_i.ovrd*}
 _sep_case 0 {jtag_sep_reset_ctrl_i.val*}
-
-# Boot sequence done
-_sep_case 1 {ext_boot_seq_done_i}
 
 rename _sep_case {}

@@ -25,12 +25,12 @@ proc _smc_case { value pattern } {
 # TODO: Create a separate DFT-mode CDC scenario with these set to 1 to get full coverage of the override reset path through the mux
 _smc_case 0 {test_en_i}
 _smc_case 0 {scan_rst_ni}
-# JTAG reset overrides are quasi-static debug strapping; pin them low for RDC
+# JTAG reset overrides: a debugger drives these at run time (two DR scans of the IC_RESET
+# register), but the functional scenario excludes debugger-forced resets, so override-driven
+# reset assertions are not analysed here.
 _smc_case 0 {jtag_reset_ctrl_i.ovrd*}
 _smc_case 0 {jtag_reset_ctrl_i.val*}
 _smc_case 0 {tdr_dbg_ctrl_clock_stop_en_i}
-
-_smc_case 1 {ext_boot_seq_done_i}
 
 rename _smc_case {}
 

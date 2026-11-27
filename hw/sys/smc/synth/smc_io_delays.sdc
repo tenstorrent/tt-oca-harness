@@ -109,7 +109,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 
 # DFT
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports skip_mem_repair_o] -add_delay
-cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports ext_boot_seq_done_i] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports ext_boot_seq_done_i] -add_delay
 
 # LC
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {lc_state_i*}] -add_delay

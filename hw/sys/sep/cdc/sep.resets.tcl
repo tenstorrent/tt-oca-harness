@@ -29,6 +29,10 @@ create_reset -name SEP_RESET_N [cdc_inst "u_sep_reset_ctrl/sep_reset_no"] -both 
 # CPU reset = sep_reset_n & wdt_rst_ni
 create_reset -name SEP_CPU_RESET_N [cdc_inst "u_sep_reset_ctrl/sep_cpu_reset_no"] -both -type reset -value low -disable_assertions_db
 
+# VeeR debug-module ndmreset (dmcontrol[1], active high): a debugger write that resets the
+# core, including its LSU and IFU AXI masters into the SEP fabric (core_rst_l in el2_veer).
+create_reset -name SEP_DM_NDMRESET [cdc_inst "u_sep_cpu/u_el2_veer_wrapper/veer/dbg/dmcontrolff/genblock.dffs/dout/Q\[0\]"] -async -type reset -value high -disable_assertions_db
+
 # SEP's watchdog timer reset = wdt_rst_ni after a 2-flop sync on clk_i (flops reset by rst_ni)
 create_reset -name SEP_WDT_RESET_N [cdc_inst "u_sep_reset_ctrl/sep_wdt_reset_no"] -both -type reset -value low -disable_assertions_db
 
@@ -57,22 +61,29 @@ create_reset -name SEP_RESET_N_REFCNT_REF_CLK [cdc_inst "u_sep_system_peripheral
 # RESET ASSERTION SEQUENCES
 ##############################
 
-# DBG_RSTB_I is powergood_stable at SMU; primary reset (rst_ni) asserts with it and all clocks are absent
+# DBG_RSTB_I is powergood_stable at SMU; primary reset (rst_ni) asserts with it.
 # Port-reset and clock names map through cdc_rst / cdc_clk so these sequences survive at
 # the SMU top with the parent's names; SEP-internal reset names are level-independent.
 set_rdc_define_assertion_sequence -from_reset [cdc_rst {DBG_RSTB_I}] -to_reset [cdc_rst {RST_NI}]
-# ENTROPY_ROSC_CLK is created by the top that owns the entropy pad: sep_clocks.sdc at
-# the SEP top, smu.pad_boundary.tcl (after this file) at SMU, the integrator otherwise.
-set_rdc_define_assertion_sequence -from_reset [cdc_rst {DBG_RSTB_I}] \
-    -to_clock [get_object_name [get_clocks -quiet [cdc_clk {SEPCLK REFCLK WDTCLK JTAG_TCK ck_feedthru ENTROPY_ROSC_CLK}]]]
 set_rdc_define_assertion_sequence -from_reset [cdc_rst {RST_NI}] -to_reset {SEP_INTERMEDIATE_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_INTERMEDIATE_RESET_N} -to_reset {SEP_RESET_N}
 set_rdc_define_assertion_sequence -from_reset [cdc_rst {SEP_RESET_N WDT_RST_NI}] -to_reset {SEP_CPU_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_RESET_N} -to_reset {SEP_SW_RST_KM SEP_SW_RST_OTBN SEP_SW_RST_AES SEP_SW_RST_HMAC SEP_SW_RST_KMAC SEP_SW_RST_TRNG SEP_SW_RST_ABR}
-set_rdc_define_assertion_sequence -from_reset [cdc_rst {RST_NI WDT_RST_NI}] -to_reset {SEP_WDT_RESET_N}
+# WDT_RST_NI reaches SEP_WDT_RESET_N through a two-flop synchroniser, two cycles late.
+set_rdc_define_assertion_sequence -from_reset [cdc_rst {RST_NI}] -to_reset {SEP_WDT_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_WDT_RESET_N} -to_reset {RST_WDT_AON_CLK_N}
 # SEP_WDT_RESET_N asserts only from RST_NI or WDT_RST_NI, and each also asserts SEP_CPU_RESET_N.
 set_rdc_define_assertion_sequence -from_reset {SEP_WDT_RESET_N} -to_reset {SEP_CPU_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_RESET_N} -to_reset {KM_COLD_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {KM_COLD_RESET_N} -to_reset {KM_WARM_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_RESET_N} -to_reset {SEP_RESET_N_REFCNT_SEP_CLK SEP_RESET_N_REFCNT_REF_CLK}
+
+# SEP_INTERMEDIATE_RESET_N is the SEP eFuse controller's reset output, which asserts only
+# through its rst_ni; fuse sense and ext_boot_seq_done only delay its release. SEP_RESET_N
+# adds the JTAG override, which this scenario pins off. Both therefore assert only with
+# RST_NI, so a destination on RST_NI is already in reset. Under a parent VC matches no
+# crossing to it; SEP_RDC_CORRUPT_SEP_RESET_CONDITIONED disposes of them there.
+if { [cdc_is_block_top] } {
+    set_app_var rdc_new_asyncrst_commands true
+    asyncrst_assert_sequence -from_reset {SEP_INTERMEDIATE_RESET_N SEP_RESET_N} -to_reset {RST_NI}
+}

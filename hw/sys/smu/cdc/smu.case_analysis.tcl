@@ -16,6 +16,4 @@ if { [info procs cdc_is_block_top] eq "" } {
 if { [cdc_ports_pinned] } {
     set_case_analysis 0 [get_ports {test_en_i}]
     set_case_analysis 0 [get_ports {scan_rst_ni}]
-    # DFX boot-sequence-done strap.
-    set_case_analysis 1 [get_ports {ext_boot_seq_done_i}]
 }

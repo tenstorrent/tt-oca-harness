@@ -154,25 +154,6 @@ create_reset -name AVS_PRE_DIV_CLK_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus
 # RESET ASSERTION SEQUENCES #
 ##############################
 
-# POWERGOOD_STABLE_N low ==> all chip clocks are absent.
-#
-# Design knowledge: POWERGOOD_STABLE_N asserting (low) means the chip power
-# rail is not yet stable / has dropped, which means every clock generator
-# feeding the SMC is also unavailable. This includes clocks sourced from
-# dedicated top-level input ports (REFCLK, SMCCLK, PERIPHERALCLK,
-# TELEMETRYCLK, SPICLK, ck_feedthru) and
-# the JTAG TCK — no external agent can drive clocks into an
-# unpowered die, and JTAG in this design shares the chip power rail.
-#
-# Declaring this to VC-RDC lets the tool prune RDC crossings whose capture
-# clock is gated by POWERGOOD_STABLE: when the reset asserts the clock has
-# no edges, so there is nothing to meta-stabilise.
-# Clock names map through cdc_clk (SMCCLK -> SMUCLK at the parent); reset names are the
-# SMC-internal ones and keep their names at every level.
-set_rdc_define_assertion_sequence \
-    -from_reset {POWERGOOD_STABLE_N} \
-    -to_clock [cdc_clk {REFCLK SMCCLK PERIPHERALCLK TELEMETRYCLK JTAG_TCK SPICLK ck_feedthru}]
-
 # For active-low AND gates, any input asserting (going low) forces the output
 # to assert (go low). Therefore child resets always assert when parent resets
 # assert, making RDC paths from parent domain to child domain safe.
@@ -244,32 +225,15 @@ set_rdc_define_assertion_sequence \
     -from_reset {PRIMARY_RESET_N_PERIPH_CLK} \
     -to_reset {AVS_APB_CLK_RESET_N AVS_CLK_RESET_N AVS_PRE_DIV_CLK_RESET_N}
 
-# Telemetry reset pairing. rst_telemetry_ni is a chip-level input that passes through smu.sv
-# and smc.sv untouched. Chip integration confirms it asserts whenever PRIMARY asserts and never
-# on its own. VC accepts an assertion sequence for a reset pair in one direction only, so only
-# the PRIMARY -> TELEMETRY direction is declared; the co-assertion carries the
-# SMC_RDC_CORRUPT_TELEM_FIFO_STORAGE disposition in hw/sys/smc/rdc/smc.vcrdc.waiver.tcl.
-set_rdc_define_assertion_sequence \
-    -from_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK PRIMARY_RESET_N_REF_CLK PRIMARY_RESET_N_PERIPH_CLK} \
-    -to_reset {TELEMETRY_RESET_N}
-
-
 # asyncrst_assert_sequence needs this app var (default off); set before first use.
 set_app_var rdc_new_asyncrst_commands true
 
-# WARM / FUSE => PRIMARY
-# Both are only asserted when the SMU is going into reset, as WARM is asserted by
-# WDT (WDT trigger indicates system will go into reset) and FUSE is asserted during boot,
-# so system is in reset
+# FUSE => PRIMARY: the eFuse controller's reset output asserts only through its rst_ni,
+# the primary reset; sense-done, ext_boot_seq_done and the boot stall only delay its
+# release. The JTAG fuse-reset override is the other assertion source, which this
+# scenario pins off. The warm reset is not ordered: a watchdog bite asserts it alone.
 asyncrst_assert_sequence \
-    -from_reset {WARM_RESET_N WARM_RESET_N_SMC_CLK FUSE_RESET_N} \
-    -to_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK}
-
-# TELEMETRY => PRIMARY: the other direction of the telemetry reset pairing above, which
-# set_rdc_define_assertion_sequence cannot declare. rst_telemetry_ni never asserts without
-# PRIMARY, so the telemetry receivers are in reset whenever their ATB FIFO is.
-asyncrst_assert_sequence \
-    -from_reset {TELEMETRY_RESET_N} \
+    -from_reset {FUSE_RESET_N} \
     -to_reset {PRIMARY_RESET_N PRIMARY_RESET_N_SMC_CLK}
 
 # AVS_APB_CLK_RESET_N => PRIMARY: AVS_APB is the prim_sync_reset tail of primary_periph,
