@@ -5,13 +5,13 @@
 ################################################################################
 # smc.pad_boundary.tcl - SMC pad-boundary CDC constraints
 #
-# CDC annotations on SMC's pad ports: the core2pad_o output ignore paths and the
-# AVS sdata synchronizer on the pad2core_i[51] input. Each models core2pad_o and
-# pad2core_i as the chip boundary, which holds only where they are top ports. A
-# parent whose pads sit between its ports and SMC (a padring, a bidirectional pad
-# that feeds core2pad_o back into pad2core_i) constrains that boundary itself, so
-# these apply at block top only. SMU states the same boundary for its own ports
-# in hw/sys/smu/cdc/smu.pad_boundary.tcl.
+# CDC annotations on SMC's pad ports: the core2pad_o and pad-enable output ignore
+# paths and the AVS sdata synchronizer on the pad2core_i[51] input. Each models
+# core2pad_o and pad2core_i as the chip boundary, which holds only where they are
+# top ports. A parent whose pads sit between its ports and SMC (a padring, a
+# bidirectional pad that feeds core2pad_o back into pad2core_i) constrains that
+# boundary itself, so these apply at block top only. SMU states the same boundary
+# for its own ports in hw/sys/smu/cdc/smu.pad_boundary.tcl.
 ################################################################################
 
 if { [info procs cdc_is_block_top] eq "" } {
@@ -23,6 +23,18 @@ if { ![cdc_is_block_top] } {
           constrains the pad boundary"
     return
 }
+
+################################################################################
+# GPIO PAD-ENABLE OUTPUT IGNORE
+################################################################################
+# core2pad_en_o[*] and pad2core_en_o[*] drive the pad cells' output and input
+# enables: primary outputs with no receiving flop, like core2pad_o[*]. Only the
+# crossing check is dropped. They carry live protocol output enables (I2C, I3C,
+# SPI), so glitch analysis stays.
+set_cdc_ignore_path \
+    -to [get_ports {core2pad_en_o* pad2core_en_o*}] \
+    -type cdc_crossing \
+    -comments "GPIO pad enables: register or protocol enable to async pad, no sync needed"
 
 ################################################################################
 # GPIO core2pad OUTPUT IGNORE

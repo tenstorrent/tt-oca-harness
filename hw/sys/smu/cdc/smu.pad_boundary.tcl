@@ -64,6 +64,18 @@ create_clock -add -name ENTROPY_ROSC_CLK -period $clock_periods(ENTROPY_ROSC_PER
 set_rdc_define_assertion_sequence -from_reset POWERGOOD_STABLE_N -to_clock ENTROPY_ROSC_CLK
 
 ################################################################################
+# GPIO PAD-ENABLE OUTPUT IGNORE
+################################################################################
+# core2pad_en_o[*] and pad2core_en_o[*] drive the pad cells' output and input
+# enables: primary outputs with no receiving flop, like core2pad_o[*]. Only the
+# crossing check is dropped. They carry live protocol output enables (I2C, I3C,
+# SPI), so glitch analysis stays.
+set_cdc_ignore_path \
+    -to [get_ports {core2pad_en_o* pad2core_en_o*}] \
+    -type cdc_crossing \
+    -comments "GPIO pad enables: register or protocol enable to async pad, no sync needed"
+
+################################################################################
 # GPIO core2pad OUTPUT IGNORE
 ################################################################################
 # core2pad_o[*] outputs are constrained to ck_feedthru (async virtual clock).

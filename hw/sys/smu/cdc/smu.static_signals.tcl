@@ -11,14 +11,6 @@
 # pin) come from the inherited smc.static_signals.tcl re-anchored via cdc_port_or_pin in
 # hw/sys/smu/cdc/smu.cdc_rdc.tcl.
 
-# will transition once to indicate status of POR DFX logic
-create_static -name [get_ports {mem_repair_done_i}]
-create_static -name [get_ports {mem_repair_success_i}]
-create_static -name [get_ports {mem_repair_abort_i}]
-create_static -name [get_ports {mbist_done_i}]
-create_static -name [get_ports {mbist_pass_i}]
-create_static -name [get_ports {mbist_abort_i}]
-
 # Boot stall
 create_static -name [get_ports {pad2core_i[57]}]
 

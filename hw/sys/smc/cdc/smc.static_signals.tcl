@@ -34,18 +34,8 @@ proc _smc_static_pin { path } {
 
 # The following can be marked as Quasi-static
 
-# will transition once to indicate status of POR DFX logic
-_smc_static_port {mem_repair_done_i}
-_smc_static_port {mem_repair_success_i}
-_smc_static_port {mem_repair_abort_i}
-_smc_static_port {mbist_done_i}
-_smc_static_port {mbist_pass_i}
-_smc_static_port {mbist_abort_i}
-
 # Boot Stall
 _smc_static_port {pad2core_i[57]}
-_smc_static_port {boot_stall_jtag_ovrd_i}
-_smc_static_port {boot_stall_jtag_val_i}
 
 # will transition infrequently, only if lifecycle state gets updated from the SEP
 _smc_static_port {lc_state_i}
@@ -61,19 +51,13 @@ _smc_static_port {smc_region_size_o*}
 # These are expected to be programmed during setup, before the GPIOs are
 # actively used by a live protocol.
 _smc_static_port {lsio_interface_select_o*}
-_smc_static_port {core2pad_en_o*}
-_smc_static_port {pad2core_en_o*}
 
-# GPIO interface register fields that choose interface ownership, direction,
-# interrupt mode, and access filtering. These are treated as quasi-static
-# control fields, not live GPIO data/status.
+# GPIO interface register fields that choose pad ownership. The programmer guide
+# requires software not to change a pad's owner while the current owner is active.
 set gpio_qs_fields [get_nets -hier {
-    *gpio_intf_hwif_out.DATA_CTRL.enable_rx_tx.value*
     *gpio_intf_hwif_out.DATA_CTRL.interface_enable.value*
     *gpio_intf_hwif_out.DATA_CTRL.lsio_select.value*
-    *gpio_intf_hwif_out.DATA_CTRL.interrupt_enable.value*
     *gpio_intf_hwif_out.DATA_CTRL.lsio_disable.value*
-    *gpio_intf_hwif_out.DATA_CTRL.interrupt_type.value*
     *gpio_intf_hwif_out.DATA_CTRL_ENABLE.use_reg_core2pad.value*
 } -quiet]
 if { [sizeof_collection $gpio_qs_fields] > 0 } {
@@ -85,12 +69,9 @@ if { [sizeof_collection $gpio_qs_fields] > 0 } {
 # (.../u_gpio_intf_reg/field_storage.DATA_CTRL.<field>.value/Q), so they must be
 # stamped directly for the core2pad_o glitch path to be pruned.
 set gpio_qs_field_storage_pins [get_pins -hier -quiet {
-    *u_gpio_intf_reg/field_storage.DATA_CTRL.enable_rx_tx.value/Q
     *u_gpio_intf_reg/field_storage.DATA_CTRL.interface_enable.value/Q
     *u_gpio_intf_reg/field_storage.DATA_CTRL.lsio_select.value/Q
-    *u_gpio_intf_reg/field_storage.DATA_CTRL.interrupt_enable.value/Q
     *u_gpio_intf_reg/field_storage.DATA_CTRL.lsio_disable.value/Q
-    *u_gpio_intf_reg/field_storage.DATA_CTRL.interrupt_type.value/Q
     *u_gpio_intf_reg/field_storage.DATA_CTRL_ENABLE.use_reg_core2pad.value/Q
 }]
 if { [sizeof_collection $gpio_qs_field_storage_pins] > 0 } {
@@ -107,14 +88,9 @@ _smc_static_port {spi_enable_i}
 # -----------------------------------------------------------------------------
 # UART / I2C / SMBus interface-enable CSRs — quasi-static during live traffic
 # -----------------------------------------------------------------------------
-# These CSR fields are the "is this protocol enabled on its LSIO pads?" master switches.
-# Software programs them once during peripheral init and holds them stable while the protocol
-# is actively running. They are NOT live traffic data.
-#
-# Without these `create_static` declarations, VC SpyGlass models the gating as a dynamic mux
-# across two clock domains and reports a large cluster of `CDC_UNSYNC_CTRL` + `CDC_GLITCH_CTRL` violations.
-# Functionally the glitch risk is zero: these enables only transition when the corresponding protocol is not
-# actively receiving, so any brief gate transition can't be mistaken for a real protocol activity.
+# These CSR fields are each protocol's hardware LSIO request, so they choose the owner of its
+# pads. The programmer guide requires software not to change a pad's owner while the current
+# owner is active.
 
 _smc_static_pin {u_smc_peripherals/u_uart_wrap/gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap/u_uart_log_engine_ctrl_reg/field_storage.CTRL.UART_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_uart_wrap/gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap/u_uart_log_engine_ctrl_reg/field_storage.CTRL.UART_EN.value/Q}
