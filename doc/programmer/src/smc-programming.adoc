@@ -2172,7 +2172,7 @@ this chiplet.
 `cool_reset_cause` reads 0 for `none`, 1 for `pin`, 2 for `seq_ack` and 3 for
 `seq_timeout`. A dash means the pin level does not change the action. A cold reset returns
 `cool_reset_cause` to `none` and clears `ISOLATE_REQ_ACK_CAPTURE`; the next
-cool reset overwrites both. On a secondary chiplet, the isolation sequence rows do not occur
+cool reset overwrites both. A JTAG cool-reset override is not recorded and leaves both unchanged. On a secondary chiplet, the isolation sequence rows do not occur
 and `ISOLATE_REQ_ACK_CAPTURE` stays zero.
 
 Before reset, isolation or a clock change, quiesce the affected block following

@@ -469,7 +469,10 @@ secondary. To the secondary chiplet, a cold reset on `BP_RESET_N` and a
 cool reset on `BP_COOL_RESET_N_I` are the same: both assert its primary
 reset. Only its reset timeout and isolation registers are reset by the cold reset
 alone, and the secondary chiplet does not use them. The primary chiplet's
-`BP_COOL_RESET_N_I` and the secondary chiplet's `BP_COOL_RESET_N_O` are not connected. The board drives
+`BP_COOL_RESET_N_I` and the secondary chiplet's `BP_COOL_RESET_N_O` are not connected. A board that
+instead wires a chiplet's `BP_COOL_RESET_N_O` back to its own `BP_COOL_RESET_N_I` must program
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` above 33 reference clock cycles plus the round-trip delay, or
+the looped-back pulse can record `cool_reset_cause` as `pin`. The board drives
 `ISOLATE_REQ`, sampled on GPIO 53, into the primary chiplet only; the
 secondary chiplet ties its `ISOLATE_REQ` and `isolate_sequence_trigger_i` low and
 leaves its `isolate_req_o` unconnected. The labels REG, PINEN and SMCEN

@@ -1365,6 +1365,8 @@ class smc_base_test(uvm_test):
             dut.tb_ndmreset_request.value = 0
         if hasattr(dut, "tb_isolate_sequence_trigger"):
             dut.tb_isolate_sequence_trigger.value = 0
+        if hasattr(dut, "tb_isolate_req_ack"):
+            dut.tb_isolate_req_ack.value = 0
         if hasattr(dut, "tb_temp_interrupt_i"):
             dut.tb_temp_interrupt_i.value = 0
         if hasattr(dut, "tb_ext_interrupt_0_i"):

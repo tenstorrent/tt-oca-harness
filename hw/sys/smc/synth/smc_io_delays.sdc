@@ -125,6 +125,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports isolate_sequence_trigger_i] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {isolate_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {ss_reset_complete_i*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {isolate_req_ack_i*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {ss_config_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {ss_reset_ctrl_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports sync_irq_o] -add_delay
