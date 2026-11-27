@@ -279,27 +279,6 @@ module sep_uvm_top
             $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
                 .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
         end
-        // An illegal edn_ack_sm state from +sep_edn_ack_sm_inject moves that
-        // state machine to Error, which these two checks forbid. Only the
-        // inject leg turns them off; AckSmErrTriggersErr_A, which checks that
-        // the fault reaches err_o, stays on.
-        if ($test$plusargs("sep_edn_ack_sm_assert_waive")) begin
-            $display("[tb] EDN ack state machine health checks off (+sep_edn_ack_sm_assert_waive)");
-            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-                .AxisEdnAllAckSmHealthy_A);
-            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
-                .AxisEdnAllAckSmHealthy_A);
-            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-                .gen_ep[0].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
-            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-                .gen_ep[1].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
-            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-                .gen_ep[2].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
-            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-                .gen_ep[3].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
-            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
-                .gen_ep[0].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
-        end
         // SHA-256-only prim_sha2_32 (MultimodeEn=0) ties inner digest_mode_i to
         // SHA2_None. ValidDigestModeFlag_A requires {SHA2_256, SHA2_384, SHA2_512}
         // on every hash beat, so it is not a contract on those instances. HMAC
@@ -4407,12 +4386,41 @@ module sep_uvm_top
     // force and writes 0 to release it; the force is re-issued on every falling
     // edge for Verilator. Without the plusarg the variable has no effect.
     // Readback: edn_ack_sm_state_o and edn_adapter_err_o.
-    // +sep_edn_ack_sm_assert_waive turns off the assertions that the illegal
-    // state trips by construction (block near the top of this module).
     logic        edn_ack_sm_inj_armed;
     int unsigned edn_ack_sm_inj_sel = 0;
     logic [8:0]  edn_ack_sm_inj_val = 9'h000;
     initial edn_ack_sm_inj_armed = $test$plusargs("sep_edn_ack_sm_inject");
+    // The illegal state moves the state machine to Error, which
+    // AxisEdnAllAckSmHealthy_A and FpvSecCmErrorStEscalate_A forbid. With
+    // +sep_edn_ack_sm_assert_waive they are off from the first time
+    // edn_ack_sm_inj_sel is non-zero to the end of the run: Error holds until
+    // rst_ni, so a user runs only fault legs after the first inject. The force
+    // starts on the next falling edge of clk_i, after they are off.
+    // AckSmErrTriggersErr_A, which checks that the fault reaches err_o, stays
+    // on. Verilator compiles these assertions out.
+`ifndef VERILATOR
+    initial begin
+        if ($test$plusargs("sep_edn_ack_sm_assert_waive")) begin
+            wait (edn_ack_sm_inj_sel != 0);
+            $display("%0t: [tb] EDN ack state machine health checks off %s", $time,
+                     "(+sep_edn_ack_sm_assert_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .AxisEdnAllAckSmHealthy_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+                .AxisEdnAllAckSmHealthy_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[0].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[1].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[2].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[3].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+                .gen_ep[0].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+        end
+    end
+`endif
 `define EDN_ACK_SM_INJ(SEL, ADAPTER, EP) \
     always @(negedge clk_i) begin \
         if (edn_ack_sm_inj_armed && (edn_ack_sm_inj_sel == SEL)) begin \

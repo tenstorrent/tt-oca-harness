@@ -58,13 +58,18 @@ Checkers:
                     strap 1 and at strap 0.
   CHK-SCAN-OVERRIDE test_en_i=1 and scan_rst_ni=1: the 16 nets are high on every
                     clk_i edge from the rst_ni fall to the end of the hold
-                    after its rise.
+                    after its rise. Its control CTRL-SCAN-OVERRIDE-LIVE runs
+                    first: with test_en_i=0 the same rst_ni pulse takes each of
+                    the 16 nets low on at least one edge, so a net that rst_ni
+                    does not move fails the leaf before the check.
 
 Each stimulus has a CTRL line read at the ``u_dut`` input ports: CTRL-STRAP-INDEP
 (the ``test_en_i`` values seen across each toggle sequence), CTRL-SCAN-IDLE and
 CTRL-SCAN-REPLACE (the ``scan_rst_ni`` low edges, ``test_en_i`` and ``rst_ni``
-on every sample of the pulse) and CTRL-SCAN-OVERRIDE (the ``rst_ni`` low edges,
-``test_en_i`` and ``scan_rst_ni`` on every sample of the pulse).
+on every sample of the pulse), CTRL-SCAN-OVERRIDE (the ``rst_ni`` low edges,
+``test_en_i`` and ``scan_rst_ni`` on every sample of the pulse) and
+CTRL-SCAN-OVERRIDE-LIVE (the same fields with ``test_en_i`` = 0, and the count of
+nets low on an edge with ``rst_ni`` low).
 
 ``sep_test_en_pin_reach_test`` grades the clock-gater and AXI cell test
 inputs that ``test_en_i`` reaches. This leaf runs the same read-only walk
@@ -75,7 +80,7 @@ inputs that ``test_en_i`` reaches. This leaf runs the same read-only walk
 
 The graded window (owner code of this test) is open from the first test_en_i
 toggle to the end of leg B, and closed for the rst_ni pulse of the strap-0 boot,
-for the Key Manager release and for leg C. After leg C the leaf lowers
+for the Key Manager release and the live rst_ni control, and for leg C. After leg C the leaf lowers
 test_en_i and takes a cold reset, so it ends in functional mode.
 """
 
@@ -283,14 +288,16 @@ class sep_scan_reset_override_test(sep_base_test):
 
     # -- reset pulse ------------------------------------------------------------------
 
-    async def _reset_pulse(self, pin: str, test_en: int, chk: str) -> dict:
+    async def _reset_pulse(self, pin: str, test_en: int, chk: str, live: bool = False) -> dict:
         """``pin`` (scan_rst_ni or rst_ni) low for w cycles, released at the drawn
         phase; nets and the u_dut reset and test_en_i inputs sampled on every
         clk_i rising edge to the end of the hold after the rise.
 
         The CTRL line of ``chk`` requires ``u_dut.<pin>`` low on exactly w of
         the edges after the fall, ``u_dut.test_en_i`` equal to ``test_en`` and
-        the other reset input high on every one of them.
+        the other reset input high on every one of them. With ``live`` the line
+        is the ``-LIVE`` control and also requires every net low on at least
+        one edge with ``u_dut.<pin>`` low.
         """
         dut = cocotb.top
         u = dut.u_dut
@@ -344,7 +351,7 @@ class sep_scan_reset_override_test(sep_base_test):
         low_edges = sum(p[pin] == 0 for p in graded)
         te_bad = sum(p["test_en_i"] != test_en for p in graded)
         other_low = sum(p[other] != 1 for p in graded)
-        ctrl = chk.replace("CHK-", "CTRL-")
+        ctrl = chk.replace("CHK-", "CTRL-") + ("-LIVE" if live else "")
         line = (
             f"u_dut.{pin} low_edges={low_edges}/{cfg.w} u_dut.test_en_i={test_en} "
             f"u_dut.{other}=1 samples={len(graded)}"
@@ -352,6 +359,16 @@ class sep_scan_reset_override_test(sep_base_test):
         assert graded and low_edges == cfg.w and not te_bad and not other_low, (
             f"{ctrl} FAIL: {line} test_en_i_mismatch={te_bad} {other}_low={other_low}"
         )
+        fell = []
+        if live:
+            held = [v for (t, v), (_t, p) in zip(samples, ports) if t > t_fall and p[pin] == 0]
+            fell = [n[0] for i, n in enumerate(NETS) if any(v[i] == 0 for v in held)]
+            line += f" nets_fell={len(fell)}/{N_NETS}"
+            stayed = [n[0] for n in NETS if n[0] not in fell]
+            assert not stayed, (
+                f"{ctrl} FAIL net={','.join(stayed)}: net(s) not low on any clk_i edge with "
+                f"u_dut.{pin}=0 u_dut.test_en_i={test_en}: {line}"
+            )
         self.logger.info("%s: %s", ctrl, line)
         rises = {}
         for (name, _p, bit), t in zip(NETS, timers):
@@ -366,9 +383,42 @@ class sep_scan_reset_override_test(sep_base_test):
             "rises": rises,
             "test_en": test_en,
             "low_edges": low_edges,
+            "fell": fell,
         }
 
     # -- leaf -----------------------------------------------------------------------
+
+    async def _release_baseline(self) -> None:
+        """Release the Key Manager, wait for the km_cond_rst, refcnt_rst and
+        efuse_rst_sync taps, and require all 16 nets high (INFO-SCAN-BASELINE)."""
+        dut = cocotb.top
+        swrst = SepSwReset(self)
+        swrst.value = await swrst.read_back()
+        await swrst.release("km")
+        for _ in range(TAP_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.km_cond_rst_probe_o) == 0x3:
+                break
+        assert self.rd(dut.km_cond_rst_probe_o) == 0x3, (
+            "km_cond_rst taps did not both read 1 after the Key Manager release"
+        )
+        # The clk_ref_i side of the reference counter releases 16 clk_ref_i
+        # cycles after sep_reset_n.
+        for _ in range(TAP_BOUND):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.refcnt_rst_n_probe_o, allow_unknown=True) == 0x3:
+                break
+        # efuse_rst_sync needs fuse sense done, ext_boot_seq_done_i and rst_ni.
+        await self._wait_tap("efuse_rst_sync_probe_o", TAP_BOUND)
+        await ReadOnly()
+        base = self._nets()
+        assert all(base), (
+            f"precondition FAIL: nets before the scan pulses {dict(zip([n[0] for n in NETS], base))}"
+        )
+        await RisingEdge(dut.clk_i)
+        self.logger.info("INFO-SCAN-BASELINE LOG: nets_high=%d/%d", sum(base), N_NETS)
 
     async def _boot(self) -> None:
         """Bring-up with the strap at 1 stable from before the rst_ni release."""
@@ -488,35 +538,16 @@ class sep_scan_reset_override_test(sep_base_test):
             self.test_en_toggles[0],
         )
 
-        # Step 7: release the Key Manager (set-up, window closed).
+        # Step 7: release the Key Manager (set-up, window closed), then the live
+        # control: rst_ni low with test_en_i = 0 takes each of the 16 nets low, so
+        # CHK-SCAN-OVERRIDE grades nets that rst_ni moves. Then the release again.
         close_graded_window(self.logger)
-        swrst = SepSwReset(self)
-        swrst.value = await swrst.read_back()
-        await swrst.release("km")
-        for _ in range(TAP_BOUND):
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
-            if self.rd(dut.km_cond_rst_probe_o) == 0x3:
-                break
-        assert self.rd(dut.km_cond_rst_probe_o) == 0x3, (
-            "km_cond_rst taps did not both read 1 after the Key Manager release"
-        )
-        # The clk_ref_i side of the reference counter releases 16 clk_ref_i
-        # cycles after sep_reset_n.
-        for _ in range(TAP_BOUND):
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
-            if self.rd(dut.refcnt_rst_n_probe_o, allow_unknown=True) == 0x3:
-                break
-        # efuse_rst_sync needs fuse sense done, ext_boot_seq_done_i and rst_ni.
-        await self._wait_tap("efuse_rst_sync_probe_o", TAP_BOUND)
-        await ReadOnly()
-        base = self._nets()
-        assert all(base), (
-            f"precondition FAIL: nets before the scan pulses {dict(zip([n[0] for n in NETS], base))}"
-        )
-        await RisingEdge(dut.clk_i)
-        self.logger.info("INFO-SCAN-BASELINE LOG: nets_high=%d/%d", sum(base), N_NETS)
+        await self._release_baseline()
+        live = await self._reset_pulse("rst_ni", 0, "CHK-SCAN-OVERRIDE", live=True)
+        await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
+        for port in ("dbg_sep_reset_n_o", "sep_cpu_reset_n_o"):
+            await self._wait_tap(port, TAP_BOUND)
+        await self._release_baseline()
 
         # Step 8: control A, test_en_i = 0.
         open_graded_window(TEST, self.logger)
@@ -606,9 +637,11 @@ class sep_scan_reset_override_test(sep_base_test):
         nets_high = sum(all(vals[i] for _t, vals in c["samples"]) for i in range(N_NETS))
         self.logger.info(
             "CHK-SCAN-OVERRIDE PASS: rst_ni low %d cycles test_en_i=1 scan_rst_ni=1 "
-            "nets_high=%d/%d samples=%d",
+            "nets_high=%d/%d nets_fell_live=%d/%d samples=%d",
             c["low_edges"],
             nets_high,
+            N_NETS,
+            len(live["fell"]),
             N_NETS,
             len(c["samples"]),
         )
