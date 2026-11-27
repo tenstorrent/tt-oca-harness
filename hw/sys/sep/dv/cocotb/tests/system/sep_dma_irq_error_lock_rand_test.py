@@ -105,10 +105,12 @@ gives 0x0 for 0x9 written over 0x6, while the field text says "writing
 kMultiBitBool4False (0x9) reads back 0x9" (``secure_dma.rdl:150``). After a
 cold reset the leaf also writes a drawn value that is neither MuBi4 value to
 RANGE_REGWEN, reads it back and writes RANGE_BASE; the read-back and whether
-BASE took the write are logged (``OBS-DMA-REGWEN-NONMUBI``), because the
-same two texts disagree: the field text says "any value other than 0x6 locks
-the range" (``secure_dma.rdl:150``), and ``wzc`` leaves 0x6, and so no lock,
-for a value with bits 1 and 2 set. Control, else CTRL-MISSING: RANGE_REGWEN reads 0x6 before the write and
+BASE took the write are logged (``OBS-DMA-REGWEN-NONMUBI``). The field text
+says "any value other than 0x6 locks the range" and that a write from the
+reset value stores the written value (``secure_dma.rdl:149-150``); ``wzc``
+leaves w & 0x6. Both texts lock the range for a value w with bits 1 and 2 not
+both set, and agree on the read-back w when w & 0x6 == w (0x0, 0x2, 0x4):
+CHK-DMA-REGWEN-NONMUBI grades those parts. The rest stays OBS. Control, else CTRL-MISSING: RANGE_REGWEN reads 0x6 before the write and
 BASE before the write differs from the value written. An outside-range copy runs
 first, from a cold reset: a copy (OPCODE 0, both ASID 0x7) whose source or destination region lies
 wholly outside BASE..LIMIT, with RANGE_VALID=1, ends with DONE=1, ERROR=0,
@@ -343,6 +345,9 @@ Checkers:
   OBS-DMA-REGWEN-NONMUBI after a cold reset, the read-back of a first
                     RANGE_REGWEN write of a drawn value that is neither 0x6
                     nor 0x9 and whether a following BASE write lands, logged.
+  CHK-DMA-REGWEN-NONMUBI for a drawn value with bits 1 and 2 not both set,
+                    the following BASE write does not land; for 0x0, 0x2
+                    and 0x4, RANGE_REGWEN reads back the written value.
                     Control: RANGE_REGWEN reads 0x6 before the write
                     and BASE before the write differs from the value written.
   CHK-DMA-SIZE-EDGE one copy of a drawn size 2 bytes past a multiple of 4 at
@@ -1998,6 +2003,15 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         )
         if regwen_pre != REGWEN_TRUE or base_pre == nb:
             self._ctrl_missing("CTRL-DMA-REGWEN-NONMUBI", f"OBS-DMA-REGWEN-NONMUBI control: {line}")
+        # The field text (secure_dma.rdl:149-150) and onwrite = wzc (:146) agree that a
+        # value whose bits 1 and 2 are not both set locks the range: wzc leaves
+        # w & 0x6, which is not 0x6. They agree on the read-back only when w & 0x6 == w.
+        if c.nonmubi & REGWEN_TRUE != REGWEN_TRUE:
+            if base == nb:
+                self._fail("CHK-DMA-REGWEN-NONMUBI", line)
+            if c.nonmubi & REGWEN_TRUE == c.nonmubi and regwen != c.nonmubi:
+                self._fail("CHK-DMA-REGWEN-NONMUBI", line)
+            self._pass("CHK-DMA-REGWEN-NONMUBI", line)
         self.logger.info("OBS-DMA-REGWEN-NONMUBI LOG seed=%d %s", c.seed, line)
 
     async def _size_edge(self) -> None:
