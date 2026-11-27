@@ -9,7 +9,6 @@ from tempfile import TemporaryDirectory
 
 from tools.regs.common.memorymap import (
     build_views,
-    check_regblock_responses,
     compile_root,
     load_config,
     render_adoc,
@@ -692,51 +691,6 @@ addrmap bounds_top {
         )
         with self.assertRaisesRegex(ValueError, "FORWARD read carries read data"):
             self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, forwarded)
-
-
-class RegblockResponseCheckTest(unittest.TestCase):
-    def setUp(self):
-        self.temp = TemporaryDirectory()
-
-    def tearDown(self):
-        self.temp.cleanup()
-
-    def check(self, err_check=(), no_rtl=(), text=RESPONSE_RDL, columns=RESPONSE_COLUMNS):
-        rdl = Path(self.temp.name) / "map.rdl"
-        rdl.write_text(text)
-        roots = {"main": compile_root(rdl, REGBLOCK_UDP, top="top")}
-        view = {"name": "map", "include_all": True}
-        if columns:
-            view["columns"] = columns
-        views = build_views({"version": 1, "views": [view]}, roots)
-        check_regblock_responses(views, roots, err_check, no_rtl)
-
-    def test_accepts_values_matching_generator_options(self):
-        self.check(err_check={"strict"})
-
-    def test_rejects_values_contradicting_generator_options(self):
-        with self.assertRaisesRegex(ValueError, "top.checked: regblock answers OKAY"):
-            self.check()
-
-    def test_exempts_blocks_without_regblock_rtl(self):
-        self.check(no_rtl={"strict"})
-
-    def test_checks_sub_blocks_of_blocks_without_regblock_rtl(self):
-        with self.assertRaisesRegex(ValueError, "top.composite.low: regblock answers SLVERR"):
-            self.check(err_check={"strict", "wrap"}, no_rtl={"wrap"})
-
-    def test_composite_sub_blocks_take_the_composite_flag(self):
-        with self.assertRaisesRegex(ValueError, "top.composite.low: regblock answers SLVERR"):
-            self.check(err_check={"strict", "wrap"})
-
-    def test_rejects_unresolved_leaf(self):
-        bare = "\n".join(line for line in RESPONSE_RDL.splitlines() if "ocah_hole_resp" not in line)
-        with self.assertRaisesRegex(ValueError, "top.plain: ocah_hole_resp is not set"):
-            self.check(err_check={"strict"}, text=bare, columns=["label", "past_resp"])
-
-    def test_skips_views_without_response_columns(self):
-        bare = "\n".join(line for line in RESPONSE_RDL.splitlines() if "_resp" not in line)
-        self.check(text=bare, columns=None)
 
 
 if __name__ == "__main__":

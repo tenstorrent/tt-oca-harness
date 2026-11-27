@@ -490,6 +490,7 @@ sources:
   - target: smc
     files:
       - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
+      - hw/sys/smc/regs/gen/sv/smc_window_pkg.sv
   - target: any(sep, smc)
     files:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg_pkg.sv

@@ -210,10 +210,8 @@ module smc_cpu_wrapper #(
   smc_pkg::smc_axil_32_64_req_t  axil_cpu_ctrl_req;
   smc_pkg::smc_axil_32_64_resp_t axil_cpu_ctrl_resp;
 
-  localparam longint unsigned CpuCtrlWindowEnd = smc_pkg::reg_page_end(
-      smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE
-  );
+  localparam longint unsigned CpuCtrlWindowEnd = smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR
+                                               + smc_top_window_pkg::SMC_TOP_SMC_CPU_CTRL_WINDOW_SIZE;
 
   always_comb begin
     // Default to the CPU cluster (L2 frontend)

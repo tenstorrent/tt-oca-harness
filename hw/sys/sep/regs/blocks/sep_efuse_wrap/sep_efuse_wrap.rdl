@@ -22,13 +22,8 @@ addrmap sep_efuse_wrap {
     sep_efuse_map           sep_efuse_map           @0x000_0800;
 
 `ifdef OCAH_DOC_MEMORY_MAP
-    efuse_interface_ctrl->ocah_aperture_size = 0x400;
-    efuse_interface_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     efuse_interface_ctrl->desc = "eFuse command and status registers.";
-    efuse_mmr->ocah_aperture_size = 0x400;
-    efuse_mmr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     efuse_mmr->desc = "eFuse security-token registers.";
-    sep_efuse_map->ocah_aperture_size = 0x800;
     sep_efuse_map->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     sep_efuse_map->desc = "Cached eFuse shadow registers.";
 `endif

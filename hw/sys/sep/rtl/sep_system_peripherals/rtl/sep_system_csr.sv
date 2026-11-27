@@ -16,7 +16,6 @@
 // rst_ni and the warm ones on rst_warm_ni; everything else resets on rst_ni. REFERENCE_COUNTER
 // counts clk_ref_i and is read through a CDC into clk_i; a software write loads it.
 
-`include "ocah_assert.svh"
 `include "ocah_registers.svh"
 
 module sep_system_csr (
@@ -172,30 +171,6 @@ module sep_system_csr (
       64'd1 << sep_cpu_ctrl_reg_pkg::SEP_CPU_CTRL_REG_MIN_ADDR_WIDTH;
   localparam longint unsigned ScratchWindowSize =
       64'd1 << sep_scratch_reg_pkg::SEP_SCRATCH_REG_MIN_ADDR_WIDTH;
-
-  `OCAH_ASSERT_STATIC(
-      AliasRemapMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_LOCAL_MASTER_ALIAS_REMAP_SIZE <= AliasRemapWindowSize)
-  `OCAH_ASSERT_STATIC(
-      ApOutputRemapMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_AP_OUTPUT_REMAP_SIZE <= ApOutputRemapWindowSize)
-  `OCAH_ASSERT_STATIC(
-      SteeOutputRemapMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_SEP_REMAP_WRAP_STEE_OUTPUT_REMAP_SIZE <= SteeOutputRemapWindowSize)
-  `OCAH_ASSERT_STATIC(
-      OutboundFilterMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_SIZE <= OutboundFilterWindowSize)
-  `OCAH_ASSERT_STATIC(
-      InboundFilterMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_INBOUND_FILTER_CTRL_WRAP_SIZE <= InboundFilterWindowSize)
-  `OCAH_ASSERT_STATIC(CpuCtrlMapFitsWindow_A,
-                      sep_top_addrmap_pkg::SEP_TOP_SEP_CPU_CTRL_SIZE <= CpuCtrlWindowSize)
-  `OCAH_ASSERT_STATIC(
-      ScratchColdMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_COLD_SIZE <= ScratchWindowSize)
-  `OCAH_ASSERT_STATIC(
-      ScratchWarmMapFitsWindow_A,
-      sep_top_addrmap_pkg::SEP_TOP_SEP_SCRATCH_WRAP_SCRATCH_WARM_SIZE <= ScratchWindowSize)
 
   localparam int unsigned AddrW = sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH;
 

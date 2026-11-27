@@ -70,45 +70,45 @@ module smc_internal_axi_lite_xbar
   // ===========================================================================
   // All boundaries come from smc_top_addrmap_pkg.
   localparam smc_internal_axi_lite_xbar_pkg::addr_rule_t [smc_internal_axi_lite_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
-    // smc_base_config: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_{BASE_ADDR,SIZE}
+    // smc_base_config
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_BASE_CONFIG_WINDOW_SIZE)},
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_WINDOW_SIZE)},
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_WRAP_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_MMODE_REMAP_WRAP_WINDOW_SIZE)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_WINDOW_SIZE)},
     '{idx: 4,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_WINDOW_SIZE)},
     '{idx: 5,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_SIZE))},
-    // mailbox: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_{BASE_ADDR,SIZE}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_WINDOW_SIZE)},
+    // mailbox
     '{idx: 6,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE))},
-    // dfx_csr: RDL — smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_{BASE_ADDR,SIZE}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_MAILBOX_WINDOW_SIZE)},
+    // dfx_csr
     '{idx: 7,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_DFX_CTRL_WINDOW_SIZE)},
     '{idx: 8,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_ZEROER_CTRL_WINDOW_SIZE)}
   };
 
   `OCAH_ASSERT_XBAR_PAGE_OWNER(gen_page_owner, AddrMap)

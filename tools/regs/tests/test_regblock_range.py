@@ -73,6 +73,22 @@ class RegblockRangeTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("is_valid_addr = cpuif_addr < 12'hc;", decode(Path(tmp)))
 
+    def test_windows_file_gives_the_port_its_width(self) -> None:
+        with TemporaryDirectory() as tmp:
+            windows = Path(tmp) / "windows.json"
+            windows.write_text('{"addr_widths": {"gappy": 12}}')
+            result = export(Path(tmp), "--err-if-out-of-range", "--windows", str(windows))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("is_valid_addr = cpuif_addr < 12'hc;", decode(Path(tmp)))
+
+    def test_block_the_windows_file_omits_keeps_its_width(self) -> None:
+        with TemporaryDirectory() as tmp:
+            windows = Path(tmp) / "windows.json"
+            windows.write_text('{"addr_widths": {"other": 12}}')
+            result = export(Path(tmp), "--err-if-out-of-range", "--windows", str(windows))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("is_valid_addr = cpuif_addr < 4'hc;", decode(Path(tmp)))
+
     def test_without_option_is_stock_regblock(self) -> None:
         with TemporaryDirectory() as tmp:
             result = export(Path(tmp))

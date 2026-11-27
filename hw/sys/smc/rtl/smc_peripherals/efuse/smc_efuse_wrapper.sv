@@ -152,9 +152,10 @@ module smc_efuse_wrapper #(
   } jtag_target_e;
 
   localparam smc_pkg::smc_axi_lite_32_addr_t EfusePageBase =
-      smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR);
+      smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_BASE_ADDR);
   localparam smc_pkg::smc_axi_lite_32_addr_t EfusePageLast =
-      EfusePageBase + smc_pkg::smc_axi_lite_32_addr_t'(smc_pkg::RegPageSize - 1);
+      EfusePageBase + smc_pkg::smc_axi_lite_32_addr_t'(
+          smc_top_window_pkg::SMC_TOP_SMC_EFUSE_WRAP_WINDOW_SIZE - 1);
   localparam smc_pkg::smc_axi_lite_32_addr_t EfuseShimBase =
       smc_pkg::smc_axi_lite_32_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR);
   localparam smc_pkg::smc_axi_lite_32_addr_t EfuseShimLast =
@@ -164,9 +165,6 @@ module smc_efuse_wrapper #(
       smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SUPPLEMENTARY_FUSE.BASE);
   localparam smc_pkg::smc_axi_lite_32_addr_t SupplementaryLast =
       SupplementaryBase + smc_pkg::smc_axi_lite_32_addr_t'(4 * SupplementaryPortWords - 1);
-
-  `OCAH_ASSERT_STATIC(EfusePageAligned_A,
-                      EfusePageBase % smc_pkg::smc_axi_lite_32_addr_t'(smc_pkg::RegPageSize) == 0)
 
   smc_pkg::smc_axil_32_32_req_t  [2:0] axil_smc_otp_jtag_req_filtered;
   smc_pkg::smc_axil_32_32_resp_t [2:0] axil_smc_otp_jtag_resp_filtered;

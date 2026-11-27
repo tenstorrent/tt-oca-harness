@@ -45,7 +45,7 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit \
   el2_pic sep_entropy_pool aon_timer dfd smc_cla dma_ctrl \
-  pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
+  pll_wrap pvt_wrap oca_i3c_wrap key_manager \
   axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap pwm
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
@@ -59,7 +59,8 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 OCAH_REG_WRAPPER_BLOCKS ?= \
   misc_wrap smc_cluster_wdt_wrap smc_efuse_wrap sep_scratch_wrap sep_efuse_wrap \
   sep_remap_wrap pwm_wrap gpio_intf_wrap alias_remap_wrap output_remap_wrap \
-  filter_ctrl_wrap
+  filter_ctrl_wrap i2c_wrap uart_wrap uart_log_engine_wrap telemetry_receiver_wrap \
+  cross_trigger_network
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_WRAPPER_BLOCKS)
 
 # UVM RAL models are opt-in: only a DV environment that drives registers through
@@ -114,14 +115,24 @@ OCAH_REG_JSON_BLOCKS += $(OCAH_REG_JSON_BLOCKS_EXTRA)
 # including their existing regs/gen/adoc/<block>.adoc tables and do not belong
 # here. Each entry reads presentation directives from doc/memmap.toml and
 # emits regs/gen/adoc/memory_map.adoc.
+#
+# A flag after a colon marks a map that places generated register blocks:
+# tools/regs/rdlwindows.py sizes the window each unit under it owns (the rules
+# are in tools/regs/common/windows.py). `pages` also holds the map's children
+# to 4 KiB boundaries and whole pages, which the top's generated
+# <top>_window_pkg gives the crossbars; `windows` sizes them without that.
 OCAH_REG_MEMORY_MAP_BLOCKS ?= \
-  hw/sys/sep \
-  hw/sys/smc \
-  hw/ip/key_manager \
-  hw/ip/cross_trigger/cross_trigger_network \
+  hw/sys/sep:pages \
+  hw/sys/smc:pages \
+  hw/ip/key_manager:windows \
+  hw/ip/cross_trigger/cross_trigger_network:windows \
   hw/ip/efuse/regs/efuse_interface_ctrl \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
 OCAH_REG_MEMORY_MAP_BLOCKS += $(OCAH_REG_MEMORY_MAP_BLOCKS_EXTRA)
+ocah_reg_maps_flagged = $(patsubst %:$(1),%,$(filter %:$(1),$(OCAH_REG_MEMORY_MAP_BLOCKS)))
+OCAH_REG_MEMORY_MAP_IDS := $(foreach map,$(OCAH_REG_MEMORY_MAP_BLOCKS),$(firstword $(subst :, ,$(map))))
+OCAH_REG_PAGE_TOPS := $(call ocah_reg_maps_flagged,pages)
+OCAH_REG_WINDOW_TOPS := $(OCAH_REG_PAGE_TOPS) $(call ocah_reg_maps_flagged,windows)
 OCAH_REG_MEMORY_MAP_DEPS_hw_sys_sep := \
   $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_cpu_logical.rdl \
   $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_memory_map.rdl
@@ -160,32 +171,11 @@ OCAH_REG_NO_ERR_BLOCKS ?= \
   filter_ctrl \
   gpio_intf
 
-# Blocks alone in a 4 KiB page: the regblock decodes the whole page, so an access
-# past its last register answers SLVERR.
-OCAH_REG_ADDR_WIDTH_reset_unit ?= 12
-OCAH_REG_ADDR_WIDTH_avsbus_controller ?= 12
-OCAH_REG_ADDR_WIDTH_system_timer_octs ?= 12
-OCAH_REG_ADDR_WIDTH_smc_base_config ?= 12
-OCAH_REG_ADDR_WIDTH_dfx_ctrl_status ?= 12
-OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
-OCAH_REG_ADDR_WIDTH_zeroer_ctrl ?= 12
-OCAH_REG_ADDR_WIDTH_sep_reset_ctrl ?= 12
-OCAH_REG_ADDR_WIDTH_sep_lifecycle_ctrl ?= 12
-OCAH_REG_ADDR_WIDTH_km_mailbox_sep ?= 12
-OCAH_REG_ADDR_WIDTH_entropy_source ?= 12
-
-# Blocks that share a page: the regblock decodes the whole window its wrapper
-# routes it.
-OCAH_REG_ADDR_WIDTH_scratch ?= 7
-OCAH_REG_ADDR_WIDTH_chip_config ?= 8
-OCAH_REG_ADDR_WIDTH_i2c ?= 9
-OCAH_REG_ADDR_WIDTH_uart_log_engine_ctrl ?= 8
-OCAH_REG_ADDR_WIDTH_uart_16550_main ?= 8
-OCAH_REG_ADDR_WIDTH_log_engine ?= 9
-OCAH_REG_ADDR_WIDTH_cross_trigger_matrix ?= 9
-OCAH_REG_ADDR_WIDTH_sep_scratch ?= 7
-OCAH_REG_ADDR_WIDTH_efuse_interface_ctrl ?= 10
-OCAH_REG_ADDR_WIDTH_efuse_mmr ?= 10
+# tools/regs/rdlwindows.py records every window it sizes, and what each generated
+# decoder answers in it, in OCAH_REG_WINDOWS. The regblock exporter reads from it
+# the address width of each block whose window is wider than its registers need,
+# and the memory maps read the same file.
+OCAH_REG_WINDOWS := $(OCAH_ROOT)/hw/common/regs/gen/windows.json
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))

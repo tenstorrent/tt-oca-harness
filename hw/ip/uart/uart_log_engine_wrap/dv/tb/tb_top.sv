@@ -164,11 +164,8 @@ module uart_log_engine_wrap_tb_top
     .LOG_ENGINE_FIFO_DEPTH                  (LOG_ENGINE_FIFO_DEPTH),
 
     .UART_REG_MAP_BASE_ADDR                 (UART_REG_MAP_BASE_ADDR),
-    .UART_REG_MAP_SIZE                      (UART_REG_MAP_SIZE),
     .LOG_ENGINE_REG_MAP_BASE_ADDR           (LOG_ENGINE_REG_MAP_BASE_ADDR),
-    .LOG_ENGINE_REG_MAP_SIZE                (LOG_ENGINE_REG_MAP_SIZE),
-    .UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR),
-    .UART_LOG_ENGINE_CTRL_REG_MAP_SIZE      (UART_LOG_ENGINE_CTRL_REG_MAP_SIZE)
+    .UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR)
   ) u_dut (
     .clk_i                 (clk),
     .rst_ni                (rst_n),

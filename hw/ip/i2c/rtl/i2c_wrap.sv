@@ -4,9 +4,10 @@
 // Demux one AXI-Lite slave onto NUM_I2CS I2C cores and a shared ctrl map.
 //
 // NumRegMaps is NUM_I2CS plus one for ctrl.
-// The demux gives each instance its instance spacing as its window and the ctrl map its own
-// window, and answers the rest of the page with DECERR and read data 0xBADCAB1E. Inside its
-// window an instance or the ctrl map answers SLVERR past its registers.
+// The demux gives each instance and the ctrl map the window its register block decodes, so
+// instance i sits i instance windows above instance 0, and answers the rest of the page with
+// DECERR and read data 0xBADCAB1E. Inside its window an instance or the ctrl map answers SLVERR
+// past its registers.
 // The ctrl map holds one I2C_CTRL register per instance, which drives i2c_en_o,
 // i2c_controller_mode_en_o and that instance's SMBus enable.
 // SMBus, DMA ready, IRQ, and debug ports are vectors with one slice per instance.
@@ -32,11 +33,8 @@ module i2c_wrap #(
                                                             // window after each output change.
 
   parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_CTRL_REG_MAP_BASE_ADDR = 0, // Shared ctrl register-map base.
-  parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_CTRL_REG_MAP_SIZE      = 0, // Shared ctrl register-map size.
 
   parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_0__REG_MAP_BASE_ADDR = 0, // Instance 0 register-map base.
-  parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_0__REG_MAP_SIZE      = 0, // Per-instance register-map size.
-  parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_INSTANCE_SPACING     = 0, // Byte spacing between instances.
 
   localparam int unsigned NumRegMaps = NUM_I2CS + 1,        // Decode targets: instances + ctrl.
   localparam int unsigned CtrlRegMap = NumRegMaps - 1       // Index of the ctrl map.
@@ -125,16 +123,12 @@ module i2c_wrap #(
   localparam int unsigned I2cWindow = 32'(1) << i2c_reg_pkg::I2C_REG_MIN_ADDR_WIDTH;
   localparam int unsigned CtrlWindow = 32'(1) << i2c_ctrl_reg_pkg::I2C_CTRL_REG_MIN_ADDR_WIDTH;
 
-  `OCAH_ASSERT_STATIC(I2cWindowIsSpacing_A, I2C_INSTANCE_SPACING == I2cWindow)
-  `OCAH_ASSERT_STATIC(I2cMapFitsWindow_A, I2C_0__REG_MAP_SIZE <= I2cWindow)
-  `OCAH_ASSERT_STATIC(CtrlMapFitsWindow_A, I2C_CTRL_REG_MAP_SIZE <= CtrlWindow)
-
   typedef logic [i2c_wrap_pkg::RegAddrWidth-1:0] range_addr_t[NumRegMaps];
 
   function automatic range_addr_t range_base();
     range_addr_t base;
     for (int unsigned i = 0; i < NUM_I2CS; i++) begin
-      base[i] = I2C_0__REG_MAP_BASE_ADDR + i * I2C_INSTANCE_SPACING;
+      base[i] = I2C_0__REG_MAP_BASE_ADDR + i * I2cWindow;
     end
     base[CtrlRegMap] = I2C_CTRL_REG_MAP_BASE_ADDR;
     return base;

@@ -125,8 +125,9 @@ section of the Technical Reference Manual gives the rule. To add a register
 block to the SMC or the SEP:
 
 * Start a block that has a page to itself on a 4 KiB boundary, and end its
-  crossbar rule at the end of its last 4 KiB page (`smc_pkg::reg_page_end` or
-  `sep_pkg::reg_page_end`), so that its target owns whole pages. Put a vendored
+  crossbar rule at its base plus its `_WINDOW_SIZE` from the generated
+  `smc_top_window_pkg` or `sep_top_window_pkg`, so that its target owns whole
+  pages. Put a vendored
   block that does not refuse every address past its registers behind a
   `prim_axil_addr_demux` with `MISS_RESP` set to SLVERR, which answers the rest
   of the page.
@@ -136,13 +137,21 @@ block to the SMC or the SEP:
   answers `DECERR` outside the blocks' windows. Every crossbar rule that
   reaches a page leads to one port; `OCAH_ASSERT_XBAR_PAGE_OWNER` in each
   crossbar fails elaboration otherwise.
-* For a generated block, set `OCAH_REG_ADDR_WIDTH_<block>` in
-  `hw/common/regs/classify.mk` to log~2~ of its window, 12 for a block alone in
-  its page, so that the block decodes its whole window.
+* A generated block decodes its whole window without further work:
+  `make regen-regs` sizes the window of every unit from the map that places it
+  and records it in `hw/common/regs/gen/windows.json`, with what each generated
+  block answers between and past its registers. The address width of each
+  generated block, the window packages and the generated memory maps are all
+  read from that record. The run fails when a block placed
+  directly in the SMC or SEP map does not start on a 4 KiB boundary, or when a
+  window is not a power of two whose base is a multiple of its size.
 * Add an array whose stride is wider than one instance to
   `OCAH_REG_NO_ERR_BLOCKS`, so that its padding answers `OKAY`.
-* In the RDL, give the block its window as its `ocah_aperture_size` and the
-  responses it returns there, so that the generated memory map states them.
+* In the RDL, state only what the generator cannot derive: the responses of a
+  block whose decoder the flow does not generate, such as a vendored one, and
+  its window where that is wider than its pages in the SMC or SEP map or
+  narrower than the space its wrapper leaves it. `make regen-regs` fails on an
+  assignment that states a value the generator derives.
 
 == DV Firmware
 

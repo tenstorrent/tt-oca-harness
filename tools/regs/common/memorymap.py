@@ -683,55 +683,6 @@ def build_views(
     return views
 
 
-def _check_regblocks(
-    node: AddressableNode,
-    err_check_blocks: set[str],
-    no_rtl_blocks: set[str],
-    err_checked: bool,
-    errors: list[str],
-) -> None:
-    for child in node.children(unroll=False):
-        if not isinstance(child, AddrmapNode):
-            continue
-        name = child.orig_type_name
-        if _opaque_response(child) is not None:
-            continue
-        checked = err_checked or name in err_check_blocks
-        if name not in no_rtl_blocks and any(
-            isinstance(grand, (RegNode, RegfileNode)) for grand in child.children()
-        ):
-            expected = "SLVERR" if checked else "OKAY"
-            for resolve in (_hole_response,) if child.is_array else (_hole_response, _gap_response):
-                try:
-                    response = resolve(child)
-                except ValueError as exc:
-                    errors.append(str(exc))
-                    break
-                stated = (response.rresp.name, response.rdata, response.bresp.name)
-                if stated != (expected, 0, expected):
-                    errors.append(
-                        f"{child.get_path()}: regblock answers {expected}, 0x0 / {expected}"
-                        f" but the RDL states {response.text}"
-                    )
-        _check_regblocks(child, err_check_blocks, no_rtl_blocks, checked, errors)
-
-
-def check_regblock_responses(
-    views: Iterable[MapView],
-    roots: dict[str, RootNode],
-    err_check_blocks: Iterable[str],
-    no_rtl_blocks: Iterable[str],
-) -> None:
-    """Hold the stated hole response of every generated regblock to its generator options."""
-    if not any(_RESPONSE_COLUMNS & set(view.columns) for view in views):
-        return
-    errors: list[str] = []
-    for root in roots.values():
-        _check_regblocks(_top(root), set(err_check_blocks), set(no_rtl_blocks), False, errors)
-    if errors:
-        raise ValueError("\n".join(dict.fromkeys(errors)))
-
-
 def format_size(size: int) -> str:
     for divisor, suffix in ((1024**3, "GiB"), (1024**2, "MiB"), (1024, "KiB")):
         if size >= divisor and size % divisor == 0:

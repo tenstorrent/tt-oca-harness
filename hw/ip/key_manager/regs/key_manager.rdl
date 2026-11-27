@@ -174,8 +174,6 @@ addrmap key_manager {
 `ifdef OCAH_DOC_MEMORY_MAP
     ocah_aperture_size = 0x1D000;
     ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
-    mailbox_km->ocah_aperture_size = 0x20;
-    mailbox_km->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     otp_efuse_ctrl->ocah_aperture_size = 0x400;
     otp_efuse_ctrl->desc = "SEP eFuse command and status pass-through.";
     otp_efuse_ctrl->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
@@ -188,20 +186,6 @@ addrmap key_manager {
     otp_efuse_map->desc = "SEP eFuse shadow-register pass-through.";
     otp_efuse_map->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
     otp_efuse_map->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
-    kpv->ocah_aperture_size = 0x2000;
-    kpv->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
-    kmcsr->ocah_aperture_size = 0x800;
-    kmcsr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
-    otbn_wrapper_key->ocah_aperture_size = 0x80;
-    otbn_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
-    aes_wrapper_key->ocah_aperture_size = 0x80;
-    aes_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
-    kmac_wrapper_key->ocah_aperture_size = 0x80;
-    kmac_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
-    hmac_wrapper_key->ocah_aperture_size = 0x80;
-    hmac_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
-    abr_wrapper_key->ocah_aperture_size = 0x800;
-    abr_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
 `endif
 
     //=========================================================================

@@ -109,10 +109,9 @@ module smc_periph_axi_lite_xbar
       !HasSupplementaryRule ||
       (SUPPLEMENTARY_FUSE_BASE >= EFUSE_SHIM_SIZE && SupplementaryEnd <= smc_pkg::SmcExternalWindowSize),
       "The supplementary fuse window must lie in smc_external at or above EFUSE_SHIM_SIZE")
-  localparam longint unsigned EfusePageStart =
-      smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_BASE_ADDR;
-  localparam longint unsigned EfusePageEnd = smc_pkg::reg_page_end(
-      EfusePageStart, smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_SIZE);
+  localparam longint unsigned EfusePageStart = smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_BASE_ADDR;
+  localparam longint unsigned EfusePageEnd =
+      EfusePageStart + smc_top_window_pkg::SMC_TOP_SMC_EFUSE_WRAP_WINDOW_SIZE;
   localparam longint unsigned SupplementaryRuleStart = HasSupplementaryRule ?
       smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR + SupplementaryStart : EfusePageStart;
   localparam longint unsigned SupplementaryRuleEnd = HasSupplementaryRule ?
@@ -120,56 +119,56 @@ module smc_periph_axi_lite_xbar
   localparam int unsigned GapRuleStart = HasGapRule ? EFUSE_SHIM_SIZE : SupplementaryEnd;
   localparam int unsigned GapRuleEnd = HasGapRule ? SupplementaryStart : smc_pkg::SmcExternalWindowSize;
   localparam smc_periph_axi_lite_xbar_pkg::addr_rule_t [smc_periph_axi_lite_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
-    // reset_unit: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_{BASE_ADDR,SIZE}
+    // reset_unit
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE))},
-    // misc: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_{BASE_ADDR,SIZE}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_RESET_UNIT_WINDOW_SIZE)},
+    // misc
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_MISC_WRAP_WINDOW_SIZE)},
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_SIZE))},
-    // apb2avsbus: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_{BASE_ADDR,SIZE}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_GPIO_INTF_WRAP_WINDOW_SIZE)},
+    // apb2avsbus
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE))},
-    // i2c: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_{BASE_ADDR,SIZE}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_WINDOW_SIZE)},
+    // i2c
     '{idx: 4,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_I2C_WRAP_WINDOW_SIZE)},
     '{idx: 5,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_SIZE))},
-    // efuse: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_WRAP_EFUSE_INTERFACE_CTRL_{BASE_ADDR,SIZE}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_UART_WRAP_WINDOW_SIZE)},
+    // efuse
     '{idx: 6,
       start_addr: 32'(EfusePageStart),
       end_addr:   33'(EfusePageEnd)},
-    // telemetry: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_{BASE_ADDR,SIZE}
+    // telemetry
     '{idx: 7,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_SIZE))},
-    // system_timer_octs: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_{BASE_ADDR,SIZE}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_WINDOW_SIZE)},
+    // system_timer_octs
     '{idx: 8,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_WINDOW_SIZE)},
     '{idx: 9,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_DTP_CTRL_REG_WINDOW_SIZE)},
     '{idx: 10,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE))},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_OCA_I3C_WRAP_WINDOW_SIZE)},
     '{idx: 13,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
@@ -189,8 +188,8 @@ module smc_periph_axi_lite_xbar
                     + smc_pkg::SmcExternalWindowSize)},
     '{idx: 12,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR),
-      end_addr:   33'(smc_pkg::reg_page_end(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR,
-                                            smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_SIZE))}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_PWM_BASE_ADDR
+                    + smc_top_window_pkg::SMC_TOP_SMC_PWM_WINDOW_SIZE)}
   };
 
   // smc_external keeps its own decode: the eFuse shim and supplementary fuse windows carved

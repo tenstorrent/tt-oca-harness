@@ -7,19 +7,20 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.memorymap import (  # noqa: E402
     build_views,
-    check_regblock_responses,
     compile_root,
     load_config,
     render_adoc,
     render_py,
 )
 from common.rdlview import parse_rdl_params  # noqa: E402
+from common.windows import state_windows  # noqa: E402
 
 
 def _resolve(path: str | Path, root: Path) -> Path:
@@ -37,8 +38,7 @@ def main() -> int:
     parser.add_argument("-t", "--top")
     parser.add_argument("-P", "--parameter", action="append", default=[])
     parser.add_argument("--repo-root", default=".")
-    parser.add_argument("--err-check-blocks", default="")
-    parser.add_argument("--no-rtl-blocks", default="")
+    parser.add_argument("--windows", required=True, help="file rdlwindows.py writes")
     parser.add_argument("--format", choices=("adoc", "py"), default="adoc")
     args = parser.parse_args()
 
@@ -48,36 +48,21 @@ def main() -> int:
     udp = _resolve(args.udp_rdl_file, repo_root) if args.udp_rdl_file else None
     global_incdirs = [_resolve(path, repo_root) for path in args.incdir]
     parameters = parse_rdl_params(args.parameter)
+    windows = json.loads(_resolve(args.windows, repo_root).read_text(encoding="utf-8"))["windows"]
 
     source_specs = config.get("sources", ())
-    if source_specs:
-        roots = {
-            source["name"]: compile_root(
-                _resolve(source["rdl"], repo_root),
-                udp,
-                global_incdirs,
-                source.get("top"),
-                parameters,
-            )
-            for source in source_specs
-        }
-    else:
+    if not source_specs:
         if not args.rdl:
             parser.error("rdl is required when the config has no [[sources]]")
-        roots = {
-            "main": compile_root(
-                _resolve(args.rdl, repo_root),
-                udp,
-                global_incdirs,
-                args.top,
-                parameters,
-            )
-        }
+        source_specs = [{"name": "main", "rdl": args.rdl, "top": args.top}]
+    roots = {}
+    for source in source_specs:
+        rdl = _resolve(source["rdl"], repo_root)
+        root = compile_root(rdl, udp, global_incdirs, source.get("top"), parameters)
+        state_windows(root.top, windows)
+        roots[source["name"]] = root
 
     views = build_views(config, roots)
-    check_regblock_responses(
-        views, roots, args.err_check_blocks.split(), args.no_rtl_blocks.split()
-    )
     content = render_py(views) if args.format == "py" else render_adoc(views)
     output = _resolve(args.out, repo_root)
     output.parent.mkdir(parents=True, exist_ok=True)

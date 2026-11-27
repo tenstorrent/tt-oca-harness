@@ -3,7 +3,7 @@
 
 // Define address-map constants and AXI-Lite typedefs for the multi-UART wrap.
 //
-// Defines the 32-bit csr_axil types, MaxNumUarts and the per-UART address spacing.
+// Defines the 32-bit csr_axil types and MaxNumUarts.
 
 package uart_wrap_pkg;
 
@@ -29,6 +29,5 @@ package uart_wrap_pkg;
   //////////////////////////////
 
   localparam int unsigned MaxNumUarts = 4;
-  localparam int unsigned UartLogEngineWrapSpacing = 32'h400; // Address spacing between UART instances.
 
 endpackage

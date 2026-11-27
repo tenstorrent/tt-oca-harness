@@ -21,16 +21,12 @@ addrmap smc_cluster_wdt_wrap {
     wdt             core3_wdt            @0x000_0c00;
 
 `ifdef OCAH_DOC_MEMORY_MAP
-    core0_wdt->ocah_aperture_size = 0x400;
     core0_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     core0_wdt->desc = "Core 0 watchdog timer.";
-    core1_wdt->ocah_aperture_size = 0x400;
     core1_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     core1_wdt->desc = "Core 1 watchdog timer.";
-    core2_wdt->ocah_aperture_size = 0x400;
     core2_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     core2_wdt->desc = "Core 2 watchdog timer.";
-    core3_wdt->ocah_aperture_size = 0x400;
     core3_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     core3_wdt->desc = "Core 3 watchdog timer.";
 `endif

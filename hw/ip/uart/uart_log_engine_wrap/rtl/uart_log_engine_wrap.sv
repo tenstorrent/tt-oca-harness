@@ -29,11 +29,8 @@ module uart_log_engine_wrap
                                                       // between log fetch and UART write.
 
   parameter bit [RegAddrWidth-1:0] UART_REG_MAP_BASE_ADDR = 0,  // UART register-map base.
-  parameter bit [RegAddrWidth-1:0] UART_REG_MAP_SIZE      = 0,  // UART register-map size.
   parameter bit [RegAddrWidth-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,  // Log-engine register-map base.
-  parameter bit [RegAddrWidth-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,  // Log-engine register-map size.
-  parameter bit [RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Log-engine CTRL base.
-  parameter bit [RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0  // Log-engine CTRL size.
+  parameter bit [RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0  // Log-engine CTRL base.
 ) (
   input  logic                                 clk_i,  // System clock, rising-edge triggered.
   input  logic                                 rst_ni,  // Active-low reset. Assert asynchronously;
@@ -128,12 +125,6 @@ module uart_log_engine_wrap
       RegAddrWidth'(1) << log_engine_reg_pkg::LOG_ENGINE_REG_MIN_ADDR_WIDTH,
       RegAddrWidth'(1) << uart_log_engine_ctrl_reg_pkg::UART_LOG_ENGINE_CTRL_REG_MIN_ADDR_WIDTH
   };
-
-  `OCAH_ASSERT_STATIC(UartMapFitsWindow_A, UART_REG_MAP_SIZE <= RangeSize[UART_REG_MAP])
-  `OCAH_ASSERT_STATIC(LogEngineMapFitsWindow_A,
-                      LOG_ENGINE_REG_MAP_SIZE <= RangeSize[LOG_ENGINE_REG_MAP])
-  `OCAH_ASSERT_STATIC(CtrlMapFitsWindow_A,
-                      UART_LOG_ENGINE_CTRL_REG_MAP_SIZE <= RangeSize[CTRL_REG_MAP])
 
   prim_axil_addr_demux #(
     .AXI_ADDR_WIDTH (RegAddrWidth),
