@@ -49,3 +49,10 @@ if { $::cdc_app eq "cdc" } {
     source -echo [file join $ocah_smc_cdc_dir smc.dfd_debug_bus_mux.tcl]
     source -echo [file join $ocah_smc_cdc_dir smc.cdc_constraints.tcl]
 }
+
+# RDC also checks reset assertions that reach asynchronous paths: CDC skips the paths
+# it treats as static or ignored, so it does not cover them. The setting is global to
+# the session, so a parent run chooses it for itself.
+if { $::cdc_app eq "rdc" && [cdc_is_block_top] } {
+    configure_rdc_corrupt -report_rdc_on_cdc true
+}

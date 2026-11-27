@@ -143,6 +143,12 @@ waive_violation -add {SMU_SETUP_CLOCK_UNUSED_BOUNDARY_CLKS} \
     -filter [apply_modprefix [apply_prefix {(Clock:ClkName =~ "SMUCLK_*") OR (Clock:ClkName =~ "SEPCLK_*") OR (Clock:ClkName =~ "PERIPHERALCLK_I3C_*") OR (Clock:ClkName == "SPICLK") OR (Clock:ClkName == "SEP_WDT_CLK")}]] \
     -app { cdc } -tag { SETUP_CLOCK_UNUSED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
+# SMU's JTAG output-port clocks are combinational TCK copies for the hosts outside SMU.
+waive_violation -add {SMU_SETUP_CLOCK_UNUSED_JTAG_OUTPUT_TCK} \
+    -comment {The JTAG output-port clocks (JTAG_BSR_TCK, JTAG_STAP_IO_TCK, JTAG_STAP_EXTRA_TCK, JTAG_STAP_SCAN_TCK, JTAG_DFD_TCK, JTAG_DFT_SECURE_TCK, JTAG_DFT_TCK) are combinational TCK copies on SMU output ports for hosts outside SMU, so they clock no SMU sequential.} \
+    -filter [apply_prefix {(Clock:ClkName == "JTAG_BSR_TCK") OR (Clock:ClkName == "JTAG_STAP_IO_TCK") OR (Clock:ClkName == "JTAG_STAP_EXTRA_TCK") OR (Clock:ClkName == "JTAG_STAP_SCAN_TCK") OR (Clock:ClkName == "JTAG_DFD_TCK") OR (Clock:ClkName == "JTAG_DFT_SECURE_TCK") OR (Clock:ClkName == "JTAG_DFT_TCK")}] \
+    -app { cdc } -tag { SETUP_CLOCK_UNUSED } -user { nboettcher } -timestamp { 23-11-2026 21:00:00 }
+
 # Reset-tree edges that cross a block boundary, so neither block's RESET_OVERLAP class waiver owns them.
 waive_violation -add {SMU_SETUP_RESET_OVERLAP_CROSS_BLOCK_TREE} \
     -comment {DTP trst_n_combined is passed through the PTAP TAP controller and the SMC STAP to smc_cpu_jtag_reset_i, where smu.sv inverts it into the active-high JTAG_RESET. One declared reset reaching the root of another is the reset tree by construction.} \

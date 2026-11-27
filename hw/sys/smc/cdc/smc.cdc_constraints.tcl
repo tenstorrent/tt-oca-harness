@@ -14,8 +14,7 @@
 #   3. smc.cdc_constraints.tcl     (this file)
 #
 # Sections:
-#   2. Independent fan-in convergence ignore. Section 1, the AVS sdata synchronizer on
-#      the pad2core_i[51] input, is in smc.pad_boundary.tcl.
+#   2. Independent fan-in convergence ignore.
 ################################################################################
 
 puts "INFO: Loading SMC-specific CDC constraints"
