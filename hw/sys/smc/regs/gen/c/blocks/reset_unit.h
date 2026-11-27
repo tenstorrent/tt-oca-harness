@@ -30,16 +30,20 @@ typedef union {
 } reset_unit__SS_CONFIG_t;
 
 // reg - reset_unit::SS_CONFIG_LOCK
-// Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
-// cannot be written to again
+// SS_CONFIG write lock. Writing 1 to bit i sets it, and SS_CONFIG bit i then ignores
+// writes until the primary reset clears the lock. A write to SS_CONFIG that touches
+// locked bits completes with OKAY: the locked bits keep their value and the unlocked
+// bits of the same write apply.
 #define RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_bm 0xffffffff
 #define RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_bp 0
 #define RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_bw 32
 #define RESET_UNIT__SS_CONFIG_LOCK__CONFIG_LOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
-        // cannot be written to again
+        // SS_CONFIG write lock. Writing 1 to bit i sets it, and SS_CONFIG bit i then ignores
+        // writes until the primary reset clears the lock. A write to SS_CONFIG that touches
+        // locked bits completes with OKAY: the locked bits keep their value and the unlocked
+        // bits of the same write apply.
         uint32_t config_lock :32;
     } f;
     uint32_t w;
@@ -152,30 +156,38 @@ typedef union {
 } reset_unit__SS_RESET_COMPLETE_t;
 
 // reg - reset_unit::SS_COLD_RESET_LOCK
-// Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
-// cannot be written to again
+// SS_COLD_RESET_N write lock. Writing 1 to bit i sets it, and SS_COLD_RESET_N bit i then
+// ignores writes until the primary reset clears the lock. A write to SS_COLD_RESET_N
+// that touches locked bits completes with OKAY: the locked bits keep their value and
+// the unlocked bits of the same write apply.
 #define RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_bm 0xffffffff
 #define RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_bp 0
 #define RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_bw 32
 #define RESET_UNIT__SS_COLD_RESET_LOCK__COLD_RESET_LOCK_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
-        // cannot be written to again
+        // SS_COLD_RESET_N write lock. Writing 1 to bit i sets it, and SS_COLD_RESET_N bit i then
+        // ignores writes until the primary reset clears the lock. A write to SS_COLD_RESET_N
+        // that touches locked bits completes with OKAY: the locked bits keep their value and
+        // the unlocked bits of the same write apply.
         uint32_t cold_reset_lock :32;
     } f;
     uint32_t w;
 } reset_unit__SS_COLD_RESET_LOCK_t;
 
 // reg - reset_unit::SS_FORCE_TO_REF_CLK
-// Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle
+// Bit i drives ss_reset_ctrl_o[i].force_to_ref_clk_n unchanged. The reset unit does not use
+// it; its effect and polarity are integration-specific, see the adopter chiplet
+// specification.
 #define RESET_UNIT__SS_FORCE_TO_REF_CLK__FORCE_SS_TO_REF_CLK_N_bm 0xffffffff
 #define RESET_UNIT__SS_FORCE_TO_REF_CLK__FORCE_SS_TO_REF_CLK_N_bp 0
 #define RESET_UNIT__SS_FORCE_TO_REF_CLK__FORCE_SS_TO_REF_CLK_N_bw 32
 #define RESET_UNIT__SS_FORCE_TO_REF_CLK__FORCE_SS_TO_REF_CLK_N_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle
+        // Bit i drives ss_reset_ctrl_o[i].force_to_ref_clk_n unchanged. The reset unit does not use
+        // it; its effect and polarity are integration-specific, see the adopter chiplet
+        // specification.
         uint32_t force_ss_to_ref_clk_n :32;
     } f;
     uint32_t w;

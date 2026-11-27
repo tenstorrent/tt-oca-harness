@@ -41,7 +41,7 @@
 <h3 id="SS_CONFIG_LOCK">SS_CONFIG_LOCK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>config_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config<br>cannot be written to again</td></tr>
+<tr><td>31:0</td><td>config_lock</td><td>RW1S</td><td>0x0</td><td>SS_CONFIG write lock. Writing 1 to bit i sets it, and SS_CONFIG bit i then ignores<br>writes until the primary reset clears the lock. A write to SS_CONFIG that touches<br>locked bits completes with OKAY: the locked bits keep their value and the unlocked<br>bits of the same write apply.</td></tr>
 </table>
 <h3 id="SS_COLD_RESET_N">SS_COLD_RESET_N</h3>
 <table>
@@ -81,12 +81,12 @@
 <h3 id="SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>cold_reset_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset<br>cannot be written to again</td></tr>
+<tr><td>31:0</td><td>cold_reset_lock</td><td>RW1S</td><td>0x0</td><td>SS_COLD_RESET_N write lock. Writing 1 to bit i sets it, and SS_COLD_RESET_N bit i then<br>ignores writes until the primary reset clears the lock. A write to SS_COLD_RESET_N<br>that touches locked bits completes with OKAY: the locked bits keep their value and<br>the unlocked bits of the same write apply.</td></tr>
 </table>
 <h3 id="SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>force_ss_to_ref_clk_n</td><td>RW</td><td>0x0</td><td>Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle</td></tr>
+<tr><td>31:0</td><td>force_ss_to_ref_clk_n</td><td>RW</td><td>0x0</td><td>Bit i drives ss_reset_ctrl_o[i].force_to_ref_clk_n unchanged. The reset unit does not use<br>it; its effect and polarity are integration-specific, see the adopter chiplet<br>specification.</td></tr>
 </table>
 <h3 id="SYNC_REG">SYNC_REG</h3>
 <table>

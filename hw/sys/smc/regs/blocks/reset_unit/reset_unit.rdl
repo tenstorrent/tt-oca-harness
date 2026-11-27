@@ -22,8 +22,10 @@ addrmap reset_unit {
             sw = rw;
             hw = r;
             onwrite = woset;
-            desc = "Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
-                    cannot be written to again";
+            desc = "SS_CONFIG write lock. Writing 1 to bit i sets it, and SS_CONFIG bit i then ignores
+                    writes until the primary reset clears the lock. A write to SS_CONFIG that touches
+                    locked bits completes with OKAY: the locked bits keep their value and the unlocked
+                    bits of the same write apply.";
         } config_lock[31:0] = 0x0;
     };
 
@@ -31,7 +33,9 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle";
+            desc = "Bit i drives ss_reset_ctrl_o[i].force_to_ref_clk_n unchanged. The reset unit does not use
+                    it; its effect and polarity are integration-specific, see the adopter chiplet
+                    specification.";
         } force_ss_to_ref_clk_n [31:0] = 0x0;
     };
 
@@ -91,8 +95,10 @@ addrmap reset_unit {
             sw = rw;
             hw = r;
             onwrite = woset;
-            desc = "Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
-                    cannot be written to again";
+            desc = "SS_COLD_RESET_N write lock. Writing 1 to bit i sets it, and SS_COLD_RESET_N bit i then
+                    ignores writes until the primary reset clears the lock. A write to SS_COLD_RESET_N
+                    that touches locked bits completes with OKAY: the locked bits keep their value and
+                    the unlocked bits of the same write apply.";
         } cold_reset_lock[31:0] = 0x0;
     };
 
