@@ -56,7 +56,7 @@ Places the SEP eFuse controller, its security-token registers and its shadow reg
 | 0x92C | <<reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-SYS_PUBK_HASH,SYS_PUBK_HASH>> | RW a| -
 | 0x94C | <<reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-SYS_UID,SYS_UID>> | RW a| -
 | 0x96C | <<reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-STATUS_RPT,STATUS_RPT>> | RW a| -
-| 0x970 | <<reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-ROM_CTL,ROM_CTL>> | RW a| -
+| 0x970 | <<reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-ROM_CTL,ROM_CTL>> | RW a| Reserved.
 | 0x974 | <<reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-SYSCLK_FREQ_MHZ,SYSCLK_FREQ_MHZ>> | RW a| -
 | 0x978 | <<reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-CHIPLET_PUBK_HASH0,CHIPLET_PUBK_HASH0>> | RW a| -
 | 0x998 | <<reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-CHIPLET_PUBK_HASH1,CHIPLET_PUBK_HASH1>> | RW a| -
@@ -553,9 +553,7 @@ Places the SEP eFuse controller, its security-token registers and its shadow reg
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:6 | `reserved` | RW | 0x0 a| reserved
-| 5:1 | `rom_swap_ctrl` | RW | 0x0 a| controls how the rom slices are swapped
-| 0 | `rom_endianness_ctrl` | RW | 0x0 a| controls the endianness of the rom data out. 0->little endian; 1->big endian
+| 31:0 | `reserved` | RW | 0x0 a| reserved
 |===
 
 [#reg-{regmap-instance}-sep_efuse_wrap-sep_efuse_map-SYSCLK_FREQ_MHZ]
