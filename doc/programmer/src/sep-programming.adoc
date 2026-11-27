@@ -999,7 +999,10 @@ reset does not revoke a prior token authorization.
 An RMA match authorizes a lifecycle change but does not burn a fuse. After the
 match, program the RMA lifecycle bits (`LC_STATE[1]` for SiP RMA, `LC_STATE[2]`
 for chiplet RMA); the fuse controller gates that programming on the match.
-Chiplet RMA additionally requires SiP RMA to be established first. For the
+Chiplet RMA additionally requires SiP RMA to be established first: the
+controller refuses a program of `LC_STATE[2]` unless `LC_STATE[1]` was set in
+the fuses at the last sense, so reset the SEP after burning `LC_STATE[1]` and
+before burning `LC_STATE[2]`. For the
 shadow-state transition, either request an explicit shadow update or rely on
 `TRANSIENT_RMA_EN` for automatic updates; the
 ifdef::backend-html5[]
