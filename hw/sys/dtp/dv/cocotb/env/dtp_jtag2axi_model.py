@@ -69,14 +69,19 @@ operation is applied on the TCK cycle that leaves its Update-DR, and a bus
 completion at the first update at least one TCK cycle after the port
 handshake. A capture or update within DTP_DMI_BUSY_TCK TCK cycles of the last
 read or write update finds that operation in progress, and one
-DTP_DMI_SETTLE_TCK cycles or more after it finds it complete; between the two
-the clock ratio decides, and the model has no prediction. While a bus access
+DTP_DMI_SETTLE_TCK cycles or more after it finds it complete. Between the two
+the clock ratio decides, and the model keeps both outcomes: a capture there
+expects either, and the bits its scan shifts out must show which the bridge
+took. An update there is op 0, op 3 or a dmireset, and leaves both outcomes
+open until the bridge's next capture, which comes DTP_DMI_SETTLE_TCK cycles
+or more after the operation's update and must show which. While a bus access
 is outstanding only sbcs is read, unless the bridge's response hold for that
 access is set, which keeps the access outstanding until the hold releases.
 Such an sbcs read returns sbbusy 1 with sberror unchanged; when the port
 completes the access within DTP_DMI_SETTLE_TCK TCK cycles of the read's
 Update-DR, the Debug Module may have answered after the completion, so the
-capture may instead return sbbusy 0 with the sberror of that response.
+capture may instead return sbbusy 0 with the sberror of that response, and no
+scan of the bridge falls between the busy and settle bounds of that read.
 ``DtpJtag2AxiScopeError`` reports a scan outside that scope.
 Plain classes held by the JTAG2AXI reference models; no reporting. The SV-UVM
 twin is ``dtp_jtag2axi_model``.
@@ -85,7 +90,7 @@ twin is ``dtp_jtag2axi_model``.
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from ocah_axi_vip import OcahAxiItem, OcahAxiProtocol
@@ -196,6 +201,32 @@ class _DmResponse:
     racing: bool = False
 
 
+@dataclass(frozen=True)
+class _Dmi:
+    """The DMI register fields a capture shows."""
+
+    address: int
+    data: int
+    data_mask: int
+    error: int
+
+    def captured(self, kind: DtpJ2aScanKind) -> int:
+        if kind is DtpJ2aScanKind.DTMCS:
+            return DTP_EXPECTED_DTMCS | (self.error << 10)
+        return pack_dmi(self.address, self.data, self.error)
+
+    def known(self, kind: DtpJ2aScanKind) -> int:
+        return _WORD if kind is DtpJ2aScanKind.DTMCS else pack_dmi(0x7F, self.data_mask, 0x3)
+
+
+class _Op(Enum):
+    """Where the read or write of the last update stands at a capture or update."""
+
+    IDLE = "idle"
+    IN_PROGRESS = "in progress"
+    EITHER = "in progress or complete"
+
+
 @dataclass
 class _Bridge:
     # DMI TDR bridge.
@@ -209,6 +240,12 @@ class _Bridge:
     op_read: bool = False
     # The Debug Module's response to the read or write in progress, applied when it returns.
     pending: _DmResponse | None = None
+    # The DMI fields if the operation completed before an update between the busy and settle
+    # bounds; the bridge's own fields hold the other outcome.
+    done: _Dmi | None = None
+    # A capture that may show either outcome: its value with the operation in progress and
+    # complete, and the fields of the complete outcome.
+    split: tuple[int, int, _Dmi] | None = None
     # Debug Module.
     dmactive: bool = False
     ndmreset: int = 0
@@ -229,6 +266,18 @@ class _Bridge:
     either_item: OcahAxiItem | None = None
     # Port completions not yet applied, each with the TCK cycle it was reported on.
     completed: deque[tuple[OcahAxiItem, int]] = field(default_factory=deque)
+
+    @property
+    def dmi(self) -> _Dmi:
+        return _Dmi(self.address, self.data, self.data_mask, self.error)
+
+    def load_dmi(self, dmi: _Dmi) -> None:
+        self.address, self.data, self.data_mask, self.error = (
+            dmi.address,
+            dmi.data,
+            dmi.data_mask,
+            dmi.error,
+        )
 
     def reset_dm(self) -> None:
         """The Debug Module's synchronous reset while dmactive is 0."""
@@ -270,21 +319,59 @@ class DtpJtag2AxiModel:
         self, target: DtpJtag2AxiTargetCfg, kind: DtpJ2aScanKind, tck: int
     ) -> tuple[int, int, int | None]:
         """The value a Capture-DR on TCK cycle ``tck`` loads, the mask of its known bits, and
-        the other value it may load after a raced sbcs read, or None."""
+        the other value it may load, or None: the value with the operation complete when it
+        may be either, or the value after a raced sbcs read."""
         bridge = self._bridges[target.name]
-        in_progress = self._in_progress(target, bridge, tck, "capture")
-        if kind is DtpJ2aScanKind.DTMCS:
-            return DTP_EXPECTED_DTMCS | (bridge.error << 10), _WORD, None
-        if in_progress and bridge.op_read and not self.negative:
+        if bridge.split is not None:
+            raise DtpJtag2AxiScopeError(
+                f"{target.name}: capture before the last capture showed whether the DMI "
+                "operation completed"
+            )
+        done, bridge.done = bridge.done, None
+        op = self._op_state(target, bridge, tck, "capture")
+        if done is not None and op is not _Op.IDLE:
+            raise DtpJtag2AxiScopeError(
+                f"{target.name}: capture {tck - bridge.last_op_tck} TCK after a DMI read or "
+                f"write update, within {DTP_DMI_SETTLE_TCK} TCK, after an update that leaves "
+                "its outcome open"
+            )
+        if op is _Op.EITHER:
+            done = self._either(bridge)
+        if (
+            op is not _Op.IDLE
+            and kind is DtpJ2aScanKind.DMI
+            and bridge.op_read
+            and not self.negative
+        ):
             self._set_busy(bridge)
-        alternate = None
-        if bridge.data_alt is not None:
-            alternate = pack_dmi(bridge.address, bridge.data_alt, bridge.error)
-        return (
-            pack_dmi(bridge.address, bridge.data, bridge.error),
-            pack_dmi(0x7F, bridge.data_mask, 0x3),
-            alternate,
-        )
+        now = bridge.dmi
+        value, known = now.captured(kind), now.known(kind)
+        if done is not None and done != now:
+            complete = done.captured(kind)
+            bridge.split = (value, complete, done)
+            return value, known & done.known(kind), complete
+        if kind is DtpJ2aScanKind.DTMCS or bridge.data_alt is None:
+            return value, known, None
+        return value, known, pack_dmi(bridge.address, bridge.data_alt, bridge.error)
+
+    def settle(self, target: str, observed: int, mask: int) -> int | None:
+        """The outcome a capture that may show either shows on the bits of ``mask``: the
+        bridge takes it, and its captured value is returned. None after any other capture."""
+        bridge = self._bridges[target]
+        if bridge.split is None:
+            return None
+        in_progress, complete, done = bridge.split
+        bridge.split = None
+        if (in_progress ^ complete) & mask == 0:
+            raise DtpJtag2AxiScopeError(
+                f"{target}: capture whose shifted bits 0x{mask:x} cannot show whether the DMI "
+                "operation completed"
+            )
+        if observed & mask != complete & mask:
+            return in_progress
+        bridge.load_dmi(done)
+        bridge.pending = None
+        return complete
 
     def update(
         self,
@@ -308,6 +395,10 @@ class DtpJtag2AxiModel:
         response holds. ``race``: an access this update launches may take either path.
         """
         bridge = self._bridges[target.name]
+        if bridge.split is not None or bridge.done is not None:
+            raise DtpJtag2AxiScopeError(
+                f"{target.name}: update before a capture showed whether the DMI operation completed"
+            )
         if kind is DtpJ2aScanKind.DTMCS:
             self._require_known(target, known, 1 << _DTMCS_DMIRESET_BIT, "dmireset")
             if not (value >> _DTMCS_DMIRESET_BIT) & 0x1:
@@ -318,7 +409,11 @@ class DtpJtag2AxiModel:
             self._require_known(target, known, 0x3, "op")
             address, data, op = unpack_dmi(value)
             data_mask = unpack_dmi(known)[1]
-        if self._in_progress(target, bridge, tck, "update"):
+        op_state = self._op_state(target, bridge, tck, "update")
+        if op_state is _Op.EITHER:
+            loaded = None if kind is DtpJ2aScanKind.DTMCS else (address, data, data_mask)
+            self._either_update(target, bridge, op, loaded)
+        if op_state is not _Op.IDLE:
             if op == DtpDmiOp.CLEAR:
                 bridge.error = int(DtpDmiStatus.SUCCESS)
             elif not self.negative:
@@ -361,24 +456,61 @@ class DtpJtag2AxiModel:
         return predicted
 
     # --- DMI operation -----------------------------------------------------------
-    def _in_progress(
-        self, target: DtpJtag2AxiTargetCfg, bridge: _Bridge, tck: int, what: str
-    ) -> bool:
-        """Whether the read or write of the last update is in progress on TCK cycle ``tck``.
+    def _op_state(self, target: DtpJtag2AxiTargetCfg, bridge: _Bridge, tck: int, what: str) -> _Op:
+        """Where the read or write of the last update stands on TCK cycle ``tck``.
 
         An operation found complete has its response applied first.
         """
         if bridge.pending is None:
-            return False
+            return _Op.IDLE
         elapsed = tck - bridge.last_op_tck
         if elapsed <= DTP_DMI_BUSY_TCK:
-            return True
+            return _Op.IN_PROGRESS
         if elapsed < DTP_DMI_SETTLE_TCK:
+            if bridge.pending.racing or bridge.either_deadline is not None:
+                raise DtpJtag2AxiScopeError(
+                    f"{target.name}: {what} {elapsed} TCK after a DMI read or write update "
+                    "whose response may race a bus access, between the "
+                    f"{DTP_DMI_BUSY_TCK}-TCK busy and {DTP_DMI_SETTLE_TCK}-TCK settle bounds"
+                )
+            return _Op.EITHER
+        self._complete(bridge)
+        return _Op.IDLE
+
+    def _either(self, bridge: _Bridge) -> _Dmi:
+        """The DMI fields with the operation in progress complete; the bridge is unchanged."""
+        in_progress, pending = bridge.dmi, bridge.pending
+        self._complete(bridge)
+        done = bridge.dmi
+        bridge.load_dmi(in_progress)
+        bridge.pending = pending
+        return done
+
+    def _either_update(
+        self,
+        target: DtpJtag2AxiTargetCfg,
+        bridge: _Bridge,
+        op: int,
+        loaded: tuple[int, int, int] | None,
+    ) -> None:
+        """The complete outcome of an update between the busy and settle bounds, kept for the
+        next capture. ``loaded`` is the address, data and data mask a DMI update loads, None
+        for a dmireset."""
+        if op in (DtpDmiOp.READ, DtpDmiOp.WRITE):
             raise DtpJtag2AxiScopeError(
-                f"{target.name}: {what} {elapsed} TCK after a DMI read or write update, "
-                f"between the {DTP_DMI_BUSY_TCK}-TCK busy and {DTP_DMI_SETTLE_TCK}-TCK settle "
-                "bounds"
+                f"{target.name}: DMI read or write update between the {DTP_DMI_BUSY_TCK}-TCK busy "
+                f"and {DTP_DMI_SETTLE_TCK}-TCK settle bounds of the last"
             )
+        done = self._either(bridge)
+        if done.error != DtpDmiStatus.SUCCESS or loaded is None:
+            if op == DtpDmiOp.CLEAR:
+                done = replace(done, error=int(DtpDmiStatus.SUCCESS))
+        else:
+            done = _Dmi(*loaded, done.error)
+        bridge.done = done
+
+    def _complete(self, bridge: _Bridge) -> None:
+        """Apply the response of the operation in progress."""
         response, bridge.pending = bridge.pending, None
         if bridge.op_read:
             bridge.data, bridge.data_mask = (
@@ -387,7 +519,6 @@ class DtpJtag2AxiModel:
             bridge.data_alt = self._raced_sbcs(bridge, response)
         if response.busy:
             self._set_busy(bridge)
-        return False
 
     @staticmethod
     def _raced_sbcs(bridge: _Bridge, response: _DmResponse) -> int | None:
@@ -636,8 +767,8 @@ class DtpJtag2AxiModel:
             )
 
 
-# A bridge register capture: target, kind, value, known bits, and the other value a raced sbcs
-# read may have loaded.
+# A bridge register capture: target, kind, value, known bits, and the other value it may load:
+# the complete outcome, or the value after a raced sbcs read.
 _Captured = tuple[DtpJtag2AxiTargetCfg, DtpJ2aScanKind, int, int, int | None]
 
 
@@ -649,12 +780,14 @@ class DtpJtag2AxiTracker:
     Update-DR, whatever the scan shifted in between, and the transaction an
     update launches is returned from ``on_event`` with the bridge's name. Each
     reconstructed scan of a bridge register yields its expected capture on the
-    bits it shifted out when the PTAP 3DCR select is clear. The debug disable
-    and the response holds of the bridge are read from the TB interface on the
-    update cycle, and so is the bridge's bit of ``j2a_dis_race``. A port transaction that
-    completes an access which may take either path is returned from ``on_axi`` with the
-    bridge's name. The bridge reset and its release come from ``j2a_rst_n``, its
-    assertion counter and ``test_en``, read on every TCK edge, TRST asserted or not.
+    bits it shifted out when the PTAP 3DCR select is clear, and a capture that may
+    show the operation in progress or complete takes the outcome those bits show.
+    The debug disable and the response holds of the bridge are read from the TB
+    interface on the update cycle, and so is the bridge's bit of ``j2a_dis_race``.
+    A port transaction that completes an access which may take either path is
+    returned from ``on_axi`` with the bridge's name. The bridge reset and its
+    release come from ``j2a_rst_n``, its assertion counter and ``test_en``, read on
+    every TCK edge, TRST asserted or not.
     """
 
     def __init__(self, tb_if, *, negative: bool = False) -> None:
@@ -690,12 +823,16 @@ class DtpJtag2AxiTracker:
         self._shifted = (item.bit_count, item.tdi_value)
         if not self.ir.ptap_select_clear():
             return expected
+        mask = known & _mask(min(item.bit_count, _SCAN_LEN[kind]))
+        taken = self.bridges.settle(target.name, item.tdo_value, mask)
+        if taken is not None:
+            self._captured = (target, kind, taken, known, None)
         return DtpJtag2AxiStatusItem(
             target=target.name,
             kind=kind.value,
             expected=value,
             alternate=alternate,
-            mask=known & _mask(min(item.bit_count, _SCAN_LEN[kind])),
+            mask=mask,
             context=f"{target.name} {kind.name} bits={item.bit_count} tdi=0x{item.tdi_value:x}",
             time_ns=item.end_time_ns,
         )

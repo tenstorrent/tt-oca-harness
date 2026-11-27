@@ -71,15 +71,20 @@
 // bus completion at the first update at least one TCK cycle after the port
 // handshake. A capture or update within DtpDmiBusyTck TCK cycles of the last
 // read or write update finds that operation in progress, and one
-// DtpDmiSettleTck cycles or more after it finds it complete; between the two
-// the clock ratio decides, and the model has no prediction. While a bus
-// access is outstanding only sbcs is read, unless the bridge's response hold
-// for that access is set, which keeps the access outstanding until the hold
-// releases. Such an sbcs read returns sbbusy 1 with sberror unchanged; when
-// the port completes the access within DtpDmiSettleTck TCK cycles of the
+// DtpDmiSettleTck cycles or more after it finds it complete. Between the two
+// the clock ratio decides, and the model keeps both outcomes: a capture there
+// expects either, and the bits its scan shifts out must show which the
+// bridge took. An update there is op 0, op 3 or a dmireset, and leaves both
+// outcomes open until the bridge's next capture, which comes DtpDmiSettleTck
+// cycles or more after the operation's update and must show which. While a
+// bus access is outstanding only sbcs is read, unless the bridge's response
+// hold for that access is set, which keeps the access outstanding until the
+// hold releases. Such an sbcs read returns sbbusy 1 with sberror unchanged;
+// when the port completes the access within DtpDmiSettleTck TCK cycles of the
 // read's Update-DR, the Debug Module may have answered after the completion,
 // so the capture may instead return sbbusy 0 with the sberror of that
-// response. A scan outside that scope is a UVM error and carries no
+// response, and no scan of the bridge falls between the busy and settle
+// bounds of that read. A scan outside that scope is a UVM error and carries no
 // prediction. dtp_jtag2axi_tracker applies the scan, event and port streams
 // to one model for each JTAG2AXI reference model. The cocotb twin is
 // env/dtp_jtag2axi_model.py.
@@ -107,9 +112,20 @@ class dtp_jtag2axi_model;
     bit        racing;
   } dm_response_t;
 
+  // The DMI register fields a capture shows.
+  typedef struct packed {
+    bit [6:0]  address;
+    bit [31:0] data;
+    bit [31:0] data_mask;
+    bit [1:0]  error;
+  } dmi_fields_t;
+
+  // Where the read or write of the last update stands at a capture or update;
+  // OP_EITHER between the busy and settle bounds.
   typedef enum {
     OP_IDLE,
     OP_IN_PROGRESS,
+    OP_EITHER,
     OP_UNKNOWN
   } op_state_e;
 
@@ -128,6 +144,16 @@ class dtp_jtag2axi_model;
     // when it returns.
     bit           pending_valid;
     dm_response_t pending;
+    // The DMI fields if the operation completed before an update between the
+    // busy and settle bounds; the bridge's own fields hold the other outcome.
+    bit           done_valid;
+    dmi_fields_t  done;
+    // A capture that may show either outcome: its value with the operation in
+    // progress and complete, and the fields of the complete outcome.
+    bit           split_valid;
+    bit [63:0]    split_in_progress;
+    bit [63:0]    split_complete;
+    dmi_fields_t  split_done;
     // Debug Module. `ctrl` holds the sbcs fields a write or an access sets.
     bit          dmactive;
     bit          ndmreset;
@@ -182,29 +208,85 @@ class dtp_jtag2axi_model;
   endfunction
 
   // The value a Capture-DR on TCK cycle `tck` loads, the mask of its known
-  // bits, and with `alt_valid` the other value it may load after a raced sbcs
-  // read; 0 when the capture is outside the model's scope.
+  // bits, and with `alt_valid` the other value it may load: the value with
+  // the operation complete when it may be either, or the value after a raced
+  // sbcs read; 0 when the capture is outside the model's scope.
   function bit capture(dtp_j2a_target_t t, dtp_j2a_scan_kind_e kind, int unsigned tck,
                        output bit [63:0] value, output bit [63:0] known, output bit alt_valid,
                        output bit [63:0] alternate);
-    string     n = t.name;
-    op_state_e state = op_state(t, tck, "capture");
+    string       n = t.name;
+    bit          done_valid = m_bridge[n].done_valid;
+    dmi_fields_t done = m_bridge[n].done;
+    dmi_fields_t now;
+    op_state_e   state;
     value     = '0;
     known     = '0;
     alt_valid = 1'b0;
     alternate = '0;
+    if (m_bridge[n].split_valid) begin
+      m_bridge[n].split_valid = 1'b0;
+      scope_error(t, "capture before the last capture showed whether the DMI operation completed");
+      return 1'b0;
+    end
+    m_bridge[n].done_valid = 1'b0;
+    state = op_state(t, tck, "capture");
     if (state == OP_UNKNOWN) return 1'b0;
-    if (kind == DTP_J2A_SCAN_DTMCS) begin
-      value = 64'(DtpExpectedDtmcs | (32'(m_bridge[n].error) << DtpDtmcsDmistatLsb));
-      known = 64'hFFFF_FFFF;
+    if (done_valid && state != OP_IDLE) begin
+      scope_error(t, $sformatf(
+                  "capture %0d TCK after a DMI read or write update, within %0d TCK, after an update that leaves its outcome open",
+                  tck - m_bridge[n].last_op_tck,
+                  DtpDmiSettleTck
+                  ));
+      return 1'b0;
+    end
+    if (state == OP_EITHER) begin
+      done_valid = 1'b1;
+      done       = either(n);
+    end
+    if (state != OP_IDLE && kind == DTP_J2A_SCAN_DMI && m_bridge[n].op_read && !negative)
+      set_busy(n);
+    now   = dmi_of(n);
+    value = captured_value(now, kind);
+    known = captured_known(now, kind);
+    if (done_valid && done != now) begin
+      alt_valid                     = 1'b1;
+      alternate                     = captured_value(done, kind);
+      known &= captured_known(done, kind);
+      m_bridge[n].split_valid       = 1'b1;
+      m_bridge[n].split_in_progress = value;
+      m_bridge[n].split_complete    = alternate;
+      m_bridge[n].split_done        = done;
       return 1'b1;
     end
-    if (state == OP_IN_PROGRESS && m_bridge[n].op_read && !negative) set_busy(n);
-    value = dtp_j2a_pack_dmi(m_bridge[n].address, m_bridge[n].data, m_bridge[n].error);
-    known = dtp_j2a_pack_dmi('1, m_bridge[n].data_mask, '1);
-    alt_valid = m_bridge[n].data_alt_valid;
-    if (alt_valid)
-      alternate = dtp_j2a_pack_dmi(m_bridge[n].address, m_bridge[n].data_alt, m_bridge[n].error);
+    if (kind == DTP_J2A_SCAN_DTMCS || !m_bridge[n].data_alt_valid) return 1'b1;
+    alt_valid = 1'b1;
+    alternate = dtp_j2a_pack_dmi(m_bridge[n].address, m_bridge[n].data_alt, m_bridge[n].error);
+    return 1'b1;
+  endfunction
+
+  // The outcome a capture that may show either shows on the bits of `mask`:
+  // the bridge takes it, and 1 with `taken` its captured value. 0 after any
+  // other capture.
+  function bit settle(dtp_j2a_target_t t, bit [63:0] observed, bit [63:0] mask,
+                      output bit [63:0] taken);
+    string n = t.name;
+    taken = '0;
+    if (!m_bridge[n].split_valid) return 1'b0;
+    m_bridge[n].split_valid = 1'b0;
+    if (((m_bridge[n].split_in_progress ^ m_bridge[n].split_complete) & mask) == '0) begin
+      scope_error(
+          t, $sformatf(
+          "capture whose shifted bits 0x%0h cannot show whether the DMI operation completed", mask
+          ));
+      return 1'b0;
+    end
+    if ((observed & mask) != (m_bridge[n].split_complete & mask)) begin
+      taken = m_bridge[n].split_in_progress;
+      return 1'b1;
+    end
+    load_dmi(n, m_bridge[n].split_done);
+    m_bridge[n].pending_valid = 1'b0;
+    taken = m_bridge[n].split_complete;
     return 1'b1;
   endfunction
 
@@ -222,6 +304,12 @@ class dtp_jtag2axi_model;
     bit    [31:0] data_mask;
     op_state_e    state;
     launched = null;
+    if (m_bridge[n].split_valid || m_bridge[n].done_valid) begin
+      m_bridge[n].split_valid = 1'b0;
+      m_bridge[n].done_valid  = 1'b0;
+      scope_error(t, "update before a capture showed whether the DMI operation completed");
+      return 1'b0;
+    end
     if (kind == DTP_J2A_SCAN_DTMCS) begin
       if (!require_known(t, known, 64'(1) << DtpDtmcsDmiresetBit, "dmireset")) return 1'b0;
       if (!value[DtpDtmcsDmiresetBit]) return 1'b0;
@@ -234,7 +322,10 @@ class dtp_jtag2axi_model;
     end
     state = op_state(t, tck, "update");
     if (state == OP_UNKNOWN) return 1'b0;
-    if (state == OP_IN_PROGRESS) begin
+    if (state == OP_EITHER) begin
+      if (!either_update(t, dmi, data_mask, kind == DTP_J2A_SCAN_DTMCS)) return 1'b0;
+    end
+    if (state != OP_IDLE) begin
       if (dmi.op == DTP_DMI_OP_CLEAR) m_bridge[n].error = DTP_DMI_SUCCESS;
       else if (!negative) set_busy(n);
       return 1'b0;
@@ -305,6 +396,12 @@ class dtp_jtag2axi_model;
     b.op_read        = 1'b0;
     b.pending_valid  = 1'b0;
     b.pending        = '{data: '0, data_mask: '0, busy: 1'b0, racing: 1'b0};
+    b.done_valid     = 1'b0;
+    b.done           = '0;
+    b.split_valid    = 1'b0;
+    b.split_in_progress = '0;
+    b.split_complete = '0;
+    b.split_done     = '0;
     b.dmactive       = 1'b0;
     b.ndmreset       = 1'b0;
     b.ctrl           = sbcs_reset();
@@ -329,18 +426,19 @@ class dtp_jtag2axi_model;
     `uvm_error("dtp_jtag2axi_model", {t.name, ": ", msg})
   endfunction
 
-  // Whether the read or write of the last update is in progress on TCK cycle
-  // `tck`, OP_UNKNOWN between the busy and settle bounds. An operation found
+  // Where the read or write of the last update stands on TCK cycle `tck`;
+  // OP_UNKNOWN with a scope error between the busy and settle bounds of an
+  // operation whose response may race a bus access. An operation found
   // complete has its response applied first.
   protected function op_state_e op_state(dtp_j2a_target_t t, int unsigned tck, string what);
-    string        n = t.name;
-    int unsigned  elapsed = tck - m_bridge[n].last_op_tck;
-    dm_response_t rsp = m_bridge[n].pending;
+    string       n = t.name;
+    int unsigned elapsed = tck - m_bridge[n].last_op_tck;
     if (!m_bridge[n].pending_valid) return OP_IDLE;
     if (elapsed <= DtpDmiBusyTck) return OP_IN_PROGRESS;
     if (elapsed < DtpDmiSettleTck) begin
+      if (!m_bridge[n].pending.racing && !m_either_valid[n]) return OP_EITHER;
       scope_error(t, $sformatf(
-                  "%s %0d TCK after a DMI read or write update, between the %0d-TCK busy and %0d-TCK settle bounds",
+                  "%s %0d TCK after a DMI read or write update whose response may race a bus access, between the %0d-TCK busy and %0d-TCK settle bounds",
                   what,
                   elapsed,
                   DtpDmiBusyTck,
@@ -348,6 +446,13 @@ class dtp_jtag2axi_model;
                   ));
       return OP_UNKNOWN;
     end
+    complete_op(n);
+    return OP_IDLE;
+  endfunction
+
+  // Apply the response of the operation in progress.
+  protected function void complete_op(string n);
+    dm_response_t rsp = m_bridge[n].pending;
     m_bridge[n].pending_valid = 1'b0;
     if (m_bridge[n].op_read) begin
       m_bridge[n].data           = rsp.busy ? DataBusy : rsp.data;
@@ -355,7 +460,74 @@ class dtp_jtag2axi_model;
       m_bridge[n].data_alt_valid = raced_sbcs(n, rsp, m_bridge[n].data_alt);
     end
     if (rsp.busy) set_busy(n);
-    return OP_IDLE;
+  endfunction
+
+  // The DMI fields with the operation in progress complete; the bridge is
+  // unchanged.
+  protected function dmi_fields_t either(string n);
+    dmi_fields_t in_progress = dmi_of(n);
+    dmi_fields_t done;
+    complete_op(n);
+    done = dmi_of(n);
+    load_dmi(n, in_progress);
+    m_bridge[n].pending_valid = 1'b1;
+    return done;
+  endfunction
+
+  // The complete outcome of an update between the busy and settle bounds,
+  // kept for the next capture; 0 with a scope error for a read or write.
+  // With `own`, a dmireset, the update loads the bridge's own address and
+  // data.
+  protected function bit either_update(dtp_j2a_target_t t, dtp_dmi_t dmi, bit [31:0] data_mask,
+                                       bit own);
+    string       n = t.name;
+    dmi_fields_t done;
+    if (dmi.op == DTP_DMI_OP_READ || dmi.op == DTP_DMI_OP_WRITE) begin
+      scope_error(t, $sformatf(
+                  "DMI read or write update between the %0d-TCK busy and %0d-TCK settle bounds of the last",
+                  DtpDmiBusyTck,
+                  DtpDmiSettleTck
+                  ));
+      return 1'b0;
+    end
+    done = either(n);
+    if (done.error != DTP_DMI_SUCCESS || own) begin
+      if (dmi.op == DTP_DMI_OP_CLEAR) done.error = DTP_DMI_SUCCESS;
+    end else begin
+      done.address   = dmi.address;
+      done.data      = dmi.data;
+      done.data_mask = data_mask;
+    end
+    m_bridge[n].done_valid = 1'b1;
+    m_bridge[n].done       = done;
+    return 1'b1;
+  endfunction
+
+  protected function dmi_fields_t dmi_of(string n);
+    dmi_fields_t f;
+    f.address   = m_bridge[n].address;
+    f.data      = m_bridge[n].data;
+    f.data_mask = m_bridge[n].data_mask;
+    f.error     = m_bridge[n].error;
+    return f;
+  endfunction
+
+  protected function void load_dmi(string n, dmi_fields_t f);
+    m_bridge[n].address   = f.address;
+    m_bridge[n].data      = f.data;
+    m_bridge[n].data_mask = f.data_mask;
+    m_bridge[n].error     = f.error;
+  endfunction
+
+  protected static function bit [63:0] captured_value(dmi_fields_t f, dtp_j2a_scan_kind_e kind);
+    if (kind == DTP_J2A_SCAN_DTMCS)
+      return 64'(DtpExpectedDtmcs | (32'(f.error) << DtpDtmcsDmistatLsb));
+    return dtp_j2a_pack_dmi(f.address, f.data, f.error);
+  endfunction
+
+  protected static function bit [63:0] captured_known(dmi_fields_t f, dtp_j2a_scan_kind_e kind);
+    if (kind == DTP_J2A_SCAN_DTMCS) return 64'hFFFF_FFFF;
+    return dtp_j2a_pack_dmi('1, f.data_mask, '1);
   endfunction
 
   // With 1, `sbcs` is what a raced read returns when the Debug Module answers
@@ -623,12 +795,13 @@ endclass : dtp_jtag2axi_model
 // Update-DR, whatever the scan shifted in between, and the transaction an
 // update launches is returned from on_event with the bridge's name. Each
 // reconstructed scan of a bridge register yields its expected capture on the
-// bits it shifted out when the PTAP 3DCR select is clear. The debug disable,
-// the response holds and the j2a_dis_race bit of the bridge are read from
-// dtp_tb_if on the update cycle. A port transaction that completes an access
-// which may take either path is returned from on_axi with the bridge's name.
-// The bridge reset and its release come from j2a_rst_n, its assertion
-// counter and test_en, read on every TCK edge, TRST asserted or not.
+// bits it shifted out when the PTAP 3DCR select is clear, and a capture that
+// may show the operation in progress or complete takes the outcome those bits
+// show. The debug disable, the response holds and the j2a_dis_race bit of the
+// bridge are read from dtp_tb_if on the update cycle. A port transaction that
+// completes an access which may take either path is returned from on_axi with
+// the bridge's name. The bridge reset and its release come from j2a_rst_n, its
+// assertion counter and test_en, read on every TCK edge, TRST asserted or not.
 class dtp_jtag2axi_tracker;
 
   virtual dtp_tb_if             tb_vif;
@@ -641,7 +814,8 @@ class dtp_jtag2axi_tracker;
   protected int unsigned        m_tck;
   protected time                m_prev_step;
   // The bridge register captured in the DR scan in progress: its value, known
-  // bits, and the other value a raced sbcs read may have loaded.
+  // bits, and the other value it may load: the complete outcome, or the value
+  // after a raced sbcs read.
   protected bit                 m_captured;
   protected dtp_j2a_target_t    m_target;
   protected dtp_j2a_scan_kind_e m_kind;
@@ -670,6 +844,7 @@ class dtp_jtag2axi_tracker;
     dtp_jtag2axi_status_item exp = dtp_jtag2axi_status_item::type_id::create("exp");
     int unsigned             width;
     int unsigned             kept;
+    bit                      [63:0] taken;
     exp.compare   = 1'b0;
     exp.timestamp = t.end_time;
     sync_reset();
@@ -694,6 +869,10 @@ class dtp_jtag2axi_tracker;
     exp.mask      = m_known & ocah_rng::bit_mask(kept);
     exp.context_s = $sformatf("%s %s bits=%0d tdi=0x%0h", m_target.name, m_kind.name(),
                               t.bit_count, t.tdi_value());
+    if (bridges.settle(m_target, t.tdo_value(), exp.mask, taken)) begin
+      m_value     = taken;
+      m_alt_valid = 1'b0;
+    end
     return exp;
   endfunction
 

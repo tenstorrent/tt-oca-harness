@@ -73,11 +73,6 @@ class dtp_jtag2axi_dmi_status_test_seq extends dtp_jtag2axi_base_test_seq;
     end
   endtask
 
-  // A seeded sbaddress0 value the bridge's address register holds whole.
-  function bit [31:0] random_sbaddress0(dtp_j2a_target_t t);
-    return $urandom() & 32'(bit_mask((t.addr_width < 32) ? t.addr_width : 32));
-  endfunction
-
   // DTMCS shows the sticky status in dmistat; dmihardreset leaves it and
   // dmireset clears it, keeping the DMI address and data, and dmireset with
   // status 0 changes nothing.

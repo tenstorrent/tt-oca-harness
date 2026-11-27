@@ -93,6 +93,7 @@ package dtp_seq_lib_pkg;
   `include "dtp_jtag2axi_backpressure_test_seq.svh"
   `include "dtp_jtag2axi_sba_busy_test_seq.svh"
   `include "dtp_jtag2axi_isolation_test_seq.svh"
+  `include "dtp_jtag2axi_clock_ratio_test_seq.svh"
   `include "dtp_jtag2axi_debug_disable_test_seq.svh"
   `include "dtp_jtag2axi_reset_test_seq.svh"
 

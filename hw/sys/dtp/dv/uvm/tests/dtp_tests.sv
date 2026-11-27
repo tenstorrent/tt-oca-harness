@@ -51,6 +51,7 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag2axi_backpressure_test.svh"
 `include "dtp_jtag2axi_sba_busy_test.svh"
 `include "dtp_jtag2axi_isolation_test.svh"
+`include "dtp_jtag2axi_clock_ratio_test.svh"
 `include "dtp_jtag2axi_debug_disable_test.svh"
 `include "dtp_jtag2axi_reset_test.svh"
 

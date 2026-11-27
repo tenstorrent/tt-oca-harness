@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 import cocotb
-from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 from ocah_lib import OcahRng, OcahSequence, OcahTest
 from pyuvm import ConfigDB, uvm_sequencer
@@ -146,7 +145,7 @@ class dtp_base_test(OcahTest):
         startup = {name: 0 for name in DBG_DISABLE_FIELDS}
         tb.set_dbg_disable_vector(startup)
         self.logger.info("dbg_disable startup vector: %s", format_dbg_disable(startup))
-        cocotb.start_soon(Clock(tb.clk, self.cfg.sys_clk_period_ns, unit="ns").start())
+        tb.start_clk(self.cfg.sys_clk_period_ns)
         await ClockCycles(tb.clk, 5)
         tb.check_dv_cfg()
         tb.por_rst_n.value = 1

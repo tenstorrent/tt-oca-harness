@@ -240,20 +240,14 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // One DMI scan of {address, data, op} under the loaded DMI instruction,
   // from Run-Test/Idle or from Select-DR-Scan after a chained scan; ends in
   // Select-DR-Scan with `chain` and in Run-Test/Idle otherwise, with no idle
-  // cycles. Judges the captured status against `status` and, with
-  // `check_capture`, the captured address and data against `exp_address`
-  // and `exp_data`.
-  task dmi_raw(dtp_j2a_target_t t, bit [6:0] address, bit [31:0] data, dtp_dmi_op_e op,
-               dtp_dmi_status_e status, string context_s, bit chain = 1'b0,
-               bit check_capture = 1'b0, bit [6:0] exp_address = '0, bit [31:0] exp_data = '0);
-    bit       [63:0] value = dtp_j2a_pack_dmi(address, data, op);
-    int unsigned     lead = m_dr_chained ? 2 : 3;
-    bit              tms         [] = new[lead + DtpDmiLen + 2];
-    bit              tdi         [] = new[lead + DtpDmiLen + 2];
-    bit              tdo         [];
-    bit       [63:0] captured = '0;
-    bit       [63:0] fields;
-    dtp_dmi_t        dmi;
+  // cycles. `captured` is the captured value.
+  task dmi_shift(input bit [6:0] address, input bit [31:0] data, input dtp_dmi_op_e op,
+                 input bit chain, output bit [63:0] captured);
+    bit          [63:0] value = dtp_j2a_pack_dmi(address, data, op);
+    int unsigned        lead = m_dr_chained ? 2 : 3;
+    bit                 tms         [] = new[lead + DtpDmiLen + 2];
+    bit                 tdi         [] = new[lead + DtpDmiLen + 2];
+    bit                 tdo         [];
     // Select-DR-Scan, Capture-DR, Shift-DR; Exit1-DR on the last bit; Update-DR.
     if (!m_dr_chained) tms[0] = 1'b1;
     for (int unsigned i = 0; i < DtpDmiLen; i++) begin
@@ -264,7 +258,20 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     tms[lead+DtpDmiLen+1] = chain;
     raw_walk_tdo(tms, tdi, tdo);
     m_dr_chained = chain;
+    captured     = '0;
     for (int unsigned i = 0; i < DtpDmiLen; i++) captured[i] = tdo[lead+i];
+  endtask
+
+  // dmi_shift judging the captured status against `status` and, with
+  // `check_capture`, the captured address and data against `exp_address`
+  // and `exp_data`.
+  task dmi_raw(dtp_j2a_target_t t, bit [6:0] address, bit [31:0] data, dtp_dmi_op_e op,
+               dtp_dmi_status_e status, string context_s, bit chain = 1'b0,
+               bit check_capture = 1'b0, bit [6:0] exp_address = '0, bit [31:0] exp_data = '0);
+    bit       [63:0] captured;
+    bit       [63:0] fields;
+    dtp_dmi_t        dmi;
+    dmi_shift(address, data, op, chain, captured);
     dmi       = dtp_j2a_unpack_dmi(captured);
     context_s = $sformatf("%s op=%s dmi_capture=0x%0h", context_s, op.name(), captured);
     check_dmi_status(t, dmi.op, status, context_s);
@@ -544,6 +551,11 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
         t.addr_width
     );
     return upper | 64'($urandom_range(DtpJ2aTargetMemBytes / t.beat_bytes - 1) * t.beat_bytes);
+  endfunction
+
+  // A seeded sbaddress0 value the bridge's address register holds whole.
+  function bit [31:0] random_sbaddress0(dtp_j2a_target_t t);
+    return $urandom() & 32'(bit_mask((t.addr_width < 32) ? t.addr_width : 32));
   endfunction
 
   // A seeded data-width word, nonzero and different from `avoid`.

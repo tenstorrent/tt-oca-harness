@@ -377,6 +377,9 @@ localparam string DtpJ2aDecodeCheckId = "CHK-J2A-DECODE";
 // A bridge's DMI cells, dmistat, Debug Module registers and port counts
 // across scans of other instructions and accesses on the other bridges.
 localparam string DtpJ2aIsolationCheckId = "CHK-J2A-ISOLATION";
+// A DMI operation in progress within DtpDmiBusyTck TCK cycles of its update
+// and complete from DtpDmiSettleTck cycles on, at every clock ratio.
+localparam string DtpJ2aIdleCheckId = "CHK-J2A-IDLE";
 // An access of a disabled bridge, ended by the error slave, and the registers
 // that stay live while the bridge is disabled.
 localparam string DtpJ2aDbgDisableCheckId = "CHK-J2A-DBG-DISABLE";

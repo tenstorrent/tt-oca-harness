@@ -10,20 +10,20 @@
 // The scan-network observables live in dtp_scan_if and the cross-trigger
 // pins in dtp_xtrig_if; the primary TAP pins are on the shared ocah_jtag_if.
 //
-// cocotb deposits the clock, the resets, and the stimulus members through
-// hierarchical handles (env/dtp_tb_if.py); SV-UVM sequences reach the same
-// members through the virtual interface, and the harness block in tb_top
-// generates the clock from clk_period_ns.
+// cocotb deposits the clock period, the resets, and the stimulus members
+// through hierarchical handles (env/dtp_tb_if.py); SV-UVM sequences reach the
+// same members through the virtual interface. tb_top generates the clock from
+// clk_period_ns once it is set; cocotb on Verilator drives the clock instead.
 
 interface dtp_tb_if;
 
-  // System-clock period the harness clock generator reads, set by the env
-  // from dtp_env_cfg (the test cfg randomizes it from the runner seed); 0
-  // until the env publishes it.
+  // System-clock period tb_top's clock generator reads, set by the cocotb base
+  // test or the SV-UVM env from its cfg (randomized from the runner seed); 0,
+  // with the generator idle, until it is set.
   int unsigned clk_period_ns = 0;
 
-  // System clock: cocotb drives it with Clock(); the SV-UVM harness toggles
-  // it every half period.
+  // System clock: tb_top toggles it every half period of clk_period_ns, and
+  // cocotb on Verilator drives it with Clock().
   logic clk = 1'b0;
 
   // Driven by the TB (reset sequencing owned by the test/sequence).
