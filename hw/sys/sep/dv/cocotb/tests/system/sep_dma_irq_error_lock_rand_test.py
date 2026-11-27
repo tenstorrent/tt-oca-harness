@@ -105,7 +105,7 @@ gives 0x0 for 0x9 written over 0x6, while the field text says "writing
 kMultiBitBool4False (0x9) reads back 0x9" (``secure_dma.rdl:150``). After a
 cold reset the leaf also writes a drawn value that is neither MuBi4 value to
 RANGE_REGWEN, reads it back and writes RANGE_BASE; the read-back and whether
-BASE took the write are logged (``INFO-DMA-REGWEN-NONMUBI``), because the
+BASE took the write are logged (``OBS-DMA-REGWEN-NONMUBI``), because the
 same two texts disagree: the field text says "any value other than 0x6 locks
 the range" (``secure_dma.rdl:150``), and ``wzc`` leaves 0x6, and so no lock,
 for a value with bits 1 and 2 set. Control, else CTRL-MISSING: RANGE_REGWEN reads 0x6 before the write and
@@ -340,10 +340,10 @@ Checkers:
   OBS-DMA-LOCK-READBACK per L3 lock write and unlock attempt, in both
                     contexts: the RANGE_REGWEN read-back, logged with
                     ``chk=CHK-DMA-LOCK``, which grades the lock hold.
-  INFO-DMA-REGWEN-NONMUBI after a cold reset, the read-back of a first
+  OBS-DMA-REGWEN-NONMUBI after a cold reset, the read-back of a first
                     RANGE_REGWEN write of a drawn value that is neither 0x6
-                    nor 0x9 and whether a following BASE write lands, logged
-                   . Control: RANGE_REGWEN reads 0x6 before the write
+                    nor 0x9 and whether a following BASE write lands, logged.
+                    Control: RANGE_REGWEN reads 0x6 before the write
                     and BASE before the write differs from the value written.
   CHK-DMA-SIZE-EDGE one copy of a drawn size 2 bytes past a multiple of 4 at
                     width encoding 2, from a cold reset with the destination
@@ -1997,10 +1997,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"base_landed={int(base == nb)}"
         )
         if regwen_pre != REGWEN_TRUE or base_pre == nb:
-            self._ctrl_missing(
-                "CTRL-DMA-REGWEN-NONMUBI", f"INFO-DMA-REGWEN-NONMUBI control: {line}"
-            )
-        self.logger.info("INFO-DMA-REGWEN-NONMUBI LOG seed=%d %s", c.seed, line)
+            self._ctrl_missing("CTRL-DMA-REGWEN-NONMUBI", f"OBS-DMA-REGWEN-NONMUBI control: {line}")
+        self.logger.info("OBS-DMA-REGWEN-NONMUBI LOG seed=%d %s", c.seed, line)
 
     async def _size_edge(self) -> None:
         """A copy and a SHA-256 run of 4k+2 bytes at width encoding 2 (CHK-DMA-SIZE-EDGE, -HASH)."""
