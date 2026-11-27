@@ -53,7 +53,7 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   that must stay low for two full core clocks before the next NMI request
   (VeeR EL2 PRM ``docs/source/memory-map.md:1243-1245`` at the ``veer_el2``
   ``rev`` in ``Bender.yml``); it is the WDT bark
-  (``hw/sys/sep/doc/interrupts.adoc:273-274``), which holds until
+  (``hw/sys/sep/doc/interrupts.adoc:286-287``), which holds until
   ``INTR_STATE`` is cleared (``hw/sys/sep/rtl/sep_pkg.sv``, delegated by
   ``hw/sys/sep/doc/port_table.adoc:130``). ``CTRL-NMI-NESTED`` (fails the
   leaf) counts the clocks with ``wdt_bark_probe_o`` 1 between the handler's

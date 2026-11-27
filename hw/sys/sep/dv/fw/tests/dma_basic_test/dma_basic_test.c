@@ -172,7 +172,7 @@ static void chunk_done_w1c(void) {
 
 // Write 1 to the STATUS RW1C bits after an error leg and read STATUS back
 // before the next GO, because GO also clears STATUS.error. STATUS.error is
-// write-one-to-clear (hw/sys/sep/doc/dma.adoc:131-132;
+// write-one-to-clear (hw/sys/sep/doc/dma.adoc:133-134;
 // vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:308-315),
 // so the readback must show ERROR = 0. Returns the readback.
 static uint32_t error_w1c(const char *chk, int *e) {
@@ -968,7 +968,7 @@ static int chk_host_intg(void) {
     for (volatile uint32_t i = 0; i < HOSTINTG_ARM_SPIN; i++) {
     }
 
-    // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:69-71):
+    // The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:71-73):
     // with the pin low again, STATUS still holds host_path_err. The testbench
     // requires aggregator bit 41 high up to CHK-HOSTINTG-HELD, and the pin low on
     // a clock after its release at this read (CTRL-HOSTINTG-HELD-PIN).

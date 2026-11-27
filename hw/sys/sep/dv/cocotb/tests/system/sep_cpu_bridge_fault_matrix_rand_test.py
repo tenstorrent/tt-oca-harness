@@ -25,7 +25,7 @@ Only"; ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_d
   bit on ``sep_ras_probe_o``, and the status read after the wait grades it;
 * a partial write (a byte strobe that misses a byte the register owns) to an
   AES or watchdog register answers SLVERR and latches that block's bit alone
-  (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:63-68``); the register
+  (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:64-69``); the register
   value after it is logged as ``OBS-PARTIAL-KEPT`` and not graded;
 * the vector bit of each of sources 41, 42 and 43 rises in the run
   (``hw/sys/sep/doc/interrupts.adoc:22-23`` "Bit ``i`` of that vector is PIC
@@ -86,11 +86,11 @@ Checkers:
                   ``threshold[31:0] = 0x0``). No specification sentence states
                   the register value after the refused write, so the read after
                   it is logged as ``OBS-PARTIAL-KEPT`` and not graded. Sources:
-                  ``sep_cpu_ctrl.adoc:63-68`` "a partial write: a byte strobe
+                  ``sep_cpu_ctrl.adoc:64-69`` "a partial write: a byte strobe
                   that misses a byte the register owns ... also received
                   SLVERR"; ``hw/sys/sep/doc/crypto.adoc:155-161`` (AES bridge
                   bit); ``hw/sys/sep/doc/watchdog.adoc:19`` (watchdog bridge);
-                  ``hw/sys/sep/doc/interrupts.adoc:242-245`` (source 43 is the
+                  ``hw/sys/sep/doc/interrupts.adoc:254-258`` (source 43 is the
                   OR of the AES and watchdog bits). Control: a full-strobe
                   write of the RDL reset value to the same register before the
                   leg answers OKAY and latches nothing (``CTRL-FULL-STROBE``).
@@ -98,7 +98,7 @@ Checkers:
                   status to 0 and vector bit 42 to 0.
   CHK-SRC41-RISE, CHK-SRC42-RISE, CHK-SRC43-RISE
                   vector bit 40, 41 and 42 each rise at least once in the run
-                  (``interrupts.adoc:22-23``; source rows ``:225-231``,
+                  (``interrupts.adoc:22-23``; source rows ``:237-243``,
                   ``:233-238``, ``:240-251``).
   INFO-SRC41-COINCIDENT, INFO-SRC42-COINCIDENT, INFO-SRC43-COINCIDENT
                   logged only: the number of rises of that bit at which
@@ -127,17 +127,17 @@ Checkers:
                   after the host-path fault, a write of 1 to DMA STATUS.ERROR
                   reads ERROR = 0 and leaves host_path_err = 1 and source 42
                   (vector bit 41) high. Sources:
-                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:53-55``
+                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:54-56``
                   "Secure DMA bridge fault status. Each bit is latched in
                   hardware and held until the corresponding DMA_BUS_ERR_CLEAR
                   write. These bits also drive dedicated PIC sources.";
-                  ``hw/sys/sep/doc/interrupts.adoc:233-234`` source 42 "DMA
+                  ``hw/sys/sep/doc/interrupts.adoc:245-246`` source 42 "DMA
                   host-path integrity/bus fault";
-                  ``hw/sys/sep/doc/dma.adoc:133-134`` "Status completion and
+                  ``hw/sys/sep/doc/dma.adoc:135-136`` "Status completion and
                   error bits are write-one-to-clear". Control: the next cell
                   (``cell=host_only`` of CHK-DMA-CLR) writes 1 to
                   DMA_BUS_ERR_CLEAR and needs host_path_err = 0 and source 42
-                  low (``sep_cpu_ctrl.adoc:60`` "Writing 1 emits a single-cycle
+                  low (``sep_cpu_ctrl.adoc:61`` "Writing 1 emits a single-cycle
                   clear pulse to both latches").
   CHK-RACE        a same-cycle fault and clear leaves the latch set. The
                   whole status register is graded: for a peripheral latch,
@@ -151,7 +151,7 @@ Checkers:
                   (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:50``, HMAC row,
                   Hole in Extent "SLVERR, 0xFFFFFFFF / SLVERR"; the column is
                   the answer at the inbound AXI port,
-                  ``hw/sys/sep/doc/memory_map.adoc:66-69``). The read runs with
+                  ``hw/sys/sep/doc/memory_map.adoc:68-71``). The read runs with
                   the owner window closed.
 
 FCOV: the owner window is open over each graded instance. The pass label
@@ -174,7 +174,7 @@ the DMA register-bridge fault, a level sticky until DMA_BUS_ERR_CLEAR;
 ``periph_bus_err[i]`` is the register-bridge fault of block ``i`` of
 ``periph_bus_err_e`` (aes 0, hmac 1, kmac 2, otbn 3, csrng 4, edn 5, wdt 6), a
 level sticky until its PERIPH_BUS_ERR_CLEAR bit. A write of 1 is the clear
-(``sep_cpu_ctrl.adoc:60``, ``:66``, ``:76``). The leaf compares the bench tap
+(``sep_cpu_ctrl.adoc:61``, ``:67``, ``:78``). The leaf compares the bench tap
 ``sep_ras_probe_o`` (``env/sep_ras_map``) on every clock with its latch model
 (the faults it drove minus the bits it cleared), per field and per block bit
 of ``periph_bus_err_e``, never through the PERIPH_BUS_ERR_STATUS field mask.

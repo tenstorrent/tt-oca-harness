@@ -27,7 +27,7 @@ below:
 * Leg C: ENABLED_MEMORY_RANGE_BASE and LIMIT exactly on the region edges (low,
   high, both, and both with a guard outside the range at the low end, the
   high end and both ends). Each cell runs two zero fills, the operation the
-  range bounds (``hw/sys/sep/doc/dma.adoc:100-106``; the range does not bound
+  range bounds (``hw/sys/sep/doc/dma.adoc:102-108``; the range does not bound
   an internal copy, ``:105``): one of the low region from BASE and one of the
   high region up to LIMIT, in a drawn order, with a wide-range control run of
   the same fills.
@@ -138,7 +138,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       stop reads and n GO writes; the Leg A checks follow.
   CHK-DMA-RW1C        per Leg D continuation stop: a STATUS write of 0,
                       answered OKAY, leaves CHUNK_DONE 1 and a write of
-                      CHUNK_DONE clears it (``dma.adoc:133-134``); the line
+                      CHUNK_DONE clears it (``dma.adoc:135-136``); the line
                       logs both write responses. Control, else CTRL-MISSING
                       (CTRL-DMA-RW1C-W0): the write of 0 shows exactly one AW
                       handshake at the STATUS offset on the DMA CSR target
@@ -149,16 +149,16 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       response is logged.
   CHK-DMA-NOGO        CONTROL with INITIAL_TRANSFER=1 and GO=0: no AR or AW,
                       no BUSY rise and BUSY=0, DONE unchanged over 2000 clocks
-                      (``dma.adoc:81-82``). Controls: CTRL-DMA-NOGO-WR, CONTROL
+                      (``dma.adoc:83-84``). Controls: CTRL-DMA-NOGO-WR, CONTROL
                       reads INITIAL_TRANSFER=1 GO=0 after the window; and
                       CTRL-DMA-NOGO-GO, the GO=1 write after it raises BUSY
                       within the same 2000 clocks and moves the copy.
   CHK-DMA-RANGE-COPY  an SRAM copy whose destination crosses LIMIT part-way
                       completes: DONE=1, ERROR=0, ERROR_CODE=0, the model AR
-                      and AW, the model image (``dma.adoc:108``). Control
+                      and AW, the model image (``dma.adoc:110``). Control
                       CTRL-DMA-RANGE-COPY: a zero fill of the same
                       destination under the same range stops at LIMIT with
-                      ERROR_CODE.DST_ADDR_ERROR (``dma.adoc:100-106``).
+                      ERROR_CODE.DST_ADDR_ERROR (``dma.adoc:102-108``).
 
   CHK-DMA-SHORT-LAST-CHUNK a firmware-paced copy at width 4 whose
                       TOTAL_DATA_SIZE is a drawn 1 to 3 whole chunks of 4k
@@ -167,7 +167,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       the W beats after the n-th GO write (n = the chunk
                       count, the last chunk) enable exactly the tail bytes,
                       and the run ends with DONE=1, ERROR=0 and ERROR_CODE 0
-                      (``secure_dma.rdl:299-300``, ``:313-314``).
+                      (``secure_dma.rdl:301-302``, ``:315-316``).
                       TOTAL_DATA_SIZE is the total byte count and the width
                       transactions run "until TOTAL_DATA_SIZE bytes have been
                       transferred" (``secure_dma.rdl:172``, ``:199``);
@@ -184,7 +184,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                       and W counts each equal TOTAL_DATA_SIZE / 4
                       (``secure_dma.rdl:172``, ``:199``), and the run ends
                       with DONE=1, ERROR=0 and ERROR_CODE 0
-                      (``secure_dma.rdl:299-300``, ``:313-314``). The source and
+                      (``secure_dma.rdl:301-302``, ``:315-316``). The source and
                       destination lie inside the enabled memory range (all of
                       SRAM), so the restriction "based on OT DMA enabled
                       memory space allocation" (``secure_dma.rdl:176``) does
@@ -236,12 +236,12 @@ cap or poll bound is aborted and must reach BUSY=0.
 
 Multi-chunk start contract (CHK-DMA-GO-CHUNKS): "A start is a write of
 `CONTROL.GO` while `STATUS.BUSY` is clear: the first chunk of a transfer, with
-`INITIAL_TRANSFER` set, or a later chunk, with `GO` alone" (``dma.adoc:81-83``);
+`INITIAL_TRANSFER` set, or a later chunk, with `GO` alone" (``dma.adoc:83-85``);
 "For a transfer in several chunks without hardware handshake, wait for
 `STATUS.CHUNK_DONE` after each chunk and start the next one by writing
-`CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`" (``sep-programming.adoc:768-770``);
+`CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`" (``sep-programming.adoc:777-779``);
 STATUS.CHUNK_DONE: "Transfer of a single chunk is complete. Only raised for
-multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``).
+multi-chunk memory-to-memory transfers" (``secure_dma.rdl:329-330``).
 DONE = 0 at those stops: "**Transfer Completion:** An interrupt is raised when
 the entire data transfer (as defined by `TOTAL_DATA_SIZE`) is complete."
 (``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:34``),
@@ -255,10 +255,10 @@ Leg D chunk contract (CHK-DMA-HASH-CHAIN, CHK-DMA-CONT-CFG): CHUNK_DATA_SIZE is
 chunks of data as specified by the CHUNK_DATA_SIZE register"
 (``secure_dma.adoc:211-212``); STATUS.CHUNK_DONE "Only raised for multi-chunk
 memory-to-memory transfers. Cleared automatically by the hardware when starting
-the transfer of a new chunk." (``secure_dma.adoc:320-322``); "Chunk completion
+the transfer of a new chunk." (``secure_dma.adoc:322-324``); "Chunk completion
 applies to multi-chunk transfers without hardware handshake"
-(``hw/sys/sep/doc/dma.adoc:132``); and the stop and next GO of
-``sep-programming.adoc:768-770``. A transfer of L bytes in chunks of
+(``hw/sys/sep/doc/dma.adoc:134``); and the stop and next GO of
+``sep-programming.adoc:777-779``. A transfer of L bytes in chunks of
 L/k therefore stops k-1 times and takes k GO writes.
 
 CFG_REGWEN contract (CHK-DMA-CFG-REGWEN): "In the idle state, this register is
@@ -334,7 +334,7 @@ GO value during a transfer is not graded.
                       ERROR_CODE and the destination compare.
 
 Busy write contract (CHK-DMA-CTRL-BUSY): "A start is a write of `CONTROL.GO`
-while `STATUS.BUSY` is clear" (``hw/sys/sep/doc/dma.adoc:81-82``), so a GO=1
+while `STATUS.BUSY` is clear" (``hw/sys/sep/doc/dma.adoc:83-84``), so a GO=1
 write at BUSY=1 is not a start; the engine takes its configuration at a start
 (``:82-88``), so the copy moves only its own beats. What the write does to
 CONTROL, and what a GO=0 write at BUSY=1 does to the copy, are not stated and
@@ -342,8 +342,8 @@ stay logged.
 
 Continuation contract (CHK-DMA-CONT-CFG): "The engine takes `OPCODE` and
 `DIGEST_SWAP` at the first start of a transfer and keeps them for its later
-chunks." (``hw/sys/sep/doc/dma.adoc:83-84``); "The opcode and `DIGEST_SWAP` of
-the first start hold for the whole transfer." (``sep-programming.adoc:770-771``).
+chunks." (``hw/sys/sep/doc/dma.adoc:85-86``); "The opcode and `DIGEST_SWAP` of
+the first start hold for the whole transfer." (``sep-programming.adoc:779-780``).
 CONTROL.OPCODE and CONTROL.DIGEST_SWAP are ``sw = rw`` (``secure_dma.rdl:207-210``,
 ``:224-230``), so a CONTROL read returns the value of the last write.
 
@@ -2337,7 +2337,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self._pass(
                 "CHK-DMA-CTRL-BUSY",
                 len(ev.ar) == x.n_txn and len(ev.aw) == x.n_txn and busy_rises == 1,
-                f"contract=hw/sys/sep/doc/dma.adoc:81-88 go=1 ar={len(ev.ar)} aw={len(ev.aw)} "
+                f"contract=hw/sys/sep/doc/dma.adoc:83-90 go=1 ar={len(ev.ar)} aw={len(ev.aw)} "
                 f"expect={x.n_txn} busy_rises={busy_rises} expect_busy_rises=1",
             )
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
@@ -2386,7 +2386,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
     async def _edge_fill(self, e: EdgeDraw, base: int, limit: int, tag: str, graded: bool):
         """One Leg C cell: zero fills of the low and the high region under one range.
 
-        The fill is the operation the range bounds (``hw/sys/sep/doc/dma.adoc:100-106``):
+        The fill is the operation the range bounds (``hw/sys/sep/doc/dma.adoc:102-108``):
         the low region starts at ``range_lo`` and the high region ends at
         ``range_hi``, so the cell writes the bytes at BASE and at LIMIT that its
         edge places there. A graded cell runs in the window from its range
@@ -2503,7 +2503,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self._pass(
                 "CHK-DMA-RANGE-OK",
                 fok and nz == 0 and gbad == 0,
-                f"contract=hw/sys/sep/doc/dma.adoc:100-106 edge={edge} order={e.order} "
+                f"contract=hw/sys/sep/doc/dma.adoc:102-108 edge={edge} order={e.order} "
                 f"base=0x{base:08x} limit=0x{limit:08x} lo=0x{e.lo_region:08x} "
                 f"hi_last=0x{e.range_hi:08x} bytes={e.size} nonzero_words={nz} "
                 f"guards_bad={gbad} control_wide={control_wide} cell={e.edge} {fvals}",
@@ -2956,7 +2956,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         """CHK-DMA-RW1C at a continuation stop (CHUNK_DONE=1, BUSY=0, DONE=0).
 
         STATUS.CHUNK_DONE is RW1C (``secure_dma.adoc`` STATUS; "Status completion
-        and error bits are write-one-to-clear", ``hw/sys/sep/doc/dma.adoc:133-134``):
+        and error bits are write-one-to-clear", ``hw/sys/sep/doc/dma.adoc:135-136``):
         a write of 0 leaves it 1 and a write of 1 clears it. No GO is written
         between the writes, so no chunk start clears it. CHUNK_DONE is already 1
         before the write of 0, so CTRL-DMA-RW1C-W0 requires that write to reach
@@ -3140,7 +3140,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         """CHK-DMA-NOGO: CONTROL with INITIAL_TRANSFER=1 and GO=0 starts nothing.
 
         "A start is a write of CONTROL.GO while STATUS.BUSY is clear"
-        (``hw/sys/sep/doc/dma.adoc:81-82``). Over BUSY_RISE_BOUND clocks after
+        (``hw/sys/sep/doc/dma.adoc:83-84``). Over BUSY_RISE_BOUND clocks after
         the write: no AR or AW on the DMA master, no BUSY rise, and a STATUS read
         with BUSY=0 and DONE as before. Control CTRL-DMA-NOGO-GO: the GO=1
         write that follows raises BUSY within the same bound and moves the copy.
@@ -3208,7 +3208,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             and probe_rises == 0
             and st.busy == 0
             and st.done == pre.done,
-            f"contract=hw/sys/sep/doc/dma.adoc:81-82 bytes={x.total} {nogo}",
+            f"contract=hw/sys/sep/doc/dma.adoc:83-84 bytes={x.total} {nogo}",
         )
         self._close()
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
@@ -3235,11 +3235,11 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         """CHK-DMA-RANGE-COPY: an SRAM copy whose destination leaves the range completes.
 
         "The range does not bound a copy between internal addresses"
-        (``hw/sys/sep/doc/dma.adoc:108``): DONE=1, ERROR=0, ERROR_CODE=0, every
+        (``hw/sys/sep/doc/dma.adoc:110``): DONE=1, ERROR=0, ERROR_CODE=0, every
         AR and AW of the model, and the image equals the model. Control
         CTRL-DMA-RANGE-COPY: under the same range a zero fill of the same
         destination stops at LIMIT with ERROR and ERROR_CODE.DST_ADDR_ERROR and
-        keeps the words before it (``dma.adoc:100-106``), so the range is in force.
+        keeps the words before it (``dma.adoc:102-108``), so the range is in force.
         """
         ops = self.ops
         c, x = plan.range_copy, plan.range_copy.x
@@ -3289,7 +3289,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self._pass(
             "CHK-DMA-RANGE-COPY",
             fst.ok and fer.ok and mism == 0 and addr_mm == 0 and past > 0,
-            f"contract=hw/sys/sep/doc/dma.adoc:108 {tag} ar={len(ev.ar)} aw={len(ev.aw)} "
+            f"contract=hw/sys/sep/doc/dma.adoc:110 {tag} ar={len(ev.ar)} aw={len(ev.aw)} "
             f"expect_beats={x.n_txn} aw_past_limit={past} addr_mismatch={addr_mm} "
             f"mem_mismatch={mism} {ff('status', fst)} {ff('error_code', fer)}",
         )

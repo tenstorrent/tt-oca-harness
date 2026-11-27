@@ -12,9 +12,9 @@ with the enable would still answer.
 
 Every CLOCK_GATE_CTRL readback after an enable write reads both halves of the
 64-bit register without a mask. The graded value is the one specified field,
-pka_cg_enable (regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:92, RW, reset 0x0), which
+pka_cg_enable (regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:94, RW, reset 0x0), which
 must equal the written bit. Bits 63:1 are Reserved with no stated reset, access
-or read value (sep_cpu_ctrl.adoc:91), so no readback grades them.
+or read value (sep_cpu_ctrl.adoc:93), so no readback grades them.
 
 FCOV: every check runs first with the graded window closed. Only after all of
 them pass does the leaf open the window (owner FcovOwnSepClockGateControlTest)

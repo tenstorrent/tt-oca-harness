@@ -1594,7 +1594,7 @@ module sep_fcov (
   wire [3:0] dma_opcode_w = (wr_data & SECURE_DMA_CONTROL_OPCODE_MASK) >>
       SECURE_DMA_CONTROL_OPCODE_SHIFT;
   // The engine takes OPCODE at the first start of a transfer and keeps it for
-  // its later chunks (hw/sys/sep/doc/dma.adoc:83-84). A GO with
+  // its later chunks (hw/sys/sep/doc/dma.adoc:85-86). A GO with
   // INITIAL_TRANSFER 0 carries the opcode of the last GO with INITIAL_TRANSFER
   // 1 since reset (its own opcode when there was none).
   wire dma_go_init = dma_go && ((wr_data & SECURE_DMA_CONTROL_INITIAL_TRANSFER_MASK) != 32'h0);
@@ -6779,7 +6779,7 @@ module sep_fcov (
     // and equals the written byte (owner
     // sep_fabric_extension_port_window_test). No term depends on a response
     // code: the SHIM response is adopter-owned
-    // (doc/integrator/src/smu-sep.adoc:142-145).
+    // (doc/integrator/src/smu-sep.adoc:155-158).
     cp_shim_byte_write: coverpoint fx_shim_byte iff (fx_shim_byte != 2'd0) {
       bins lsu_w = {2'd1}; bins si_w = {2'd2};
     }
@@ -7512,7 +7512,7 @@ module sep_fcov (
   // cp_trng_forward: a single read or write whose reply samples
   // cp_trng_port_reply, with exactly one port AR or AW, and that port address
   // carries the window offset of the LSU request in its low 12 bits
-  // (doc/integrator/src/smu-sep.adoc:117-119, no decode of offsets inside the
+  // (doc/integrator/src/smu-sep.adoc:130-132, no decode of offsets inside the
   // window). Classes: the first word, the last word, any other word.
   // ---------------------------------------------------------------------
   localparam logic [31:0] TqTrngLo = TRNG_APERTURE_MEM_BASE_ADDR;
@@ -8730,7 +8730,7 @@ module sep_fcov (
           c_filter_order = 2'd2;
       end
       // SHIM window burst with no extension-port beat. The response code is
-      // the adopter SHIM's (doc/integrator/src/smu-sep.adoc:142-145), so the
+      // the adopter SHIM's (doc/integrator/src/smu-sep.adoc:155-158), so the
       // bin does not depend on it.
       if (own_ext && (si_c.len != 8'd0) && (si_local < FXbarLimit) && in_rng(
               l, FExtBase, FShimLast
@@ -13771,7 +13771,7 @@ module sep_fcov (
       bins mitie_clear_no_trap = {2'd2};
       bins mtie_msie_only_no_trap = {2'd3};
     }
-    // soft_int pin (hw/sys/sep/doc/interrupts.adoc:291-292: the pin drives
+    // soft_int pin (hw/sys/sep/doc/interrupts.adoc:304-305: the pin drives
     // mip.MSIP; :261: the pin bypasses the PIC).
     cp_soft_pin: coverpoint s.sp iff (s.sp_v) {
       bins pin1_msip1 = {2'd0};
@@ -24938,7 +24938,7 @@ module sep_fcov (
       bins mldsa_ignored = {1'b0}; bins mlkem_ignored = {1'b1};
     }
     // PIC sources 35 (error) and 36 (notification) of ABR, vector bits 34 and
-    // 35 (hw/sys/sep/doc/interrupts.adoc:194-200).
+    // 35 (hw/sys/sep/doc/interrupts.adoc:206-212).
     cp_abr_pic: coverpoint s.ap iff (s.ap_v) {
       bins error_rise_on_trig = {2'd0};
       bins error_fall_on_w1c = {2'd1};

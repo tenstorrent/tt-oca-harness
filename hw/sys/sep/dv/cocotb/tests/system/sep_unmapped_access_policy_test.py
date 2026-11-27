@@ -27,7 +27,7 @@ CHK-SYSCSR-HOLE-DECODE: a system-CSR hole or reserved-row probe reaches the
 system-CSR AXI-Lite port exactly when it lies in the scratch page or a system
 CSR page. The peripheral crossbar sends those pages whole to the system CSR
 block and answers the rest of 0x10A0_8000-0x10A4_FFFF itself
-(hw/sys/sep/doc/fabric.adoc:144-149, hw/sys/sep/doc/memory_map.adoc:106-107).
+(hw/sys/sep/doc/fabric.adoc:144-149, hw/sys/sep/doc/memory_map.adoc:108-109).
 The page bounds are the unit rows of the generated map. The walk must watch
 probes of both kinds. A watched write and read of SEP_NMI_VEC must each show
 their handshake at that port, so a watcher that sees nothing fails.

@@ -63,7 +63,7 @@ to 0 fails.
 CHK-SI-PRESENSE-READ runs last: after an ``rst_ni`` pulse, one external
 read of SRAM word 0 with ARID 63 is sent while fuse sensing runs. While
 ``sep_reset_n`` is low the port accepts AR beats and discards them without a
-response (``hw/sys/sep/doc/fabric.adoc:339-342``;
+response (``hw/sys/sep/doc/fabric.adoc:345-348``;
 ``doc/integrator/src/smu-sep.adoc:72-76``). The check needs the AR handshake
 on the m_axi pins with ``dbg_sep_reset_n_o`` 0, and no R beat with RID 63 from
 then until 256 clocks after ``sep_reset_n`` releases, nor during the control
@@ -71,7 +71,7 @@ read that follows. CTRL-SI-POSTRELEASE-READ sends the same read with ARID 62
 after that window: it must get its R beat, RID 62 and RLAST 1, within 256
 clocks of its AR handshake, and DECERR, since after the release the filter
 answers every request with DECERR until firmware enables an entry and the
-``rst_ni`` pulse left none enabled (``fabric.adoc:342-344``). So the window of
+``rst_ni`` pulse left none enabled (``fabric.adoc:348-350``). So the window of
 the check is at least the time the released port takes to answer that read.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
@@ -106,7 +106,7 @@ lock is sticky until reset, so this cell runs last on entry 15.
 CHK-FILT-RSVD-READ: through an entry whose window runs from the last SRAM
 granule to the Reserved row base 0x10050000, an external read of that base
 answers DECERR with 0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``;
-the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``).
+the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:68-71``).
 CTRL-FILT-RSVD-ALLOW reads a staged SRAM word through the same entry first and
 needs that word back, so the DECERR is not a filter denial.
 
@@ -883,7 +883,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     async def _presense_si_read_log(self, addr: int, rec: dict, watch, read) -> None:
         """CHK-SI-PRESENSE-READ and its control CTRL-SI-POSTRELEASE-READ.
 
-        ``hw/sys/sep/doc/fabric.adoc:339-344``: while ``sep_reset_n`` is low the
+        ``hw/sys/sep/doc/fabric.adoc:345-350``: while ``sep_reset_n`` is low the
         port accepts AR beats and discards them without a response; after the
         release the filter answers DECERR until firmware enables an entry.
 
@@ -954,7 +954,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
 
         The memory map gives the Reserved row 0x10050000-0x107FFFFF the cell
         "DECERR, 0xBADCAB1E / DECERR" (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``),
-        the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:66-69``).
+        the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:68-71``).
         A filter denial gives the same code and data, so CTRL-FILT-RSVD-ALLOW
         first reads the last SRAM word through the same entry, whose window
         runs from that word to the Reserved base: the staged value shows the entry

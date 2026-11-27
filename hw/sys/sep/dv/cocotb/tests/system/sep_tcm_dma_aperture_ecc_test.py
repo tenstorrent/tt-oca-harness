@@ -59,7 +59,7 @@ Checkers:
                  the aperture reads) equals the lane of the error the read
                  meets: none 0b0000, ICCM single 0b1000, ICCM double 0b0100,
                  DCCM single 0b0010, DCCM double 0b0001
-                 (``hw/sys/sep/doc/interrupts.adoc:413-415``: the ICCM and DCCM
+                 (``hw/sys/sep/doc/interrupts.adoc:426-428``: the ICCM and DCCM
                  single- and double-bit error signals are mirrored there, most
                  significant first; the DMA-path errors of ``:401-403`` are in
                  the same section). An X or Z sample of the nibble fails. The
@@ -68,7 +68,7 @@ Checkers:
   CHK-TCM-SUBWORD-WR a 1- or 2-byte DMA copy into one drawn word of each
                  memory ends with STATUS.error at 1, the BUS_ERROR bit of
                  ERROR_CODE set and ``host_path_err`` set
-                 (``hw/sys/sep/doc/dma.adoc:120-123``: ICCM and DCCM take only
+                 (``hw/sys/sep/doc/dma.adoc:122-125``: ICCM and DCCM take only
                  whole 32-bit words from the DMA, any other write ends in
                  BUS_ERROR and sets the host-path fault; ``:97-98``: error
                  reporting is the same for a copy; VeeR EL2 PRM at
@@ -84,15 +84,15 @@ Checkers:
                  ``DMA_BUS_ERR_STATUS`` read 0 (CTRL-TCM-SUBWORD-PRE; ERROR_CODE
                  "is cleared by writing the RW1C STATUS.error register",
                  ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
-                 dma.hjson:669-670``; the faults are "cleared through
-                 ``DMA_BUS_ERR_CLEAR``", ``hw/sys/sep/doc/dma.adoc:68-70``), so
+                 dma.hjson:671-672``; the faults are "cleared through
+                 ``DMA_BUS_ERR_CLEAR``", ``hw/sys/sep/doc/dma.adoc:70-72``), so
                  a stale code or flag cannot pass the check.
   CHK-TCM-DMA-T2T one multi-word DMA copy ICCM -> DCCM and one DCCM -> ICCM
                  (4 to 16 words, 4-byte width, one chunk, 8-byte aligned)
                  end with DONE at 1, ERROR at 0 and ``host_path_err`` at 0, and
                  each destination word, read back by a DMA copy to an SRAM
                  staging word that holds its complement, equals its source
-                 word (``hw/sys/sep/doc/dma.adoc:60-61``: the TCM backdoor
+                 word (``hw/sys/sep/doc/dma.adoc:62-63``: the TCM backdoor
                  range is available to the DMA; ``:120-123``: whole 32-bit
                  words; ``hw/sys/sep/doc/cpu.adoc:46-47``). The source words
                  are written by single-word DMA copies from the SRAM. Controls
@@ -108,7 +108,7 @@ Checkers:
                  DONE at 1, ERROR at 0, ERROR_CODE at 0 and ``host_path_err``
                  at 0, and every DCCM word reads back its new source word
                  (``secure_dma.adoc``, CONTROL.ABORT and STATUS.ABORTED;
-                 ``doc/programmer/src/sep-programming.adoc:805-806``). Control:
+                 ``doc/programmer/src/sep-programming.adoc:814-815``). Control:
                  ABORTED reads 0 before the GO, and the PR-TCM tap shows at
                  least one DCCM write and fewer DCCM writes than the copy has
                  words when the ABORT write returns, so the copy runs at the
@@ -821,7 +821,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         pre_berr = await self._clear_bus_err()
         pre_ecode = await self.dma.rd(_D.addr("ERROR_CODE")) & EC_MASK
         pre = (
-            f"contract=dma.hjson:669-670,hw/sys/sep/doc/dma.adoc:68-70 src=0x{src:08x} "
+            f"contract=dma.hjson:671-672,hw/sys/sep/doc/dma.adoc:70-72 src=0x{src:8x} "
             f"dst=0x{dst:08x} bytes={nbytes} error_code=0x{pre_ecode:x} "
             f"dma_bus_err_status=0x{pre_berr:x} expect=0x0/0x0"
         )
@@ -853,7 +853,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             code & ~EC_BUS_ERROR & EC_MASK,
         )
         line = (
-            f"contract=hw/sys/sep/doc/dma.adoc:120-123 mem={mem} dir=write addr=0x{addr:08x} bytes={nbytes} "
+            f"contract=hw/sys/sep/doc/dma.adoc:122-125 mem={mem} dir=write addr=0x{addr:8x} bytes={nbytes} "
             f"error={st.error} bus_error={bus_error} bus_error_mask=0x{EC_BUS_ERROR:x} "
             f"host_path_err={hpe}"
         )
@@ -978,7 +978,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             close_graded_window(self.logger)
             hpe = int(bool(berr & DMA_HOST_PATH_BIT))
             line = (
-                f"contract=hw/sys/sep/doc/dma.adoc:60-61,120-123 dir={smem}->{dmem} "
+                f"contract=hw/sys/sep/doc/dma.adoc:62-63,122-125 dir={smem}->{dmem} "
                 f"src=0x{src:08x} dst=0x{dst:08x} words={n} done={st.done} error={st.error} "
                 f"error_code=0x{ecode:x} host_path_err={hpe} iccm_rose={int(rose['ICCM'])} "
                 f"dccm_rose={int(rose['DCCM'])} mismatches={len(bad)} first={bad[:2]}"
@@ -1098,7 +1098,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         bad = await self._read_words("DCCM", dst, c.recover_data, "recovery readback")
         hpe = int(bool(berr & DMA_HOST_PATH_BIT))
         line = (
-            f"contract=secure_dma.adoc CONTROL.ABORT,STATUS.ABORTED;sep-programming.adoc:805-806 "
+            f"contract=secure_dma.adoc CONTROL.ABORT,STATUS.ABORTED;sep-programming.adoc:814-815 "
             f"dst=0x{dst:08x} words={n} dccm_writes_first={first} dccm_writes_at_abort={at_abort} "
             f"dccm_writes_aborted_run={total} abort_{st.fmt()} recovery_done={rst.done} "
             f"recovery_error={rst.error} recovery_error_code=0x{ecode:x} host_path_err={hpe} "

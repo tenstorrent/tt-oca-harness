@@ -39,7 +39,7 @@
 
 CHECKSUM: "3579852188 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:480) and :506 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-191) can move through the remap subtractor."
+ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:481) and :508 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-197) can move through the remap subtractor."
 Toggle ifu_demux_req[0].ar.size "logic ifu_demux_req[0].ar.size[2:0]"
 Toggle ifu_demux_req[0].ar.prot "logic ifu_demux_req[0].ar.prot[2:0]"
 Toggle ifu_demux_req[0].ar.cache "logic ifu_demux_req[0].ar.cache[3:0]"
@@ -135,13 +135,13 @@ Toggle ifu_demux_resp[2].aw_ready "logic ifu_demux_resp[2].aw_ready"
 
 CHECKSUM: "3579852188 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-TCM-RESP-USER-TIED: sep_cpu.sv:511-512 drive cpu_tcm_axi_resp_o B and R USER to the sep_pkg::SepSourceId constant (sep_pkg.sv:480). NOT waived: the B/R id, resp, data and last from the VeeR DMA port."
+ANNOTATION: "SEP-CPU-TCM-RESP-USER-TIED: sep_cpu.sv:511-512 drive cpu_tcm_axi_resp_o B and R USER to the sep_pkg::SepSourceId constant (sep_pkg.sv:481). NOT waived: the B/R id, resp, data and last from the VeeR DMA port."
 Toggle cpu_tcm_axi_resp_o.r.user "logic cpu_tcm_axi_resp_o.r.user[11:0]"
 Toggle cpu_tcm_axi_resp_o.b.user "logic cpu_tcm_axi_resp_o.b.user[11:0]"
 
 CHECKSUM: "3579852188 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-IRQ38-TIED: PIC source 39 is sep_internal_interrupts[38] = entropy_pool_err (sep.sv:534, :1006). sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and prim_fifo_sync_cnt.sv:142 then ties err_o to 0. NOT waived: every other interrupt line."
+ANNOTATION: "SEP-CPU-IRQ38-TIED: PIC source 39 is sep_internal_interrupts[38] = entropy_pool_err (sep.sv:534, :1009). sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and prim_fifo_sync_cnt.sv:142 then ties err_o to 0. NOT waived: every other interrupt line."
 Toggle extintsrc_req_i [38] "logic extintsrc_req_i[254:0]"
 
 CHECKSUM: "3579852188 1455020830"
@@ -157,31 +157,31 @@ Toggle sb_axi_arid_raw "logic sb_axi_arid_raw[0:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_lsu_local_alias_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:476-477) at the instantiation (sep_cpu.sv:529-530). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:477-478) at the instantiation (sep_cpu.sv:529-530). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
 Toggle region_size_i "logic region_size_i[31:0]"
 Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:476-477) at the instantiation (sep_cpu.sv:544-545). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:477-478) at the instantiation (sep_cpu.sv:544-545). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
 Toggle region_size_i "logic region_size_i[31:0]"
 Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_dbg_local_alias_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:476-477) at the instantiation (sep_cpu.sv:559-560). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:477-478) at the instantiation (sep_cpu.sv:559-560). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
 Toggle region_size_i "logic region_size_i[31:0]"
 Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_dma_local_alias_remap
-ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:476-477) at the instantiation (hw/sys/sep/rtl/sep_dma_wrap.sv:369-370). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-REMAP-CONST-PORT: region_size_i and target_base_i are the sep_pkg constants SepLocalAliasRegionSize/Base (sep_pkg.sv:477-478) at the instantiation (hw/sys/sep/rtl/sep_dma_wrap.sv:369-370). NOT waived: local_alias_base_i and the derived end/adjust nets, which SEP_LOCAL_BASE_ADDR moves."
 Toggle region_size_i "logic region_size_i[31:0]"
 Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
-ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:480) and :506 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-191) can move through the remap subtractor."
+ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:481) and :508 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-197) can move through the remap subtractor."
 Toggle slv_req_i.ar.size "logic slv_req_i.ar.size[2:0]"
 Toggle slv_req_i.ar.prot "logic slv_req_i.ar.prot[2:0]"
 Toggle slv_req_i.ar.cache "logic slv_req_i.ar.cache[3:0]"
@@ -240,7 +240,7 @@ Toggle slv_req_i.aw.addr "logic slv_req_i.aw.addr[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_lsu_local_alias_remap
-ANNOTATION: "SEP-CPU-LSU-TIED: slv_req_i is lsu_axi_req_raw (sep_cpu.sv:524), which only the VeeR LSU drives. el2_lsu_bus_buffer.sv:886-887 and :903-904 tie qos 0 and lock 0; sep_cpu.sv:497-499 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:480) and :507 AWATOP to 0. NOT waived: every mst_req_o field, because mst_req_o is lsu_axi_req (sep_cpu.sv:526), which the TB forces in a no_cpu leaf (hw/sys/sep/dv/tb/tb_top.sv:1081); and the slv_req_i prot, len, burst and wlast."
+ANNOTATION: "SEP-CPU-LSU-TIED: slv_req_i is lsu_axi_req_raw (sep_cpu.sv:524), which only the VeeR LSU drives. el2_lsu_bus_buffer.sv:886-887 and :903-904 tie qos 0 and lock 0; sep_cpu.sv:497-499 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:481) and :509 AWATOP to 0. NOT waived: every mst_req_o field, because mst_req_o is lsu_axi_req (sep_cpu.sv:526), which the TB forces in a no_cpu leaf (hw/sys/sep/dv/tb/tb_top.sv:1081); and the slv_req_i prot, len, burst and wlast."
 Toggle slv_req_i.aw.qos "logic slv_req_i.aw.qos[3:0]"
 Toggle slv_req_i.aw.lock "logic slv_req_i.aw.lock"
 Toggle slv_req_i.aw.user "logic slv_req_i.aw.user[11:0]"
@@ -252,7 +252,7 @@ Toggle slv_req_i.w.user "logic slv_req_i.w.user[11:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_dbg_local_alias_remap
-ANNOTATION: "SEP-CPU-DBG-TIED: only the VeeR debug system-bus master drives this remap. el2_dbg.sv:738-774 tie id 0, prot 3'b001, AW cache 4'hF, AR cache 0, len 0, burst INCR, qos 0, lock 0, wlast 1, bready 1 and rready 1; sep_cpu.sv:501-503 and :508 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:480) and AWATOP to 0; axi_window_remap.sv passes them unchanged. NOT waived: addr, size, region, valid, data and strobe, which a system-bus access moves."
+ANNOTATION: "SEP-CPU-DBG-TIED: only the VeeR debug system-bus master drives this remap. el2_dbg.sv:738-774 tie id 0, prot 3'b001, AW cache 4'hF, AR cache 0, len 0, burst INCR, qos 0, lock 0, wlast 1, bready 1 and rready 1; sep_cpu.sv:501-503 and :508 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:481) and AWATOP to 0; axi_window_remap.sv passes them unchanged. NOT waived: addr, size, region, valid, data and strobe, which a system-bus access moves."
 Toggle slv_req_i.aw.id "logic slv_req_i.aw.id[2:0]"
 Toggle slv_req_i.aw.prot "logic slv_req_i.aw.prot[2:0]"
 Toggle slv_req_i.aw.cache "logic slv_req_i.aw.cache[3:0]"
@@ -355,7 +355,7 @@ Toggle sep_reset_ctrl_axi_resp_o.b.user "logic sep_reset_ctrl_axi_resp_o.b.user[
 
 CHECKSUM: "2905179362 2073096279"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: sep_system_csr.sv:751 and :753-758 tie timeout_interrupt_rsvd, sep_standalone and fast_{pka,sram,dccm,iccm,spi}_en to 0, and :789 and :792-797 drive these hw=w inputs from them. SEP-REGBLOCK-ALIGNED-ADDR: sep_cpu_ctrl_reg.sv:129-148 build cpuif_addr as {addr[12:3], 3'b0}; :317 and :1537 copy it, so bits [2:0] are 0. NOT waived: the sw-writable reserved TIMEOUT_* fields and the 64-bit REFERENCE_COUNTER, which software can write."
+ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: sep_system_csr.sv:751 and :753-758 tie timeout_interrupt_rsvd, sep_standalone and fast_{pka,sram,dccm,iccm,spi}_en to 0, and :789 and :792-797 drive these hw=w inputs from them. SEP-REGBLOCK-ALIGNED-ADDR: sep_cpu_ctrl_reg.sv:129-148 build cpuif_addr as {addr[12:3], 3'b0}; :317 and :1544 copy it, so bits [2:0] are 0. NOT waived: the sw-writable reserved TIMEOUT_* fields and the 64-bit REFERENCE_COUNTER, which software can write."
 Toggle hwif_in.SEP_TEST_CTRL.fast_spi_en.next "logic hwif_in.SEP_TEST_CTRL.fast_spi_en.next"
 Toggle hwif_in.SEP_TEST_CTRL.fast_iccm_en.next "logic hwif_in.SEP_TEST_CTRL.fast_iccm_en.next"
 Toggle hwif_in.SEP_TEST_CTRL.fast_dccm_en.next "logic hwif_in.SEP_TEST_CTRL.fast_dccm_en.next"
@@ -414,7 +414,7 @@ Toggle axi_lite_rsp_o.b.resp [0] "logic axi_lite_rsp_o.b.resp[1:0]"
 
 CHECKSUM: "2097437693 2552262841"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-SPI-ADDR-MASK: sep_ot_spi_wrap.sv:76-87 AND both AXI-Lite addresses with SpiAddrMask = (1 << spi_host_reg_pkg::BlockAw) - 1, and BlockAw is 6 (spi_host_reg_pkg.sv:17), so address bits [31:6] are 0 on every path into the bridge. NOT waived: bits [5:0], which select the spi_host register."
+ANNOTATION: "SEP-SPI-ADDR-MASK: sep_ot_spi_wrap.sv:84-95 AND both AXI-Lite addresses with SpiAddrMask = (1 << spi_host_reg_pkg::BlockAw) - 1, and BlockAw is 6 (spi_host_reg_pkg.sv:17), so address bits [31:6] are 0 on every path into the bridge. NOT waived: bits [5:0], which select the spi_host register."
 Toggle axi_lite_req_i.ar.addr [31:6] "logic axi_lite_req_i.ar.addr[31:0]"
 Toggle axi_lite_req_i.aw.addr [31:6] "logic axi_lite_req_i.aw.addr[31:0]"
 Toggle tl_o.a_address [31:6] "logic tl_o.a_address[31:0]"
@@ -423,7 +423,7 @@ Toggle req_addr_d [31:6] "logic req_addr_d[31:0]"
 
 CHECKSUM: "3927392748 3613800401"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap
-ANNOTATION: "SEP-SPI-ADDR-MASK: sep_ot_spi_wrap.sv:76-87 AND both AXI-Lite addresses with SpiAddrMask = (1 << spi_host_reg_pkg::BlockAw) - 1, and BlockAw is 6 (spi_host_reg_pkg.sv:17), so address bits [31:6] are 0 on every path into the bridge. NOT waived: bits [5:0], which select the spi_host register."
+ANNOTATION: "SEP-SPI-ADDR-MASK: sep_ot_spi_wrap.sv:84-95 AND both AXI-Lite addresses with SpiAddrMask = (1 << spi_host_reg_pkg::BlockAw) - 1, and BlockAw is 6 (spi_host_reg_pkg.sv:17), so address bits [31:6] are 0 on every path into the bridge. NOT waived: bits [5:0], which select the spi_host register."
 Toggle axil_req_masked.ar.addr [31:6] "logic axil_req_masked.ar.addr[31:0]"
 Toggle axil_req_masked.aw.addr [31:6] "logic axil_req_masked.aw.addr[31:0]"
 Toggle tl_req.a_address [31:6] "logic tl_req.a_address[31:0]"
@@ -534,7 +534,7 @@ Toggle tl_d_o.d_opcode [2:1] "logic tl_d_o.d_opcode[2:0]"
 
 CHECKSUM: "3519459534 3972236298"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap
-ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1135). host_tl_h_i comes from tlul_to_axi_lite.sv:151 and :262,264 (sep_dma_wrap.sv:302): d_param and d_sink 0, d_opcode ACCESS_ACK or ACCESS_ACK_DATA (d_opcode[2:1] 0). The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the same fields to the same 0. NOT waived: address, data, mask, d_error, the response echo fields d_source and d_size, and the integrity fields."
+ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1138). host_tl_h_i comes from tlul_to_axi_lite.sv:151 and :262,264 (sep_dma_wrap.sv:302): d_param and d_sink 0, d_opcode ACCESS_ACK or ACCESS_ACK_DATA (d_opcode[2:1] 0). The TB host stall force (hw/sys/sep/dv/tb/tb_top.sv:1825-1826) drives the same fields to the same 0. NOT waived: address, data, mask, d_error, the response echo fields d_source and d_size, and the integrity fields."
 Toggle host_tl_h_o.a_user.instr_type "logic host_tl_h_o.a_user.instr_type[3:0]"
 Toggle host_tl_h_o.a_user.rsvd "logic host_tl_h_o.a_user.rsvd[9:0]"
 Toggle host_tl_h_o.a_address [1:0] "logic host_tl_h_o.a_address[31:0]"
@@ -549,7 +549,7 @@ Toggle host_tl_h_i.d_opcode [2:1] "logic host_tl_h_i.d_opcode[2:0]"
 
 CHECKSUM: "2470472206 1152219882"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1135); tl_i is host_tl_h_o (hw/sys/sep/rtl/sep_dma_wrap.sv:301). NOT waived: address, data, mask, the integrity fields and every tl_o response field."
+ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1138); tl_i is host_tl_h_o (hw/sys/sep/rtl/sep_dma_wrap.sv:301). NOT waived: address, data, mask, the integrity fields and every tl_o response field."
 Toggle tl_i.a_user.instr_type "logic tl_i.a_user.instr_type[3:0]"
 Toggle tl_i.a_user.rsvd "logic tl_i.a_user.rsvd[9:0]"
 Toggle tl_i.a_address [1:0] "logic tl_i.a_address[31:0]"
@@ -705,49 +705,49 @@ Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:111-127), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:120-135), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 39 "915842203" "cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:111-127), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:120-135), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 42 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_io.u_sep_ot_spi_wrap.u_spi_axi_lite_to_tlul
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:111-127), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (defaults at axi_lite_to_tlul.sv:28-29, sep_ot_spi_wrap.sv:120-135), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1133), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 39 "915842203" "cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1133), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 42 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1133), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 3216173326"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1133), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 43 "993725118" "rsp_intg = {tlul_pkg::D2H_RSP_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2470472206 3216173326"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1133), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 46 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2470472206 1300994536"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1133), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1136), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
@@ -765,12 +765,12 @@ Toggle status_word [63:8] "logic status_word[63:0]"
 
 CHECKSUM: "1557237986 3866655258"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1022 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. NOT waived: every other filter port and the isolate nets."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1025 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. NOT waived: every other filter port and the isolate nets."
 Toggle filter_skip_i "logic filter_skip_i"
 
 CHECKSUM: "1951099644 1291595517"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1022 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. NOT waived: inbound_filter_skip_i, which feature control (sep_debug) drives at hw/sys/sep/rtl/sep.sv:1021."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1025 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. NOT waived: inbound_filter_skip_i, which feature control (sep_debug) drives at hw/sys/sep/rtl/sep.sv:1024."
 Toggle outbound_filter_skip_i "logic outbound_filter_skip_i"
 
 CHECKSUM: "4268271618 3948953717"
@@ -3186,7 +3186,7 @@ Toggle inbound_filter_axil_resps[15].r.resp "logic inbound_filter_axil_resps[15]
 
 CHECKSUM: "633166899 1052850956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr
-ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:751 and :753-757 assign timeout_interrupt_rsvd, sep_standalone, fast_pka_en, fast_sram_en, fast_dccm_en and fast_iccm_en the literal 0, and :789 and :792-796 copy them into sep_cpu_ctrl_hwif_in. hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1200 assigns SEP_NMI_VEC.rsvd.value = 1'h0. NOT waived: the other hwif_in fields, such as REFERENCE_COUNTER, which hardware moves, and the SW-writable hwif_out fields."
+ANNOTATION: "SEP-CPUCTRL-HWIN-TIED: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:751 and :753-757 assign timeout_interrupt_rsvd, sep_standalone, fast_pka_en, fast_sram_en, fast_dccm_en and fast_iccm_en the literal 0, and :789 and :792-796 copy them into sep_cpu_ctrl_hwif_in. hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1207 assigns SEP_NMI_VEC.rsvd.value = 1'h0. NOT waived: the other hwif_in fields, such as REFERENCE_COUNTER, which hardware moves, and the SW-writable hwif_out fields."
 Toggle timeout_interrupt_rsvd "logic timeout_interrupt_rsvd"
 Toggle sep_standalone "logic sep_standalone"
 Toggle fast_pka_en "logic fast_pka_en"
@@ -3238,35 +3238,35 @@ Toggle mst_req_o.aw.prot "logic mst_req_o.aw.prot[2:0]"
 
 CHECKSUM: "637028774 3305483671"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_ap_remap
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:483, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the input user fields and axi_req_remapped, which carry the initiator user, and the response user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the input user fields and axi_req_remapped, which carry the initiator user, and the response user fields."
 Toggle axi_remapped_req_o.ar.user "logic axi_remapped_req_o.ar.user[11:0]"
 Toggle axi_remapped_req_o.w.user "logic axi_remapped_req_o.w.user[11:0]"
 Toggle axi_remapped_req_o.aw.user "logic axi_remapped_req_o.aw.user[11:0]"
 
 CHECKSUM: "145282378 3429664812"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_ap_remap.gen_user_override.u_user_override
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:483, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: axi_in_req_i user and the response user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: axi_in_req_i user and the response user fields."
 Toggle axi_out_req_o.ar.user "logic axi_out_req_o.ar.user[11:0]"
 Toggle axi_out_req_o.w.user "logic axi_out_req_o.w.user[11:0]"
 Toggle axi_out_req_o.aw.user "logic axi_out_req_o.aw.user[11:0]"
 
 CHECKSUM: "637028774 3305483671"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_stee_remap
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:483, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the input user fields and axi_req_remapped, which carry the initiator user, and the response user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the input user fields and axi_req_remapped, which carry the initiator user, and the response user fields."
 Toggle axi_remapped_req_o.ar.user "logic axi_remapped_req_o.ar.user[11:0]"
 Toggle axi_remapped_req_o.w.user "logic axi_remapped_req_o.w.user[11:0]"
 Toggle axi_remapped_req_o.aw.user "logic axi_remapped_req_o.aw.user[11:0]"
 
 CHECKSUM: "145282378 3429664812"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_stee_remap.gen_user_override.u_user_override
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:483, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: axi_in_req_i user and the response user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: axi_in_req_i user and the response user fields."
 Toggle axi_out_req_o.ar.user "logic axi_out_req_o.ar.user[11:0]"
 Toggle axi_out_req_o.w.user "logic axi_out_req_o.w.user[11:0]"
 Toggle axi_out_req_o.aw.user "logic axi_out_req_o.aw.user[11:0]"
 
 CHECKSUM: "1951099644 1291595517"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals
-ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:483, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the pre-remap user fields."
+ANNOTATION: "SEP-OUTREMAP-USER-OVERRIDE: hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:323-324 and :350-351 set USER_OVERRIDE_EN 1'b1 and USER_OVERRIDE_VAL sep_pkg::OthersSourceId (hw/sys/sep/rtl/sep_pkg.sv:484, 4'b0000), which selects gen_user_override (hw/ip/output_remap/rtl/output_remap.sv:113); hw/common/ocah_prim/rtl/prim_axi_user_override.sv:255-257 (module prim_axi_user_override_struct) assign AW, W and AR user from that parameter, so it is 0. NOT waived: the pre-remap user fields."
 Toggle sep_ap_remapped_axi_req.ar.user "logic sep_ap_remapped_axi_req.ar.user[11:0]"
 Toggle sep_ap_remapped_axi_req.w.user "logic sep_ap_remapped_axi_req.w.user[11:0]"
 Toggle sep_ap_remapped_axi_req.aw.user "logic sep_ap_remapped_axi_req.aw.user[11:0]"
@@ -3452,7 +3452,7 @@ Toggle mailbox_from_csr_axil_resp.b.resp [0] "logic mailbox_from_csr_axil_resp.b
 
 CHECKSUM: "3432265777 778853912"
 INSTANCE: sep_uvm_top.u_dut.u_sep
-ANNOTATION: "SEP-ENTROPY-POOL-ERR-TIED: hw/sys/sep/rtl/sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and each non-secure arm of the vendored prim_fifo_sync ties err_o to 0. hw/sys/sep/rtl/sep_entropy_fifo.sv:210 and hw/sys/sep/rtl/sep.sv:1005,534,547 carry it to PIC source 39 (bit 38). NOT waived: entropy_pool_low, entropy_pool_fill_stall and every other interrupt bit."
+ANNOTATION: "SEP-ENTROPY-POOL-ERR-TIED: hw/sys/sep/rtl/sep_entropy_fifo.sv:191-197 builds the pool FIFO with Secure=0, and each non-secure arm of the vendored prim_fifo_sync ties err_o to 0. hw/sys/sep/rtl/sep_entropy_fifo.sv:210 and hw/sys/sep/rtl/sep.sv:1008,534,547 carry it to PIC source 39 (bit 38). NOT waived: entropy_pool_low, entropy_pool_fill_stall and every other interrupt bit."
 Toggle entropy_pool_err "logic entropy_pool_err"
 Toggle sep_internal_interrupts [38] "logic sep_internal_interrupts[42:0]"
 Toggle sep_interrupts [38] "logic sep_interrupts[254:0]"
@@ -3679,7 +3679,7 @@ Toggle sep_cpu_trace_o.trace_rv_i_address_ip [0] "logic sep_cpu_trace_o.trace_rv
 
 CHECKSUM: "883981495 759020956"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_wdt_wrap
-ANNOTATION: "SEP-WDT-DEBUG-SLEEP-TIED: hw/sys/sep/rtl/sep.sv:327 drives wdt_debug_sleep_mode to 1'b0, connected to wdt_debug_sleep_mode_i at :1095. NOT waived: the watchdog bus, bark, bite and alert signals."
+ANNOTATION: "SEP-WDT-DEBUG-SLEEP-TIED: hw/sys/sep/rtl/sep.sv:327 drives wdt_debug_sleep_mode to 1'b0, connected to wdt_debug_sleep_mode_i at :1098. NOT waived: the watchdog bus, bark, bite and alert signals."
 Toggle wdt_debug_sleep_mode_i "logic wdt_debug_sleep_mode_i"
 
 CHECKSUM: "3568733711 1558512121"

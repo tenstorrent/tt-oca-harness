@@ -112,7 +112,7 @@ M_STATUS = OTBN.field_mask("STATUS", "status")
 M_DONE = OTBN.field_mask("INTR_STATE", "done")
 EXEC_CODES = (ST_BUSY_EXECUTE, ST_SEC_WIPE_INT)
 
-# Vector bit 29 is PIC source 30, OTBN done (interrupts.adoc:22-27, :165-167).
+# Vector bit 29 is PIC source 30, OTBN done (interrupts.adoc:22-27, :173-175).
 VEC_OTBN_DONE = 29
 PIC_SRC_OTBN_DONE = VEC_OTBN_DONE + 1
 

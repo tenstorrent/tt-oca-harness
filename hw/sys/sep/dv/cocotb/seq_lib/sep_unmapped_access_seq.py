@@ -210,7 +210,7 @@ GROUP_INEXTENT = "in_extent_hole"
 # and each system CSR page whole to the system CSR block, answers the rest of
 # 0x10A0_8000-0x10A4_FFFF itself with DECERR, and forwards other addresses below
 # 0x4000_0000 to the ext initiator (hw/sys/sep/doc/fabric.adoc:144-151,
-# hw/sys/sep/doc/memory_map.adoc:106-108).
+# hw/sys/sep/doc/memory_map.adoc:108-110).
 LITE_WATCHED = (GROUP_SYSCSR, GROUP_RESERVED)
 
 # The pages the peripheral crossbar sends whole to the system CSR block, as the

@@ -47,7 +47,7 @@ address below 0x1_0000_0000 returns to the peripheral crossbar
 decode as inbound traffic (``fabric.adoc:142-144``). The memory map gives that span
 DECERR, 0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:44``, Past Extent of the
 SEP Scratch Wrapper row; the column is the inbound
-answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``). The expected row and cell come
+answer, ``hw/sys/sep/doc/memory_map.adoc:68-71``). The expected row and cell come
 from the generated memory map (``env/sep_decode_resp.py``).
 
 no_cpu, +skip_fuse_sense.

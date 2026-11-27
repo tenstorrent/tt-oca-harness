@@ -40,7 +40,7 @@ Contract:
   ``hw/sys/sep/doc/otp_fuse_controller.adoc``: while ``SECURE_TM`` = 1 the
   secret shadow outputs ``CHIPLET_UID``, ``SIP_UID``, ``SYS_UID`` and
   ``CLASS_KEY`` read zero downstream.
-* ``hw/sys/sep/doc/otp_fuse_controller.adoc:176-178`` (Shadow Register Updates
+* ``hw/sys/sep/doc/otp_fuse_controller.adoc:177-179`` (Shadow Register Updates
   and Test-Mode Protection) and ``hw/sys/sep/doc/test_mode.adoc:54-55``
   (Protection While Active): while ``SECURE_TM`` = 1 the shadows of ``LOCKS``,
   ``LOCKS_SPARE``, ``LC_STATE``, ``SIP_DIS`` and ``SYS_DIS`` take no update from
@@ -200,7 +200,7 @@ _SIP_DIS_ADDR = shadow_addr("SIP_DIS")
 # The shadows that SECURE_TM = 1 blocks from every update: LOCKS, LOCKS_SPARE,
 # LC_STATE, SIP_DIS and SYS_DIS. The leaf writes SIP_DIS word 0 only.
 _SHADOW_WR_CONTRACT = (
-    "set=otp_fuse_controller.adoc:176-178(Shadow_Register_Updates_and_Test-Mode_Protection),"
+    "set=otp_fuse_controller.adoc:177-179(Shadow_Register_Updates_and_Test-Mode_Protection),"
     "test_mode.adoc:54-55(Protection_While_Active) graded_member=SIP_DIS.word0"
 )
 

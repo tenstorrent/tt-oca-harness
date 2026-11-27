@@ -220,7 +220,7 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "2905179362 2073096279"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1021/1024, :1324/1327, :1350/1353, :1376/1379, :1402/1405, :1428/1431, :1454/1457, :1480/1483 and :1506/1509 assign load_next_c = '1 in both arms, so these load_next nets hold 1. NOT waived: the next and value nets of these fields, and load_next of every field whose arms differ."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1028/1024, :1331/1327, :1357/1353, :1383/1379, :1409/1405, :1435/1431, :1461/1457, :1487/1483 and :1513/1509 assign load_next_c = '1 in both arms, so these load_next nets hold 1. NOT waived: the next and value nets of these fields, and load_next of every field whose arms differ."
 Toggle field_combo.PERIPH_BUS_ERR_CLEAR.wdt.load_next "logic field_combo.PERIPH_BUS_ERR_CLEAR.wdt.load_next"
 Toggle field_combo.PERIPH_BUS_ERR_CLEAR.edn.load_next "logic field_combo.PERIPH_BUS_ERR_CLEAR.edn.load_next"
 Toggle field_combo.PERIPH_BUS_ERR_CLEAR.csrng.load_next "logic field_combo.PERIPH_BUS_ERR_CLEAR.csrng.load_next"
@@ -233,12 +233,12 @@ Toggle field_combo.TIMEOUT_CLEAR.reserved.load_next "logic field_combo.TIMEOUT_C
 
 CHECKSUM: "2905179362 2073096279"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-NMIVEC-RSVD: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1200 assigns hwif_out.SEP_NMI_VEC.rsvd.value = 1'h0. NOT waived: hwif_out.SEP_NMI_VEC.nmi_vec.value and the SEP_NMI_VEC field storage."
+ANNOTATION: "SEP-REGBLOCK-NMIVEC-RSVD: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1207 assigns hwif_out.SEP_NMI_VEC.rsvd.value = 1'h0. NOT waived: hwif_out.SEP_NMI_VEC.nmi_vec.value and the SEP_NMI_VEC field storage."
 Toggle hwif_out.SEP_NMI_VEC.rsvd.value "logic hwif_out.SEP_NMI_VEC.rsvd.value"
 
 CHECKSUM: "2905179362 2073096279"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:718 and :721 assign load_next_c = '1 in both arms, so REFERENCE_COUNTER load_next holds 1. NOT waived: REFERENCE_COUNTER next and value, which the hardware counter moves."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:725 and :728 assign load_next_c = '1 in both arms, so REFERENCE_COUNTER load_next holds 1. NOT waived: REFERENCE_COUNTER next and value, which the hardware counter moves."
 Toggle field_combo.REFERENCE_COUNTER.rc.load_next "logic field_combo.REFERENCE_COUNTER.rc.load_next"
 
 CHECKSUM: "2477850130 325599202"

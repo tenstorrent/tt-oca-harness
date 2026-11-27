@@ -23,7 +23,7 @@ from sep_seeded_rng import SepSeededRng
 from sep_spec_tables import agg_from_pic
 
 IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
-# Read data of a shadow read that a lock blocks (otp_fuse_controller.adoc:112-114).
+# Read data of a shadow read that a lock blocks (otp_fuse_controller.adoc:112-115).
 # No staged pattern may equal it, so a read-lock readback that returns it also
 # differs from the stored field.
 DENY_DATA_MARKER = 0xBADCAB1E
@@ -215,7 +215,7 @@ class SepLockedFieldIrqCfg:
 def _selftest() -> None:
     # otp_fuse_controller.adoc: nine spares, slots 32-40.
     assert SPARE_COUNT == 9, f"SPARE_COUNT={SPARE_COUNT}, spec gives SPARE0..SPARE8"
-    # otp_fuse_controller.adoc:214-215: spare k (slot 32 + k) has its write lock at
+    # otp_fuse_controller.adoc:215-216: spare k (slot 32 + k) has its write lock at
     # LOCKS_SPARE bit 2k and its read lock at bit 2k + 1, above the 64 LOCKS bits.
     for k in range(SPARE_COUNT):
         assert spare_write_lock_bit(k) == 64 + 2 * k, f"spare {k} write lock"

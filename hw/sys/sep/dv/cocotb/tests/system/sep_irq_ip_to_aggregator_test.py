@@ -83,7 +83,7 @@ up is needed: +skip_fuse_sense, no_cpu.
 
 Crypto interrupt-line leg (RANDCFG, after the body above). Ten sources: HMAC done and
 error, KMAC done and error, the four CSRNG sources and the two EDN sources; vector bit
-N-1 carries PIC source N (hw/sys/sep/doc/interrupts.adoc:23, :117-161). Each line is
+N-1 carries PIC source N (hw/sys/sep/doc/interrupts.adoc:23, :125-169). Each line is
 INTR_STATE AND INTR_ENABLE, INTR_TEST sets a state bit, and the state bits clear on a
 write of one (the INTR_* rows of
 vendor/lowRISC/opentitan/overlay/regs/<ip>/regs/gen/adoc/<ip>.adoc). Every trial starts
@@ -200,7 +200,7 @@ _STICKY_HOLD = 32
 
 
 # Crypto interrupt-line leg. The ten driven sources of HMAC, KMAC, CSRNG and EDN; vector bit
-# = PIC source - 1 (hw/sys/sep/doc/interrupts.adoc:23, rows :117-161). The fifo_empty bits of
+# = PIC source - 1 (hw/sys/sep/doc/interrupts.adoc:23, rows :125-169). The fifo_empty bits of
 # HMAC and KMAC are not driven: every mask holds 0 there.
 _KMAC_ERR = IrqSrc(
     "kmac_err",
@@ -825,7 +825,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
     async def _crypto_line_leg(self) -> None:
         """INTR_STATE AND INTR_ENABLE drives each crypto line; INTR_TEST sets; W1C clears.
 
-        Spec: hw/sys/sep/doc/interrupts.adoc:23 (bit i is PIC source i+1) and :117-161;
+        Spec: hw/sys/sep/doc/interrupts.adoc:23 (bit i is PIC source i+1) and :125-169;
         the INTR_STATE, INTR_ENABLE and INTR_TEST rows of
         vendor/lowRISC/opentitan/overlay/regs/{hmac,kmac,csrng,edn}/regs/gen/adoc/*.adoc.
         Every trial starts from a block reset. The leg and the ESRC leg run twice with the

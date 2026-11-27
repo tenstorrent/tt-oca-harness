@@ -54,7 +54,7 @@ RMA_SIP already set, so the SIP match does not fall through: after W the
 channels at Match before and after W (``otp_fuse_controller.adoc``, row
 ``TRANSIENT_RMA_EN``). The script ends both matches. A lone SIP match right
 after it lands RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK): the update
-follows each token match (``otp_fuse_controller.adoc:237-243``) and the block
+follows each token match (``otp_fuse_controller.adoc:238-244``) and the block
 covers only a SIP match made while the chiplet match is held. A lone CHIPLET
 match after that lands RMA_CHIPLET without a reset
 (CHK-TRANSIENT-AFTER-BLOCK-CHP), so the blocked CHIPLET match of the script does
@@ -201,7 +201,7 @@ _SENSE_BOUND = 100_000
 _POLL_READS = 400
 _LC_WORD = field_word("LC_STATE")
 _EN_MASK = NARROW_USED["TRANSIENT_RMA_EN"]
-# Raw LC_STATE bits a token match sets (otp_fuse_controller.adoc:221-229;
+# Raw LC_STATE bits a token match sets (otp_fuse_controller.adoc:222-230;
 # lifecycle_controller.adoc:88-90): bit 1 with an RMA_SIP match, bit 2 with an
 # RMA_CHIPLET match from a state with bit 1 set.
 _LC_SIP_BIT = 1
@@ -396,7 +396,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         Every match of the leg ended with a Mismatch go before the reset; the whole
         LC_STATE word, its probe, FEAT_CTRL and its probe equal the staged state; and
         when the leg updated the shadow, the byte before the reset differs from the
-        staged byte (otp_fuse_controller.adoc:9-11, :237-239).
+        staged byte (otp_fuse_controller.adoc:9-11, :238-240).
         """
         p = self.plan
         raw0 = p.lc_raw & _LC_RAW_MASK
@@ -786,7 +786,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
 
         Leg A moved the shadow from RMA_SIP to RMA_CHIPLET, and the cold reset
         restored RMA_SIP. The update follows each token match
-        (``otp_fuse_controller.adoc:237-243``; ``token_processing.adoc:178-184``),
+        (``otp_fuse_controller.adoc:238-244``; ``token_processing.adoc:178-184``),
         so the CHIPLET match after the reset sets bit 2 again (CHK-TRANSIENT
         ``step=a_rst_chp``). The match ends, and a cold reset restores the sensed
         state (CHK-TRANSIENT-RESET ``leg=a_rst_chp``).
@@ -855,7 +855,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         (CHK-TRANSIENT ``step=simul_chp``). The SIP match that follows while the
         CHIPLET match is held does not fall through to RMA_SIP: after W the whole
         LC_STATE word, its probe and FEAT_CTRL keep the start state
-        (otp_fuse_controller.adoc:237-243). Both channels read Match after the SIP
+        (otp_fuse_controller.adoc:238-244). Both channels read Match after the SIP
         match and the CHIPLET channel still reads Match after W, in the same line, so
         a script that never held both cannot pass. SIP ends first, then CHIPLET;
         an end go that does not reach Mismatch ends the leaf before the cold
@@ -929,7 +929,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
 
         First, right after the simultaneous script, a lone SIP match must land
         RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK,
-        ``otp_fuse_controller.adoc:237-243``). After its Mismatch go a lone
+        ``otp_fuse_controller.adoc:238-244``). After its Mismatch go a lone
         CHIPLET match must then land RMA_CHIPLET without a reset
         (CHK-TRANSIENT-AFTER-BLOCK-CHP): the CHIPLET match blocked in the
         simultaneous script does not use up the CHIPLET update. Both Mismatch

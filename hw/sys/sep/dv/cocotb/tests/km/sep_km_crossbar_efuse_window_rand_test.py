@@ -62,7 +62,7 @@ Checks (anchor):
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
                   register (KM readback vs host readback, staged fuse model);
                   each KM read of the read-locked field completes with SLVERR
-                  and data 0xBADCAB1E (otp_fuse_controller.adoc:112-114)
+                  and data 0xBADCAB1E (otp_fuse_controller.adoc:112-115)
   CHK-EFW-RD-TM   the same with ``secure_tm_o`` = 1; register reads keep their
                   normal access controls (``test_mode.adoc`` "Protection While
                   Active"), so each readable shadow draw equals the model and
@@ -134,7 +134,7 @@ Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
 
 Write-locked shadow word, after the boot-one checks and before the boot-two
-re-sense (``otp_fuse_controller.adoc:110-114``; ``hw/ip/key_manager/doc/
+re-sense (``otp_fuse_controller.adoc:110-115``; ``hw/ip/key_manager/doc/
 architecture.adoc:922-926``, the KM eFuse path honors the native per-field
 locks): ``CHK-EFW-WLOCK-SHADOW`` grades that a KM write of a drawn value, which
 differs from the staged word in a used bit of the field (it sets a used bit
@@ -143,7 +143,7 @@ write-locked field completes with SLVERR, and that the host readback (class OKAY
 ``efuse_shadow_probe_o`` of that word equal the staged word.
 ``CTRL-EFW-WLOCK-SHADOW`` is its control: the same KM write to a word of an
 unlocked spare field, which is not a plan target (SW writable,
-``otp_fuse_controller.adoc:385-401,471-474``), completes OKAY, and the host
+``otp_fuse_controller.adoc:384-400,470-473``), completes OKAY, and the host
 readback (class OKAY) and the probe equal the written value; a mismatch prints
 ``CTRL-MISSING EFW-WLOCK-SHADOW`` and fails the leaf. ``CTRL-EFW-WLOCK-LOCKABLE``
 is its second control: a KM write of the same rule as the write-locked write
@@ -151,7 +151,7 @@ is its second control: a KM write of the same rule as the write-locked write
 which is not a spare and not a plan target, and whose used bits an unlocked write
 can change, completes OKAY, and the host readback (class OKAY) and the probe
 equal the written value for a writable field and the staged value OR the
-written value for a set-only field (``otp_fuse_controller.adoc:208,261,274,279,
+written value for a set-only field (``otp_fuse_controller.adoc:209,262,275,280,
 471-474``); a mismatch prints ``CTRL-MISSING EFW-WLOCK-LOCKABLE`` and fails the
 leaf. Both controls run before the check.
 """
@@ -906,7 +906,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         Bits outside ``used`` keep their staged value, so a refusal cannot come
         from a write to unused bits. It sets a used bit that
         is 0 in ``staged``. When every used bit is 1, it clears one used bit
-        instead: a write lock blocks any write (``otp_fuse_controller.adoc:110,112-114``).
+        instead: a write lock blocks any write (``otp_fuse_controller.adoc:110,112-115``).
         """
         word = (staged & ~used & WORD_MASK) | (rng.getrandbits(WORD_BITS) & used)
         ones = [b for b in range(WORD_BITS) if (used >> b) & 1]
@@ -927,15 +927,15 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
 
         A write-lock blocks shadow writes, and a write to a locked field
         completes with SLVERR and leaves the shadow unchanged
-        (``otp_fuse_controller.adoc:110-114``); the KM eFuse path honors the
+        (``otp_fuse_controller.adoc:110-115``); the KM eFuse path honors the
         same per-field locks (``key_manager/doc/architecture.adoc:922-926``).
         The control writes a SW-writable spare word that is not a plan target
-        (read-write, ``otp_fuse_controller.adoc:385-401,471-474``), so a KM path
+        (read-write, ``otp_fuse_controller.adoc:384-400,470-473``), so a KM path
         that drops every write fails the control first. A second control writes
         a word of an unlocked lockable field of the plan that is not a spare
         and not a plan target, so a KM path that refuses every non-spare write
         also fails a control first. Its expected readback follows the field's
-        SW-writable entry (``otp_fuse_controller.adoc:208,471-474``): the
+        SW-writable entry (``otp_fuse_controller.adoc:209,470-473``): the
         written word for a writable field, the staged word OR the written word
         for a set-only field (``:261,274,279``). The control word comes from the
         write class of the write-locked word (set-only or writable, full or
@@ -1562,7 +1562,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             word = (d["km"] - KM_EFUSE_MAP) // 4
             if word in locked_words:
                 locked_reads += 1
-                # otp_fuse_controller.adoc:112-114: a read the read lock blocks
+                # otp_fuse_controller.adoc:112-115: a read the read lock blocks
                 # completes with SLVERR and read data 0xBADCAB1E.
                 if (d["km_cls"], kd) == ("SLVERR", DENY_DATA_MARKER):
                     locked_deny += 1

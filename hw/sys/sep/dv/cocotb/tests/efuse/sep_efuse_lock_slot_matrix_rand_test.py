@@ -61,13 +61,13 @@ Checkers:
                     blocked under a write-lock and ORs the new bit without one.
                     ``CHK-LOCK-CELL-WR-RESP`` grades the response of a shadow write
                     that a write-lock blocks as SLVERR
-                    (``otp_fuse_controller.adoc:112-114``);
+                    (``otp_fuse_controller.adoc:112-115``);
                     ``OBS-LOCK-CELL-WR-RESP`` logs the response of an unlocked
                     shadow write: no TT text states it.
   CHK-LOCK-READ     lock leg, single-bit image with a read-lock and exempt cell
                     (``CLASS_KEY``), one line per word of a frontdoor read that a
                     read-lock blocks: the read completes with SLVERR and read
-                    data ``0xBADCAB1E`` (``otp_fuse_controller.adoc:112-114``).
+                    data ``0xBADCAB1E`` (``otp_fuse_controller.adoc:112-115``).
   CHK-LOCK-READ-DONE lock leg and the single-bit image with a read-lock, one line per
                     read-interface request on a read-locked field: after the full W
                     the request reads ``read_done`` 1 and ``read_status`` 1 (Error)
@@ -101,10 +101,10 @@ Checkers:
                     reads of the shadow; ``lifecycle_controller.adoc:714-719``: in
                     TEST_DEV the JTAG path reaches the whole shadow map). The
                     locked read completes with SLVERR and read data ``0xBADCAB1E``
-                    (``otp_fuse_controller.adoc:112-114``).
+                    (``otp_fuse_controller.adoc:112-115``).
   CHK-LOCK-JTAG-WR  lock leg, two lines (``part=shadow_write``, ``part=program``),
                     TEST_DEV JTAG writes after CHK-LOCK-JTAG-RD
-                    (``otp_fuse_controller.adoc:110-114``, ``:121-125``, ``:135-137``;
+                    (``otp_fuse_controller.adoc:110-115``, ``:122-126``, ``:136-138``;
                     ``lifecycle_controller.adoc:714-719``: in TEST_DEV the JTAG path
                     reaches the shadow map and the program controls, enforcement is
                     per-field ``LOCKS``). Shadow write: a JTAG write of the shadow word
@@ -137,7 +137,7 @@ Checkers:
                     (``path=read_if``) ends with ``efuse_req_error`` 0, ``read_done`` 1,
                     ``read_busy`` 0, ``read_status`` 0 and
                     ``EFUSE_READ_INTERFACE_READ_DATA`` equal to the staged ``LC_STATE``
-                    bank word (``otp_fuse_controller.adoc:109-111, 116-117, 224-225``;
+                    bank word (``otp_fuse_controller.adoc:109-111, 117-118, 225-226``;
                     ``efuse_interface_ctrl.rdl:107, 127, 133, 152-158``). Before the go,
                     ``efuse_req_error`` reads 0 and the read-data register holds a value
                     other than the staged word, so a request that captures nothing fails.
@@ -156,7 +156,7 @@ Checkers:
                     survives a write of 0 to ``LOCKS``, a later write of a third bit
                     leaves the shadow unchanged. ``CHK-LOCK-ORDER-RESP`` grades the
                     response of every field write after the lock as SLVERR
-                    (``otp_fuse_controller.adoc:112-114``). No TT text states the
+                    (``otp_fuse_controller.adoc:112-115``). No TT text states the
                     response code of the legal writes (the field writes before the
                     lock, the lock write and the zero writes to ``LOCKS``), so
                     ``OBS-LOCK-ORDER-RESP`` logs them.
@@ -214,7 +214,7 @@ line; the landed program and the bank gain are the positive probe of
 CHK-LOCK-EXEMPT-PROG. Before CHK-UID-RDLOCK-PROG, the read-lock program lands, the
 ``LOCKS`` word read after the resense holds the read-lock bit, and a frontdoor read
 of word 0 of the UID field completes with SLVERR and read data ``0xBADCAB1E``, so
-the read-lock is in force (``CTRL-UID-RDLOCK-SET``; ``otp_fuse_controller.adoc:110-114``).
+the read-lock is in force (``CTRL-UID-RDLOCK-SET``; ``otp_fuse_controller.adoc:110-115``).
 ``CTRL-LOCK-JTAG-WR`` (one line per part) is the twin of CHK-LOCK-JTAG-WR: the same JTAG write to a drawn word of a shadow-write field without
 a write-lock (a read-lock does not block it) sets the bit at the sensed-shadow output,
 and the same JTAG program of a drawn used 0 bit of a slot without a write-lock (not a
@@ -397,7 +397,7 @@ _PIN = {
     "uid_rdlock": (2, "lock_leg", {}),
 }
 # LC_STATE bits a program may set from TEST_DEV and the raw state each one reaches
-# (otp_fuse_controller.adoc:219-220; lifecycle_controller.adoc:118, :126-131).
+# (otp_fuse_controller.adoc:220-221; lifecycle_controller.adoc:118, :126-131).
 _EXEMPT_PROG_RAW = {0: LC_PROD, 3: LC_PROD_END}
 
 
@@ -539,7 +539,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
     async def _fd_locked(self, slot: int, name: str) -> bool:
         """Frontdoor read of a read-locked field: True when no word returns its non-zero
         staged value. CHK-LOCK-READ grades each word: SLVERR and read data
-        ``0xBADCAB1E`` (``otp_fuse_controller.adoc:112-114``).
+        ``0xBADCAB1E`` (``otp_fuse_controller.adoc:112-115``).
         """
         w0 = field_word(name)
         ok = True
@@ -1179,7 +1179,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         return {"twin": twin_r, "locked": locked_r}
 
     def _jtag_grade(self, r: dict, phase: str) -> bool:
-        """CHK-LOCK-JTAG-RD on one read pair (``otp_fuse_controller.adoc:110-114``)."""
+        """CHK-LOCK-JTAG-RD on one read pair (``otp_fuse_controller.adoc:110-115``)."""
         t, lk = r["twin"], r["locked"]
         twin_ok = (
             t is not None
@@ -1351,7 +1351,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
     async def _jtag_wlock(self) -> None:
         """JTAG shadow write and JTAG program of a write-locked field, each with a twin
-        on a field without a write-lock (``otp_fuse_controller.adoc:110-114``,
+        on a field without a write-lock (``otp_fuse_controller.adoc:110-115``,
         ``:135-137``; ``lifecycle_controller.adoc:714-719``).
 
         A layout with no write-locked shadow-write word that has a used 0 bit
@@ -1568,7 +1568,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
     async def _exempt_prog(self) -> None:
         """CHK-LOCK-EXEMPT-PROG: program ``LC_STATE`` bit 0 or bit 3 with every lock bit
-        burned, then resense (``otp_fuse_controller.adoc:9-11, 112-113, 219-220``)."""
+        burned, then resense (``otp_fuse_controller.adoc:9-11, 112-113, 220-221``)."""
         p = self.plan
         b = p.draw.choice("exempt_prog_bit", tuple(_EXEMPT_PROG_RAW))
         raw = _EXEMPT_PROG_RAW[b]

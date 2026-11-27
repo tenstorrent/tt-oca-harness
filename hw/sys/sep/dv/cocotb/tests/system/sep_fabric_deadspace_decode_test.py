@@ -57,7 +57,7 @@ CHK-TRNG-UNOWNED covers the TRNG window, which SEP forwards whole to an
 adopter endpoint. The reference integration connects no external TRNG, so no
 offset owns a register and every access must be refused: never OKAY, never
 the value of a neighbouring ESRC register, and no ESRC register moved.
-``hw/sys/sep/doc/memory_map.adoc:86-88`` states the code for that case: the
+``hw/sys/sep/doc/memory_map.adoc:88-90`` states the code for that case: the
 window ends in a DECERR slave, so a single-beat read or write answers DECERR,
 refuses the access and never aliases onto a live register. Each TRNG probe is
 graded against that code, and each TRNG read against the read word
@@ -66,7 +66,7 @@ graded against that code, and each TRNG read against the read word
 DECERR") states code and word, and ``sep_memory_map.rdl:10`` defines the same
 DECERR response. The leaf reads code and word from that note through the
 generated ``regs/gen/py/sep_memory_map.py`` and checks that the code agrees with
-``memory_map.adoc:86-88``.
+``memory_map.adoc:88-90``.
 
 CTRL-TRNG-ALIAS-ARMED (bench control, after the snapshot): a directed TRNG
 write anchor sits at the offset of the ESRC read-write register
@@ -129,7 +129,7 @@ CHK-TRNG-REPLY: a single-beat (AxSIZE 2) read and a single-beat write, each
 answered OKAY, SLVERR and DECERR at the port, reach the port as exactly one
 AXI-Lite access with exactly one reply beat, and the initiator receives the
 port code. SEP does not decode offsets inside the window
-(``doc/integrator/src/smu-sep.adoc:133-135``), so the address of that port
+(``doc/integrator/src/smu-sep.adoc:146-148``), so the address of that port
 access carries the issued window offset in its low 12 bits (the 4 KiB
 aperture). Besides the drawn offsets, every run issues a read and a write at
 the first word (offset 0x000), the last word (0xFFC) and one drawn interior
@@ -207,7 +207,7 @@ _RESP_NAME = {
 }
 
 _TRNG_BASE = sym("TRNG_REG_MAP_BASE_ADDR")
-# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:133); the
+# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:146); the
 # port address carries the window offset in these low bits.
 _TRNG_SIZE = sym("TRNG_REG_MAP_SIZE")
 _TRNG_OFF_MASK = _TRNG_SIZE - 1
@@ -231,13 +231,13 @@ def _trng_unowned_expect() -> tuple[dict[str, int], int]:
 
 
 # Code per channel and read word of an unowned TRNG-window offset with no
-# external TRNG connected. hw/sys/sep/doc/memory_map.adoc:86-88 states the
+# external TRNG connected. hw/sys/sep/doc/memory_map.adoc:88-90 states the
 # DECERR code in prose; the leaf checks that the note agrees.
 TRNG_UNOWNED_RESP, TRNG_UNOWNED_RDATA = _trng_unowned_expect()
 if TRNG_UNOWNED_RESP != {"r": RESP_DECERR, "w": RESP_DECERR}:
     raise RuntimeError(
         f"sep_memory_map.py TRNG note codes {TRNG_UNOWNED_RESP} disagree with the DECERR "
-        "of hw/sys/sep/doc/memory_map.adoc:86-88"
+        "of hw/sys/sep/doc/memory_map.adoc:88-90"
     )
 # Windows where the row-cell sampler also takes an LSU write cell (the SPI
 # controller past extent and the TRNG window); elsewhere the cell is a read.

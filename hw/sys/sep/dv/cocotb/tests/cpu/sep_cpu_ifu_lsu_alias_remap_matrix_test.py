@@ -36,7 +36,7 @@ ecall; it prints one ``UMODE-LEG`` console record.
   two aw beats at its address: the machine-mode preset store and readback load
   are one beat each, so the other beat on each channel is the U-mode access.
 * CHK-LSU-UMODE-AXPROT: every PR-CPU-LSU read and write over the run, the U-mode
-  beats included, carries AxPROT ``0b001`` (hw/sys/sep/doc/cpu.adoc:59-61, table
+  beats included, carries AxPROT ``0b001`` (hw/sys/sep/doc/cpu.adoc:76-78, table
   sep-cpu-axprot-table: the value does not follow the privilege mode), at
   least one beat per channel.
 

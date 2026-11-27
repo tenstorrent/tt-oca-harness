@@ -17,7 +17,7 @@
  *   CHK-PIC-LEVEL-REENTRY : with source 40 enabled again and the handler not
  *                    masking it, the ISR enters at least twice in a fixed
  *                    window, and source 40 is still pending after the window
- *                    (doc/programmer/src/sep-programming.adoc:235-237 "Stays
+ *                    (doc/programmer/src/sep-programming.adoc:241-243 "Stays
  *                    asserted until reset ... an unmasked handler re-enters")
  */
 

@@ -887,7 +887,7 @@ class sep_sec_dis_override_test(sep_base_test):
           lifecycle text leaves that word unchanged: "LC_STATE bits can only be set" and an
           INVALID encoding is "permanent" (lifecycle_controller.adoc:87, :90),
           and raw 4'b1111 has no bit left to set; "Invalid lifecycle encodings
-          are terminal" (otp_fuse_controller.adoc:228-229). CHK-SECDIS-LC-WR
+          are terminal" (otp_fuse_controller.adoc:229-230). CHK-SECDIS-LC-WR
           grades the JTAG readback after the write as the RDL reset word
           0x0000000f. No text states the JTAG write response, so
           OBS-SECDIS-LC-WR logs it without a verdict.

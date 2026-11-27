@@ -427,13 +427,13 @@ Branch 1 "844865755" "idx" (12) "idx default"
 
 CHECKSUM: "2097437693 2178003635"
 MODULE: axi_lite_to_tlul
-ANNOTATION: "AXI2TLUL-INTG-GEN-PARAM: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN default to 1 (hw/common/axi/axi_lite_to_tlul.sv:28-29); every SEP instance keeps the default or passes 1 (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from hw/sys/sep/rtl/sep.sv:1133 ENABLE_DATA_INTG_GEN=1), so the else arms at :251/:267 are elaboration-dead."
+ANNOTATION: "AXI2TLUL-INTG-GEN-PARAM: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN default to 1 (hw/common/axi/axi_lite_to_tlul.sv:28-29); every SEP instance keeps the default or passes 1 (hw/sys/sep/rtl/sep_dma_wrap.sv:270-271 from hw/sys/sep/rtl/sep.sv:1136 ENABLE_DATA_INTG_GEN=1), so the else arms at :251/:267 are elaboration-dead."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 1300994536"
 MODULE: tlul_to_axi_lite
-ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1133, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
+ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:295-296) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1136, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
@@ -633,13 +633,13 @@ Condition 6 "4163802455" "(clear_i || endpoint_cancel_i[0]) 1 -1" (2 "01")
 
 CHECKSUM: "1557237986 1319700504"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1022 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. So filter_skip_i is 0 and the skip arm of the isolate_write/isolate_read ternaries (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224,234) cannot occur. NOT waived: the filter_skip_i = 0 vectors and the nested no-match/allow conditions, which filter traffic moves."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1025 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. So filter_skip_i is 0 and the skip arm of the isolate_write/isolate_read ternaries (hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224,234) cannot occur. NOT waived: the filter_skip_i = 0 vectors and the nested no-match/allow conditions, which filter traffic moves."
 Condition 65 "1848364127" "(filter_skip_i ? 1'b0 : (no_write_filter_matches ? BLOCK_BY_DEFAULT : ((!allow_write[write_filter_hit_idx])))) 1 -1" (2 "1")
 Condition 67 "2709885922" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? BLOCK_BY_DEFAULT : ((!allow_read[read_filter_hit_idx])))) 1 -1" (2 "1")
 
 CHECKSUM: "1557237986 4093739576"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_outbound_filter
-ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1022 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. So the filter_skip_i = 1 arm of hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224 and :234 is unreachable. NOT waived: the two filter_skip_i = 0 arms (no-match and hit), which filter traffic reaches."
+ANNOTATION: "SEP-OUTFILTER-SKIP-TIED: hw/sys/sep/rtl/sep.sv:1025 ties outbound_filter_skip_i to 1'b0 and hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:435 connects it to filter_skip_i, the only driver of that net. So the filter_skip_i = 1 arm of hw/ip/axi_filter/rtl/axi_filter_wrap.sv:224 and :234 is unreachable. NOT waived: the two filter_skip_i = 0 arms (no-match and hit), which filter traffic reaches."
 Branch 0 "572651959" "filter_skip_i" (0) "filter_skip_i 1,-"
 Branch 1 "2652501629" "filter_skip_i" (0) "filter_skip_i 1,-"
 
@@ -662,12 +662,12 @@ Branch 9 "598101187" "(rd_mux_addr == 4'b0)" (1) "(rd_mux_addr == 4'b0) 0"
 
 CHECKSUM: "2196427632 1402944094"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
-ANNOTATION: "SEP-CPU-IFU-AW-ZERO: the VeeR IFU drives awaddr = '0 (vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/ifu/el2_ifu_mem_ctl.sv:1087), and region_size_i is the literal 0x3000_0000 (hw/sys/sep/rtl/sep_cpu.sv:544, hw/sys/sep/rtl/sep_pkg.sv:476). With addr 0, addr >= base holds only for base 0, and then 0 < base + size holds (hw/ip/axi_window_remap/rtl/axi_window_remap.sv:37,42-43), so the (1 0) vector cannot occur. NOT waived: the (0 1) and (1 1) vectors, which SEP_LOCAL_BASE_ADDR moves."
+ANNOTATION: "SEP-CPU-IFU-AW-ZERO: the VeeR IFU drives awaddr = '0 (vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/ifu/el2_ifu_mem_ctl.sv:1087), and region_size_i is the literal 0x3000_0000 (hw/sys/sep/rtl/sep_cpu.sv:544, hw/sys/sep/rtl/sep_pkg.sv:477). With addr 0, addr >= base holds only for base 0, and then 0 < base + size holds (hw/ip/axi_window_remap/rtl/axi_window_remap.sv:37,42-43), so the (1 0) vector cannot occur. NOT waived: the (0 1) and (1 1) vectors, which SEP_LOCAL_BASE_ADDR moves."
 Condition 1 "1033715818" "((slv_req_i.aw.addr >= local_alias_base_i) && ({1'b0, slv_req_i.aw.addr} < local_alias_end)) 1 -1" (2 "10")
 
 CHECKSUM: "2905179362 3747101343"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1021/1024, :1324/1327, :1350/1353, :1376/1379, :1402/1405, :1428/1431, :1454/1457, :1480/1483 and :1506/1509 assign load_next_c = '1 in both arms of the SW-write test, so load_next is constant 1 for TIMEOUT_CLEAR, DMA_BUS_ERR_CLEAR and the seven PERIPH_BUS_ERR_CLEAR fields, and the implicit else of 'if(load_next)' at :1033, :1336, :1362, :1388, :1414, :1440, :1466, :1492 and :1518 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:1028/1024, :1331/1327, :1357/1353, :1383/1379, :1409/1405, :1435/1431, :1461/1457, :1487/1483 and :1513/1509 assign load_next_c = '1 in both arms of the SW-write test, so load_next is constant 1 for TIMEOUT_CLEAR, DMA_BUS_ERR_CLEAR and the seven PERIPH_BUS_ERR_CLEAR fields, and the implicit else of 'if(load_next)' at :1040, :1343, :1369, :1395, :1421, :1447, :1473, :1499 and :1525 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test."
 Branch 34 "4266396544" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 60 "3588033518" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 62 "884099970" "(~arst_n)" (2) "(~arst_n) 0,0"
@@ -680,12 +680,12 @@ Branch 74 "2747625622" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "2905179362 3747101343"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_system_peripherals.u_sep_system_csr.u_sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:718 and :721 assign load_next_c = '1 in both arms, so REFERENCE_COUNTER load_next is constant 1 and the implicit else of 'if(load_next)' at :730 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test at :716."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-CONST-BRANCH: hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:725 and :728 assign load_next_c = '1 in both arms, so REFERENCE_COUNTER load_next is constant 1 and the implicit else of 'if(load_next)' at :737 never executes. NOT waived: the reset arm, the load arm, and both arms of the SW-write test at :720."
 Branch 8 "2691458842" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "2905179362 3747101343"
 MODULE: sep_cpu_ctrl_reg
-ANNOTATION: "SEP-REGBLOCK-LOADNEXT-BRANCH: in each of these field combos every path sets load_next_c to '1 (for example hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:718,721 and :1021,1024 and :1324,1327), so the implicit else of 'if(field_combo.*.load_next)' in the storage flop at lines 730, 1033, 1336, 1362, 1388, 1414, 1440, 1466, 1492 and 1518 is unreachable. NOT waived: the reset arm and the load arm of each flop, and the load_next branches of fields that software alone loads."
+ANNOTATION: "SEP-REGBLOCK-LOADNEXT-BRANCH: in each of these field combos every path sets load_next_c to '1 (for example hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv:725,728 and :1028,1031 and :1331,1334), so the implicit else of 'if(field_combo.*.load_next)' in the storage flop at lines 730, 1033, 1336, 1362, 1388, 1414, 1440, 1466, 1492 and 1518 is unreachable. NOT waived: the reset arm and the load arm of each flop, and the load_next branches of fields that software alone loads."
 Branch 8 "2691458842" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 34 "4266396544" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 60 "3588033518" "(~arst_n)" (2) "(~arst_n) 0,0"
@@ -724,7 +724,7 @@ Block 8 "4131875210" "is_write_locked = efuse_shadow_reg_access_control.write_lo
 
 CHECKSUM: "3595078827 2100095224"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-SW-LOCK-CONST: sw_lock_bits comes only from find_efuse_sw_lock over the constant field map, or the default 0 (hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:144, :251-260). All 42 map entries are WriteUnlock or WriteSetOnly with ReadUnlock (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525-1128), so sw_lock_bits[1] and sw_lock_bits[0] are always 0. The excluded vectors at :161-162 need (sw_lock_bits[2:1] == 2'b11) or sw_lock_bits[0] to be 1. NOT waived: the is_write_locked, is_read_locked, sw_lock_bits[3] and secure_tm_i vectors."
+ANNOTATION: "SEP-EFUSE-SW-LOCK-CONST: sw_lock_bits comes only from find_efuse_sw_lock over the constant field map, or the default 0 (hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:144, :251-260). All 42 map entries are WriteUnlock or WriteSetOnly with ReadUnlock (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:521-1124), so sw_lock_bits[1] and sw_lock_bits[0] are always 0. The excluded vectors at :161-162 need (sw_lock_bits[2:1] == 2'b11) or sw_lock_bits[0] to be 1. NOT waived: the is_write_locked, is_read_locked, sw_lock_bits[3] and secure_tm_i vectors."
 Condition 15 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (3 "010")
 Condition 16 "1024332690" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
 Condition 17 "57363498" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11)) 1 -1" (2 "01")

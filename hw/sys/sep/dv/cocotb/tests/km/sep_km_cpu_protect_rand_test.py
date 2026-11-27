@@ -22,7 +22,7 @@ error", and the whole vector for CHK-SRC31-EXCL), the SEP output field
 (``km_engine_key_valid_o``), ``KM-KPV`` (``km_kpv_words_o``, the plain-reset
 control of CHK-TRAP-WIPE) and ``KM-CSR`` (``km_csr_irq_status_o``). No inject.
 
-Port golden: ``hw/sys/sep/doc/interrupts.adoc:169-171`` (source 31, "KM
+Port golden: ``hw/sys/sep/doc/interrupts.adoc:177-179`` (source 31, "KM
 unrecoverable error", "also exported as a SEP output port") and
 ``hw/sys/sep/doc/port_table.adoc:130`` (``sep_ras_o.km_uncorrectable``, output field, 1 bit).
 So the port equals PIC-IRQ bit 30 on every clock. A watcher compares the two on
@@ -233,7 +233,7 @@ KM_VALID_HMAC_BIT = 0
 # PIC-IRQ: aggregator bit of PIC source "KM unrecoverable error" (bit 30).
 KM_UNREC_BIT = agg_from_pic("KM unrecoverable error")
 # CHK-SRC31-EXCL: bits not compared at the bit 30 rise besides the six idle
-# bits of pic_vector_watch: source 33 ("Crypto alert", interrupts.adoc:177-181,
+# bits of pic_vector_watch: source 33 ("Crypto alert", interrupts.adoc:185-189,
 # the combined crypto alert and integrity fails), which a Key Manager fault may
 # raise in the same clock. Not graded: the leaf states no golden for it.
 SRC31_SAME_CLOCK = vec_mask([pic("Crypto alert")])

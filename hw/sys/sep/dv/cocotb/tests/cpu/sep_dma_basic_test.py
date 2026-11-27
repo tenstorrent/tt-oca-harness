@@ -44,7 +44,7 @@ scoreboard also checks the banner + ICCM execution. Every ERROR_CODE compare gra
 named fields. CHK-RESET grades the named fields of each register.
 
 CHK-RAS-DMA_HOST_INTG_ERR grades ``sep_ras_o.dma_host_intg_err`` on the bench tap
-``sep_ras_probe_o`` against ``hw/sys/sep/doc/dma.adoc:69-71`` ("The register and host bridges
+``sep_ras_probe_o`` against ``hw/sys/sep/doc/dma.adoc:71-73`` ("The register and host bridges
 latch faults on ``dma_reg_bus_err_o`` and ``dma_host_intg_err_o``, cleared through
 ``DMA_BUS_ERR_CLEAR``") as four checks, each on its own line:
 CHK-RAS-DMA_HOST_INTG_ERR-IDLE (0 on every clock from the CPU release to
@@ -302,7 +302,7 @@ class sep_dma_basic_test(sep_base_test):
         drop_ps = get_sim_time("ps")
         self.logger.info("STEP host-intg: dma_host_intg_inject_i=0")
 
-        # The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:69-71):
+        # The latch is sticky until DMA_BUS_ERR_CLEAR (hw/sys/sep/doc/dma.adoc:71-73):
         # bit 41 holds 1 after the pin falls, through the firmware STATUS read that
         # precedes the CLEAR write (CHK-HOSTINTG-HELD).
         held_clocks = 0

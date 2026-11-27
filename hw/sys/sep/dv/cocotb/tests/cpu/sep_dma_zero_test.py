@@ -6,10 +6,10 @@ The dma_zero_test firmware drives the zero fill (CONTROL.OPCODE 4) into SEP SRAM
 1-byte width, into a DCCM buffer and into ICCM, the last two through the core's DMA slave port,
 and checks the cleared bytes and their neighbours. ICCM is read back through a DMA copy to SRAM.
 A 2-byte-wide fill into ICCM must end in BUS_ERROR with the exclusive host-path error, because the
-core accepts only whole words there (hw/sys/sep/doc/dma.adoc:120-123). So must a 4-byte-wide fill of
+core accepts only whole words there (hw/sys/sep/doc/dma.adoc:122-125). So must a 4-byte-wide fill of
 4n + 2 bytes into ICCM and into DCCM, whose last write covers only the remaining bytes
-(dma.adoc:115-116), and a 2-byte-wide fill into DCCM; the words past TOTAL_DATA_SIZE keep their
-pattern (dma.adoc:117). The words such a fill targets have no stated value and are logged on the
+(dma.adoc:117-118), and a 2-byte-wide fill into DCCM; the words past TOTAL_DATA_SIZE keep their
+pattern (dma.adoc:119). The words such a fill targets have no stated value and are logged on the
 firmware's INFO-ZERO-TCM-SPAN lines only. A 4-byte-wide fill of 8 bytes to the DCCM buffer 2 bytes
 above a word boundary is logged: STATUS, ERROR_CODE,
 DMA_BUS_ERR_STATUS and the first four buffer words go on the firmware's INFO-ZERO-DCCM-MISALIGN
