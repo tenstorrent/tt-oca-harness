@@ -348,6 +348,8 @@ Checkers:
   CHK-DMA-REGWEN-NONMUBI for a drawn value with bits 1 and 2 not both set,
                     the following BASE write does not land; for 0x0, 0x2
                     and 0x4, RANGE_REGWEN reads back the written value.
+                    A draw of 0x7, 0xE or 0xF grades nothing and logs
+                    INFO-BLOCKED CHK-DMA-REGWEN-NONMUBI.
                     Control: RANGE_REGWEN reads 0x6 before the write
                     and BASE before the write differs from the value written.
   CHK-DMA-SIZE-EDGE one copy of a drawn size 2 bytes past a multiple of 4 at
@@ -2007,11 +2009,18 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         # value whose bits 1 and 2 are not both set locks the range: wzc leaves
         # w & 0x6, which is not 0x6. They agree on the read-back only when w & 0x6 == w.
         if c.nonmubi & REGWEN_TRUE != REGWEN_TRUE:
+            parts = "lock,readback" if c.nonmubi & REGWEN_TRUE == c.nonmubi else "lock"
             if base == nb:
-                self._fail("CHK-DMA-REGWEN-NONMUBI", line)
-            if c.nonmubi & REGWEN_TRUE == c.nonmubi and regwen != c.nonmubi:
-                self._fail("CHK-DMA-REGWEN-NONMUBI", line)
-            self._pass("CHK-DMA-REGWEN-NONMUBI", line)
+                self._fail("CHK-DMA-REGWEN-NONMUBI", f"parts={parts} {line}")
+            if parts == "lock,readback" and regwen != c.nonmubi:
+                self._fail("CHK-DMA-REGWEN-NONMUBI", f"parts={parts} {line}")
+            self._pass("CHK-DMA-REGWEN-NONMUBI", f"parts={parts} {line}")
+        else:
+            self.logger.info(
+                "INFO-BLOCKED CHK-DMA-REGWEN-NONMUBI reason=disputed_value seed=%d written=0x%x",
+                c.seed,
+                c.nonmubi,
+            )
         self.logger.info("OBS-DMA-REGWEN-NONMUBI LOG seed=%d %s", c.seed, line)
 
     async def _size_edge(self) -> None:

@@ -1494,11 +1494,6 @@ INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_inter
 ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:410 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:774, :965) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). No entry of the constant map has an out-of-range idx, so the statement at hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:74 never executes. NOT waived: the other statements of field_map_idx_in_range at :70-77."
 Block 3 "301284989" "in_range = 1'b0;"
 
-CHECKSUM: "3595078827 4037587957"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-AC-PADDR-ZEXT: hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:185, :215 zero-extend apb_req_paddr_i, which is EFUSE_ADDR_WIDTH = $clog2(SEP_TOP_SEP_EFUSE_MAP_SIZE=0x400) = 10 bits wide (hw/ip/efuse/rtl/efuse_interface_controller.sv:64), so paddr[31:10] is always 0. NOT waived: apb_req_from_ac_o.paddr[9:0] and the other APB request fields."
-Toggle apb_req_from_ac_o.paddr [31:10] "logic apb_req_from_ac_o.paddr[31:0]"
-
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
 ANNOTATION: "SEP-KM-EFUSE-ADDR-BASE: hw/ip/key_manager/rtl/key_manager.sv:393-396 force addr[31:12] to OTP_EFUSE_REMAP_BASE & ~OtpPageMask (hw/sys/sep/rtl/sep_crypto.sv:1048 = 0x1093_0000; hw/ip/key_manager/rtl/km_intf_pkg.sv:171-174), and axi_lite_isolate u_km_efuse_isolate (hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:736-752) passes the address or drives 0 (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:298, :307, :363, :372). The bits where the base is 0 are always 0. NOT waived: addr bits 28, 23, 20, 17, 16 and [11:0]."

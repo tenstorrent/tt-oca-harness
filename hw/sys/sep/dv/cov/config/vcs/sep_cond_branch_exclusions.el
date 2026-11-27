@@ -448,7 +448,7 @@ Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 1300994536"
 MODULE: tlul_to_axi_lite
-ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1204, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
+ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1204, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:275/:285 are elaboration-dead."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
@@ -746,22 +746,6 @@ Block 24 "3333382630" "efuse_reg_select = SHADOW_REG_MAP;"
 Block 25 "2891404597" "if ((apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}))"
 Block 26 "357504973" "efuse_reg_select = EFUSE_CSR_REG_MAP;"
 Block 27 "3360606802" "efuse_reg_select = ERR_DECODE;"
-
-CHECKSUM: "486751003 420603909"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_guard
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:378 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:747), efuse_guard (:949) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:296). The statement in the HAS_LC_STATE=0 arm at hw/ip/efuse/rtl/efuse_guard.sv:116-117 belongs to the SMC elaboration and does not execute here. NOT waived: the HAS_LC_STATE=1 lock statements at :112-113."
-Block 10 "2670421632" "pro_read_intf_rm_lc_state_write_lock = efuse_guard.entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);"
-
-CHECKSUM: "171941408 446195242"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:378 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:747), efuse_guard (:949) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:296). The statements in the HAS_LC_STATE=0 arms at hw/ip/efuse/rtl/efuse_shadow_regs.sv:229-232 (SMC preload) and :755-760 (SMC APB response reset) do not execute here. NOT waived: the SEP preload statement at :238-242 and the LC_STATE access arm at :659-752."
-Block 18 "3048384116" "if (((sim_skip_fuse_sense == 1'b1) && $value$plusargs(\"smc_shadow_reg_preload=%s\", smc_shadow_reg_preload)))"
-Block 155 "4129704973" "apb_resp_from_ac.pready <= 1'b0;"
-
-CHECKSUM: "3595078827 3812065443"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-HAS-LC-STATE: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:378 sets HAS_LC_STATE=1 on efuse_interface_controller, which passes it to efuse_shadow_regs (hw/ip/efuse/rtl/efuse_interface_controller.sv:747), efuse_guard (:949) and on to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:296). The statement in the HAS_LC_STATE=0 arm at hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:152-153 belongs to the SMC elaboration and does not execute here. NOT waived: the HAS_LC_STATE=1 lock statements at :148-149."
-Block 8 "4131875210" "is_write_locked = efuse_shadow_reg_access_control.write_locked(field_index);"
 
 CHECKSUM: "3595078827 2100095224"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control

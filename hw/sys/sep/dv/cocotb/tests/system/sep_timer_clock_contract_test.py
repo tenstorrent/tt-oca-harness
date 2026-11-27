@@ -1850,8 +1850,8 @@ class sep_timer_clock_contract_test(sep_base_test):
             SRC13_WINDOW,
         )
         # The alert pulses "are ORed into wdt_alert_o, which drives PIC source 13"
-        # (hw/sys/sep/doc/watchdog.adoc:23), so source 13 rises and stays high on the
-        # same clocks as the alert tap over the window.
+        # (hw/sys/sep/doc/watchdog.adoc:23). Both taps read that net, so the compare
+        # grades that vector bit 12 carries the watchdog alert.
         src_rises = src13.rises_since(m13)
         src_high = src13.high_clocks_since(m13)
         src_edges = (
