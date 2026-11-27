@@ -22,11 +22,14 @@
 //                   virtual type; cocotb binds them through OcahAxiConfig at
 //                   the real bus geometry).
 //
-// cocotb (`--dut dtp`) drives the clock, resets, and stimulus members by
-// hierarchical handle and attaches its BFMs to the interface scopes. The
-// `UVM` define (`--framework uvm`) adds the harness block at the end of the
-// module: the clock generator, the test classes, the uvm_config_db
-// publication of every instance, and run_test().
+// The clock generator ahead of the harness block toggles the system clock
+// once a framework sets its period on dtp_tb_if; cocotb on Verilator drives
+// the clock itself and leaves the period 0. cocotb (`--dut dtp`) drives the
+// resets and stimulus members by hierarchical handle and attaches its BFMs to
+// the interface scopes. The `UVM` define
+// (`--framework uvm`) adds the harness block at the end of the module: the
+// test classes, the uvm_config_db publication of every instance, and
+// run_test().
 //
 // The shared JTAG master drives the DUT's primary TAP at pin level through
 // u_jtag_if. The TAP controller is inside `dtp` (jtag_tap_ctrlr in
@@ -2701,21 +2704,22 @@ module tb_top
     .rvalid  (xtrig_axil_rvalid)
   );
 
-`ifdef UVM
-  // ------------------------------------------------------------------
-  // SV-UVM harness (`--framework uvm`): the system clock generator, the
-  // test classes, uvm_config_db publication of every interface instance,
-  // and run_test().
-  // ------------------------------------------------------------------
-  import uvm_pkg::*;
-
-  // System clock with the period the env publishes on dtp_tb_if from the
-  // seeded test cfg (dtp_test_cfg.sys_clk_c), from the time it is published;
-  // TCK is bit-banged by the VIP driver.
+  // System clock with the period on dtp_tb_if, from the time a framework sets
+  // it: the cocotb base test from DtpEnvCfg on every simulator but Verilator,
+  // the SV-UVM env from the seeded test cfg (dtp_test_cfg.sys_clk_c). A new
+  // period takes effect from the half period after the current one. TCK is
+  // bit-banged by the JTAG master.
   initial begin
     wait (u_tb_if.clk_period_ns != 0);
     forever #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;
   end
+
+`ifdef UVM
+  // ------------------------------------------------------------------
+  // SV-UVM harness (`--framework uvm`): the test classes, uvm_config_db
+  // publication of every interface instance, and run_test().
+  // ------------------------------------------------------------------
+  import uvm_pkg::*;
 
   // Non-reusable test classes compile as part of this top (module scope).
   `include "dtp_tests.sv"

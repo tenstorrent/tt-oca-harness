@@ -23,9 +23,12 @@
 // state of each bridge, the phase of each bridge's access at the bridge
 // reset, a response held past the poll bound at it, the scans in it, a
 // bridge reset that a read's AR handshake asserts, its TCK-side release
-// after TCK stopped, and test mode (cg_j2a_reset); and the length of each
-// scan of a bridge register, and each DR update of another register and IR
-// update with the state of each bridge then (cg_j2a_isolation).
+// after TCK stopped, and test mode (cg_j2a_reset); the length of each scan
+// of a bridge register, and each DR update of another register and IR update
+// with the state of each bridge then (cg_j2a_isolation); and the first DMI
+// capture after each read and the first DMI update after each read or write,
+// with their distance from it and whether it was still in progress
+// (cg_j2a_idle).
 //
 // One instance in the shared tb_top serves both flows. Each bridge's DMI
 // capture and update strobes, its captured status, the DMI value its bridge
@@ -80,6 +83,13 @@
 // other DR update, for each bridge it did not select, with the bridge's
 // Debug Module sbbusy; and on the edge that leaves Update-IR, the same for
 // every bridge.
+//
+// The Run-Test/Idle samples are taken on TCK from each bridge's DMI strobes.
+// A read or write update the bridge accepts, with status 0 captured and its
+// DMI state machine idle, starts a count of TCK edges, which the edge after
+// it makes 1. The first DMI capture after a read and the first DMI update
+// after a read or write are sampled with that count and the state machine's
+// busy.
 //
 // Covergroups follow the cross rules dtp_fcov.sv states.
 //
@@ -218,6 +228,13 @@ module dtp_j2a_fcov (
   localparam int unsigned PromptCycles = 2;
   // The sbcs polls a bench wait for sbbusy 0 makes at most.
   localparam int unsigned SbaPolls = 8;
+  // cg_j2a_idle distance bands, at the bench's DTP_DMI_BUSY_TCK and
+  // DTP_DMI_SETTLE_TCK.
+  localparam int unsigned DmiBusyTck = 6;
+  localparam int unsigned DmiSettleTck = 24;
+  localparam logic [1:0] BandBusy = 2'd0;
+  localparam logic [1:0] BandWindow = 2'd1;
+  localparam logic [1:0] BandSettled = 2'd2;
 
   // The status each bridge's last DMI capture presented, which its next DMI
   // update closes the scan of.
@@ -732,6 +749,22 @@ module dtp_j2a_fcov (
     }
   endgroup
 
+  // 16 * bridge + 8 * update + 2 * band + busy. A probe within the busy
+  // bound that finds the operation complete, or at the settle bound still in
+  // progress, breaks a bound CHK-J2A-IDLE judges.
+  covergroup cg_j2a_idle with function sample (logic [1:0] bridge, logic [3:0] value);
+    option.per_instance = 1;
+    cp_probe: coverpoint {
+      bridge, value
+    } {
+      bins smc_axi[] = {1, 2, 3, 4, 9, 10, 11, 12};
+      bins smc_otp[] = {17, 18, 19, 20, 25, 26, 27, 28};
+      bins sep_otp[] = {33, 34, 35, 36, 41, 42, 43, 44};
+      ignore_bins bound_broken = {0, 5, 8, 13, 16, 21, 24, 29, 32, 37, 40, 45};
+      illegal_bins none = {[6 : 7], [14 : 15], [22 : 23], [30 : 31], [38 : 39], [46 : 63]};
+    }
+  endgroup
+
   cg_j2a_dmi_status u_cg_j2a_dmi_status = new();
   cg_j2a_dm_access u_cg_j2a_dm_access = new();
   cg_j2a_sba_access u_cg_j2a_sba_access = new();
@@ -741,6 +774,7 @@ module dtp_j2a_fcov (
   cg_j2a_dbg_disable u_cg_j2a_dbg_disable = new();
   cg_j2a_reset u_cg_j2a_reset = new();
   cg_j2a_isolation u_cg_j2a_isolation = new();
+  cg_j2a_idle u_cg_j2a_idle = new();
 
   always_ff @(posedge tck_i) begin
     if (tap_rst_ni) begin
@@ -1298,6 +1332,51 @@ module dtp_j2a_fcov (
         end else if (tap_state_i == jtag_tap_pkg::UPDATE_IR) begin
           u_cg_j2a_isolation.sample(KindIsoDisturb, 2'(b), {SourceIr, dm_sbbusy_i[b]});
         end
+      end
+    end
+  end
+
+  // Per bridge: TCK edges since the last read or write update it accepted,
+  // saturating, and whether the first DMI capture after a read and the first
+  // DMI update after a read or write are still to come.
+  logic [Bridges-1:0][5:0] since_op_q;
+  logic [Bridges-1:0]      capture_armed_q;
+  logic [Bridges-1:0]      update_armed_q;
+
+  always_ff @(posedge tck_i or negedge tap_rst_ni) begin
+    if (!tap_rst_ni) begin
+      since_op_q      <= '0;
+      capture_armed_q <= '0;
+      update_armed_q  <= '0;
+    end else begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (since_op_q[b] != '1) since_op_q[b] <= since_op_q[b] + 6'd1;
+        if (capture_en_i[b]) capture_armed_q[b] <= 1'b0;
+        if (update_en_i[b]) begin
+          update_armed_q[b] <= 1'b0;
+          if (scan_status_q[b] == 2'd0 && !fsm_busy_i[b] &&
+              update_dmi_i[b][1:0] inside {DmiOpRead, DmiOpWrite}) begin
+            since_op_q[b]      <= 6'd1;
+            capture_armed_q[b] <= update_dmi_i[b][1:0] == DmiOpRead;
+            update_armed_q[b]  <= 1'b1;
+          end
+        end
+      end
+    end
+  end
+
+  function automatic logic [1:0] idle_band(logic [5:0] distance);
+    if (distance <= DmiBusyTck) return BandBusy;
+    return (distance < DmiSettleTck) ? BandWindow : BandSettled;
+  endfunction
+
+  always_ff @(posedge tck_i) begin
+    if (tap_rst_ni) begin
+      for (int unsigned b = 0; b < Bridges; b++) begin
+        if (capture_en_i[b] && capture_armed_q[b])
+          u_cg_j2a_idle.sample(2'(b), {1'b0, idle_band(since_op_q[b]), fsm_busy_i[b]});
+        if (update_en_i[b] && update_armed_q[b])
+          u_cg_j2a_idle.sample(2'(b), {1'b1, idle_band(since_op_q[b]), fsm_busy_i[b]});
       end
     end
   end

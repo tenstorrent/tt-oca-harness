@@ -551,6 +551,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         upper = rng.getrandbits(cfg.addr_width - (mem.bit_length() - 1)) << (mem.bit_length() - 1)
         return upper | (rng.randrange(mem // cfg.beat_bytes) * cfg.beat_bytes)
 
+    def random_sbaddress0(self, target: str, rng: random.Random) -> int:
+        """A seeded sbaddress0 value the bridge's address register holds whole."""
+        return rng.getrandbits(min(self.target_cfg(target).addr_width, 32))
+
     def random_distinct_word(self, rng: random.Random, target: str, *avoid: int) -> int:
         """A seeded data-width word, nonzero and different from every ``avoid`` word."""
         width = self.target_cfg(target).data_width

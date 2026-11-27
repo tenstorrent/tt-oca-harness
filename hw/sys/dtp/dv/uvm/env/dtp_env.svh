@@ -3,7 +3,7 @@
 //
 // DTP SV-UVM environment: composes, drives nothing, checks no protocol. It
 // reads dtp_env_cfg and the DTP-local dtp_tb_if from uvm_config_db, sets
-// the harness clock period on the TB interface, fills one shared-VIP config
+// the system-clock period on the TB interface, fills one shared-VIP config
 // per port (interface, geometry, name_tag, evidence policy) and publishes
 // it to that agent's subtree, and builds:
 //

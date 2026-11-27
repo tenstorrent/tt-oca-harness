@@ -122,6 +122,7 @@ checkers. Toggle and FSM coverage are not collected.
 |JTAG2AXI debug disables |`cg_j2a_dbg_disable` |`dtp_j2a_fcov`
 |JTAG2AXI TAP and bridge resets |`cg_j2a_reset` |`dtp_j2a_fcov`
 |JTAG2AXI decode and isolation |`cg_j2a_isolation` |`dtp_j2a_fcov`
+|JTAG2AXI Run-Test/Idle across clock ratios |`cg_j2a_idle` |`dtp_j2a_fcov`
 |Cross-trigger CTP |`cg_ctp`, `cg_ctp_p2p`, `cg_ctp_reset`, `cg_ctp_wire_or_rx` |`dtp_xtrig_fcov`
 |Cross-trigger CTM |`cg_ctm`, `cg_ctm_route`, `cg_ctm_fanout` |`dtp_xtrig_fcov`
 |XTRIG CSR map and port |`cg_xtrig_csr_write`, `cg_xtrig_csr_read`, `cg_xtrig_axil_flow` |`dtp_xtrig_fcov`
@@ -709,6 +710,30 @@ held fall in its odd passes, and the sources the disturbance mixes are
 seeded, so the `cp_disturb` bins with `sbbusy` 1 are closed across the passes
 of a run.
 
+==== `cg_j2a_idle`
+
+*Description*: Covers how far from a JTAG2AXI bridge's DMI read or write
+update the next capture and update fall, and whether they find the operation
+in progress or complete.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|`cp_probe` |One bin per bridge, probe, distance band, and outcome. The probe is the first DMI capture after a read or the first DMI update after a read or write. The bands are at most 6 TCK cycles from the operation's Update-DR, 7 to 23, and 24 or more, the bench's `DTP_DMI_BUSY_TCK` and `DTP_DMI_SETTLE_TCK`. The outcomes are in progress at most 6 cycles away, in progress or complete from 7 to 23, and complete from 24 on; the other two combinations break a bound `CHK-J2A-IDLE` judges and are ignored
+|===
+
+`dtp_j2a_fcov` takes each bridge's DMI capture and update strobes, the
+status its capture presented and its DMI state machine's busy from its
+`jtag_dmi2axi`, and samples on TCK. A read or write update the bridge
+accepts, with status 0 captured and the state machine idle, starts a count of
+TCK edges. The first DMI capture after a read and the first DMI update after
+a read or write are sampled with that count and the state machine's busy.
+`dtp_jtag2axi_clock_ratio_test` reaches every bin on every bridge: those at
+most 6 cycles away and from 24 on in every pass, and from 7 to 23 the
+operation in progress in its passes at the lower ratios and complete in its
+passes at the higher ones. Every other JTAG2AXI test reaches the bins from 24
+on for the bridges it accesses.
+
 ==== `cg_ctp`
 
 *Description*: Covers every CTP transmission and reception with the
@@ -1203,6 +1228,7 @@ review.
 |`dtp_jtag2axi_sba_busy_test` |`cg_j2a_busy` `cp_first`, `cp_under_error`, and `cp_polls`
 |`dtp_jtag2axi_reset_test` |`cg_j2a_reset` `cp_tap`, `cp_bridge`, `cp_unreleased`, `cp_scan`, `cp_armed`, `cp_tck_stopped`, and `cp_test_mode`
 |`dtp_jtag2axi_isolation_test` |`cg_j2a_isolation` `cp_length` and `cp_disturb`
+|`dtp_jtag2axi_clock_ratio_test` |`cg_j2a_idle` `cp_probe`
 |STAP / 3DCR scenarios |`cg_stap_3dcr`, `cg_stap_chain`, `cg_3dcr_hold`, `cg_dbg_disable_scan`
 |iJTAG scenarios |`cg_ijtag_sib`, `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins
 |`dtp_scan_dbg_disable_matrix_test` |`DtpDbgDisableFcov` scan-side cells (8 fields); `cg_dbg_disable_scan`, `cg_instruction_gate` SELECT_IJTAG bins

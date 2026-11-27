@@ -201,7 +201,7 @@ compile_args = [
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
 # for both frameworks: the native profile's `UVM` define adds the harness block of tb/tb_top.sv
-# (clock generator, uvm_config_db publication, run_test()), which `include`s
+# (uvm_config_db publication, run_test()), which `include`s
 # uvm/tests/dtp_tests.sv.
 [frameworks.uvm]
 description = "DTP SV-UVM flow (VCS, Verilator)"

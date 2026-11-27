@@ -18,6 +18,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+import cocotb
+from cocotb.clock import Clock
+from cocotb.triggers import FallingEdge
 from ocah_axi_vip import OcahAxiBus, OcahAxiConfig, OcahAxiProtocol
 
 from .dtp_dbg_disable import DBG_DISABLE_FIELDS, full_dbg_disable, validate_dbg_disable
@@ -81,6 +84,7 @@ class DtpTbIf:
     def __init__(self, top: Any) -> None:
         self.top = top
         self.ctrl = top.u_tb_if
+        self._clk_driver: Clock | None = None
         self.scan = top.u_scan_if
         self.xtrig = top.u_xtrig_if
         self.jtag = top.u_jtag_if
@@ -103,6 +107,29 @@ class DtpTbIf:
     @property
     def clk(self) -> Any:
         return self.ctrl.clk
+
+    def start_clk(self, period_ns: int) -> None:
+        """Start clk with a period of ``period_ns``. ``tb_top`` generates clk once
+        ``clk_period_ns`` is set: on VCS every clock edge cocotb drives through VPI leaks
+        simulator memory. On Verilator cocotb drives clk instead, because cocotb's edge
+        triggers see a clock the design toggles only after the design has evaluated that edge.
+        """
+        if "verilator" in cocotb.SIM_NAME.lower():
+            self._clk_driver = Clock(self.clk, period_ns, unit="ns")
+            self._clk_driver.start()
+        else:
+            self.ctrl.clk_period_ns.value = period_ns
+
+    async def retime_clk(self, period_ns: int) -> None:
+        """Give clk a period of ``period_ns`` from its next falling edge, so no phase is
+        shorter than half the shorter of the two periods."""
+        await FallingEdge(self.clk)
+        if self._clk_driver is None:
+            self.ctrl.clk_period_ns.value = period_ns
+            return
+        self._clk_driver.stop()
+        self._clk_driver = Clock(self.clk, period_ns, unit="ns")
+        self._clk_driver.start(start_high=False)
 
     @property
     def sys_rst_n(self) -> Any:

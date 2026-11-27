@@ -86,6 +86,14 @@ tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
+name = "dtp_jtag2axi_clock_ratio_test"
+module = { cocotb = "dtp_jtag2axi_clock_ratio_test", uvm = "dtp_jtag2axi_clock_ratio_test" }
+seed = 1
+timeout_sec = 7200
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
 name = "dtp_jtag2axi_debug_disable_test"
 module = { cocotb = "dtp_jtag2axi_debug_disable_test", uvm = "dtp_jtag2axi_debug_disable_test" }
 seed = 1

@@ -91,10 +91,6 @@ class dtp_jtag2axi_dmi_status_test_seq(dtp_jtag2axi_base_test_seq):
                 f"{target} DMI status complete", cases=[case.__name__ for case in cases]
             )
 
-    def random_sbaddress0(self, target: str, rng: random.Random) -> int:
-        """A seeded sbaddress0 value the bridge's address register holds whole."""
-        return rng.getrandbits(min(self.target_cfg(target).addr_width, 32))
-
     async def dtmcs_case(self, target: str, rng: random.Random) -> None:
         """DTMCS shows the sticky status in dmistat; dmihardreset leaves it and dmireset
         clears it, keeping the DMI address and data, and dmireset with status 0 changes
