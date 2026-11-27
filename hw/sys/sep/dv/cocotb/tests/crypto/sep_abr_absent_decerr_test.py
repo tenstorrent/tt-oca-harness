@@ -36,13 +36,20 @@ The image also loads the first address after the generated KMCSR block
 (``KEY_MANAGER_KMCSR_BASE_ADDR + KEY_MANAGER_KMCSR_SIZE``). No specification
 states what that address answers, so the test logs the error bits and data
 and grades nothing on them.
+
+OBS-ABR-ABSENT-SK-IRQ logs the Key Manager's ML-KEM shared-key interrupt input
+(tap ``km_abr_sk_irq_in_probe_o``) on every ``clk_i`` edge from the end of
+bring-up to the end of the KM legs: each value read and its clock count. No
+specification states the value of this input without ``SEP_ABR_EN``, so the
+test grades nothing on it; the line fails the leaf only when the sampler took
+no sample.
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_keygen_seq import ABR_CTRL, ABR_NAME0
@@ -127,6 +134,37 @@ class sep_abr_absent_decerr_test(sep_base_test):
         dut = cocotb.top
         await self.bring_up_no_cpu()
 
+        sk_irq: dict[str, int] = {}
+        stop = {"v": False}
+
+        async def _sample_sk_irq() -> None:
+            while not stop["v"]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                v = dut.km_abr_sk_irq_in_probe_o.value
+                bits = getattr(v, "binstr", None)
+                key = (bits if bits is not None else str(v)).strip()
+                sk_irq[key] = sk_irq.get(key, 0) + 1
+
+        sampler = cocotb.start_soon(_sample_sk_irq())
+        await self._legs(dut)
+        stop["v"] = True
+        await sampler
+        # The sampler ends in ReadOnly; leave it before the leaf ends.
+        await RisingEdge(dut.clk_i)
+        clocks = sum(sk_irq.values())
+        assert clocks > 0, (
+            "OBS-ABR-ABSENT-SK-IRQ FAIL: km_abr_sk_irq_in_probe_o sampler took no sample"
+        )
+        self.logger.info(
+            "OBS-ABR-ABSENT-SK-IRQ LOG: km_abr_sk_irq_in_probe_o values=%s clocks=%d "
+            "(logged, not graded: no specification states this input without SEP_ABR_EN)",
+            " ".join(f"{k}:{n}" for k, n in sorted(sk_irq.items())),
+            clocks,
+        )
+
+    async def _legs(self, dut) -> None:
+        """The host legs and the KM legs."""
         gated = self.rd_known(dut.abr_gated_rst_n_probe_o)
         host_iso = self.rd_known(dut.abr_host_isolated_probe_o)
         assert (gated, host_iso) == (1, 0), (

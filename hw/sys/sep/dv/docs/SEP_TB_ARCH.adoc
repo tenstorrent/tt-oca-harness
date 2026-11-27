@@ -149,7 +149,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_crypto_per_ip_reset_isolation_test`.
 |Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
 |JTAG ID |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `jtag_id` (`jtag_id_i[31:1]` of `sep`) from the TB input `jtag_id_i`; an undriven or unknown value drives 0. Readback: `jtag_id_probe_o`. Owner: `sep_efuse_field_layout_rand_test` (CHK-JTAGID).
-|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_lsu_demux_underflow_waive` turns off the CPU LSU demux assertions from each `wdt_rst_ni_i` fall to the next `rst_ni` fall: the watchdog reset does not drain transactions, and the cold reset that follows every watchdog timeout clears that state (`doc/trm/src/reset.adoc:44-53`). Full-CPU build only; user `sep_cpu_reset_retention_test` (both entries; the stub entry runs the full-CPU build on VCS). `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`.
+|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_lsu_demux_underflow_waive` turns off the CPU LSU demux assertions from each `wdt_rst_ni_i` fall to the next `rst_ni` fall: the watchdog reset does not drain transactions, and the cold reset that follows every watchdog timeout clears that state (`doc/trm/src/reset.adoc:44-53`). Full-CPU build only; user `sep_cpu_reset_retention_test` (both entries; the stub entry runs the full-CPU build on VCS). `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`. `+sep_edn_ack_sm_inject` arms the EDN adapter ack state machine inject (inject exceptions below). `+sep_edn_ack_sm_assert_waive` turns off the two assertions that an injected illegal `edn_ack_sm` state violates by design: `AxisEdnAllAckSmHealthy_A` of both EDN adapters and `FpvSecCmErrorStEscalate_A` of each of their `edn_ack_sm` instances (the state reaches Error while `local_escalate_i` is tied 0). They go off only for the injected adapter, in the time step in which `edn_ack_sm_inj_sel` selects one of its endpoints (1 to 4 crypto, 5 pool), before the force starts on the next falling edge of `clk_i`, and come back on at the next rise of `rst_ni`, because Error holds until `rst_ni`. The other adapter keeps them on the whole time. `AckSmErrTriggersErr_A`, which checks that the fault reaches the adapter `err_o`, stays on. VCS only: Verilator compiles these assertions out. User of both: `sep_pic_pending_map_walk_rand_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar ports for `OcahSpiFlash` and `OcahSpiMonitor`: `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o` (`sep_io_spi_req_o.sd[0]`) and `spi_miso_i` (`sep_io_spi_rsp_i.sd[1]`). Monitor-only taps of the DUT output struct `sep_io_spi_req_o`: `spi_sd_o[3:0]` (`sd`), `spi_sd_oe_o[3:0]` (`sd_oe`), `spi_cs_oe_o` (`cs_oe`) and `spi_sck_oe_o` (`sck_oe`); `env/sep_spi_wire_monitor.py` attaches them to `OcahSpiMonitor`, which grades the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment"). SEP top-port drive: `spi_sd_i[3:0]` drives all four response lanes of `sep_io_spi_rsp_i.sd` in a run with `+sep_spi_four_lane`; otherwise lane 1 is `spi_miso_i` and lanes 0, 2 and 3 are 0. `sep_base_test` holds `spi_sd_i` at 0. Monitor-only tap `spi_sd_rsp_o[3:0]`: the four lanes the DUT receives, which `env/sep_spi_wire_monitor.py` gives the monitor as its input lanes.
@@ -304,6 +304,17 @@ Observation probe groups:
   counter (bit 1 `prstb_synced_rd` on `clk_ref_i`, bit 0 `prstb_synced_write`
   on `clk_i`, of `u_sep_system_csr.u_reference_counter_counter`); owner
   `sep_scan_reset_override_test`.
+  `efuse_rst_sync_probe_o`, the output of the eFuse interface reset
+  synchronizer (`u_sep_efuse_wrapper.u_efuse_interface_controller.u_reset_n_sync.q_o`,
+  the source of `sep_intermediate_reset_n`); owner
+  `sep_scan_reset_override_test`. `sep_fcov` reads it as net 15 of
+  `cp_scan_net_effect`.
+* Key Manager shared-key interrupt input tap (`km_abr_sk_irq_in_probe_o`): the
+  ML-KEM shared-key interrupt input `abr_mlkem_sharedkey_irq_i` of
+  `u_key_manager_s3c_scan`, in the builds with and without Adams Bridge. It is
+  monitor-only: it drives nothing and adds no force. Owner:
+  `sep_abr_absent_decerr_test`, which logs its value in the build without Adams
+  Bridge (OBS-ABR-ABSENT-SK-IRQ).
 * RAS struct tap (`sep_ras_probe_o`): the whole `sep_ras_o` output of the DUT
   (`sep_ras_w`, type `sep_pkg::sep_ras_t`) on one monitor output of `tb_top`. It
   is monitor-only: it drives nothing and adds no force. The bit of each field
@@ -1102,16 +1113,38 @@ Exceptions (a closed set):
   `FIFO_STATUS` and the stream taps the checkers read stay frontdoor or
   read-only. Users: the ESRC FIFO entry of the crypto and entropy area.
 * *ESRC health-test counter-copy inject* — at the rise of `esrc_cntr_inject_i`
-  the bench takes the secondary copy of the `REPCNT_TOTAL_FAILS` counter
-  (`u_entropy_src_cntr_reg_repcnt`, a `prim_count` with a primary and a
-  secondary copy) with bit `esrc_cntr_inject_bit_i` (0 to 31) inverted and
-  holds that copy at that value while the input stays 1, so the two copies
-  disagree. That is the counter integrity error that latches
-  `MAIN_SM_STATUS.ERR`. Software cannot move one copy of a counter, so the
-  error has no frontdoor. Both inputs are 0 by default; the force is
-  released when the input drops, and the counter keeps the disagreeing copy
-  until the next entropy-source reset (the TRNG reset). `MAIN_SM_STATUS` and
-  the other registers the checkers read stay frontdoor. Users: the ESRC
+  the bench takes the secondary copy of one health-test counter (a
+  `prim_count` with a primary and a secondary copy) with bit
+  `esrc_cntr_inject_bit_i[4:0]` inverted and holds that copy at that value
+  while the input stays 1, so the two copies disagree. That is the counter
+  integrity error that latches `MAIN_SM_STATUS.ERR`.
+  `esrc_cntr_inject_bit_i[7:5]` selects the counter: 0 `REPCNT_TOTAL_FAILS`
+  (`u_entropy_src_cntr_reg_repcnt`); 1 the window counter
+  (`u_generator_complex.u_window_cntr`); 2, 3 and 4 the repetition-count,
+  adaptive-proportion and Markov counter of one lane
+  (`gen_ecmplx[lane].u_generator.u_health_test.u_repcnt_ht`, `u_adaptp_ht`,
+  `u_markov_ht`, counter `gen_cntrs[slot]`); 5 a total-fails counter (slot 0
+  `apt_hi`, 1 `apt_lo`, 2 `markov_hi`, 3 `markov_lo`, 4 `any_alert_fails`);
+  6 an alert-fails counter (slot 0 `repcnt_alert`, 1 `apt_hi_alert`,
+  2 `apt_lo_alert`, 3 `markov_hi_alert`, 4 `markov_lo_alert`); 7 none. The
+  lane (0 to 11) and the slot come from the `tb_top` variables
+  `esrc_cntr_inj_lane` and `esrc_cntr_inj_slot`, which a leaf writes through
+  the `tb_top` handle before the rise; targets 0 and 1 ignore both, and
+  targets 5 and 6 ignore the lane. A selection that names no counter forces
+  nothing, and a bit index at or above the counter width (4, 16 or 32 bits)
+  flips no bit. Software cannot move one copy of a counter, so the error has
+  no frontdoor. The inputs and both variables are 0 by default, so a leaf
+  that drives only the bit index keeps target 0; the force is released when
+  the input drops or the selection changes, and the counter keeps the
+  disagreeing copy until the next entropy-source reset (the TRNG reset).
+  Every forced copy also starts the counter's own error-to-alert assertion in
+  `entropy_source.sv`, which passes when the error reaches
+  `PERSISTENT_FAILURE`. `MAIN_SM_STATUS` and
+  the other registers the checkers read stay frontdoor. Readback of the
+  selected counter: `esrc_cntr_copy_pri_o` and `esrc_cntr_copy_sec_o` (the two
+  copies, zero-extended) and `esrc_cntr_copy_err_o` (the counter's registered
+  copy-mismatch flag `err_o`); all 0 when the selection names no counter.
+  `sep_fcov` takes the target bits for `cp_sm_err_target`. Users: the ESRC
   persistent-alert entry of the crypto and entropy area.
 * *ESRC main state machine error-output inject* — while
   `esrc_main_sm_err_inject_i` is 1, the error output of the entropy-source
@@ -1156,6 +1189,29 @@ Exceptions (a closed set):
   `dma_alert`, the PIC source it drives and `sep_ras_o` are not forced.
   `dma_alert_rx_probe_o` is a read-only copy of the pair as the receiver sees
   it, so the user counts the clocks on which the force holds. Users:
+  `sep_pic_pending_map_walk_rand_test`.
+* *EDN adapter ack state machine inject* — in a run with
+  `+sep_edn_ack_sm_inject`, while the `tb_top` variable `edn_ack_sm_inj_sel`
+  is non-zero, the state register of one `edn_ack_sm` in a
+  `drbg_axis_edn_adapter` is forced to `edn_ack_sm_inj_val` (`tb_top`
+  variable, default `9'h000`, not an encoding of the `edn_ack_sm` state set):
+  `edn_ack_sm_inj_sel` 1 to 4 selects endpoint 0 to 3 of the crypto adapter
+  (`u_axis_edn_crypto_s3c_scan.gen_ep[i].u_edn_ack_sm`), 5 endpoint 0 of the
+  pool adapter (`u_axis_edn_pool_s3c_scan.gen_ep[0].u_edn_ack_sm`). Both state
+  flops take the value: `state_q`, which the state machine reads, and
+  `u_state_regs.u_state_flop.q_o`. The state machine reports the illegal
+  state on its `ack_sm_err_o`, which the adapter ORs into `err_o`, and moves
+  to its Error state, which only `rst_ni` leaves. Software cannot place an
+  illegal encoding in that register, so the fault has no frontdoor. A leaf
+  writes the variable through the `tb_top` handle to start the force and
+  writes 0 to release it; the force is re-issued on each falling edge of
+  `clk_i`. Without the plusarg the variable has no effect, and the SV-UVM top
+  does not write it. `err_o`, `crypto_alert_o`, the PIC source it drives and
+  `sep_ras_o` are not forced. Readback: `edn_ack_sm_state_o` (`state_q` of
+  each endpoint, 9 bits each, crypto endpoints 0 to 3 in bits 0 to 35, pool
+  endpoint 0 in bits 36 to 44) and `edn_adapter_err_o` (bit 0 crypto adapter
+  `err_o`, bit 1 pool adapter `err_o`). Assertion waiver
+  `+sep_edn_ack_sm_assert_waive` (bench plusargs row). Users:
   `sep_pic_pending_map_walk_rand_test`.
 * *OTBN memory integrity flip* — in a run with `+sep_otbn_intg_flip`, while
   `otbn_intg_flip_en_i` is 1, every read response that the OTBN core takes
