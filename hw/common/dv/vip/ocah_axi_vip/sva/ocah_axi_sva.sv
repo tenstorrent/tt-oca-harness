@@ -17,7 +17,14 @@
 // master that clears its requests with synchronous-reset flops: the master
 // reset rules then let AWVALID, WVALID and ARVALID stay high on the first
 // clock edge that samples aresetn low, and require them low from the next
-// edge on (IHI 0022 A3.1.2 gives no timing for reset entry). `en_i` is a runtime suppress
+// edge on (IHI 0022 A3.1.2 gives no timing for reset entry). Set
+// SLAVE_IN_RESET_DOMAIN=0 for an instance whose aresetn resets the master
+// only: the slave answers the requests it accepted before that reset, so the
+// B and R reset rules are off and the tracking runs through aresetn low and
+// matches those responses to their requests; the master rules under that
+// reset stay graded. Such an instance never flushes its tracking, so a reset
+// that also resets the slave leaves the transactions open at it tracked
+// until a same-ID transaction completes. `en_i` is a runtime suppress
 // knob (tie to 1'b1, or drive from a TB interface bit for suppression
 // windows); every concurrent rule is qualified by it.
 //
@@ -34,7 +41,8 @@
 //
 // Rules (OCAH_AXI_* assert, OCAH_AXI_C_* cover):
 //   Reset      : <CH>_VALID_RESET_LOW (VALID low while aresetn is low; with
-//                MASTER_SYNC_RESET the AW/W/AR rules start one edge later)
+//                MASTER_SYNC_RESET the AW/W/AR rules start one edge later;
+//                SLAVE_IN_RESET_DOMAIN=0 takes the B/R rules off)
 //   Handshake  : <CH>_PAYLOAD_STABLE, <CH>_VALID_HELD (IHI 0022 A3.2.1/A3.2.2)
 //   X-hygiene  : <CH>_VALID_KNOWN, <CH>_READY_KNOWN, <CH>_PAYLOAD_KNOWN
 //   AW/AR      : BURST_LEGAL (A3.4.1 reserved encoding), SIZE_LEGAL (A3.4.1),
@@ -62,14 +70,15 @@
 `include "ocah_sva_macros.svh"
 
 module ocah_axi_sva #(
-  parameter bit          IS_LITE             = 1'b0,
-  parameter int unsigned ADDR_WIDTH          = 32,
-  parameter int unsigned DATA_WIDTH          = 32,
-  parameter int unsigned ID_WIDTH            = 4,
-  parameter int unsigned MAX_OUTSTANDING     = 8,
-  parameter bit          ASSUME_MASTER_RULES = 1'b0,
-  parameter bit          ASSUME_SLAVE_RULES  = 1'b0,
-  parameter bit          MASTER_SYNC_RESET   = 1'b0
+  parameter bit          IS_LITE               = 1'b0,
+  parameter int unsigned ADDR_WIDTH            = 32,
+  parameter int unsigned DATA_WIDTH            = 32,
+  parameter int unsigned ID_WIDTH              = 4,
+  parameter int unsigned MAX_OUTSTANDING       = 8,
+  parameter bit          ASSUME_MASTER_RULES   = 1'b0,
+  parameter bit          ASSUME_SLAVE_RULES    = 1'b0,
+  parameter bit          MASTER_SYNC_RESET     = 1'b0,
+  parameter bit          SLAVE_IN_RESET_DOMAIN = 1'b1
 ) (
   input wire logic                    aclk,
   input wire logic                    aresetn,
@@ -132,7 +141,8 @@ module ocah_axi_sva #(
   // resolved-low aresetn so an X reset at time zero cannot fire it. With
   // MASTER_SYNC_RESET the master rules start one edge later: a master with
   // synchronous-reset flops first sees aresetn low on the edge where the
-  // rule would otherwise fire, and clears its request on that edge.
+  // rule would otherwise fire, and clears its request on that edge. The B
+  // and R rules hold only where the slave is in the reset domain.
   // ------------------------------------------------------------------
   `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_VALID_RESET_LOW,
                  (en_i && (aresetn === 1'b0) && (!MASTER_SYNC_RESET || ($past(aresetn)
@@ -141,12 +151,12 @@ module ocah_axi_sva #(
                  (en_i && (aresetn === 1'b0) && (!MASTER_SYNC_RESET || ($past(aresetn)
                  === 1'b0))) |-> !wvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_B_VALID_RESET_LOW,
-                 (en_i && (aresetn === 1'b0)) |-> !bvalid, aclk, 1'b0)
+                 (en_i && SLAVE_IN_RESET_DOMAIN && (aresetn === 1'b0)) |-> !bvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_VALID_RESET_LOW,
                  (en_i && (aresetn === 1'b0) && (!MASTER_SYNC_RESET || ($past(aresetn)
                  === 1'b0))) |-> !arvalid, aclk, 1'b0)
   `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_R_VALID_RESET_LOW,
-                 (en_i && (aresetn === 1'b0)) |-> !rvalid, aclk, 1'b0)
+                 (en_i && SLAVE_IN_RESET_DOMAIN && (aresetn === 1'b0)) |-> !rvalid, aclk, 1'b0)
 
   // ------------------------------------------------------------------
   // Handshake stability and hold (A3.2.1): once VALID is asserted the
@@ -289,7 +299,10 @@ module ocah_axi_sva #(
     // Stateful burst/ID tracking (simulation-only). Ordering within the
     // procedural block is load-bearing: W is processed before B and AR
     // before R, so a same-cycle completion is visible to the dependent
-    // check. All state flushes on reset.
+    // check. All state flushes on reset where the slave is in the reset
+    // domain; with SLAVE_IN_RESET_DOMAIN=0 the tracking runs through
+    // aresetn low, so the slave's responses to the requests it accepted
+    // before the reset are matched to them.
     // --------------------------------------------------------------
     typedef struct {
       logic [ID_WIDTH-1:0]   id;
@@ -351,7 +364,7 @@ module ocah_axi_sva #(
     endfunction
 
     always @(posedge aclk) begin
-      if (aresetn !== 1'b1) begin
+      if (SLAVE_IN_RESET_DOMAIN && aresetn !== 1'b1) begin
         aw_q.delete();
         wr_done_q.delete();
         early_wburst_len_q.delete();
@@ -461,13 +474,14 @@ module ocah_axi_sva #(
                    (en_i && rvalid && rready) |-> (rresp != RespExokay), aclk, !aresetn)
 
 `ifdef SIMULATION
-    // Response-ordering counters (same same-cycle ordering note as AXI4).
+    // Response-ordering counters (same same-cycle ordering and reset-flush
+    // notes as AXI4).
     int unsigned lite_wr_addr_cnt = 0;
     int unsigned lite_wr_data_cnt = 0;
     int unsigned lite_rd_cnt      = 0;
 
     always @(posedge aclk) begin
-      if (aresetn !== 1'b1) begin
+      if (SLAVE_IN_RESET_DOMAIN && aresetn !== 1'b1) begin
         lite_wr_addr_cnt = 0;
         lite_wr_data_cnt = 0;
         lite_rd_cnt      = 0;

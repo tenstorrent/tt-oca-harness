@@ -291,9 +291,9 @@
 
         virtual function void build();
             this.lc_state = uvm_reg_field::type_id::create("lc_state");
-            this.lc_state.configure(this, 8, 0, "RO", 1, 'hf, 1, 1, 0);
+            this.lc_state.configure(this, 8, 0, "W1S", 1, 'hf, 1, 1, 0);
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 24, 8, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 24, 8, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__LC_STATE
 
@@ -309,9 +309,9 @@
 
         virtual function void build();
             this.disable_secure_boot = uvm_reg_field::type_id::create("disable_secure_boot");
-            this.disable_secure_boot.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.disable_secure_boot.configure(this, 1, 0, "RW", 1, 'h0, 1, 1, 0);
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 31, 1, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 31, 1, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SBOOT_DIS
 
@@ -327,9 +327,9 @@
 
         virtual function void build();
             this.transient_rma_en = uvm_reg_field::type_id::create("transient_rma_en");
-            this.transient_rma_en.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.transient_rma_en.configure(this, 1, 0, "RW", 1, 'h0, 1, 1, 0);
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 31, 1, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 31, 1, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__TRANSIENT_RMA_EN
 
@@ -416,7 +416,7 @@
 
         virtual function void build();
             this.token_digest = uvm_reg_field::type_id::create("token_digest");
-            this.token_digest.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.token_digest.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__RMA_SIP_TOKEN_DIGEST
 
@@ -431,7 +431,7 @@
 
         virtual function void build();
             this.token_digest = uvm_reg_field::type_id::create("token_digest");
-            this.token_digest.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.token_digest.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__RMA_CHIPLET_TOKEN_DIGEST
 
@@ -446,7 +446,7 @@
 
         virtual function void build();
             this.key = uvm_reg_field::type_id::create("key");
-            this.key.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__CLASS_KEY
 
@@ -461,7 +461,7 @@
 
         virtual function void build();
             this.select = uvm_reg_field::type_id::create("select");
-            this.select.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.select.configure(this, 32, 0, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__CHIPLET_PUBK_REVOKE
 
@@ -476,7 +476,7 @@
 
         virtual function void build();
             this.version = uvm_reg_field::type_id::create("version");
-            this.version.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.version.configure(this, 256, 0, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__BL1_VERSION
 
@@ -491,7 +491,7 @@
 
         virtual function void build();
             this.version = uvm_reg_field::type_id::create("version");
-            this.version.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.version.configure(this, 256, 0, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__BL2_VERSION
 
@@ -506,7 +506,7 @@
 
         virtual function void build();
             this.uid = uvm_reg_field::type_id::create("uid");
-            this.uid.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.uid.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__CHIPLET_UID
 
@@ -521,7 +521,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SIP_PUBK_HASH0
 
@@ -536,7 +536,7 @@
 
         virtual function void build();
             this.uid = uvm_reg_field::type_id::create("uid");
-            this.uid.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.uid.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SIP_UID
 
@@ -551,7 +551,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SYS_PUBK_HASH
 
@@ -566,7 +566,7 @@
 
         virtual function void build();
             this.uid = uvm_reg_field::type_id::create("uid");
-            this.uid.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.uid.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SYS_UID
 
@@ -582,17 +582,15 @@
 
         virtual function void build();
             this.rpt = uvm_reg_field::type_id::create("rpt");
-            this.rpt.configure(this, 2, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rpt.configure(this, 2, 0, "RW", 1, 'h0, 1, 1, 0);
             this.reserved = uvm_reg_field::type_id::create("reserved");
-            this.reserved.configure(this, 30, 2, "RO", 1, 'h0, 1, 1, 0);
+            this.reserved.configure(this, 30, 2, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__STATUS_RPT
 
     // reg - sep_efuse_map.ROM_CTL
     class sep_efuse_map__ROM_CTL extends uvm_reg;
         `uvm_object_utils(sep_efuse_map__ROM_CTL)
-        rand uvm_reg_field rom_endianness_ctrl;
-        rand uvm_reg_field rom_swap_ctrl;
         rand uvm_reg_field reserved;
 
         function new(string name = "sep_efuse_map__ROM_CTL");
@@ -600,12 +598,8 @@
         endfunction : new
 
         virtual function void build();
-            this.rom_endianness_ctrl = uvm_reg_field::type_id::create("rom_endianness_ctrl");
-            this.rom_endianness_ctrl.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.rom_swap_ctrl = uvm_reg_field::type_id::create("rom_swap_ctrl");
-            this.rom_swap_ctrl.configure(this, 5, 1, "RO", 1, 'h0, 1, 1, 0);
             this.reserved = uvm_reg_field::type_id::create("reserved");
-            this.reserved.configure(this, 26, 6, "RO", 1, 'h0, 1, 1, 0);
+            this.reserved.configure(this, 32, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__ROM_CTL
 
@@ -621,9 +615,9 @@
 
         virtual function void build();
             this.sysclk_freq_mhz = uvm_reg_field::type_id::create("sysclk_freq_mhz");
-            this.sysclk_freq_mhz.configure(this, 11, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.sysclk_freq_mhz.configure(this, 11, 0, "RW", 1, 'h0, 1, 1, 0);
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 21, 11, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 21, 11, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SYSCLK_FREQ_MHZ
 
@@ -638,7 +632,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__CHIPLET_PUBK_HASH0
 
@@ -653,7 +647,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__CHIPLET_PUBK_HASH1
 
@@ -669,9 +663,9 @@
 
         virtual function void build();
             this.required_signers = uvm_reg_field::type_id::create("required_signers");
-            this.required_signers.configure(this, 2, 0, "W1S", 0, 'h0, 1, 1, 0);
+            this.required_signers.configure(this, 2, 0, "RW", 0, 'h0, 1, 1, 0);
             this.reserved = uvm_reg_field::type_id::create("reserved");
-            this.reserved.configure(this, 30, 2, "RO", 1, 'h0, 1, 1, 0);
+            this.reserved.configure(this, 30, 2, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__REQUIRED_SIGNERS
 
@@ -695,7 +689,7 @@
             this.sys_algs = uvm_reg_field::type_id::create("sys_algs");
             this.sys_algs.configure(this, 4, 8, "W1S", 0, 'h0, 1, 1, 0);
             this.reserved = uvm_reg_field::type_id::create("reserved");
-            this.reserved.configure(this, 20, 12, "RO", 1, 'h0, 1, 1, 0);
+            this.reserved.configure(this, 20, 12, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__REQUIRED_ALGS
 
@@ -710,7 +704,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__CHIPLET_PUBK_PQC_HASH0
 
@@ -725,7 +719,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__CHIPLET_PUBK_PQC_HASH1
 
@@ -740,7 +734,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SIP_PUBK_PQC_HASH0
 
@@ -755,7 +749,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SYS_PUBK_PQC_HASH
 
@@ -770,7 +764,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SIP_PUBK_HASH1
 
@@ -785,7 +779,7 @@
 
         virtual function void build();
             this.key_hash = uvm_reg_field::type_id::create("key_hash");
-            this.key_hash.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.key_hash.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SIP_PUBK_PQC_HASH1
 
@@ -800,7 +794,7 @@
 
         virtual function void build();
             this.id = uvm_reg_field::type_id::create("id");
-            this.id.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.id.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SEP_CHIPLET_ID
 
@@ -815,7 +809,7 @@
 
         virtual function void build();
             this.id = uvm_reg_field::type_id::create("id");
-            this.id.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.id.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SEP_SIP_ID
 
@@ -830,7 +824,7 @@
 
         virtual function void build();
             this.id = uvm_reg_field::type_id::create("id");
-            this.id.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.id.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__SEP_SYS_ID
 
@@ -845,7 +839,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare0
 
@@ -860,7 +854,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare1
 
@@ -875,7 +869,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare2
 
@@ -890,7 +884,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare3
 
@@ -905,7 +899,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare4
 
@@ -920,7 +914,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare5
 
@@ -935,7 +929,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare6
 
@@ -950,7 +944,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare7
 
@@ -965,7 +959,7 @@
 
         virtual function void build();
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd.configure(this, 256, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__spare8
 

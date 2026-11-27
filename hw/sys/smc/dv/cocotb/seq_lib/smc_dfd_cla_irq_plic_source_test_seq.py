@@ -6,13 +6,15 @@
 debug interrupt; `interrupts.adoc` places them on raw vector bits 320 and 321
 and maps raw bits 0 to 327 onto PLIC IDs 1 to 328, so the clock stop is PLIC
 source 321 and the debug interrupt PLIC source 322. `dfd.adoc` Actions and
-Cross-Triggering makes the debug interrupt "an ordinary maskable PLIC source".
+Cross-Triggering makes the debug interrupt a level PLIC source held until
+software releases it.
 The bench ties `tdr_dbg_ctrl_clock_stop_en_i` low, so source 321 can only ever
 read 0 here.
 
 The debug-interrupt action code is measured as `smc_dfd_cla_action_seq_utils`
 measures it: `Action0` of node 0 pair 0 is walked under an activating relation
-until `tb_cla_interrupt` rises. `tb_plic_pending_321` and `tb_plic_pending_322`
+until `tb_cla_interrupt` rises, and the code that raises it has to be 2, the
+debug-interrupt code of `dfd.adoc` Action Codes. `tb_plic_pending_321` and `tb_plic_pending_322`
 are sampled on every `clk_smc_i` rise from before the arm to after the rise:
 source 322 is 0 on every sample before the line rises and 1 within four polls
 after it, and source 321 is 0 on every sample. The release of the line is the
@@ -24,7 +26,11 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 
-from .smc_dfd_cla_action_seq_utils import SAMPLE_CYCLES, SmcDfdClaActionSeq
+from .smc_dfd_cla_action_seq_utils import (
+    ACTION_DEBUG_INTERRUPT,
+    SAMPLE_CYCLES,
+    SmcDfdClaActionSeq,
+)
 
 CHK = "CHK-CLA-IRQ-PLIC-322"
 _PENDING_POLLS = 4
@@ -64,7 +70,9 @@ class smc_dfd_cla_irq_plic_source_test_seq(SmcDfdClaActionSeq):
         task = cocotb.start_soon(sampler.run())
         await self._write(self._eap(), {}, "reset")
         await self._write_ctrl(1, 1, 1, "arm")
-        self.action, _activating, _quiet = await self._discover("tb_cla_interrupt", "plic")
+        self.action, _activating, _quiet = await self._discover(
+            "tb_cla_interrupt", "plic", ACTION_DEBUG_INTERRUPT
+        )
         pending = -1
         for poll in range(_PENDING_POLLS):
             pending = self._pin("tb_plic_pending_322")

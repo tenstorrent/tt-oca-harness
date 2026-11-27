@@ -56,18 +56,18 @@ Checks:
                       _BREADTH_FLOOR WREN and program transactions, one program
                       with the case's opcode at each random addr, and its data
                       and the BFM memory equal the SRAM source words read in
-                      the leaf's in-word byte order.
-    CHK-SPI-SB-TX   : per case, the SRAM source words read in the leaf's in-word
-                      byte order equal the monitor's wire decode at the case's
+                      the ByteOrder = 1 order.
+    CHK-SPI-SB-TX   : per case, the SRAM source words read in the ByteOrder = 1
+                      order equal the monitor's wire decode at the case's
                       lane width and the flash record's ``data_in``.
   In-word byte order (OpenTitan SPI_HOST "Input and Output Byte Ordering"):
-    every TXDATA word of the leaf goes on the wire in one of the two in-word
-    orders, the same order for every word (``SepSpiByteOrder`` of
-    ``env/sep_spi_lane_responder.py``). Which order is not graded: one
-    OBS-SPI-BYTEORDER line per leaf logs it. The firmware read-back
+    SEP sets ByteOrder = 1 (``spi_controller.rdl:124-127``), so every TXDATA
+    word goes on the wire bits 7:0 first (``SepSpiByteOrder`` of
+    ``env/sep_spi_lane_responder.py``). One CHK-SPI-BYTEORDER line per leaf
+    grades the word counts. The firmware read-back
     (CHK-DMA-TX) writes and reads through the same host and does not depend
     on the order.
-    OBS-MULTICHUNK  : how the TX watermark paced each DMA transfer, logged and
+    INFO-MULTICHUNK  : how the TX watermark paced each DMA transfer, logged and
                       not graded (no source states one chunk per trigger in the
                       TX direction or a TXQD bound). A watch-only probe samples
                       the DMA input trigger and the SPI TX FIFO depth (TXQD) on
@@ -123,7 +123,7 @@ _FLASH_PAGES = 32 * (_SECTOR_SIZE // _PAGE_SIZE)
 _MAX_WORDS = 16
 # nword counts whose (1+n)*4 byte total is a multiple of the 16-byte DMA chunk AND
 # exceeds one chunk, so every transfer needs >= 2 watermark-triggered refills and
-# every seed gives OBS-MULTICHUNK a pacing sequence to log (n=3 -> exactly 1
+# every seed gives INFO-MULTICHUNK a pacing sequence to log (n=3 -> exactly 1
 # chunk, excluded).
 _LEGAL_NWORDS = [7, 11, 15]
 # Literal floor for the breadth claim. Independent of _LEGAL_NWORDS so a
@@ -176,7 +176,7 @@ class SepSpiDmaTxCase:
         """The data bytes whose ``pack_tx_words`` packing is the SRAM words.
 
         Least significant byte of each word first; ``SepSpiByteOrder.tx_bytes``
-        turns them into the wire bytes of the leaf's in-word order.
+        turns them into the wire bytes of the ByteOrder = 1 order.
         """
         return b"".join(w.to_bytes(4, "little") for w in self.data)
 
@@ -241,7 +241,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
     """Each DMA-fed PAGE PROGRAM lands in the flash BFM, paced by the TX watermark."""
 
     build_env = False
-    required_evidence = ("CHK-FW-CONSOLE",)
+    required_evidence = ("CHK-FW-CONSOLE", "CHK-SPI-BYTEORDER")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -333,7 +333,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             await flash.stop()
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
         sb.finish()
-        order.log_obs(self.logger, self.random_seed())
+        order.log_info(self.logger, self.random_seed())
         # FCOV records only after every check above passed.
         for case in cases:
             await spi_lane_fcov(_TEST, "data", lanes=case.lanes, rx=False)
@@ -394,16 +394,16 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             windows.append(win)
 
     def _pacing_check(self, windows: list[_DmaTxWindow], cases) -> None:
-        """OBS-MULTICHUNK: how the TX watermark paced each DMA transfer (logged only)."""
+        """INFO-MULTICHUNK: how the TX watermark paced each DMA transfer (logged only)."""
         if len(windows) != len(cases):
             raise AssertionError(
-                f"CTRL-MISSING SPI DMA-TX OBS-MULTICHUNK: the probe saw {len(windows)} DMA "
+                f"CTRL-MISSING SPI DMA-TX INFO-MULTICHUNK: the probe saw {len(windows)} DMA "
                 f"busy window(s) for {len(cases)} case(s)"
             )
         for case, win in zip(cases, windows):
             need = max(case.chunks, _MIN_TRIGGERS)
             self.logger.info(
-                "OBS-MULTICHUNK case[%d]: chunks=%d trigger_at_start=%d rises=%d "
+                "INFO-MULTICHUNK case[%d]: chunks=%d trigger_at_start=%d rises=%d "
                 "assertions=%d per_chunk_floor=%d peak_txqd=%d paced_bound=%d busy_cycles=%d",
                 case.idx,
                 case.chunks,

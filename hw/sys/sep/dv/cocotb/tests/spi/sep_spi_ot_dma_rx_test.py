@@ -17,12 +17,17 @@ testlist passes ``+sep_spi_four_lane``.
 
 Checks:
   CHK-DATAPATH (firmware): every DMA-written SRAM word of a read carries the staged bytes in
-    one in-word byte order, the same order for every word of the image (first byte in bits
-    7:0, or in bits 31:24; OpenTitan spi_host "Input and Output Byte Ordering"); one PASS
-    line per read with its opcode, width and byte count. The leaf requires exactly one line
-    per staged read, in order. The firmware prints the order seen once on
-    ``OBS-SPI-BYTEORDER fw order=...``, logged, not graded: no SEP text states it. The leaf
-    requires that line.
+    one in-word byte order, the same order for every word of the image; one PASS line per
+    read with its opcode, width and byte count. The leaf requires exactly one line per
+    staged read, in order, and requires the order to be ``lsb_first`` (CHK-SPI-BYTEORDER).
+  CHK-SPI-BYTEORDER: SEP sets ByteOrder = 1, so the first wire byte is bits 7:0 of an
+    RXDATA word (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:124-127``;
+    OpenTitan spi_host "Input and Output Byte Ordering"). The firmware prints the order it
+    saw once on ``INFO-SPI-BYTEORDER fw order=...``, with its decisive and ambiguous word
+    counts and STATUS.BYTEORDER. The leaf fails unless the order is ``lsb_first`` and
+    STATUS.BYTEORDER is 1; ``undecided`` (no decisive word) is CTRL-MISSING. With
+    CHK-DATAPATH this grades every SRAM word in the ``lsb_first`` order; a byte palindrome
+    passes on its bytes.
   CHK-NOERR (firmware): per read, the polled DMA STATUS has DONE=1 and ERROR=0, ERROR_CODE
     reads 0, the SPI host goes idle and ERROR_STATUS reads 0, each read before the DMA
     status write-one-to-clear (``secure_dma.rdl`` STATUS, ERROR_CODE;
@@ -87,7 +92,10 @@ _FW_NOERR = re.compile(
     r"CHK-NOERR PASS: dma_status=0x([0-9a-f]{8}) dma_err_code=0x([0-9a-f]{8}) "
     r"spi_idle=([01]) spi_err_status=0x([0-9a-f]{8})"
 )
-_FW_ORDER = re.compile(r"OBS-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided) ")
+_FW_ORDER = re.compile(
+    r"INFO-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided) "
+    r"decisive_words=0x([0-9a-f]{8}) ambiguous_words=0x([0-9a-f]{8}) status_byteorder=([01])"
+)
 
 # Scratch-mutation hooks (None/False in the committed leaf). MUT_PATTERN_SEED
 # stages expected patterns drawn from another seed while the flash keeps this
@@ -161,11 +169,37 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
     """Each read's SRAM words, flash record and wire bytes equal its seeded pattern."""
 
     build_env = False
-    required_evidence = ("CHK-DATAPATH", "CHK-NOERR", "CHK-RW1C", "CHK-SPI-SB-RX")
+    required_evidence = (
+        "CHK-DATAPATH",
+        "CHK-SPI-BYTEORDER",
+        "CHK-NOERR",
+        "CHK-RW1C",
+        "CHK-SPI-SB-RX",
+    )
 
     def build_phase(self) -> None:
         super().build_phase()
         self.sb = SepBootScoreboard("sb", self)
+
+    def _grade_byte_order(self, cfg: SepSpiDmaRxCfg, console: str) -> None:
+        """CHK-SPI-BYTEORDER from the firmware order line: ``lsb_first`` and STATUS.BYTEORDER 1."""
+        orders = _FW_ORDER.findall(console)
+        if len(orders) != 1:
+            raise AssertionError(
+                f"CTRL-MISSING CHK-SPI-BYTEORDER seed={cfg.seed}: {len(orders)} firmware "
+                f"INFO-SPI-BYTEORDER lines, expected 1. Console was:\n{console}"
+            )
+        order, decisive, ambiguous, sbo = orders[0]
+        line = (
+            f"seed={cfg.seed} order={order} expect_order=lsb_first "
+            f"decisive_words={int(decisive, 16)} ambiguous_words={int(ambiguous, 16)} "
+            f"status_byteorder={sbo} expect_status_byteorder=1"
+        )
+        if order == "undecided":
+            raise AssertionError(f"CTRL-MISSING CHK-SPI-BYTEORDER {line}")
+        if order != "lsb_first" or sbo != "1":
+            raise AssertionError(f"CHK-SPI-BYTEORDER FAIL {line}")
+        self.logger.info("CHK-SPI-BYTEORDER PASS %s", line)
 
     def _stage_dtcm(self, cfg: SepSpiDmaRxCfg) -> str:
         patched = os.path.join(os.getcwd(), "sep_dtcm_spi2.hex")
@@ -276,6 +310,7 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
                 f"CHK-DATAPATH FAIL seed={cfg.seed}: firmware PASS lines {seen} != staged "
                 f"reads {want}. Console was:\n{console}"
             )
+        self._grade_byte_order(cfg, console)
         for read in cfg.reads:
             self.logger.info(
                 "CHK-DATAPATH PASS seed=%d read[%d] op=0x%02x width=x%d bytes=%d "
@@ -314,10 +349,4 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
                 status,
                 err_code,
                 spi_err,
-            )
-        orders = _FW_ORDER.findall(console)
-        if len(orders) != 1:
-            raise AssertionError(
-                f"CTRL-MISSING CHK-DATAPATH seed={cfg.seed}: {len(orders)} firmware "
-                f"OBS-SPI-BYTEORDER lines, expected 1. Console was:\n{console}"
             )

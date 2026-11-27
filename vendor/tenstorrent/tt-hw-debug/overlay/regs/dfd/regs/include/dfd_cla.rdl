@@ -143,27 +143,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -188,22 +188,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap0 @ 0x120;
     reg {
@@ -218,27 +218,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -263,22 +263,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap1 @ 0x128;
     reg {
@@ -293,27 +293,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -338,22 +338,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap0 @ 0x130;
     reg {
@@ -368,27 +368,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -413,22 +413,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap1 @ 0x138;
     reg {
@@ -443,27 +443,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -488,22 +488,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap0 @ 0x140;
     reg {
@@ -518,27 +518,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -563,22 +563,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap1 @ 0x148;
     reg {
@@ -593,27 +593,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -638,22 +638,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap0 @ 0x150;
     reg {
@@ -668,27 +668,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -713,22 +713,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap1 @ 0x158;
     reg {
@@ -778,7 +778,7 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Define which signal to select for edge detection.";
+            desc = "Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.";
         } Signal0Select[6:0] = 0x0;
         field {
             sw = rw;
@@ -788,7 +788,7 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Define which signal to select for edge detection.";
+            desc = "Index of the debug signal bit to edge-detect. Valid values are 0 to the CLA debug signal width minus 1, 0-63 in the SMC; a larger value selects no signal and the edge-detect event never fires.";
         } Signal1Select[14:8] = 0x0;
         field {
             sw = rw;
@@ -797,7 +797,7 @@ addrmap dfd_cla {
         } PosEdgeSignal1[15:15] = 0x0;
     } CDbgSignalEdgeDetectCfg @ 0x180;
     reg {
-        desc = "Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)";
+        desc = "Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI). A w2c write does not release a debug interrupt while EnableEap is set: the EAP holds the interrupt and the write clears only the status bit. To release it, clear EnableEap, then write the w2c bit. A status bit sets in every cycle in which its EAP relation holds while its node is current and EnableEap is set, and that set takes priority over a w2c write in the same cycle, which then leaves the bit at 1. Write the w2c bit once the relation is false, the node is no longer current or EnableEap is clear.";
         regwidth = 64;
 
         field {
@@ -871,66 +871,82 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node0Eap0W2C[32:32] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node0Eap1W2C[33:33] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node0Eap2W2C[34:34] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node0Eap3W2C[35:35] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node1Eap0W2C[36:36] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node1Eap1W2C[37:37] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node1Eap2W2C[38:38] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node1Eap3W2C[39:39] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node2Eap0W2C[40:40] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node2Eap1W2C[41:41] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node2Eap2W2C[42:42] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node2Eap3W2C[43:43] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node3Eap0W2C[44:44] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node3Eap1W2C[45:45] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node3Eap2W2C[46:46] = 0x0;
         field {
             sw = rw;
             hw = rw;
+            desc = "Write 1 to clear the matching EAP status bit. Hardware clears this bit one cycle after it rises, so it reads 0 between writes and each further clear needs another write of 1.";
         } Node3Eap3W2C[47:47] = 0x0;
     } CDbgEapStatus @ 0x188;
     reg {
@@ -945,12 +961,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Set Enable EAP to 1 after EAP programming is complete";
+            desc = "Set Enable EAP to 1 after EAP programming is complete. Clearing it disables every EAP, and is required before the CDbgEapStatus w2c write that releases a debug interrupt; set it again to re-arm the EAPs";
         } EnableEap[5:5] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated";
+            desc = "Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated. Gating the clock freezes a held clock halt request rather than releasing it";
         } EnableCla[6:6] = 0x0;
         field {
             sw = rw;
@@ -960,12 +976,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "If this bit is set, clock halt action is not applied to global clocks";
+            desc = "If this bit is set, a clock halt action does not set the global clock halt request. Setting it does not release a request already set; the request is held until the CLA reset";
         } DisableGlobalClockHalt[14:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "If this bit is set, clock halt action is not applied to local clocks";
+            desc = "If this bit is set, a clock halt action does not set the local clock halt request. Setting it does not release a request already set; the request is held until the CLA reset";
         } DisableLocalClockHalt[15:15] = 0x0;
         field {
             sw = rw;
@@ -1249,27 +1265,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -1294,22 +1310,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap2 @ 0x248;
     reg {
@@ -1324,27 +1340,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -1369,22 +1385,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap3 @ 0x250;
     reg {
@@ -1399,27 +1415,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -1444,22 +1460,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap2 @ 0x258;
     reg {
@@ -1474,27 +1490,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -1519,22 +1535,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap3 @ 0x260;
     reg {
@@ -1549,27 +1565,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -1594,22 +1610,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap2 @ 0x268;
     reg {
@@ -1624,27 +1640,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -1669,22 +1685,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap3 @ 0x270;
     reg {
@@ -1699,27 +1715,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -1744,22 +1760,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap2 @ 0x278;
     reg {
@@ -1774,27 +1790,27 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action0[7:2] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action1[13:8] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Relation to be satisfied among events to activate the actions";
+            desc = "Relation among the selected events that activates the actions: 0 event 0 OR event 1; 1 event 0 AND event 1; 2 the Udf truth table over events 0, 1 and 2; 3 NOR of events 0 and 1. EventType2 takes part only under 2.";
         } LogicalOp[15:14] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType1[27:22] = 0x0;
         field {
             sw = rw;
@@ -1819,22 +1835,22 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select a trigger event";
+            desc = "Index of the trigger event on the CLA event bus: 0 never; 1 always; 2-5 debug signal match sets 0 and 1, positive then negative; 6-7 edge detectors 0 and 1; 8 transition match; 9-10 cross-trigger inputs 0 and 1; 11 ones count; 12 any change; 16-27 counters 0-3, three each: count equal to, above, then below the target; 28-31 match sets 2 and 3, positive then negative; 32 LFSR; 33-48 arithmetic compares 0-3, four each: below, below or equal, above, then above or equal. 13-15 and 49-63 never fire.";
         } EventType2[43:38] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "User Defined Function with event type 0, 1, and 2 as arguments";
+            desc = "Truth table used when LogicalOp is 2: bit {event2, event1, event0} of Udf, indexed by the three event statuses, is the result for that combination. For example, Udf = 0x10 activates on event 2 alone with events 0 and 1 idle.";
         } Udf[51:44] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action2[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select an Action";
+            desc = "Action code: 0 none; 1 clock halt; 2 debug interrupt; 3 GPIO output, held while the action is active; 4 trace start; 5 trace stop; 6 trace pulse; 7 cross-trigger 0 out; 8 cross-trigger 1 out; 16+4n, 17+4n, 18+4n and 19+4n increment, clear, start auto-increment and stop auto-increment of counter n, for n from 0 to 3. Codes 9 to 15 and 32 to 63 select no action.";
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap3 @ 0x280;
     reg {

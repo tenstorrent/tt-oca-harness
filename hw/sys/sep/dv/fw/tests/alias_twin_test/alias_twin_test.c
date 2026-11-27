@@ -7,10 +7,18 @@
 // the reset-base accesses the firmware moves the window to the patched base,
 // repeats the scratch and SPI CSID twins and a marker write through the moved
 // window, and restores the reset base. The test draws the moved base 16 MiB
-// aligned in [0xD100_0000, 0xEF00_0000]; the specification states no legal
-// range for the base. The firmware makes no access to the reset-base alias
-// while the window is moved: that address then matches no local route, and the
-// specification states no CPU consequence of an error response on a load.
+// aligned in [0xD100_0000, 0xEF00_0000], inside the legal range of
+// hw/sys/sep/doc/cpu.adoc ("SEP_LOCAL_BASE_ADDR", 0xD000_0000 to 0xFFFF_FFFF).
+//
+// Bus-error leg (hw/sys/sep/doc/cpu.adoc, alias window): with the window moved
+// to the patched base, an address in 0xD000_0000 to 0xFFFF_FFFF below the new
+// window reaches no target. The firmware loads from and stores to the reset-base
+// alias of the scratch word, and fetches at the reset-base alias of a two-word
+// SRAM routine. Each access is armed: the NMI handler records the bus-error NMI
+// of the load and the store, the mtvec handler records the fetch exception and
+// resumes after the fetch. The same three accesses at the moved alias of the
+// same words are the controls. The leg runs before the seed writes, so its SRAM
+// writes and fetches precede the SRAM accesses that the test pairs with them.
 //
 // The firmware only drives the accesses and prints what it read. The cocotb
 // test sep_cpu_lsu_alias_window_twin_test seeds the values, patches them into
@@ -21,6 +29,14 @@
 // Console lines (one per access group):
 //   TWIN-PARAMS scratch=<v> csid=<v> sram_start=<v> sram_end=<v> marker=<v>
 //               local_base=<v> moved_base=<v> moved_marker=<v>
+//   TWIN-ATTR word=<addr> alias=<addr> neutral=<addr> mrac_side_effect=<v>
+//             mrac_cacheable=<v> mrac_neutral=<v> mrac_restored=<v>
+//                                          mrac read back around the attribute accesses
+//   TWIN-BUSERR-CTL base=<v> readback=<v> ld=<v> st=<v> fn=<v> nmi=<n> traps=<n>
+//                                          moved-alias load, store readback, fetch
+//   TWIN-BUSERR kind=<ld|st|if> addr=<addr> n=<n> mcause=<v> addr_csr=<v> mepc=<v>
+//               scratch=<v>                one armed access outside the moved window
+//   TWIN-BUSERR-RESTORE readback=<v>       CSR read back after the reset base write
 //   TWIN unit=<name> d1=<v> a=<v> d2=<v>   static word: direct, alias, direct
 //   TWIN unit=<name> d1=<v> a=<v>          SRAM word: direct, alias
 //   TWIN-WR alias=<addr> direct=<v>        marker write through the alias
@@ -29,6 +45,7 @@
 //                                          static word: direct, moved alias, direct
 //   TWIN-MOVED-WR alias=<addr> direct=<v>  marker write through the moved alias
 //   TWIN-MOVED-RESTORE readback=<v>        CSR read back after the reset base write
+//   TWIN-NMI-STRAY n=<n> mcause=<v>        NMIs taken while no access was armed
 
 #include <stdint.h>
 
@@ -60,6 +77,47 @@
 #define ESRC_WORD SEP_TOP_ENTROPY_SOURCE_COMPONENT_ID_BASE_ADDR
 #define SRAM_START_WORD SRAM_BASE
 #define SRAM_END_WORD (SRAM_BASE + SRAM_SIZE - 4u)
+// SRAM word of the LSU attribute accesses. It is 8-byte aligned, so a cacheable
+// access, which the core issues 8-byte aligned, keeps its address, and it is
+// neither SRAM word of the twin. Must equal _ATTR_OFF of the cocotb test.
+#define ATTR_WORD (SRAM_BASE + 0x40u)
+// SRAM word of the accesses with region 0xD neither cacheable nor side-effect.
+// Must equal _ATTR_NEUTRAL_OFF of the cocotb test.
+#define ATTR_NEUTRAL_WORD (SRAM_BASE + 0x48u)
+// SRAM routine of the bus-error leg: "li a0, 42; ret". Must equal _CODE_OFF of
+// the cocotb test.
+#define CODE_WORD (SRAM_BASE + 0x80u)
+#define INSN_LI_A0_42 0x02A00513u
+#define INSN_RET 0x00008067u
+#define CODE_RET_VAL 42u
+
+// mrac (CSR 0x7C0) holds two bits per 256 MiB region r, bit 2r cacheable and
+// bit 2r+1 side-effect. MRAC_BOOT is the crt0 value: every region side-effect
+// except region 0xC. MRAC_CACHEABLE also makes region 0xD (the alias window at
+// its reset base) cacheable and not side-effect; MRAC_NEUTRAL makes region 0xD
+// neither cacheable nor side-effect. Each must equal the cocotb test constant.
+#define MRAC_BOOT 0xA8AAAAAAu
+#define MRAC_CACHEABLE 0xA4AAAAAAu
+#define MRAC_NEUTRAL 0xA0AAAAAAu
+
+#define CSR_MDSEAC 0xFC0
+#define CSR_MDEAU 0xBC0
+#define NMI_VEC_ADDR SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR
+// Bounds the wait for the imprecise NMI after an armed access.
+#define NMI_WAIT_LIMIT 1000u
+// Markers of the bus-error leg: the control store through the moved alias, and
+// the store outside the window, which must not reach the scratch word.
+#define BUSERR_CTL_MARK 0xC7A11E55u
+#define BUSERR_ST_MARK 0x0DEC0E44u
+
+#define CSR_READ(n) \
+    ({ \
+        uint32_t v_; \
+        __asm__ volatile("csrr %0, " #n : "=r"(v_)::"memory"); \
+        v_; \
+    })
+#define CSR_WRITE(n, v) __asm__ volatile("csrw " #n ", %0" ::"r"(v) : "memory")
+#define FENCE() __asm__ volatile("fence" ::: "memory")
 
 // Layout: [0]=magic, [1]=scratch value, [2]=CSID value, [3]=SRAM start-word
 // value, [4]=SRAM last-word value, [5]=marker, [6]=local region base,
@@ -70,6 +128,38 @@ volatile uint32_t g_twin_params[9] = {
     TWIN_PARAM_MAGIC, 0x5C7A7C11u, 0x0000C51Du, 0x5A7A0001u, 0x5A7AFFFCu,
     0x3A7CE7EDu,      0x10000000u, 0xE0000000u, 0x030BE7EDu,
 };
+
+// Written by the handlers. An NMI counts toward an access only while that
+// access has armed g_nmi_armed; any other NMI is stray.
+static volatile uint32_t g_nmi_armed;
+static volatile uint32_t g_nmi_n, g_nmi_mcause, g_nmi_mdseac;
+static volatile uint32_t g_nmi_stray, g_nmi_stray_mcause;
+static volatile uint32_t g_trap_n, g_trap_mcause, g_trap_mepc;
+
+// Records the NMI and returns to the interrupted code. Writing mdeau unlocks
+// mdseac; until then the core raises no NMI for a later D-bus error.
+__attribute__((interrupt("machine"), aligned(4), used)) static void twin_nmi(void) {
+    uint32_t mcause = CSR_READ(mcause);
+    uint32_t mdseac;
+    __asm__ volatile("csrr %0, %1" : "=r"(mdseac) : "i"(CSR_MDSEAC));
+    __asm__ volatile("csrw %0, zero" ::"i"(CSR_MDEAU));
+    if (!g_nmi_armed) {
+        g_nmi_stray++;
+        g_nmi_stray_mcause = mcause;
+        return;
+    }
+    g_nmi_n++;
+    g_nmi_mcause = mcause;
+    g_nmi_mdseac = mdseac;
+}
+
+// Records the exception and resumes at the address fetch_at() left in mscratch.
+__attribute__((interrupt("machine"), aligned(4), used)) static void twin_trap(void) {
+    g_trap_n++;
+    g_trap_mcause = CSR_READ(mcause);
+    g_trap_mepc = CSR_READ(mepc);
+    CSR_WRITE(mepc, CSR_READ(mscratch));
+}
 
 static inline void wr32(uint32_t addr, uint32_t v) {
     *(volatile uint32_t *)addr = v;
@@ -94,6 +184,118 @@ static void twin_static(const char *tag, const char *name, uint32_t direct, uint
     put_kv(" d1=", d1);
     put_kv(" a=", a);
     put_kv(" d2=", d2);
+    sep_mbx_puts("\n");
+}
+
+// Calls the routine at addr and returns its a0. A fetch exception resumes after
+// the call, with a0 still 0.
+static uint32_t fetch_at(uint32_t addr) {
+    register uint32_t a0 __asm__("a0") = 0;
+    __asm__ volatile("la t0, 1f\n"
+                     "csrw mscratch, t0\n"
+                     "jalr ra, 0(%1)\n"
+                     "1:\n"
+                     : "+r"(a0)
+                     : "r"(addr)
+                     : "t0", "ra", "memory");
+    return a0;
+}
+
+static void nmi_arm(void) {
+    g_nmi_n = 0;
+    g_nmi_mcause = 0;
+    g_nmi_mdseac = 0;
+    g_nmi_armed = 1;
+}
+
+static void nmi_wait_disarm(void) {
+    for (uint32_t i = 0; i < NMI_WAIT_LIMIT && g_nmi_n == 0; i++) {
+    }
+    g_nmi_armed = 0;
+}
+
+static void put_buserr(const char *kind, uint32_t addr, uint32_t n, uint32_t mcause,
+                       uint32_t addr_csr, uint32_t mepc) {
+    sep_mbx_puts("TWIN-BUSERR kind=");
+    sep_mbx_puts(kind);
+    put_kv(" addr=", addr);
+    put_kv(" n=", n);
+    put_kv(" mcause=", mcause);
+    put_kv(" addr_csr=", addr_csr);
+    put_kv(" mepc=", mepc);
+    put_kv(" scratch=", rd32(SCRATCH_WORD));
+    sep_mbx_puts("\n");
+}
+
+// Bus-error leg. The window moves to g_twin_params[7]; the moved alias of a
+// word is inside it and the reset-base alias is below it.
+static void buserr_leg(void) {
+    uint32_t nmi_vec;
+    __asm__ volatile("lla %0, twin_nmi" : "=r"(nmi_vec));
+    wr32(NMI_VEC_ADDR, nmi_vec);
+    uint32_t mtvec_saved = CSR_READ(mtvec);
+    uint32_t trap_vec;
+    __asm__ volatile("lla %0, twin_trap" : "=r"(trap_vec));
+    CSR_WRITE(mtvec, trap_vec);
+
+    wr32(CODE_WORD + 0u, INSN_LI_A0_42);
+    wr32(CODE_WORD + 4u, INSN_RET);
+    FENCE();
+    __asm__ volatile(".word 0x0000100f" ::: "memory"); // fence.i
+
+    wr32(LOCAL_BASE_REG, g_twin_params[7]);
+    uint32_t base_rb = rd32(LOCAL_BASE_REG);
+
+    // Controls: load, store and fetch at the moved alias, armed.
+    nmi_arm();
+    g_trap_n = 0;
+    wr32(MOVED_OF(SCRATCH_WORD), BUSERR_CTL_MARK);
+    FENCE();
+    uint32_t ctl_ld = rd32(MOVED_OF(SCRATCH_WORD));
+    uint32_t ctl_st = rd32(SCRATCH_WORD);
+    uint32_t ctl_fn = fetch_at(MOVED_OF(CODE_WORD));
+    nmi_wait_disarm();
+    uint32_t ctl_nmi = g_nmi_n;
+    uint32_t ctl_traps = g_trap_n;
+
+    // Load outside the window.
+    uint32_t out = ALIAS_OF(SCRATCH_WORD);
+    nmi_arm();
+    (void)rd32(out);
+    nmi_wait_disarm();
+    uint32_t ld_n = g_nmi_n, ld_mc = g_nmi_mcause, ld_a = g_nmi_mdseac;
+
+    // Store outside the window.
+    nmi_arm();
+    wr32(out, BUSERR_ST_MARK);
+    FENCE();
+    nmi_wait_disarm();
+    uint32_t st_n = g_nmi_n, st_mc = g_nmi_mcause, st_a = g_nmi_mdseac;
+
+    // Fetch outside the window.
+    uint32_t out_fn = ALIAS_OF(CODE_WORD);
+    g_trap_n = 0;
+    g_trap_mcause = 0;
+    g_trap_mepc = 0;
+    (void)fetch_at(out_fn);
+    uint32_t if_n = g_trap_n, if_mc = g_trap_mcause, if_epc = g_trap_mepc;
+
+    wr32(LOCAL_BASE_REG, WINDOW_BASE);
+    uint32_t restore_rb = rd32(LOCAL_BASE_REG);
+    CSR_WRITE(mtvec, mtvec_saved);
+
+    put_kv("TWIN-BUSERR-CTL base=", g_twin_params[7]);
+    put_kv(" readback=", base_rb);
+    put_kv(" ld=", ctl_ld);
+    put_kv(" st=", ctl_st);
+    put_kv(" fn=", ctl_fn);
+    put_kv(" nmi=", ctl_nmi);
+    put_kv(" traps=", ctl_traps);
+    sep_mbx_puts("\n");
+    put_buserr("ld", out, ld_n, ld_mc, ld_a, 0u);
+    put_buserr("st", out, st_n, st_mc, st_a, 0u);
+    put_buserr("if", out_fn, if_n, if_mc, 0u, if_epc);
+    put_kv("TWIN-BUSERR-RESTORE readback=", restore_rb);
     sep_mbx_puts("\n");
 }
 
@@ -125,6 +327,44 @@ int main(void) {
     put_kv(" moved_base=", g_twin_params[7]);
     put_kv(" moved_marker=", g_twin_params[8]);
     sep_mbx_puts("\n");
+
+    // LSU attribute accesses: one store and one load of ATTR_WORD direct
+    // (region 1, side-effect under MRAC_BOOT), then one store and one load of
+    // its alias with region 0xD cacheable, then one store and one load of the
+    // alias of ATTR_NEUTRAL_WORD with region 0xD neither cacheable nor
+    // side-effect, then MRAC_BOOT again. The fences
+    // put each access on the bus before the next one and before the mrac
+    // change. They run before the seed writes, because the test pairs the
+    // SRAM reads of the twin with the last two SRAM writes, and the twin
+    // accesses below run under MRAC_BOOT.
+    uint32_t mrac_se = CSR_READ(0x7C0);
+    wr32(ATTR_WORD, 0x5EFFEC75u);
+    FENCE();
+    (void)rd32(ATTR_WORD);
+    FENCE();
+    CSR_WRITE(0x7C0, MRAC_CACHEABLE);
+    uint32_t mrac_c = CSR_READ(0x7C0);
+    wr32(ALIAS_OF(ATTR_WORD), 0xCAC4EAB1u);
+    FENCE();
+    (void)rd32(ALIAS_OF(ATTR_WORD));
+    FENCE();
+    CSR_WRITE(0x7C0, MRAC_NEUTRAL);
+    uint32_t mrac_n = CSR_READ(0x7C0);
+    wr32(ALIAS_OF(ATTR_NEUTRAL_WORD), 0x0E070A15u);
+    FENCE();
+    (void)rd32(ALIAS_OF(ATTR_NEUTRAL_WORD));
+    FENCE();
+    CSR_WRITE(0x7C0, MRAC_BOOT);
+    put_kv("TWIN-ATTR word=", ATTR_WORD);
+    put_kv(" alias=", ALIAS_OF(ATTR_WORD));
+    put_kv(" neutral=", ALIAS_OF(ATTR_NEUTRAL_WORD));
+    put_kv(" mrac_side_effect=", mrac_se);
+    put_kv(" mrac_cacheable=", mrac_c);
+    put_kv(" mrac_neutral=", mrac_n);
+    put_kv(" mrac_restored=", CSR_READ(0x7C0));
+    sep_mbx_puts("\n");
+
+    buserr_leg();
 
     // Seed each writable static word and both SRAM words at the direct address.
     wr32(SCRATCH_WORD, g_twin_params[1]);
@@ -171,6 +411,9 @@ int main(void) {
     put_kv("TWIN-MOVED-RESTORE readback=", rd32(LOCAL_BASE_REG));
     sep_mbx_puts("\n");
 
+    put_kv("TWIN-NMI-STRAY n=", g_nmi_stray);
+    put_kv(" mcause=", g_nmi_stray_mcause);
+    sep_mbx_puts("\n");
     sep_mbx_puts("TWIN-DONE\n");
     return 0;
 }

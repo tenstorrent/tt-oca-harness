@@ -103,10 +103,16 @@ module cross_trigger_network_tb_top
   output wire [DefaultNumCtp-1:0]          ctp_ack_out_din_en
 );
 
-  // Internal CTP mode split: lower half wire-OR (0), upper half P2P (1).
+  // Internal CTP mode split: lower half wire-OR, upper half P2P.
   localparam int unsigned NumIntCtWireOr = DefaultNumIntCt / 2;
   localparam int unsigned NumIntCtP2p = DefaultNumIntCt - NumIntCtWireOr;
-  localparam logic [DefaultNumIntCt-1:0] IntCtMode = {{NumIntCtP2p{1'b1}}, {NumIntCtWireOr{1'b0}}};
+  localparam cross_trigger_port_pkg::ctp_int_cfg_t IntCtP2p = '{
+      mode: cross_trigger_port_pkg::MODE_POINT_TO_POINT,
+      stretch_mult: cross_trigger_port_pkg::CtpIntCfgDefault.stretch_mult
+  };
+  localparam cross_trigger_port_pkg::ctp_int_cfg_t [DefaultNumIntCt-1:0] IntCtMode = {
+    {NumIntCtP2p{IntCtP2p}}, {NumIntCtWireOr{cross_trigger_port_pkg::CtpIntCfgDefault}}
+  };
 
   ctn_axil_req_t  axil_req;
   ctn_axil_resp_t axil_resp;

@@ -70,9 +70,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ``DMA_BUS_ERR_STATUS`` reads ``reg_path_err`` alone
                           and ``PERIPH_BUS_ERR_STATUS`` reads the aes, kmac,
                           otbn and wdt bits that the leaf latched before the
-                          pulses, and no other bit (``sep_cpu_ctrl.rdl:346-347``
+                          pulses, and no other bit (``sep_cpu_ctrl.rdl:353-354``
                           "Neither bit is cleared by a CPU-only reset",
-                          ``:398-399`` "No bit is cleared by a CPU-only
+                          ``:405-406`` "No bit is cleared by a CPU-only
                           reset"); the bits read 0 after the clear writes.
                           Reach control CTRL-LATCH: each of those bits reads 1
                           before the first pulse.
@@ -88,7 +88,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           its AW and an OKAY B on the bus. A B of the cut write,
                           when one shows, is OKAY. Its timing against the
                           ``sep_cpu_reset_n`` fall (drained, late, dropped) is
-                          logged, not graded (OBS-OVL-CUT-B). A WDT run with a
+                          logged, not graded (INFO-OVL-CUT-B). A WDT run with a
                           late or dropped B applies the cold reset before the
                           release write (``cold_before_release=1``): then
                           ``ip_rst_n[D]`` holds low from its fall to the cold
@@ -123,7 +123,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ID 0 shows its AW and an OKAY B on the bus within the
                           bound, with no other ID-0 B from the cold reset to the
                           bound after that B. The B of the cut write is logged,
-                          not graded (OBS-WDT-INFLIGHT).
+                          not graded (INFO-WDT-INFLIGHT).
   CHK-MBX-CPURST          after each pulse sequence: the word pushed into one
                           drawn mailbox before the sequence pops back equal (the
                           read response code is logged in the same line). The mailboxes are system peripherals
@@ -136,6 +136,30 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           in the cold leg at a drawn non-reset value
                           (CTRL-COLD-ARMED reads it), reads its RDL reset value
                           0xC000_0100 (``sep_cpu_ctrl.rdl``, ``SEP_NMI_VEC``).
+  CHK-RST-CPUCTRL-KEEP    after each pulse sequence: ``SEP_NMI_VEC``,
+                          ``SEP_NMI_VEC_LOCK``, ``EXT_TRNG_SRC_SEL_LOCK``,
+                          ``SEP_GLOBAL_BASE_ADDR``, ``SEP_LOCAL_BASE_ADDR``,
+                          ``SEP_REGION_SIZE``, ``SMU_GLOBAL_BASE_ADDR`` and
+                          ``SMU_REGION_SIZE`` read their armed values, and
+                          ``REFERENCE_COUNTER`` reads at or above its last
+                          readback, so it did not restart from the armed count.
+                          Every ``sep_cpu_ctrl`` register takes the
+                          boot-qualified SEP reset only, which only cold reset
+                          and the JTAG override assert
+                          (``hw/sys/sep/doc/clk_rst.adoc``, lines 58 and 67-72;
+                          ``sep_cpu_ctrl.rdl``, ``REFERENCE_COUNTER``;
+                          ``doc/programmer/src/sep-programming.adoc``, lines
+                          68-70 and 80-81); ``dbg_rstb_i`` resets only the EL2
+                          debug module and the run-request synchronizer
+                          (``hw/sys/sep/doc/reset_controller.adoc``, line 81).
+                          Control CTRL-CPUCTRL-ARMED: before each sequence,
+                          after the fault latch, each register reads its armed
+                          value, which differs from its RDL reset value. The
+                          four window registers (``SEP_GLOBAL_BASE_ADDR``,
+                          ``SEP_REGION_SIZE``, ``SMU_GLOBAL_BASE_ADDR``,
+                          ``SMU_REGION_SIZE``) are armed only from there to the
+                          check line, and then written back to their RDL reset
+                          values (CTRL-CPUCTRL-WINDOWS-RESTORED).
   CHK-BANK                after each reset event: a ``wdt_rst_ni`` pulse clears
                           the warm scratch bank and the cold bank retains its
                           data; ``sep_reset_n`` clears both; a ``dbg_rstb_i``
@@ -181,8 +205,7 @@ calibrated copy time after GO); ``CTRL-DEMOTE-COLD-CLEAR`` (the ``rst_ni`` pulse
 at the end of the demotion-hold leg returns ``DEMOTE_1`` and ``DEMOTE_2`` to
 their RDL reset value, so the readback of CHK-DEMOTE-HELD is live);
 ``CTRL-JTAG-TRST-EDGE`` (``jtag_trst_probe_o`` falls and then rises in the
-``jtag_trst_ni`` pulse). Observation: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC``
-and ``REFERENCE_COUNTER`` after each event). Info: ``INFO-AGG-UNLATCHED``
+``jtag_trst_ni`` pulse). Info: ``INFO-AGG-UNLATCHED``
 records that ``host_path_err`` and the hmac, csrng and edn bits of
 ``PERIPH_BUS_ERR_STATUS`` are not observable in this bench, with the reason
 per bit: a host-path fault needs a DMA bus fault, and the leaf locks the DMA
@@ -270,9 +293,9 @@ from seq_lib.sep_scratch_reset_seq import (
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N, SW_RESET_N_BIT
 
 TEST = "sep_cpu_reset_retention_test"
-# Logged-only state: a mailbox word and a non-reset SEP_NMI_VEC, drawn from a
-# separate stream so the Plan draws keep their seed mapping.
-OBS_SALT = 0x4D42_5852
+# The mailbox word and the armed sep_cpu_ctrl values come from a separate stream, so
+# the Plan draws keep their seed mapping.
+ARM_SALT = 0x4D42_5852
 NMI_VEC = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
 NMI_MASK = SEP_CPU_CTRL.mask32("SEP_NMI_VEC")
 NMI_RESET = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
@@ -286,6 +309,30 @@ BANK_EXPECT = {
     "DBG+COLD": ("cleared", "cleared"),
 }
 REFCNT = SEP_CPU_CTRL.addr("REFERENCE_COUNTER")
+REFCNT_POLLS = 16
+# 64-bit sep_cpu_ctrl registers of CHK-RST-CPUCTRL-KEEP. SEP_LOCAL_BASE_ADDR takes drawn
+# bits [55:32] and keeps its reset bits [31:0] (sep_cpu_ctrl.rdl: bits [55:32] are
+# ignored), so the local alias window does not move.
+CPUCTRL_KEEP = (
+    "SEP_NMI_VEC_LOCK",
+    "EXT_TRNG_SRC_SEL_LOCK",
+    "SEP_GLOBAL_BASE_ADDR",
+    "SEP_LOCAL_BASE_ADDR",
+    "SEP_REGION_SIZE",
+    "SMU_GLOBAL_BASE_ADDR",
+    "SMU_REGION_SIZE",
+)
+# The SEP inbound and SMU outbound windows. They hold their armed values (drawn bits
+# [55:32], a drawn power-of-two size, so each window lies above the 32-bit space) only
+# from after the fault latch of a pulse sequence to its CHK-RST-CPUCTRL-KEEP line;
+# that span carries CPU-LSU accesses to local SEP registers only, and the SMU window
+# holds the bench stdout mailbox. The leaf then writes their RDL reset values back.
+CPUCTRL_WINDOWS = (
+    "SEP_GLOBAL_BASE_ADDR",
+    "SEP_REGION_SIZE",
+    "SMU_GLOBAL_BASE_ADDR",
+    "SMU_REGION_SIZE",
+)
 # Registers outside every SW_RESET_N domain, written before each overlap run.
 KEEP_PROBES = ("spi", "dma")
 RESP_OKAY, RESP_SLVERR = 0, 2
@@ -319,7 +366,7 @@ def _partial_byte_addr(block, reg: str) -> int:
 
 # Bridge faults latched before each CPU-only pulse sequence: the two in-extent
 # holes and a 1-byte write that misses an owned byte (a partial write) of an AES
-# and a watchdog register (sep_cpu_ctrl.rdl:387-391). Each access answers SLVERR.
+# and a watchdog register (sep_cpu_ctrl.rdl:394-398). Each access answers SLVERR.
 PERIPH_PARTIAL = {
     "aes": _partial_byte_addr(AES, "CTRL_AUX_REGWEN"),
     "wdt": _partial_byte_addr(WDT_TIMER, "WDOG_BARK_THOLD"),
@@ -530,6 +577,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         "CHK-SWRST-KEEP",
         "CHK-MBX-CPURST",
         "CHK-NMI-COLD",
+        "CHK-RST-CPUCTRL-KEEP",
         "CHK-BANK",
         "CHK-DEMOTE-HELD",
     )
@@ -718,6 +766,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             await self._arm_state()
             for cls in self.classes:
                 await self._latch_faults(f"{cls} sequence", every=True)
+                await self._arm_windows(cls)
                 await self._sequence(cls)
                 await self._retention_reads(cls)
                 await self._cpurst_state(cls)
@@ -918,28 +967,103 @@ class sep_cpu_reset_retention_test(sep_base_test):
         return seq
 
     async def _arm_cpurst_state(self) -> None:
-        """Arm one mailbox word with WIRQT set, and a non-reset SEP_NMI_VEC (lock 0)."""
-        xr = SepSeededRng(self.seed ^ OBS_SALT)
+        """Arm one mailbox word with WIRQT set, and the sep_cpu_ctrl registers of
+        CHK-RST-CPUCTRL-KEEP other than the windows at values other than their RDL
+        reset values. ``_arm_windows`` arms the windows per pulse sequence."""
+        xr = SepSeededRng(self.seed ^ ARM_SALT)
         self.mbx_m = xr.randrange(MAILBOX_COUNT)
         self.mbx_word = xr.getrandbits(64) | 1
         self.nmi_armed = other_value(xr, NMI_MASK, (NMI_RESET,))
+        local = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR") & 0xFFFF_FFFF
+        sizes = [1 << k for k in range(20, 31)]
+        self.cpuctrl_armed = {
+            "SEP_NMI_VEC_LOCK": 1,
+            "EXT_TRNG_SRC_SEL_LOCK": 1,
+            "SEP_GLOBAL_BASE_ADDR": xr.randrange(1, 0xFF_0000) << 32,
+            "SEP_LOCAL_BASE_ADDR": xr.randrange(1, 0xFF_0000) << 32 | local,
+            "SEP_REGION_SIZE": xr.choice(
+                [v for v in sizes if v != SEP_CPU_CTRL.reset("SEP_REGION_SIZE")]
+            ),
+            "SMU_GLOBAL_BASE_ADDR": xr.randrange(1, 0xFF_0000) << 32,
+            "SMU_REGION_SIZE": xr.choice(
+                [v for v in sizes if v != SEP_CPU_CTRL.reset("SMU_REGION_SIZE")]
+            ),
+        }
+        self.refcnt_armed = 1 << 62 | xr.getrandbits(61)
         self.logger.info(
-            "INFO-ARM mbox=%d word=0x%016x nmi_vec=0x%08x",
+            "INFO-ARM mbox=%d word=0x%016x nmi_vec=0x%08x refcnt=0x%016x %s",
             self.mbx_m,
             self.mbx_word,
             self.nmi_armed,
+            self.refcnt_armed,
+            " ".join(f"{n}=0x{v:x}" for n, v in self.cpuctrl_armed.items()),
         )
         await self._wr(self._mbx("out", "WIRQT"), 1)
         await self._acc64(SepAxiOp.WRITE, self._mbx("out", "WRITE_DATA"), self.mbx_word)
         await self._wr(NMI_VEC, self.nmi_armed)
+        await self._wr_cpuctrl(
+            {n: v for n, v in self.cpuctrl_armed.items() if n not in CPUCTRL_WINDOWS}
+        )
+        # sep_cpu_ctrl.rdl, REFERENCE_COUNTER: write once, then poll until the readback
+        # reflects the written value.
+        await self._acc64(SepAxiOp.WRITE, REFCNT, self.refcnt_armed)
+        self.refcnt_last = 0
+        for _ in range(REFCNT_POLLS):
+            self.refcnt_last = int((await self._acc64(SepAxiOp.READ, REFCNT)).rdata)
+            if self.refcnt_last >= self.refcnt_armed:
+                break
+
+    async def _wr_cpuctrl(self, values: dict[str, int]) -> None:
+        for n, v in values.items():
+            seq = await self._acc64(SepAxiOp.WRITE, SEP_CPU_CTRL.addr(n), v)
+            if seq.resp_code != RESP_OKAY:
+                raise AssertionError(f"write {n} resp={RESP_NAME[seq.resp_code]}")
+
+    async def _arm_windows(self, cls: str) -> None:
+        """Arm the windows before a pulse sequence; CTRL-CPUCTRL-ARMED reads every
+        register of CHK-RST-CPUCTRL-KEEP at its armed, non-reset value."""
+        await self._wr_cpuctrl({n: self.cpuctrl_armed[n] for n in CPUCTRL_WINDOWS})
+        got = await self._cpuctrl_regs()
+        bad = [
+            f"{n}=0x{got[n]:x}"
+            for n in CPUCTRL_KEEP
+            if got[n] != self.cpuctrl_armed[n]
+            or got[n] == SEP_CPU_CTRL.reset(n) & SEP_CPU_CTRL.mask(n)
+        ]
+        if got["SEP_NMI_VEC"] != self.nmi_armed & NMI_MASK:
+            bad.append(f"SEP_NMI_VEC=0x{got['SEP_NMI_VEC']:x}")
+        if self.refcnt_last < self.refcnt_armed:
+            bad.append(f"REFERENCE_COUNTER=0x{self.refcnt_last:x}")
+        self._ctl(
+            "CTRL-CPUCTRL-ARMED",
+            not bad,
+            f"event={cls} regs={len(CPUCTRL_KEEP) + 2} refcnt=0x{self.refcnt_last:x} "
+            f"refcnt_armed=0x{self.refcnt_armed:x} not_armed={bad or 'none'}",
+        )
+
+    async def _restore_windows(self) -> None:
+        reset = {n: SEP_CPU_CTRL.reset(n) for n in CPUCTRL_WINDOWS}
+        await self._wr_cpuctrl(reset)
+        got = await self._cpuctrl_regs()
+        bad = [f"{n}=0x{got[n]:x}" for n, v in reset.items() if got[n] != v]
+        self._ctl(
+            "CTRL-CPUCTRL-WINDOWS-RESTORED",
+            not bad,
+            " ".join(f"{n}=0x{got[n]:x}" for n in CPUCTRL_WINDOWS),
+        )
+
+    async def _cpuctrl_regs(self) -> dict[str, int]:
+        got = {"SEP_NMI_VEC": (await self._rd(NMI_VEC)) & NMI_MASK}
+        for n in CPUCTRL_KEEP:
+            rd = await self._acc64(SepAxiOp.READ, SEP_CPU_CTRL.addr(n))
+            got[n] = int(rd.rdata) & SEP_CPU_CTRL.mask(n)
+        return got
 
     async def _cpurst_state(self, event: str, *, mbox: bool = True) -> None:
-        """CHK-MBX-CPURST, CHK-NMI-COLD and OBS-RST-CPUCTRL-KEEP after a reset event.
+        """CHK-MBX-CPURST, CHK-NMI-COLD and CHK-RST-CPUCTRL-KEEP after a reset event.
 
         The mailbox read pops the armed word, and the word is pushed again so the
-        next event starts from the same state. No line places ``SEP_NMI_VEC`` or
-        ``REFERENCE_COUNTER`` in a reset domain, so after a CPU-only reset they
-        are logged.
+        next event starts from the same state.
         """
         if mbox:
             st = await self._acc(SepAxiOp.READ, self._mbx("in", "STATUS"))
@@ -953,22 +1077,29 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 f"data_resp={RESP_NAME[rd.resp_code]} expect=0x{self.mbx_word:016x}",
             )
             await self._acc64(SepAxiOp.WRITE, self._mbx("out", "WRITE_DATA"), self.mbx_word)
-        nmi = await self._rd(NMI_VEC)
-        ref = await self._acc64(SepAxiOp.READ, REFCNT)
         if event == "COLD":
+            nmi = await self._rd(NMI_VEC)
             self._chk(
                 "CHK-NMI-COLD",
                 (nmi & NMI_MASK) == (NMI_RESET & NMI_MASK),
                 f"nmi_vec=0x{nmi & NMI_MASK:x} expect=0x{NMI_RESET & NMI_MASK:x} "
                 f"pre_reset_readback=0x{self.nmi_cold_pre:x}",
             )
-        self.logger.info(
-            "OBS-RST-CPUCTRL-KEEP event=%s nmi_vec=0x%x armed=0x%x refcnt=0x%x",
-            event,
-            nmi & NMI_MASK,
-            self.nmi_armed,
-            int(ref.rdata),
+            return
+        got = await self._cpuctrl_regs()
+        ref = int((await self._acc64(SepAxiOp.READ, REFCNT)).rdata)
+        expect = {"SEP_NMI_VEC": self.nmi_armed & NMI_MASK, **self.cpuctrl_armed}
+        bad = [f"{n}=0x{got[n]:x}/expect=0x{v:x}" for n, v in expect.items() if got[n] != v]
+        if ref < self.refcnt_last:
+            bad.append(f"REFERENCE_COUNTER=0x{ref:x}/below=0x{self.refcnt_last:x}")
+        self._chk(
+            "CHK-RST-CPUCTRL-KEEP",
+            not bad,
+            f"event={event} regs={len(expect) + 1} refcnt=0x{ref:x} "
+            f"refcnt_prev=0x{self.refcnt_last:x} mismatch={bad or 'none'}",
         )
+        self.refcnt_last = ref
+        await self._restore_windows()
 
     async def _write_banks(self, warm_only: bool = False) -> None:
         banks = (
@@ -1206,7 +1337,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"DMA_BUS_ERR_STATUS=0x{dst:x} expect=0x{DMA_REG_PATH_BIT:x} "
             f"PERIPH_BUS_ERR_STATUS=0x{pst:x} expect=0x{SEQ_SET:x}({','.join(SEQ_LATCHED)}) "
             f"after_clear={a40 | a42} status_after_clear=0x{dst2:x},0x{pst2:x} "
-            f"golden=sep_cpu_ctrl.rdl:346-347,398-399"
+            f"golden=sep_cpu_ctrl.rdl:353-354,405-406"
         )
         if not ok:
             self.logger.error("CHK-AGG-SURVIVE FAIL: %s", self.agg[cls])
@@ -1547,7 +1678,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         sep_high = not sep.fall_clks_since(ms)
         cpu_ok = c_fall is not None and c_rise is not None and c_rise > c_fall
         self.logger.info(
-            "OBS-WDT-INFLIGHT: write id=0 aw_clk=%d b_clk=%s b_resp=%s b_outcome=%s "
+            "INFO-WDT-INFLIGHT: write id=0 aw_clk=%d b_clk=%s b_resp=%s b_outcome=%s "
             "(not graded: the watchdog reset does not drain transactions)",
             aw,
             b_clk,
@@ -1844,7 +1975,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"b_clk={b_clk} "
             f"b_resp={RESP_NAME.get(b_resp, b_resp)} b_outcome={outcome}"
         )
-        self.logger.info("OBS-OVL-CUT-B: %s", text)
+        self.logger.info("INFO-OVL-CUT-B: %s chk=CHK-OVL", text)
         return {"ok": ok, "outcome": outcome, "aw": aw, "text": text}
 
     async def _pulse_now(self, cls: str, width: int) -> None:
@@ -1986,7 +2117,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
         sw_pre = await self._rd(SW)
         armed_pre = {}
         at_default = []
-        # An overlap cold reset returned SEP_NMI_VEC to its reset value: arm it again.
+        # An overlap cold reset returns SEP_NMI_VEC to its reset value and clears its
+        # lock, so the write arms it again; a still-locked vector keeps the armed value.
         await self._wr(NMI_VEC, self.nmi_armed)
         self.nmi_cold_pre = (await self._rd(NMI_VEC)) & NMI_MASK
         if self.nmi_cold_pre == (NMI_RESET & NMI_MASK):
@@ -2117,7 +2249,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         dest_graded = src_m >= 1 and b_m >= 1
         unchanged = r1 == r2
         if not dest_graded:
-            self.logger.info("OBS-DMA-COLD-MEM: src_match=%d patB_match=%d", src_m, b_m)
+            self.logger.info("INFO-DMA-COLD-MEM: src_match=%d patB_match=%d", src_m, b_m)
         ok = (
             not mism
             and asid_ok

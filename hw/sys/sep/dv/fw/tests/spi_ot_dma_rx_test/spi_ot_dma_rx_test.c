@@ -21,7 +21,8 @@
 // those words, which proves the data path at each width and not only
 // completion. The compare accepts either in-word byte order of the SPI host
 // (first byte in bits 7:0 or in bits 31:24), but the same order for every word
-// of the image; the order seen is printed once on OBS-SPI-BYTEORDER. The test
+// of the image; the order seen is printed once on INFO-SPI-BYTEORDER, and the
+// testbench requires lsb_first (STATUS.BYTEORDER reads 1 in SEP). The test
 // also checks that DMA DONE still reads set after the poll and clears only on
 // the write-one-to-clear, and that the DMA and the SPI host report no error
 // (CHK-NOERR).
@@ -326,8 +327,8 @@ int main(void) {
             run_read(r, g_spi2_params[base], g_spi2_params[base + 1u], &g_spi2_params[base + 2u]);
     }
 
-    // The order seen is logged, not graded: no SEP text states it.
-    sep_mbx_puts("OBS-SPI-BYTEORDER fw order=");
+    // The testbench grades this line: the order must be lsb_first.
+    sep_mbx_puts("INFO-SPI-BYTEORDER fw order=");
     sep_mbx_puts(g_order == ORDER_LSB_FIRST   ? "lsb_first"
                  : g_order == ORDER_MSB_FIRST ? "msb_first"
                                               : "undecided");

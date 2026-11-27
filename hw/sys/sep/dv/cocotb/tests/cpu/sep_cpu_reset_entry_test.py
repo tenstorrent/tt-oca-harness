@@ -32,7 +32,7 @@ Checks:
                        that vector and the marker is the one planted there.
                        ``A2`` arrives in a 64-bit scan whose low word is
                        ~``A2``; the TDO samples of that scan are logged as
-                       OBS-RSTVEC-SHIFT (cpu.adoc states no TDR length).
+                       INFO-RSTVEC-SHIFT (cpu.adoc states no TDR length).
   CHK-RSTVEC-PERSIST : after a ``wdt_rst_ni`` CPU reset the first retired PC is
                        ``A1`` again.
   CHK-RSTVEC-PERSIST-DBG : after a ``dbg_rstb_i`` pulse of the drawn width and
@@ -78,8 +78,50 @@ Checks:
                        and moves the ``sep_cpu_reset_n`` tap; with real fuse
                        sense the second cold reset drops
                        ``sep_fuse_sense_done_o``.
+  CHK-NDMRESET-RESTART: after the last scope leg, at a quiet point, ``dmcontrol``
+                       is written ``dmactive`` | ``ndmreset`` and then
+                       ``dmactive`` only. No instruction retires in the hold
+                       window: from the completion of the first write to the
+                       clk_i sample in which ``dmi_req_probe_o`` shows the DTM
+                       write strobe of the second to ``dmcontrol`` (the
+                       debug module takes ``ndmreset`` = 0 on the next edge),
+                       so the window covers the ``dmcontrol`` read and the
+                       whole second write. After that strobe the first PR-IFU
+                       read request covers 0x1004_0000, the first retired PC
+                       is 0x1004_0000 and the marker is ``M_ROM`` (EL2 PRM cited at
+                       cpu.adoc:23, Debug Support, ``dmcontrol.ndmreset``:
+                       "Signal resets hart, but not DM"; cpu.adoc Reset Vector:
+                       the TDR persists across a CPU reset, and the
+                       Test-Logic-Reset of the last scope leg left it at its
+                       default). Positive probes in the same line: instructions
+                       retire in the window before the first write, the hold
+                       window has samples, and the strobe of the second write
+                       is seen (``clear_wr_seen=1``). ``ndmreset`` does not
+                       move the ``sep_cpu_reset_n`` tap, so the restart is
+                       anchored on that strobe. The wait for the restart
+                       is bounded by W_obs clk_i cycles after the last DMI
+                       access of the leg; a missing restart is a FAIL line of
+                       this record, not a raise.
+  CHK-NDMRESET-DM    : ``dmcontrol.dmactive`` reads 1 after the ``ndmreset``
+                       write and after its clear (EL2 PRM ``dmcontrol.ndmreset``:
+                       "but not DM"; RISC-V External Debug Support 0.13.2
+                       ``dmcontrol.ndmreset``: "except for the DM"). Reach line
+                       CTRL-NDMRESET-SET: the ``ndmreset`` bit reads 1 after
+                       the first write and 0 after the second.
+  CHK-NDMRESET-SCOPE : after the ``ndmreset`` restart, the restarted routine
+                       reads each of the four registers it arms (scratch cold
+                       and warm word 0, ``WKUP_THOLD_LO``, ``SEP_SW_DEBUG``)
+                       at the value it wrote before the pulse. ``ndmreset``
+                       resets the core complex only; the system and scratch
+                       registers and the watchdog keep their state
+                       (cpu.adoc:281-289). Control CTRL-NDMRESET-SCOPE-ARMED:
+                       the last routine pass before the pulse compared all
+                       four true, and each written value differs from the RDL
+                       reset value of its register.
   CHK-NO-EARLY-RETIRE: no trace beat while the ``sep_cpu_reset_n`` tap is low,
                        in every cold reset and every CPU reset of the leaf.
+                       The ``ndmreset`` hold is not a reset of this record; it
+                       is graded in CHK-NDMRESET-RESTART.
   CHK-NO-EARLY-FETCH : no ``rom_req`` or ``ifu_req`` request while the
                        ``sep_cpu_reset_n`` tap is low, in the same resets.
                        Control: every reset shows an ``ifu_req`` request
@@ -105,8 +147,30 @@ Checks:
                        to the pair after the write's B, and an R beat that
                        carries the written value. No TT text states the BRESP
                        or RRESP code of these accesses, so the codes are logged
-                       (OBS-WDT-STORE-RESP) and not graded.
+                       (INFO-WDT-STORE-RESP) and not graded.
                        Graded last, after every other check.
+  CHK-IFU-AXCACHE    : every AR handshake on the PR-IFU tap (the IFU port of
+                       the core, ``arvalid`` and ``arready`` high) in the whole
+                       leaf carries ARCACHE ``0b1111``: instruction fetches
+                       carry ``0b1111`` (cpu.adoc:122). Control: at least one
+                       handshake per reset epoch.
+  CHK-DBG-AXBURST, CHK-DBG-AXLOCK, CHK-DBG-AXQOS, CHK-DBG-AXCACHE:
+                       every AW and AR that the debug-module system bus issues
+                       in the (a) accesses carries the side-band value that the
+                       EL2 PRM port table (cpu.adoc:23, core complex signals,
+                       ``sb_axi_aw*`` and ``sb_axi_ar*``) states as hardwired:
+                       AxBURST 0b01, AxLOCK 0, AxQOS 0b0000, AWCACHE 0b1111 and
+                       ARCACHE 0b0000. Read on the PR-DBG-IN-ATTR tap (the
+                       debug master before the fabric): one line per beat and a
+                       summary per field and channel; a channel whose beat
+                       count differs from the number of (a) accesses fails.
+  CHK-TDOEN-SHIFT    : ``jtag_tdoEn_o`` reads 1 at every TDO sample that the
+                       JTAG driver takes in Shift-DR and in Shift-IR, over every
+                       scan of the leaf (port_table.adoc:33: JTAG test data out
+                       enable). The sample is the driver's TDO read (TCK low
+                       phase, ReadOnly). Both sample counts must be non-zero.
+  INFO-TDOEN-IDLE    : logged, not graded: per other TAP state, the number of
+                       ``jtag_tdoEn_o`` samples at 0, at 1 and at X or Z.
   CHK-MEMIF-WDT-RST  : on every ``clk_i`` cycle of each ``wdt_rst_ni`` CPU
                        reset, the reset inputs of the SRAM and boot ROM memory
                        interfaces read 1: they are on ``sep_reset_no``
@@ -121,7 +185,7 @@ Checks:
                        Signals: 0 starts the core in Debug Mode halted).
                        Control: CTRL-RUNREQ shows a retirement inside W_obs
                        with run request 1.
-  OBS-RUNREQ0-FETCH  : logged, not graded: the ``ifu_req`` cycles within W_obs
+  INFO-RUNREQ0-FETCH  : logged, not graded: the ``ifu_req`` cycles within W_obs
                        of the tap rise in that reset.
 
 Every CPU reset is applied at a quiet point: after a pass-count store of the
@@ -145,12 +209,19 @@ through ``env/sep_jtag_dmi`` on the shared ``OcahJtagMasterDriver``, with a TCK
 period of the drawn number of ``clk_i`` periods.
 
 The routine programs ``SEP_NMI_VEC`` with a handler in the SRAM before it arms
-the registers. A store that ends in a bus error raises an NMI on VeeR EL2; the
-handler stores ``mcause`` and ``mdseac`` to the mailbox, unlocks ``mdseac`` and
-returns, and the leaf logs each record (``OBS-STORE-BUS-ERR``). The retention
+the registers. The stores of this leaf get OKAY, so no NMI is expected. A
+store that ends in a bus error raises an NMI on VeeR EL2; the handler stores
+``mcause`` and ``mdseac`` to the mailbox, unlocks ``mdseac`` and returns, and
+the leaf logs the number of such records, 0 when every store gets OKAY, and
+each record with no verdict (``INFO-STORE-BUS-ERR``). The store bus error NMI
+and its ``mcause`` are graded by CHK-STORE-ERR-NMI in
+``sep_reset_wdt_sanity_test``. The retention
 compares, not the bus response, decide whether a register holds its value.
 
-The WDT store leg runs after the last scope leg. The bench sets a flag word in
+The ``ndmreset`` leg runs after the last scope leg. The restarted core runs the
+ROM entry and the routine again, so the later legs start from a routine pass
+as the earlier legs do. The WDT store leg runs after the ``ndmreset`` leg. The
+bench sets a flag word in
 the SRAM; the routine reads it after each spin and jumps to the store routine,
 which issues the (b) and (c) stores, reads each register back and stores the
 read value to the mailbox, then idles in a self-loop. The CPU issues no 8-byte
@@ -186,9 +257,10 @@ from dataclasses import dataclass, field
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
-from env.sep_fabric_tap import SepFabricTap
+from env.sep_fabric_tap import SepFabricTap, check_axfield
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_rstvec_persist_pass
 from env.sep_seeded_rng import SepSeededRng
+from ocah_jtag_vip import OcahJtagState
 from sep_base_test import sep_base_test
 from sep_reg_meta import RegBlock, sym
 
@@ -277,6 +349,19 @@ SBA_ACCESSES = tuple(
     for p, pair in enumerate(WDT_PAIRS)
 )
 
+# Debug-master AXI side-band values that the EL2 PRM port table (cpu.adoc:23,
+# core complex signals) states as hardwired: (record, field, width, AW, AR).
+DBG_ATTR = (
+    ("CHK-DBG-AXBURST", "burst", 2, 0b01, 0b01),
+    ("CHK-DBG-AXLOCK", "lock", 1, 0, 0),
+    ("CHK-DBG-AXQOS", "qos", 4, 0b0000, 0b0000),
+    ("CHK-DBG-AXCACHE", "cache", 4, 0b1111, 0b0000),
+)
+# hw/sys/sep/doc/cpu.adoc:122: "Instruction fetches carry `0b1111`".
+IFU_ARCACHE = 0b1111
+DBG_ATTR_CITE = "EL2 PRM core complex signals, sb_axi_aw*/sb_axi_ar* hardwired (cpu.adoc:23)"
+NDM_SCOPE_CITE = "cpu.adoc:281-289, ndmreset resets the core complex only"
+
 # The mailbox address has bit 55 clear, so the SMU path delivers it non-secure.
 FILTER_CFG_OPEN = (
     _OUTF.field_mask("FILTER_CONFIG", "read_allowed")
@@ -286,6 +371,11 @@ FILTER_CFG_OPEN = (
     | _OUTF.field_mask("FILTER_CONFIG", "allow_burst")
     | (_OUTF.reset("FILTER_CONFIG") & _OUTF.field_mask("FILTER_CONFIG", "data_bus_width"))
 )
+
+# dmi_req_probe_o (tb/sep_tb_signal_list.svh): bit 8 dmi_en, bit 7 dmi_wr_en,
+# bits 6:0 dmi_addr. The one-clock DTM write strobe to dmcontrol (DMI 0x10); the
+# debug module register takes the written value on the next clk_i edge.
+DTM_DMCONTROL_WR = (1 << 8) | (1 << 7) | 0x10
 
 # Environment choices (logged).
 W_OBS = 10_000  # clk_i cycles from the sep_cpu_reset_n rise: first retire and marker
@@ -547,6 +637,8 @@ class _Epoch:
     retired_in_window: int = 0
     early_retire: list = field(default_factory=list)
     early_fetch: list = field(default_factory=list)
+    # PR-IFU AR handshakes in this epoch (CHK-IFU-AXCACHE control).
+    ifu_ar_hs: int = 0
     first_rom_fetch_clk: int | None = None
     first_ifu_fetch_clk: int | None = None
     # The first PR-IFU AR request after the tap rise: (clk, addr, len, size);
@@ -605,6 +697,83 @@ class _LegWatch:
     dbg_low: int = 0
     dbg_run: int = 0
     cur_run: int = 0
+
+
+@dataclass
+class _NdmWatch:
+    """Trace and fetch samples around one ``dmcontrol.ndmreset`` pulse.
+
+    Phases: ``pre`` (the core runs the routine), ``set`` (the ``ndmreset``
+    write is in flight), ``held`` (from the completion of that write to the
+    clock in which the clear write takes effect in the debug module) and
+    ``release`` (the clocks after it). The leg sets ``pre``, ``set`` and
+    ``held``, and ``clear_sent`` when it starts the clear write. The sampler
+    ends ``held`` on the first ``dmi_req_probe_o`` sample after ``clear_sent``
+    that shows the DTM write strobe to ``dmcontrol``: that sample is the last
+    ``held`` clock, because the ``ndmreset`` bit takes the written 0 on the
+    next clk_i edge. ``ndmreset`` is 1 for the whole ``held`` phase, so the
+    first retirement and the first PR-IFU request of ``release`` follow the
+    restart.
+    """
+
+    phase: str = "pre"
+    pre_retire: int = 0
+    held_clk: int = 0
+    held_retire: list = field(default_factory=list)
+    held_fetch: int = 0
+    held_cpu_tap_low: int = 0
+    clear_sent: bool = False
+    # Held clocks from the start of the clear write to its dmcontrol strobe.
+    held_clear_clk: int = 0
+    # The clk of the clear write's dmcontrol strobe, the last held clock.
+    release_clk: int | None = None
+    first_retire: tuple[int, int] | None = None
+    # The first PR-IFU AR request of the release phase: (clk, addr, len, size).
+    first_ifu_ar: tuple | None = None
+
+
+class _TdoEnTally:
+    """Stands in for the TDO handle that the JTAG driver reads; counts ``jtag_tdoEn_o``.
+
+    The driver reads ``value`` once per TCK cycle, in ReadOnly in the TCK low
+    phase, before it advances its tracked TAP state, so the tracked state is
+    the state of that cycle. Each read samples ``jtag_tdoEn_o`` at that point
+    and counts it per state as 0, 1 or unknown (X or Z). The tally never raises:
+    the driver reads an exception from ``value`` as TDO 0, so an error is
+    recorded and graded by the leaf. Every other attribute is the wrapped
+    handle's.
+    """
+
+    SHIFT = (OcahJtagState.SHIFT_DR, OcahJtagState.SHIFT_IR)
+
+    def __init__(self, inner, tap, tdo_en) -> None:
+        self._inner = inner
+        self._tap = tap
+        self._en = tdo_en
+        # State name -> [samples at 0, samples at 1, samples X or Z].
+        self.counts: dict[str, list[int]] = {}
+        self.samples = 0
+        # The first shift samples that are not 1: (sample index, state, value).
+        self.shift_bad: list[tuple[int, str, str]] = []
+        self.errors: list[str] = []
+
+    @property
+    def value(self):
+        try:
+            state = self._tap.get_current_state()
+            bits = str(self._en.value)
+            slot = {"0": 0, "1": 1}.get(bits, 2)
+            self.counts.setdefault(state.name, [0, 0, 0])[slot] += 1
+            if state in self.SHIFT and slot != 1 and len(self.shift_bad) < 8:
+                self.shift_bad.append((self.samples, state.name, bits))
+            self.samples += 1
+        except Exception as exc:  # noqa: BLE001 - recorded and graded by the leaf.
+            if len(self.errors) < 4:
+                self.errors.append(repr(exc))
+        return self._inner.value
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
 
 
 @dataclass
@@ -747,6 +916,13 @@ class sep_cpu_reset_entry_test(sep_base_test):
             pc = self.rd(dut.cpu_trace_addr_o) if tv else None
             rom_req = self.rd(dut.pr_rom_req_o)
             ifu_req = self.rd(dut.pr_ifu_arvalid_o)
+            if ifu_req and self._rd_or_none(dut.pr_ifu_arready_o) == 1:
+                cache = self._rd_or_none(dut.pr_ifu_arcache_o)
+                self.ifu_ar_cache[cache] = self.ifu_ar_cache.get(cache, 0) + 1
+                if self.epochs:
+                    self.epochs[-1].ifu_ar_hs += 1
+                if cache != IFU_ARCACHE and len(self.ifu_ar_bad) < 8:
+                    self.ifu_ar_bad.append((self.clk, self._rd_or_none(dut.pr_ifu_araddr_o), cache))
             if self.leg is not None:
                 lw = self.leg
                 lw.samples += 1
@@ -770,6 +946,31 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 self.scope.sep_low += sep_tap == 0
                 self.scope.cpu_low += cpu_tap == 0
                 self.scope.sense_low += sense != 1
+            nw = self.ndm
+            if nw is not None:
+                if nw.phase == "pre":
+                    nw.pre_retire += tv
+                elif nw.phase == "held":
+                    nw.held_clk += 1
+                    nw.held_fetch += ifu_req
+                    nw.held_cpu_tap_low += cpu_tap == 0
+                    if tv:
+                        nw.held_retire.append((self.clk, pc))
+                    if nw.clear_sent:
+                        nw.held_clear_clk += 1
+                        if self._rd_or_none(dut.dmi_req_probe_o) == DTM_DMCONTROL_WR:
+                            nw.phase = "release"
+                            nw.release_clk = self.clk
+                elif nw.phase == "release":
+                    if tv and nw.first_retire is None:
+                        nw.first_retire = (self.clk, pc)
+                    if ifu_req and nw.first_ifu_ar is None:
+                        nw.first_ifu_ar = (
+                            self.clk,
+                            self._rd_or_none(dut.pr_ifu_araddr_o),
+                            self._rd_or_none(dut.pr_ifu_arlen_o),
+                            self._rd_or_none(dut.pr_ifu_arsize_o),
+                        )
             if not self.epochs:
                 continue
             ep = self.epochs[-1]
@@ -859,13 +1060,21 @@ class sep_cpu_reset_entry_test(sep_base_test):
             self.recs.append(_Rec(i, self.clk, off, val))
         return self.recs
 
-    async def _wait_rec(self, after: int, off: int, bound: int, what: str) -> _Rec:
+    async def _poll_rec(self, after: int, off: int, bound: int) -> _Rec | None:
         for _ in range(bound):
             for r in self._mbx()[after:]:
                 if r.off == off:
                     return r
             await RisingEdge(cocotb.top.clk_i)
-        raise AssertionError(f"{what}: no mailbox store at +0x{off:x} within {bound} clk_i cycles")
+        return None
+
+    async def _wait_rec(self, after: int, off: int, bound: int, what: str) -> _Rec:
+        rec = await self._poll_rec(after, off, bound)
+        if rec is None:
+            raise AssertionError(
+                f"{what}: no mailbox store at +0x{off:x} within {bound} clk_i cycles"
+            )
+        return rec
 
     def _fails_since(self, after: int) -> list[_Rec]:
         return [r for r in self._mbx()[after:] if r.off == OFF_FAIL]
@@ -996,7 +1205,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             self._fail(f"{chk}: {text}")
 
     @staticmethod
-    def _fetch_text(ep: _Epoch) -> str:
+    def _fetch_text(ep: _Epoch | _NdmWatch) -> str:
         if ep.first_ifu_ar is None:
             return "first_fetch=none"
         _c, addr, alen, asize = ep.first_ifu_ar
@@ -1007,7 +1216,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
 
     @staticmethod
-    def _fetch_covers(ep: _Epoch, vector: int) -> bool:
+    def _fetch_covers(ep: _Epoch | _NdmWatch, vector: int) -> bool:
         """True when the first PR-IFU AR request after the tap rise reads ``vector``.
 
         The request covers the bytes [addr, addr + (len + 1) * 2**size); the
@@ -1109,7 +1318,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         states that ``mpc_reset_run_req`` 0 starts the core in Debug Mode
         halted, so no instruction retires in the W_obs window after the tap
         rise. No spec states the instruction fetch of a halted core, so the
-        PR-IFU request cycles are logged (OBS-RUNREQ0-FETCH). The run request
+        PR-IFU request cycles are logged (INFO-RUNREQ0-FETCH). The run request
         returns to 1 after the window.
         """
         dut = cocotb.top
@@ -1138,7 +1347,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             f"retired_in_window={ep.retired_in_window} window={W_OBS} "
             f"rise={'none' if ep.rise_clk is None else 'seen'}",
         )
-        self.logger.info("OBS-RUNREQ0-FETCH ifu_req_clk=%d window=%d", ep.ifu_req_in_window, W_OBS)
+        self.logger.info("INFO-RUNREQ0-FETCH ifu_req_clk=%d window=%d", ep.ifu_req_in_window, W_OBS)
         dut.mpc_reset_run_req.value = 1
         self._stop = True
         await ClockCycles(dut.clk_i, 2)
@@ -1261,7 +1470,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         TDR of 31 or 32 bits, and the following CPU reset grades that vector
         (CHK-RSTVEC). cpu.adoc (Reset Vector) states the stored address bits
         [31:1] and bit 0 at zero, not the length of the TDR, so the TDO samples
-        are logged and not graded (OBS-RSTVEC-SHIFT): the head and tail words,
+        are logged and not graded (INFO-RSTVEC-SHIFT): the head and tail words,
         whether the tail equals the head (a 32-bit TDR), and the smallest TDR
         length that the TDO samples fit.
         """
@@ -1279,7 +1488,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             None,
         )
         self.logger.info(
-            "OBS-RSTVEC-SHIFT: IR=0x%02x bits=%d tdi_head=0x%08x tdo_tail=0x%08x "
+            "INFO-RSTVEC-SHIFT: IR=0x%02x bits=%d tdi_head=0x%08x tdo_tail=0x%08x "
             "tail_eq_head=%d tdr_len_fit=%s vector=0x%08x (value logged)",
             IR_RSTVEC,
             bits,
@@ -1466,11 +1675,198 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
         return mark
 
+    async def _ndmreset_leg(self) -> None:
+        """A ``dmcontrol.ndmreset`` pulse at a quiet point: the hart restarts, the DM stays active.
+
+        ``dmactive`` is written 1 first, because the ``ndmreset`` bit is held in
+        reset while ``dmactive`` is 0. The watch opens before the quiet point,
+        so its ``pre`` phase holds routine retirements. ``dmactive`` is read
+        while ``ndmreset`` is 1. The ``held`` phase lasts through that read and
+        the clear write, up to the clock of the clear write's ``dmcontrol``
+        strobe on ``dmi_req_probe_o``; the sampler then opens ``release``.
+        The leg grades through ``_grade`` and does not raise on a missing
+        restart; a DMI error raises, as in the other legs.
+        """
+        from env.sep_jtag_dmi import DM_DMCONTROL, DMCONTROL_DMACTIVE, DMCONTROL_NDMRESET
+
+        dut = cocotb.top
+        dut.dmi_core_enable_i.value = 1
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
+        dm_pre, word_pre = await self._dmactive()
+        nw = self.ndm = _NdmWatch()
+        await self._quiet_point()
+        before = self.last_pass
+        mark = len(self._mbx())
+        nw.phase = "set"
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE | DMCONTROL_NDMRESET)
+        nw.phase = "held"
+        dm_held, word_held = await self._dmactive()
+        nw.clear_sent = True
+        await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
+        dm_after, word_after = await self._dmactive()
+        dut.dmi_core_enable_i.value = 0
+        t0 = self.clk
+        marker = None
+        while self.clk - t0 < W_OBS:
+            if nw.first_retire is not None:
+                marker = next((r for r in self._mbx()[mark:] if r.off == OFF_MARK), None)
+                if marker is not None:
+                    break
+            await RisingEdge(dut.clk_i)
+        entry: list[int | None] = [None] * len(OFF_ENTRY)
+        if marker is not None:
+            for k, off in enumerate(OFF_ENTRY):
+                r = await self._poll_rec(marker.seq + 1, off, PASS_BOUND)
+                entry[k] = None if r is None else r.val
+        self.ndm = None
+
+        set_ok = bool(word_held & DMCONTROL_NDMRESET) and not word_after & DMCONTROL_NDMRESET
+        line = (
+            f"dmcontrol pre=0x{word_pre:08x} held=0x{word_held:08x} after=0x{word_after:08x} "
+            f"ndmreset held={int(bool(word_held & DMCONTROL_NDMRESET))} "
+            f"after={int(bool(word_after & DMCONTROL_NDMRESET))} expect held=1 after=0"
+        )
+        tag = "CTRL-NDMRESET-SET" if set_ok else "CTRL-MISSING NDMRESET-SET"
+        self.logger.info("%s: %s", tag, line)
+        if not set_ok:
+            self._fail(f"{tag}: {line}")
+        self._grade(
+            "CHK-NDMRESET-DM",
+            dm_held == 1 and dm_after == 1,
+            f"dmactive_pre={dm_pre} dmactive_held={dm_held} dmactive_after={dm_after} (exp 1/1)",
+        )
+
+        pc = None if nw.first_retire is None else nw.first_retire[1]
+        name = None if marker is None else MARKER_NAME.get(marker.val, f"0x{marker.val:08x}")
+        ok = (
+            nw.pre_retire > 0
+            and nw.held_clk > 0
+            and nw.release_clk is not None
+            and not nw.held_retire
+            and self._fetch_covers(nw, DEFAULT_RESET_PC)
+            and pc == DEFAULT_RESET_PC
+            and name == "M_ROM"
+        )
+        lat = (
+            "none"
+            if nw.first_retire is None or nw.release_clk is None
+            else str(nw.first_retire[0] - nw.release_clk)
+        )
+        text = (
+            f"tdr=default pre_retire={nw.pre_retire} held_clk={nw.held_clk} "
+            f"held_clear_clk={nw.held_clear_clk} held_end=dmcontrol_wr "
+            f"clear_wr_seen={int(nw.release_clk is not None)} "
+            f"held_retire={len(nw.held_retire)} first_held={nw.held_retire[:4]} "
+            f"{self._fetch_text(nw)} first_pc={'none' if pc is None else f'0x{pc:08x}'} "
+            f"marker={name or 'none'} m_rom_seen={int(name == 'M_ROM')} "
+            f"retire_after_release_clk={lat} window={W_OBS}"
+        )
+        if not ok:
+            text += (
+                f" expected pre_retire>0 held_clk>0 clear_wr_seen=1 held_retire=0 first_fetch covering "
+                f"0x{DEFAULT_RESET_PC:08x} first_pc=0x{DEFAULT_RESET_PC:08x} marker=M_ROM"
+            )
+        self._grade("CHK-NDMRESET-RESTART", ok, text)
+        self.logger.info(
+            "INFO-NDMRESET held_ifu_req_clk=%d held_sep_cpu_reset_n_low=%d (logged)",
+            nw.held_fetch,
+            nw.held_cpu_tap_low,
+        )
+
+        def h(v):
+            return "none" if v is None else f"0x{v:08x}"
+
+        resets = (
+            _COLD.reset("SCRATCH_0_"),
+            _WARM.reset("SCRATCH_0_"),
+            _WDT.reset("WKUP_THOLD_LO"),
+            _CPU_CTRL.reset("SEP_SW_DEBUG"),
+        )
+        regs = " ".join(
+            f"{n}={h(v)}->{h(a)}(rdl_reset={h(rv & 0xFFFF_FFFF)})"
+            for (n, _a, _m, v), a, rv in zip(ARMED, entry, resets)
+        )
+        before_txt = "none" if before is None else before.val
+        armed_ok = before is not None and all(
+            v != rv & 0xFFFF_FFFF for (_n, _a, _m, v), rv in zip(ARMED, resets)
+        )
+        tag = "CTRL-NDMRESET-SCOPE-ARMED" if armed_ok else "CTRL-MISSING NDMRESET-SCOPE-ARMED"
+        self.logger.info("%s: before_pass=%s %s", tag, before_txt, regs)
+        if not armed_ok:
+            self._fail(f"{tag}: before_pass={before_txt} {regs}")
+        self._grade(
+            "CHK-NDMRESET-SCOPE",
+            marker is not None and all(a == v for (_n, _a, _m, v), a in zip(ARMED, entry)),
+            f"marker={name or 'none'} {regs} expect entry=written ({NDM_SCOPE_CITE})",
+        )
+
+    def _grade_dbg_attr(self) -> None:
+        """CHK-DBG-AX*: every debug-master AW and AR beat of the system-bus leg, per field."""
+        tap = self.attr_tap
+        for chk, fld, width, aw, ar in DBG_ATTR:
+            for ch, exp in (("aw", aw), ("ar", ar)):
+                if tap is None:
+                    fails = [f"{chk} FAIL: master=debug ch={ch} field={fld} tap not started"]
+                    self.logger.error(fails[0])
+                else:
+                    try:
+                        fails = check_axfield(
+                            self.logger,
+                            chk,
+                            tap,
+                            "debug",
+                            ch,
+                            fld,
+                            exp,
+                            width,
+                            DBG_ATTR_CITE,
+                            expect_count=len(SBA_ACCESSES),
+                        )
+                    except AssertionError as exc:
+                        fails = [f"{chk} FAIL: master=debug ch={ch} field={fld} {exc}"]
+                        self.logger.error(fails[0])
+                # check_axfield logs every PASS and FAIL line; this collects them.
+                if fails:
+                    self._fail("; ".join(fails))
+                else:
+                    self.n_checks += 1
+
+    def _grade_tdoen(self) -> None:
+        """CHK-TDOEN-SHIFT from the TDO-enable tally; INFO-TDOEN-IDLE for the other states."""
+        t = self.tdoen
+        if t is None:
+            self._grade("CHK-TDOEN-SHIFT", False, "TDO-enable tally not installed")
+            return
+        zero = [0, 0, 0]
+        dr = t.counts.get(OcahJtagState.SHIFT_DR.name, zero)
+        ir = t.counts.get(OcahJtagState.SHIFT_IR.name, zero)
+        ok = dr[1] > 0 and ir[1] > 0 and not (dr[0] or dr[2] or ir[0] or ir[2]) and not t.errors
+        self._grade(
+            "CHK-TDOEN-SHIFT",
+            ok,
+            f"shift_dr samples={sum(dr)} en1={dr[1]} en0={dr[0]} enx={dr[2]} "
+            f"shift_ir samples={sum(ir)} en1={ir[1]} en0={ir[0]} enx={ir[2]} "
+            f"first_bad={t.shift_bad} errors={t.errors} expect=1 at every shift sample, "
+            "both counts non-zero (port_table.adoc:33)",
+        )
+        shift = {s.name for s in _TdoEnTally.SHIFT}
+        idle = {s: c for s, c in t.counts.items() if s not in shift}
+        self.logger.info(
+            "INFO-TDOEN-IDLE LOG samples=%d %s (not graded: no SEP text states the value "
+            "outside Shift-DR and Shift-IR)",
+            sum(sum(c) for c in idle.values()),
+            " ".join(f"{s}:en0={c[0]},en1={c[1]},enx={c[2]}" for s, c in sorted(idle.items()))
+            or "-",
+        )
+
     # ---------------------------------------------------------------- scenario
     async def run_scenario(self) -> None:
         self.clk = 0
         self._stop = False
         self.epochs: list[_Epoch] = []
+        # PR-IFU AR handshakes: ARCACHE value -> count, and the first mismatches.
+        self.ifu_ar_cache: dict[int | None, int] = {}
+        self.ifu_ar_bad: list[tuple] = []
         self.scope: _Scope | None = None
         self.tapw: _TapWatch | None = None
         self.leg: _LegWatch | None = None
@@ -1478,6 +1874,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.failures: list[str] = []
         self.n_checks = 0
         self.last_pass = None
+        self.ndm: _NdmWatch | None = None
+        self.tdoen: _TdoEnTally | None = None
+        self.attr_tap: SepFabricTap | None = None
         self.out_tap = SepFabricTap("PR-OUT")
         self.rsp_tap = SepFabricTap("PR-OUT-RSP")
         self.tap_base: dict[str, tuple[int, int]] = {}
@@ -1487,12 +1886,21 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-RSTVEC-DEFAULT",
             "CHK-NO-EARLY-RETIRE",
             "CHK-NO-EARLY-FETCH",
+            "CHK-IFU-AXCACHE",
             "CHK-RSTVEC",
             "CHK-RSTVEC-PERSIST",
             "CHK-RSTVEC-PERSIST-DBG",
             "CHK-RSTVEC-PERSIST-COLD",
             "CHK-RSTVEC-TAPRST",
             "CHK-TRST-SCOPE",
+            "CHK-NDMRESET-RESTART",
+            "CHK-NDMRESET-DM",
+            "CHK-NDMRESET-SCOPE",
+            "CHK-TDOEN-SHIFT",
+            "CHK-DBG-AXBURST",
+            "CHK-DBG-AXLOCK",
+            "CHK-DBG-AXQOS",
+            "CHK-DBG-AXCACHE",
             "CHK-WDT-STORE-RESP",
             "CHK-MEMIF-WDT-RST",
             "CHK-RUNREQ0-HALT",
@@ -1515,14 +1923,18 @@ class sep_cpu_reset_entry_test(sep_base_test):
         causes = [r for r in self._mbx() if r.off == OFF_NMI_CAUSE]
         addrs = [r for r in self._mbx() if r.off == OFF_NMI_ADDR]
         self.logger.info(
-            "OBS-STORE-BUS-ERR LOG nmi_records=%d %s",
+            "INFO-STORE-BUS-ERR LOG nmi_records=%d %s (graded by CHK-STORE-ERR-NMI in "
+            "sep_reset_wdt_sanity_test)",
             len(causes),
             " ".join(
                 f"mcause=0x{c.val:08x}/mdseac=0x{a.val:08x}@{c.seq}" for c, a in zip(causes, addrs)
             ),
         )
         self._grade_no_early()
+        self._grade_ifu_axcache()
         self._grade_memif_wdt_rst()
+        self._grade_tdoen()
+        self._grade_dbg_attr()
         # Graded last: every other check above has already run.
         self._grade_store_resp()
         await self._run_req0_leg()
@@ -1531,7 +1943,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.result_pass(TEST, self.random_seed(), self.n_checks)
 
     async def _graded_steps(self) -> None:
-        """Steps 4-12 inside the graded window; the window closes after the last leg."""
+        """Steps 4-12 and the ``ndmreset`` leg inside the graded window; it closes after the last leg."""
         dut = cocotb.top
         # Steps 4-6: three cold resets with the default TDR. The first runs under
         # the power-on TAP reset; TRST then rises with TCK idle, so the second and
@@ -1566,6 +1978,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
 
         await self._jtag_legs()
+        await self._ndmreset_leg()
 
         # Step 12.
         await self._quiet_point()
@@ -1639,6 +2052,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
         self.dmi = SepJtagDmi(tap, dut=dut, log=self.logger)
         self.dmi.take_pins()
+        self.tdoen = _TdoEnTally(tap.bus.tdo, tap, dut.jtag_tdoEn_o)
+        tap.bus.tdo = self.tdoen
 
         # Step 7: TAP reset with the default TDR, by TRST and by Test-Logic-Reset.
         await self._tap_then_cpu_reset("TRST", "default")
@@ -1796,6 +2211,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         dut = cocotb.top
         dut.dmi_core_enable_i.value = 1
         tap = self._tap_started(SepFabricTap("PR-DBG-SB"))
+        self.attr_tap = self._tap_started(SepFabricTap("PR-DBG-IN-ATTR"))
         await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
         res = []
         for reg, val in SBA_ACCESSES:
@@ -1805,7 +2221,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
             res.append((reg, addr, val, werr, rd, rerr))
         await ClockCycles(dut.clk_i, QUIET)
         self._tap_live(tap)
+        self._tap_live(self.attr_tap)
         await tap.stop()
+        await self.attr_tap.stop()
         dut.dmi_core_enable_i.value = 0
         wdt = [
             x for x in self._writes(tap) if x[0].addr is not None and WDT_LO <= x[0].addr < WDT_HI
@@ -1848,7 +2266,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         An (a) read-back counts only from the bus: an AR to the pair after the
         write's B, size 8, and an R beat whose data is the written value and is
         what ``sbdata1``/``sbdata0`` return. The BRESP and RRESP codes are
-        logged (OBS-WDT-STORE-RESP), not graded.
+        logged (INFO-WDT-STORE-RESP), not graded.
         """
 
         def h(v, width=8):
@@ -1910,7 +2328,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             if row["kind"] == "a" and row["r"] is not None:
                 rresp = row["r"].resp
             self.logger.info(
-                "OBS-WDT-STORE-RESP access=(%s) reg=%s bresp=%s rresp=%s",
+                "INFO-WDT-STORE-RESP access=(%s) reg=%s bresp=%s rresp=%s",
                 row["kind"],
                 row["reg"],
                 "X" if resp is None else resp,
@@ -1928,6 +2346,23 @@ class sep_cpu_reset_entry_test(sep_base_test):
             bool(cpu) and not bad and bool(ctl),
             f"cpu_resets={len(cpu)} wdt_low_clk={','.join(str(e.rst_clk) for e in cpu)} "
             f"memif_not_1(epoch,sram,rom)={bad} control_cold_memif_low={ctl}",
+        )
+
+    def _grade_ifu_axcache(self) -> None:
+        total = sum(self.ifu_ar_cache.values())
+        no_hs = [e.idx for e in self.epochs if e.ifu_ar_hs == 0]
+        seen = ",".join(
+            f"{'X' if k is None else f'0b{k:04b}'}:{n}"
+            for k, n in sorted(
+                self.ifu_ar_cache.items(), key=lambda kv: (kv[0] is None, kv[0] or 0)
+            )
+        )
+        self._grade(
+            "CHK-IFU-AXCACHE",
+            bool(self.epochs) and not no_hs and not self.ifu_ar_bad,
+            f"expect=0b{IFU_ARCACHE:04b} handshakes={total} arcache_counts={seen or '-'} "
+            f"epochs={len(self.epochs)} epochs_without_handshake={no_hs} "
+            f"first_mismatch(clk,addr,cache)={self.ifu_ar_bad[:4]}",
         )
 
     def _grade_no_early(self) -> None:

@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The CLA debug interrupt is released by the EapStatus W2C write.
+"""The CLA debug interrupt holds through the W2C and releases once EnableEap is cleared.
 
-Reproducer for #3389: with the pair that fired the debug-interrupt action
-quiet, a single W2C write of its `CDbgEapStatus` bit must clear the status
-and drop `cla_interrupt`.
+With the pair that fired the debug-interrupt action quiet, a W2C write of its
+`CDbgEapStatus` bit with `EnableEap` set clears the status and holds
+`cla_interrupt`; clearing `EnableEap` and writing the W2C bit releases it, and
+setting `EnableEap` again leaves it released (#3389, the documented sequence).
+A W2C write while the relation is still selected leaves the status at 1.
 """
 
 from __future__ import annotations
@@ -16,10 +18,15 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_dfd_cla_irq_w2c_release_test(smc_base_test):
-    """Fire the debug-interrupt action, quiet the pair, write the W2C once, grade the line."""
+    """Fire the debug-interrupt action, then grade the hold and the documented release."""
 
-    required_evidence = ("CHK-CLA-IRQ-W2C-RELEASE",)
-    min_evidence = 1
+    required_evidence = (
+        "CHK-CLA-ACTION-CODE",
+        "CHK-CLA-EAP-SET-OVER-W2C",
+        "CHK-CLA-IRQ-EAP-RELEASE",
+        "CHK-CLA-IRQ-W2C-HOLD",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 

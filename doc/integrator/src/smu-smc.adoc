@@ -243,11 +243,11 @@ is entirely adopter-defined.
 The window starts at `BASE + 0x040_0000` (`0xC040_0000` with `LOCAL_BASE`)
 and spans a fixed 4 MiB, whatever the extent of the adopter's `smc_external`
 register map. The SMC forwards every access in the window to `smc_external_req_o` except the eFuse SHIM range at its base
-(see <<smc-external-mandatory>>); the adopter decodes everything else.
+(see <<smc-external-mandatory>>) and the optional supplementary fuse window
+(see <<smc-external-supplementary>>); the adopter decodes everything else.
 
-The window is split into two regions. Apart from the eFuse SHIM control block
-needed for security reasons, hardware treats both identically -- the split is
-organizational only:
+The window is split into two regions. Apart from those two diverted ranges,
+hardware treats both identically -- the split is organizational only:
 
 * *Mandatory* (`BASE + 0x040_0000`):
   Blocks every integration must implement. OCAH specifications dictate their
@@ -296,7 +296,16 @@ the per-pad GPIO array
 select for that pad
 |PVT wrapper |Control and status of the adopter's process, voltage and
 temperature sensors
+|Supplementary fuse slot |Optional. A slot that holds the window of the SMC
+supplementary fuse region and sets its largest size: 16 KB at
+`BASE + 0x040_7000` in the open map. An adopter can enlarge it in its own
+`smc_external` map; see <<smc-supplementary-fuses>>
 |=======================================================================
+
+The fabric diverts the supplementary fuse window, 4 × `CFG.SMC_SUPPLEMENTARY_FUSE.WORDS`
+bytes from `CFG.SMC_SUPPLEMENTARY_FUSE.BASE`, to the eFuse controller, which
+serves it from the supplementary shadow registers. Those accesses never reach
+`smc_external_req_o`; the rest of the slot is forwarded as usual.
 
 [[smc-efuse-connection]]
 === eFuse Interface
@@ -316,7 +325,7 @@ initialization delay before sensing can begin). Firmware reaches these CSRs
 through the base of the adopter external window; see
 <<efuse-bank-ctrl-window>>.
 * `efuse_shim_command` -- the custom fuse command interface used to issue
-read, program, and program/read-back operations to the eFuse bank.
+read and program operations to the eFuse bank.
 
 *Adopter responsibility.* The `efuse_shim_command` interface is intentionally
 generic and technology-neutral. The adopter must implement an Interface SHIM
@@ -328,7 +337,8 @@ contract, not the macro-side signaling.
 The SMC and the SEP each contain their own eFuse controller, so the `smu.sv`
 boundary carries two independent copies of the interface, one with an `smc_`
 prefix and one with a `sep_` prefix. The adopter places *two separate SHIM and
-macro instances*, one per controller, each fronting its own 8 Kbit bank. The
+macro instances*, one per controller, each fronting its own bank: 2 Kbit for
+the SMC, plus any supplementary fuse region, and 8 Kbit for the SEP. The
 banks are never shared. Each controller also drives its own sense-done output
 to the `smu.sv` boundary, `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`,
 and holds the sensed bank in its own shadow registers.
@@ -392,9 +402,8 @@ The command and response payloads are exchanged as packed structs:
 // Controller -> SHIM
 typedef struct packed {
     addr_t                address;             // Target address (in bits)
-    logic                 program_data;        // Data to program (when programming)
-    access_length_words_t access_length_words; // Number of WORD_WIDTH words to access
-    command_t             command;             // READ / PROGRAM / PROGRAM_READ_BACK
+    word_count_t          read_word_count;     // Number of WORD_WIDTH words to read
+    command_t             command;             // READ / PROGRAM
     logic                 valid;               // Request valid
 } fuse_command_req_t;
 
@@ -406,22 +415,30 @@ typedef struct packed {
 } fuse_command_resp_t;
 ----
 
-`command` is `efuse_pkg::fuse_command_e`: `FUSE_COMMAND_READ` (`+2'b00+`),
-`FUSE_COMMAND_PROGRAM` (`+2'b01+`) and `FUSE_COMMAND_PROGRAM_READ_BACK`
-(`+2'b10+`).
+`command` is `efuse_pkg::fuse_command_e`: `FUSE_COMMAND_READ` (`+1'b0+`) and
+`FUSE_COMMAND_PROGRAM` (`+1'b1+`).
 
 The SHIM implements two operations, reads and programs:
 
 * *Reads.* If a request has `command` set to `FUSE_COMMAND_READ` and
-`access_length_words` set to _N_, respond with _N_ `valid` strobes, each
+`read_word_count` set to _N_, respond with _N_ `valid` strobes, each
 carrying one `WORD_WIDTH` word in `data`, reading consecutive words starting
-at `address`. Firmware reads set _N_ to one; fuse sensing sets it to the whole
-bank, as described below.
+at `address`. _N_ is one for a firmware read and, for fuse sensing, the whole
+bank: `NumShadowWords`, plus `CFG.SMC_SUPPLEMENTARY_FUSE.WORDS` in the SMC, as
+described below. The controller issues no other value.
 * *Programs.* If a request has `command` set to `FUSE_COMMAND_PROGRAM`, program
-the single bit at `address` and respond with one `valid` strobe when the macro
-finishes. `program_data` is always 1 and `access_length_words` is always 1.
-For `FUSE_COMMAND_PROGRAM_READ_BACK`, also read the word back, return it in
-`data`, and set `status` if the programmed bit did not stick.
+the single bit at `address` using the foundry's native program flow and respond
+with one `valid` strobe when done. The bit is always programmed to 1, and
+`read_word_count` is 0. The SHIM decides whether to verify the bit and what to
+return in `data`. Set `status` for any error the macro reports during the
+program, not only for a failed verify, since a bit that already reads 1 passes a
+verify even when the program failed. The reference SHIM sets `status` when the
+write or its read-back answers PSLVERR, or when the read-back shows the bit
+clear.
++
+NOTE: If the macro does not verify automatically, firmware should read the bit
+back through `EFUSE_READ_CTRL` *before* setting any read lock on the field.
+Setting a read lock first blocks the follow-up read through the guard.
 
 Both operations follow these rules:
 
@@ -459,20 +476,24 @@ Fuse sensing happens *once per cold boot*, when the eFuse controller's primary
 reset is released. It runs in *both* eFuse controller instances, SMC and SEP,
 each against its own bank. CPU and warm resets do not repeat it.
 
-The adopter must provide *8 Kbit of fuses (8192 bits, 256 32-bit words) for
-each instance*: one bank behind the SMC SHIM and a second, separate bank
-behind the SEP SHIM. For both, `NumShadowWords` is 256.
+The adopter must provide *2 Kbit of fuses (2048 bits, 64 32-bit words) behind
+the SMC SHIM* and a second, separate bank of *8 Kbit (8192 bits, 256 32-bit
+words) behind the SEP SHIM*. `NumShadowWords` is 64 for the SMC and 256 for
+the SEP. An SMC supplementary fuse
+region adds 32 × `CFG.SMC_SUPPLEMENTARY_FUSE.WORDS` bits after them
+(<<smc-supplementary-fuses>>).
 ====
 
 *Fuse sensing protocol.* During automatic sensing the controller issues a
-single read with `access_length_words` set to the entire bank:
-`NumShadowWords`, which is `SHADOW_REG_BITS / WORD_WIDTH`. The SHIM is expected
+single read from bit 0 with `read_word_count` set to the entire bank:
+`NumShadowWords`, which is `SHADOW_REG_BITS / WORD_WIDTH`, plus
+`CFG.SMC_SUPPLEMENTARY_FUSE.WORDS` in the SMC. The SHIM is expected
 to stream the bank back one `WORD_WIDTH` word at a time: for each OTP access it
 drives the read `data` onto `efuse_shim_command_resp_i.data` and asserts
 `valid` for *exactly one cycle*. The controller consumes one word per cycle
 that `valid` is high, advancing to the next eFuse word on each assertion.
 
-<<efuse-sense-timing-fig>> shows the stream for the 256-word bank. The sense FSM
+<<efuse-sense-timing-fig>> shows the stream for the SEP's 256-word bank. The sense FSM
 leaves `ST_READ` after one cycle and waits in `ST_WAIT`. Each `valid` strobe
 stores `data` into shadow word `words_received_q` and increments the count one
 cycle later. Gaps between strobes are allowed, as between cycles 2 and 4, and
@@ -504,6 +525,54 @@ The `smc_shadow_regs_o` output gives adopter read-only access to the
 sensed SMC bank. The SMU has no equivalent SEP output: the SEP bank holds
 secrets such as the class key and device UIDs, so its shadow registers stay
 inside SEP.
+
+[[smc-supplementary-fuses]]
+==== Supplementary Fuse Region
+
+The SMC can sense adopter-defined fuses after its harness map, for logic
+elsewhere in the SoC such as memory repair or sensor trim. The
+harness stores, locks and exports them but never interprets them. See
+ifdef::backend-html5[]
+xref:ocah-docs:ip:efuse/doc/index.adoc#efuse-supplementary-fuses[Supplementary Fuse Region]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _Supplementary Fuse Region_ section of the Technical Reference Manual
+endif::backend-pdf[]
+for the configuration rules and the lock model. To add a region:
+
+* *Size the slot.* The region can be up to the size of the `fuse` slot of the
+supplementary region in `smc_external`: the open map reserves 16 KB, 4096 words
+or 128 Kbit, at `BASE + 0x040_7000`. For a larger region, enlarge the slot in
+the adopter's `smc_external` map, anywhere it does not overlap another block,
+and regenerate the register collateral. `WORDS` may not exceed 65535.
+* *Configure it.* Set `CFG.SMC_SUPPLEMENTARY_FUSE`: the window offset `BASE`
+in `smc_external`, at or above `CFG.SMC_EFUSE_SHIM_SIZE` and usually in the
+slot, the size `WORDS` and the lock region end offsets
+`LOCK_REGION_END`. `WORDS = 0`, the SMU
+default, removes the region. The reference `smu_wrapper` and `smc_wrapper`
+enable the example in `smc_supplementary_fuse_example_pkg`; `smu_wrapper` turns it
+off with `SUPPLEMENTARY_FUSE_EXAMPLE = 0`.
+* *Provide the fuses.* The SMC bank grows to 2048 + 32 × `WORDS` bits, with the
+supplementary fuses at bit 2048 onward. They may sit in further macros behind the
+same SMC SHIM.
+* *Size the SHIM for the slot.* The request's `address` and word count are
+sized for 64 harness words plus the full slot, regardless of `WORDS`. With
+the 16 KB open slot they are 18 and 13 bits wide; a larger slot
+widens them.
+* *Return the boot READ in linear order.* Fuse sensing is still one READ of
+64 + `WORDS` words from bit 0. When the bank spans several macros, the SHIM
+must cross each macro boundary inside that one command and return every word
+in ascending address order, one `valid` strobe per word. The controller assigns
+words to the harness and supplementary shadow files by count alone.
+* *Connect the output.* `smc_supplementary_shadow_regs_o` carries `WORDS` 32-bit
+words to the adopter's logic, gated like `smc_shadow_regs_o`. Cast
+it to a struct from the adopter's own RDL if one is wanted;
+`hw/top/smc_supplementary_fuse_map.rdl` is an example.
+* *Keep secrets out.* The supplementary fuse region has no secure-test masking or scan
+protection.
+* *Fix the lock regions before burning locks.* `SUPPLEMENTARY_LOCKS` pair _n_ locks
+region _n_, so once parts carry burned lock bits the region may grow only by
+appending regions.
 
 == Memory Subsystem Integration
 
@@ -545,6 +614,15 @@ and before MBIST operations. The process must complete successfully before the
 CPU cluster can safely access SRAM arrays. Repair is required on every cold
 reset but can be bypassed during Function Level Reset (FLR) operations for
 faster recovery.
+
+Assert `ext_boot_seq_done_i` only once every SMC memory macro is safe to use.
+Asserting it continues the boot and releases the cores from reset, so any
+boot-time task that prepares the memories, such as memory repair or MBIST,
+must finish first. This covers the L1 instruction- and data-cache macros as
+well as the scratchpad: the boot ROM is cacheable and Rocket has no
+instruction-cache enable or bypass, so the first instruction fetch after reset
+release already goes through the L1 instruction-cache arrays. The ROM runs from
+those arrays, so no firmware check can cover them.
 
 === Control Signals
 
@@ -591,8 +669,9 @@ of the strap registers in the adopter peripheral window. Keep these three mechan
 * External repair logic independently honors `skip_mem_repair_o` to decide
   whether to bypass physical repair operations.
 
-Use bypass mode only when SRAM arrays are guaranteed defect-free, such as
-during development or with known-good components.
+Use bypass mode only when SRAM arrays, the L1 cache macros included, are
+guaranteed defect-free, such as during development or with known-good
+components.
 
 === Integration Requirements
 
@@ -601,7 +680,10 @@ Provide an external memory repair controller that monitors
 bypass control, reads repair data from eFuse shadow registers, applies repair
 configuration to SRAM arrays, asserts `ext_boot_seq_done_i` and updates
 `DFX_CTRL_STATUS` with completion status. The controller operates independently
-of the SMC core and must complete before the CPU cluster accesses SRAM.
+of the SMC core and must complete before the CPU cluster accesses SRAM: the
+scratchpad banks and the L1 instruction- and data-cache tag and data macros on
+`smc_l1_icache_*` and `smc_l1_dcache_*`. Assert `ext_boot_seq_done_i` only
+once all of them are safe to use.
 
 Note: For a standalone SEP, the adopter must synchronize `ext_boot_seq_done_i` to
 the system clock and ensure the signal is held until next cold reset.

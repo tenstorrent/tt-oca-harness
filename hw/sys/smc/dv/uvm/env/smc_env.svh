@@ -29,9 +29,8 @@
 //     (smc_scratch_csr_ref_model, smc_default_reg_ref_model,
 //     smc_lock_csr_ref_model, smc_mutex_sema_ref_model,
 //     smc_spm_mem_ref_model, smc_regblock_wide_ref_model, smc_wdt_csr_ref_model,
-//     smc_fabric_reg_ref_model), and the
-//     always-on smc_scoreboard pairing each feature's expected stream with
-//     the observed one.
+//     smc_fabric_reg_ref_model, smc_mailbox_fifo_ref_model), and the always-on
+//     smc_scoreboard pairing each feature's expected stream with the observed one.
 //
 // The cocotb twin is env/smc_env.py.
 

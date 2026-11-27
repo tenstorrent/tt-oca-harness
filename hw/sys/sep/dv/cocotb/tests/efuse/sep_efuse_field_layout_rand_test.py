@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Used bits of nine narrow fuse registers at drawn edge values; no shadow word holds the JTAG ID.
+"""Used bits of eight narrow fuse registers at drawn edge values; no shadow word holds the JTAG ID.
 
 The used-bit ranges of ``LC_STATE``, ``SBOOT_DIS``, ``TRANSIENT_RMA_EN``,
-``CHIPLET_PUBK_REVOKE``, ``STATUS_RPT``, ``ROM_CTL``, ``SYSCLK_FREQ_MHZ``,
-``REQUIRED_SIGNERS`` and ``REQUIRED_ALGS`` read back as staged, at edge values that the
-seed draws. A drawn non-zero ``jtag_id_i[31:1]`` enters no shadow word: the JTAG ID is
+``CHIPLET_PUBK_REVOKE``, ``STATUS_RPT``, ``SYSCLK_FREQ_MHZ``, ``REQUIRED_SIGNERS`` and
+``REQUIRED_ALGS`` read back as staged, at edge values that the seed draws. ``ROM_CTL``
+has no used bit and is not graded here. A drawn non-zero ``jtag_id_i[31:1]`` enters no shadow word: the JTAG ID is
 not in the fuse map and is a top-level port.
 
 Sources: ``hw/sys/sep/doc/otp_fuse_controller.adoc`` (section Fuse Fields, field table
@@ -21,8 +21,9 @@ makes no program, no shadow write and no lock write.
 The offset table comes from the RDL-generated register header (``SEP_EFUSE_MAP_*_REG_OFFSET``
 of ``regs/gen/py/sep_reg.py``, through ``SepEfuseImage``) and the widths from the
 register sizes of the RDL-generated IP-XACT (``regs/gen/ipxact/sep.xml``); a table that
-does not tile words 0 to 255 with 43 registers fails the leaf before any DUT access
-(``SETUP FAIL reason=table_tile``). The used-bit masks come from the RDL field masks
+does not tile words 0 to 255 with 43 registers logs ``CTRL-MISSING TABLE-TILE`` and
+fails the leaf before any DUT access (``SETUP FAIL reason=table_tile``); a table that
+tiles them logs ``CTRL-TABLE-TILE`` before the first DUT access. The used-bit masks come from the RDL field masks
 (``field_used_masks`` of ``env/sep_efuse_plan.py``).
 
 Checkers:
@@ -67,7 +68,6 @@ _GRADED = (
     "TRANSIENT_RMA_EN",
     "CHIPLET_PUBK_REVOKE",
     "STATUS_RPT",
-    "ROM_CTL",
     "SYSCLK_FREQ_MHZ",
     "REQUIRED_SIGNERS",
     "REQUIRED_ALGS",
@@ -132,17 +132,18 @@ class sep_efuse_field_layout_rand_test(sep_base_test):
 
         # Step 1: offset table from the generated map; fails before any DUT access.
         table = offset_table()
-        if not table_tiles(table):
-            self.logger.error(
-                "SETUP FAIL seed=%d reason=table_tile rows=%d table=%s", seed, len(table), table
-            )
-            raise AssertionError(f"SETUP FAIL seed={seed} reason=table_tile")
+        tiles = table_tiles(table)
 
         # Steps 2-4: the plan (prestaged image, drawn classes, jtag_id_i).
         p = plan(TEST, seed)
         for line in p.log_lines():
             self.logger.info("%s", line)
         self.chk = SepChkLog(self, TEST, seed)
+        if not self.chk.ctrl("TABLE-TILE", tiles, rows=len(table)):
+            self.logger.error(
+                "SETUP FAIL seed=%d reason=table_tile rows=%d table=%s", seed, len(table), table
+            )
+            raise AssertionError(f"SETUP FAIL seed={seed} reason=table_tile")
         self.fd = SepEfuseFd(self)
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
@@ -183,7 +184,7 @@ class sep_efuse_field_layout_rand_test(sep_base_test):
             )
         hook = self._hook_ok(self._port(), "field_reads") and hook
 
-        # Step 7: the nine graded narrow registers, one 32-bit read each.
+        # Step 7: the eight graded narrow registers, one 32-bit read each.
         offs = {n: off for n, off, _nw in table}
         open_graded_window(TEST, self.logger)
         n_lines = 0

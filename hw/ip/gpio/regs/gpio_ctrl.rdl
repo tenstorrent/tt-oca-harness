@@ -51,8 +51,8 @@ addrmap gpio_ctrl {
         field {
             sw = r;
             hw = w;
-            desc = "When set, this bit indicates that the strap value is valid. This field is not set if the GPIO is not an input by default";
-        } strap_valid[20:20] = 0x1;
+            desc = "Reflects the INPUT_BY_DEFAULT parameter of the instance: 1 when the pad is an input by default and strap capture is supported, 0 otherwise. Fixed at integration; not a capture-done or reset-done flag.";
+        } strap_valid[20:20];
 
         field {
             sw = r;

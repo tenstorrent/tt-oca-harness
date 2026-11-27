@@ -185,6 +185,7 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
         self.dat_aliased = 0
         self.dct_dropped = 0
         self.dct_after_known_bits = 0
+        self.dat_saturated = 0
 
     async def _entry(self, tag: str, addr_of, instance: int, words: int) -> int:
         value = 0
@@ -248,6 +249,21 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
             )
         self.dat_aliased += 1
 
+    async def _dat_saturate(self, i: int) -> None:
+        """Every declared DAT bit of entry 0 set together, then cleared together."""
+        await self._write_dat("DAT_ONES_I", i, DAT_MASK)
+        ones = await self._entry("DAT_ONES_RB_I", dat_word, i, DAT_WORDS)
+        assert ones & DAT_MASK == DAT_MASK, (
+            f"I3C{i} DAT entry 0 reads 0x{ones:016x} after every declared field was written 1 "
+            f"(mask 0x{DAT_MASK:016x})"
+        )
+        await self._write_dat("DAT_ONES_CLEAR_I", i, 0)
+        zero = await self._entry("DAT_ONES_CLR_RB_I", dat_word, i, DAT_WORDS)
+        assert zero & DAT_MASK == 0, (
+            f"I3C{i} DAT entry 0 reads 0x{zero:016x} after the all-ones entry was cleared"
+        )
+        self.dat_saturated += 1
+
     async def _dct_write_dropped(self, tap: _RawReadTap, i: int, before: str) -> None:
         for tag, addr_of in (("DCT_WR0_I", dct_word), ("DCT_WR16_I", dct_alias_word)):
             await self.csr_write(f"{tag}{i}", addr_of(i, 0), DCT_WRITE_WORD)
@@ -300,6 +316,8 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
                     f"I3C{i} DAT entry 0 reads 0x{cleared:016x} after being cleared"
                 )
             for i in instances:
+                await self._dat_saturate(i)
+            for i in instances:
                 await self._dat_alias(i)
 
             for i in instances:
@@ -315,6 +333,13 @@ class smc_i3c_dxt_table_test_seq(SmcCsrSeq):
                 self.dct_checked += 1
                 await self._dct_write_dropped(tap, i, second)
 
+        cocotb.log.info(
+            "CHK-I3C-DAT-ALL-ONES: on each of the %d I3C instances DAT entry 0 took every "
+            "declared field at 1 together (0x%016x) and read it back, then took 0 and read "
+            "back 0, so each declared table bit carried both values through the CSR window",
+            self.dat_saturated,
+            DAT_MASK,
+        )
         cocotb.log.info(
             "CHK-I3C-DAT-ALIAS-16: on each of the %d I3C instances DAT entry 0 written at its "
             "own offset read back through slot %d (+0x%x) and a write through slot %d read back "

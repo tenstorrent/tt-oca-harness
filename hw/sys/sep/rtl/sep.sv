@@ -16,6 +16,7 @@
 
 `include "axi/assign.svh"
 `include "ocah_assert.svh"
+`include "ocah_debug_axi.svh"
 
 module sep #(
   parameter bit KM_LATCHED_MEM_RDATA = 1'b1,  // 1 if Key Manager ROM/SRAM latch read data for
@@ -58,8 +59,9 @@ module sep #(
                                                                 // per-engine crypto resets, in the
                                                                 // TCK domain.
 
-  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager request to the eFuse wrapper; answered with DECERR in
-                                                                    // restricted lifecycle states.
+  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager request to the eFuse wrapper; in PROD, RMA_SiP or on an
+                                                                    // LC_STATE integrity error, an access outside the eFuse MMR
+                                                                    // space is answered with SLVERR and read data 0xBADCAB1E.
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,  // OTP debug AXI-Lite manager response.
 
   input  logic mpc_debug_halt_req_i,          // Async MPC debug halt request.
@@ -225,9 +227,8 @@ module sep #(
   output sep_pkg::sep_ras_t sep_ras_o,        // Error, watchdog and hang indications for chip-level
                                               // RAS aggregation, on clk_i.
 
-  output logic [383:0] ext_debug_bus_o        // 24 lanes of 16 bits: CPU trace and control status,
-                                              // interrupts, reset and security status, eFuse, remap
-                                              // and filter debug; bits [159:0] are 0.
+  output logic [383:0] ext_debug_bus_o        // 24 lanes of 16 bits; the lane map is at the
+                                              // ext_debug_bus_o assignment, and unused lanes are 0.
 );
 
   /////////////////////////
@@ -255,9 +256,8 @@ module sep #(
   logic cpu_halt_status_o;
   logic debug_mode_status_o;
   logic cpu_run_ack_o;
-  logic [9:0] sep_efuse_debug;
-  logic [5:0] sep_efuse_token_match_sip_debug;
-  logic [5:0] sep_efuse_token_match_chiplet_debug;
+  logic [15:0] sep_efuse_debug;
+  logic [13:0] sep_isolate_state_debug;
 
   sep_pkg::remap_debug_t         local_masters_remap_debug;
   logic [$clog2(sep_pkg::OutboundFilterNumFilters)-1:0]
@@ -1004,8 +1004,6 @@ NumSramDemuxPorts
     .edn_fatal_alert_o                      (edn_fatal_alert),
 
     .sep_efuse_debug_o                      (sep_efuse_debug),
-    .sep_efuse_token_match_sip_debug_o      (sep_efuse_token_match_sip_debug),
-    .sep_efuse_token_match_chiplet_debug_o  (sep_efuse_token_match_chiplet_debug),
 
     .locked_field_access_interrupt_o        (locked_field_access_interrupt),
 
@@ -1041,7 +1039,10 @@ NumSramDemuxPorts
     .sep_io_axi_resp_o (sep_io_axi_resp),
 
     .sep_io_spi_req_o  (sep_io_spi_req_o),
-    .sep_io_spi_rsp_i  (sep_io_spi_rsp_i)
+    .sep_io_spi_rsp_i  (sep_io_spi_rsp_i),
+
+    .spi_bus_err_o     (periph_bus_err[sep_pkg::PERIPH_BUS_ERR_SPI]),
+    .spi_bus_err_clr_i (periph_bus_err_clr[sep_pkg::PERIPH_BUS_ERR_SPI])
   );
 
   //////////////////////
@@ -1183,7 +1184,8 @@ NumSramDemuxPorts
     .sep_wdt_reset_no           (sep_wdt_reset_n),
     .sep_crypto_isolate_req_o   (sep_crypto_isolate_req),
     .sep_crypto_isolated_i      (sep_crypto_isolated),
-    .sep_crypto_gated_rst_no    (sep_crypto_gated_rst_n)
+    .sep_crypto_gated_rst_no    (sep_crypto_gated_rst_n),
+    .isolate_state_debug_o      (sep_isolate_state_debug)
   );
 
   ////////////////
@@ -1273,10 +1275,6 @@ NumSramDemuxPorts
       ExtDebugEccPerfLaneWidth_A, $bits
       ({cpu_iccm_ecc_single_error, cpu_iccm_ecc_double_error, cpu_dccm_ecc_single_error, cpu_dccm_ecc_double_error, cpu_dec_tlu_perfcnt0, cpu_dec_tlu_perfcnt1, cpu_dec_tlu_perfcnt2, cpu_dec_tlu_perfcnt3, 8'b0}
           ) == 16)
-  `OCAH_ASSERT_STATIC(
-      ExtDebugInterruptLaneWidth_A, $bits
-      ({intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq, entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error, 1'b0}
-          ) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugResetStatusLaneWidth_A, $bits
                       ({sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugTraceAddressLaneWidth_A, $bits
@@ -1290,11 +1288,6 @@ NumSramDemuxPorts
       ExtDebugControlLaneWidth_A, $bits
       ({8'b0, cpu_run_ack_o, debug_mode_status_o, cpu_halt_status_o, cpu_halt_ack_o, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
           ) == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugSipTokenLaneWidth_A, $bits({10'b0, sep_efuse_token_match_sip_debug})
-                      == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugChipletTokenLaneWidth_A, $bits
-                      ({10'b0, sep_efuse_token_match_chiplet_debug}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugRemapLaneWidth_A, $bits({6'b0, local_masters_remap_debug}) == 16)
   `OCAH_ASSERT_STATIC(ExtDebugOutboundFilterLaneWidth_A, $bits
                       ({{(16 - 2 * $clog2(sep_pkg::OutboundFilterNumFilters)
@@ -1304,7 +1297,18 @@ NumSramDemuxPorts
                       ({{(16 - 2 * $clog2(sep_pkg::InboundFilterNumFilters)
                        ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug})
                       == 16)
-  `OCAH_ASSERT_STATIC(ExtDebugReservedLanesWidth_A, $bits(160'b0) == 10 * 16)
+
+  // axi_debug[i] is ext_debug_bus_o[16*i+31:16*i+16].
+  logic [8:0][15:0] axi_debug;
+  assign axi_debug[8] = `OCAH_DEBUG_AXI4_LANE(smn_inbound_axi_req_i, smn_inbound_axi_resp_o);
+  assign axi_debug[7] = `OCAH_DEBUG_AXI4_LANE(smn_outbound_axi_req_o, smn_outbound_axi_resp_i);
+  assign axi_debug[6] = `OCAH_DEBUG_AXI4_LANE(lsu_xbar_axi_req, lsu_xbar_axi_resp);
+  assign axi_debug[5] = `OCAH_DEBUG_AXI4_LANE(ifu_sram_axi_req, ifu_sram_axi_resp);
+  assign axi_debug[4] = `OCAH_DEBUG_AXI4_LANE(ifu_rom_axi_req, ifu_rom_axi_resp);
+  assign axi_debug[3] = `OCAH_DEBUG_AXI4_LANE(sep_ext_to_smc_axi_req_o, sep_ext_to_smc_axi_resp_i);
+  assign axi_debug[2] = `OCAH_DEBUG_AXI4_LANE(dma_axi_req, dma_axi_resp);
+  assign axi_debug[1] = 16'b0;
+  assign axi_debug[0] = `OCAH_DEBUG_AXI4_LANE(sep_external_axi_req_o, sep_external_axi_resp_i);
 
   // External debug bus assignment (24 lanes, 16 bits per lane)
   assign ext_debug_bus_o = {
@@ -1325,16 +1329,8 @@ NumSramDemuxPorts
     cpu_dec_tlu_perfcnt3,
     8'b0,
 
-    // [351:336] Seven scalar interrupts, eight mailbox interrupts, one reserved bit
-    intr_wdog_timer_bark,
-    sep_mailbox_interrupt,
-    km_mbox_irq,
-    entropy_source_irq,
-    ext_trng_irq,
-    intr_dma_done,
-    intr_dma_chunk_done,
-    intr_dma_error,
-    1'b0,  // [336] Reserved
+    // [351:336] Reserved
+    16'b0,
 
     // [335:320] Reset and security status
     sep_reset_n,
@@ -1364,17 +1360,14 @@ NumSramDemuxPorts
     mpc_debug_run_ack,  // [257]
     mpc_debug_halt_ack,  // [256]
 
-    // [255:240] SEP eFuse debug
-    6'b0,  // [255:250] Reserved padding
-    sep_efuse_debug,  // [249:240]
+    // [255:240] SEP eFuse debug: [255:250] FSM states, [249:240] flags
+    sep_efuse_debug,
 
-    // [239:224] SEP eFuse RMA SiP token match debug
-    10'b0,  // [239:230] Reserved padding
-    sep_efuse_token_match_sip_debug,  // [229:224]
+    // [239:224] Crypto isolation FSMs, 2 bits per SW_RESET_N domain: 0 reset, 1 drain, 2 run
+    16'(sep_isolate_state_debug),
 
-    // [223:208] SEP eFuse RMA chiplet token match debug
-    10'b0,  // [223:214] Reserved padding
-    sep_efuse_token_match_chiplet_debug,  // [213:208]
+    // [223:208] Reserved
+    16'b0,
 
     // [207:192] Local masters address-remap hit debug
     6'b0,  // [207:202] Reserved padding
@@ -1394,8 +1387,11 @@ NumSramDemuxPorts
     inbound_write_filter_hit_debug,
     inbound_read_filter_hit_debug,
 
-    // [159:0] Reserved for future use
-    160'b0
+    // [159:16] AXI handshakes, see axi_debug
+    axi_debug,
+
+    // [15:0] Reserved
+    16'b0
   };
 
 endmodule

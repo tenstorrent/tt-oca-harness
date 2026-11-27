@@ -31,6 +31,7 @@ import cocotb
 from cocotb.triggers import ClockCycles
 
 from seq_lib.smu_compose_helpers import (
+    CTP_INT_CFG_BITS,
     DTP_NUM_CLK_STOP_REQ,
     DTP_NUM_INT_CT,
     JTAG_NUM_EXTRA_STAPS,
@@ -44,6 +45,7 @@ from seq_lib.smu_compose_helpers import (
     GenerateScope,
     bit_width,
     hier,
+    int_ct_p2p_mask,
     parse_plusarg_int,
     sample,
 )
@@ -130,14 +132,14 @@ class smu_composition_parameter_seq:
         )
         dtp_mode = hier(smu, "u_dtp.XTRIG_INT_CT_MODE")
         sb.expect_eq(
-            "u_dtp.XTRIG_INT_CT_MODE width is the DTP internal CT count",
+            "u_dtp.XTRIG_INT_CT_MODE holds one lane configuration per DTP internal CT",
             bit_width(dtp_mode, "u_dtp.XTRIG_INT_CT_MODE"),
-            DTP_NUM_INT_CT,
+            DTP_NUM_INT_CT * CTP_INT_CFG_BITS,
             evidence="CHK-SMU-NOSEP-S4",
         )
         sb.expect_eq(
-            "u_dtp.XTRIG_INT_CT_MODE is the elaborated mode above zeroed SMC-reserved bits",
-            sample(dtp_mode, "u_dtp.XTRIG_INT_CT_MODE"),
+            "u_dtp.XTRIG_INT_CT_MODE is the elaborated mode above wire-OR SMC-reserved lanes",
+            int_ct_p2p_mask(sample(dtp_mode, "u_dtp.XTRIG_INT_CT_MODE"), DTP_NUM_INT_CT),
             (xtrig_mode & ((1 << XTRIG_NUM_INT_CT) - 1)) << XTRIG_SMC_INT_CT_LANES,
             evidence="CHK-SMU-NOSEP-S4",
         )

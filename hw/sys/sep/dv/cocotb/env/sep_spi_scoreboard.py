@@ -39,14 +39,16 @@ pad taps, so neither the flash model nor the leaf supplies them:
   segment decodes its low lanes, the least significant on lane 0.
 
 A transmit decode (the TX payload from the lanes, and every tx segment) also
-needs each beat's data lane output enables to equal the segment's lanes
-exactly (x1 0001, x2 0011, x4 1111); a beat with another pattern is a
-mismatch. Receive and dummy beats are not graded for their enables.
+needs each beat's output enables on the lanes in use to equal the segment's
+pattern (x1 lanes 1:0 = 0b01, lane 1 being the input, ``ToO:29``; x2 lanes
+1:0 = 0b11; x4 lanes 3:0 = 0b1111); a beat with another pattern is a
+mismatch. Lanes 3:2 at x1 and x2 are not graded: no source states them.
+Receive and dummy beats are not graded for their enables.
 
 With ``order`` (a ``SepSpiByteOrder``), the expected bytes of each TX
 payload and tx segment are ``order.tx_bytes(data, wire)``: the stimulus
-bytes in the leaf's in-word byte order, chosen by the wire decode, so the
-compare grades the order-free part. The leaf must have pushed exactly
+bytes in the ByteOrder = 1 order (bits 7:0 of each TXDATA word first), so a
+word sent in the other order fails the compare. The leaf must have pushed exactly
 ``pack_tx_words(data)`` for that payload. Without ``order`` the expected
 bytes are ``data`` (``ByteOrder = 1``). RX bytes come in already decoded by
 the leaf (``SepSpiByteOrder.bytes_of``) and are compared as given.
@@ -306,7 +308,7 @@ def _wire_data(
 
     ``None`` when a bit of the first ``limit`` bytes (all bytes by default)
     was sampled as X/Z, or, for a payload decoded from the lanes, was sampled
-    with data lane output enables other than exactly its lanes.
+    with output enables on the lanes in use other than the segment's pattern.
     """
     if frame is None:
         return b""
@@ -332,14 +334,15 @@ def _decode(beats: Sequence[tuple], field_index: int, lanes: int, shift: int) ->
     """Bytes of ``beats`` on ``lanes`` lanes of one beat field, lane ``shift`` first.
 
     ``None`` when the field is X/Z at one of the beats, or, for the controller
-    output field, when a beat's data lane output enables are not exactly the
-    segment's lanes (x1 0001, x2 0011, x4 1111). Receive fields are not graded
-    for their enables.
+    output field, when a beat's output enables on the lanes in use differ from
+    the segment's pattern (x1 lanes 1:0 = 0b01, x2 lanes 1:0 = 0b11, x4 lanes
+    3:0 = 0b1111). Receive fields are not graded for their enables.
     """
     if any(beat[field_index] is None for beat in beats):
         return None
     mask = (1 << lanes) - 1
-    if field_index == 0 and any(beat[1] != mask for beat in beats):
+    in_use = 0b11 if lanes == 1 else mask
+    if field_index == 0 and any(beat[1] is None or beat[1] & in_use != mask for beat in beats):
         return None
     values = [beat[field_index] >> shift for beat in beats]
     return bytes(lanes_to_bytes(values, lanes)[0])

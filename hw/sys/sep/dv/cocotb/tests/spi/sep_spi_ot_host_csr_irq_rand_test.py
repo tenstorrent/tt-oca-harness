@@ -26,9 +26,9 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-SPI-STATUS-RESET: STATUS reads TXSTALL, RXSTALL, TXWM and RXWM at their
                   RDL reset value 0x0 (spi_controller.rdl, STATUS). READY,
                   TXEMPTY, RXEMPTY and BYTEORDER are logged only
-                  (OBS-SPI-STATUS-RESET): the RDL gives reset 0x0, while the
+                  (INFO-SPI-STATUS-RESET): the RDL gives reset 0x0, while the
                   field text (an empty FIFO, the unmodified IP with ByteOrder
-                  1) gives 1; the open question is in SEP_VPLAN.
+                  1) gives 1; not graded; no open specification question.
   CHK-REG-RW    : each RW reg write->readback exact; bits outside the writable
                   mask (RO/reserved) read 0.
   CHK-INTR      : INTR_STATE.ERROR is an Event latch -- INTR_TEST sets it with
@@ -50,7 +50,9 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-SPI-ALERT-TEST: with INTR_ENABLE = both bits, a write of 1 to
                   ALERT_TEST.fatal_fault leaves INTR_STATE 0 and
                   sep_internal_interrupts[13] 0 on every clk_i cycle of the
-                  sample window. The SPI line is the OR of the error and
+                  sample window, which opens when the write is issued
+                  because the alert receiver acknowledges the pair before
+                  the write response returns. The SPI line is the OR of the error and
                   SPI-event interrupts (hw/sys/sep/doc/spi.adoc, Interrupts),
                   and ALERT_TEST triggers an alert event, not an interrupt
                   (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/
@@ -60,10 +62,48 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   (tap spi_alert_tx_probe_o) reads idle before the write and
                   fired inside the window (CTRL-SPI-ALERT-REACH, else
                   CTRL-MISSING); INTR_TEST.ERROR at the same enable raises the
-                  line inside the same window. The response code is logged
-                  (OBS-SPI-ALERT-RESP): no specification states the response
-                  code of a legal register write. The other vector bits are
-                  logged (OBS-SPI-ALERT-TEST).
+                  line inside the same window. The response code is logged,
+                  not graded (INFO-SPI-ALERT-RESP): no specification states
+                  the response code of a legal register write. The other
+                  vector bits of the same window are logged
+                  (INFO-SPI-ALERT-TEST).
+  CHK-SPI-BUS-ERR: on each read of a write-only register and each write to a
+                  read-only register (the accesses of INFO-SPI-WO-RO-ACCESS), a
+                  SLVERR response gives PERIPH_BUS_ERR_STATUS equal to the spi
+                  bit alone, sep_ras_o.periph_bus_err[spi] 1 and PIC source 43
+                  (sep_internal_interrupts bit 42) 1; an OKAY response gives all
+                  three 0. A write of PERIPH_BUS_ERR_CLEAR.spi returns all three
+                  to 0, and the baseline before the first access is 0
+                  (hw/sys/sep/doc/spi.adoc, Register-Bus Faults). Control
+                  (CTRL-SPI-BUS-ERR-RESP, else CTRL-MISSING): the accesses give at
+                  least one OKAY and one SLVERR response.
+  CHK-SPI-ALERT-BUS-ERR: the write of 1 to ALERT_TEST.fatal_fault sets
+                  PERIPH_BUS_ERR_STATUS to the spi bit alone, sep_ras_o
+                  periph_bus_err[spi] 1 and PIC source 43 1; a write of
+                  PERIPH_BUS_ERR_CLEAR.spi returns all three to 0, and they
+                  are still 0 after the INTR_TEST control window of
+                  CHK-SPI-ALERT-TEST. The graded FCOV window is open from the
+                  ALERT_TEST write to the end of the sample window and
+                  samples ``sep_ras_cg.cp_ras_rise.periph_bus_err_spi``.
+                  The controls are those of CHK-SPI-ALERT-TEST, plus an
+                  OKAY response to the ALERT_TEST write
+                  (CTRL-MISSING SPI-ALERT-BUS-ERR-RESP otherwise), because
+                  a SLVERR response sets the same bit through the bridge.
+  CHK-SPI-INTG-FAULT: the bench input ``spi_host_intg_inject_i`` forces the
+                  command-integrity checker input of the SPI host register
+                  block for one STATUS read. The fatal_fault alert is sent,
+                  PERIPH_BUS_ERR_STATUS equals the spi bit alone, the RAS bit
+                  and PIC source 43 are 1, and the alert is sent again after
+                  each of three PERIPH_BUS_ERR_CLEAR.spi writes, each of which
+                  reads the bit set again. At least one of the three rounds
+                  shows the RAS bit fall. INTR_STATE reads 0 and the SPI line
+                  (PIC source 14) stays 0 throughout. The fault stays latched
+                  in the core, so this leg runs after all other legs.
+                  Controls: the alert pair fires after the forced error
+                  (CTRL-SPI-INTG-REACH, else CTRL-MISSING); one clear round
+                  shows the bit fall (CTRL-SPI-INTG-CLEAR, else CTRL-MISSING).
+                  The response code of the forced read is logged, not graded
+                  (INFO-SPI-INTG-RESP): no specification states it.
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -88,7 +128,10 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
 RXWM is covered by the RX-path tests (`sep_spi_ot_flash_cmd_rand_test` /
 `sep_spi_ot_dma_rx_test`).
 
-The checks above run first, with the graded FCOV window closed except at the
+The checks above run first, with the graded FCOV window closed except around the
+ALERT_TEST write of CHK-SPI-ALERT-TEST (open from the write to the end of its
+sample window, for the ``periph_bus_err_spi`` bin of ``sep_ras_cg``; the leaf
+drops the held SPI cells of that window) and at the
 CONTROL write that sets the TX_WATERMARK of each CHK-WATERMARK pass: the sampler
 holds that value and samples ``sep_spi_host_rand_cg.cp_tx_wm`` when the leaf
 writes the same value to ``spi_tx_wm_pass`` after the CHK-WATERMARK PASS line.
@@ -131,7 +174,7 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       ERROR_STATUS clear and clears on its own W1C.
   L2 CHK-SPI-CSID-RANGE : a COMMAND at a drawn CSID from 2 to 0xFFFFFFFE sets
                       ERROR_STATUS to CSIDINVAL alone; CSID=1 is logged only
-                      (OBS-SPI-CSID1): at NumCS=1 the OpenTitan SPI_HOST theory
+                      (INFO-SPI-CSID1): at NumCS=1 the OpenTitan SPI_HOST theory
                       of operation says both "in this case the CSID value is
                       ignored" (theory_of_operation.md:205) and "Submitting a
                       command segment to an invalid CSID (one larger or equal
@@ -211,7 +254,7 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       write of the Tx COMMAND raises STATUS.CMDQD by 1 and
                       STATUS.TXQD reads at least 1 after it, or the window
                       shows sck edges. Logged only
-                      (OBS-SPI-CMDINVAL-SPIEN1): STATUS (CMDQD, ACTIVE, TXQD)
+                      (INFO-SPI-CMDINVAL-SPIEN1): STATUS (CMDQD, ACTIVE, TXQD)
                       and the chip select windows while CMDINVAL halts the
                       IP. SW_RST then empties both queues before the write of
                       1, because the core assumes a valid speed and no text
@@ -251,6 +294,7 @@ polls, waits and logged reads carry no mark and hold nothing. A FAIL or
 CTRL-MISSING line writes the drop bit (bit 1) and closes the window before the
 leaf stops. RANDCFG and RAND-REP draws of the legs come from ``SepSeededRng``
 and the run seed and are logged on the PLAN and DRAW lines.
+CHK-SPI-INTG-FAULT runs last, after the four legs.
 """
 
 from __future__ import annotations
@@ -289,12 +333,14 @@ from env.sep_fcov_gate import (
     set_spi_tx_wm_pass,
 )
 from env.sep_field_compare import field_compare
-from env.sep_reg_meta import SPI_CONTROLLER
+from env.sep_ras_map import PERIPH_BUS_ERR_BLOCKS, check_tap_width, ras_bit
+from env.sep_reg_meta import SEP_CPU_CTRL, SPI_CONTROLLER
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic
 from env.sep_spi_pad_sampler import SepSpiPadSampler
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_irq_aggregator_seq import IRQ_PERIPH_OR, PERIPH_CLEAR_ADDR, PERIPH_STATUS_ADDR
 from seq_lib.sep_spi_host_csr_seq import (
     CMD_DIR_TX,
     CMD_SPEED_RESERVED,
@@ -372,13 +418,24 @@ _NEG_WINDOW_FLOOR = 32
 _FILL_LIMIT = 512
 _CMD_LIMIT = 64
 _SPI_AGG = agg_from_pic("SPI IRQ")
-# clk_i cycles sampled after the ALERT_TEST write; the INTR_TEST control must
-# raise the SPI line inside the same window.
+# clk_i cycles sampled from the issue of the ALERT_TEST write; the INTR_TEST
+# control must raise the SPI line inside the same window.
 _ALERT_WIN = 64
-# spi_alert_tx_probe_o encoding {alert_p, alert_n} of prim_alert_pkg::alert_tx_t:
-# idle is the sender reset value, an alert drives the pair to the opposite levels.
-_ALERT_TX_IDLE = 0b01
-_ALERT_TX_FIRED = 0b10
+# The SPI bit of PERIPH_BUS_ERR_STATUS / _CLEAR, of sep_ras_o.periph_bus_err and
+# of the peripheral register-bridge fault PIC source (hw/sys/sep/doc/spi.adoc,
+# Register-Bus Faults).
+_PBE_SPI = PERIPH_BUS_ERR_BLOCKS.index("spi")
+_PBE_SPI_MASK = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_STATUS", "spi")
+_PBE_SPI_CLR = SEP_CPU_CTRL.field_mask("PERIPH_BUS_ERR_CLEAR", "spi")
+_RESP_OKAY = 0
+_RESP_SLVERR = 2
+# Clear rounds of the integrity-fault leg. Each round must show the bit set
+# again after the clear; at least one must also show it fall.
+_INTG_ROUNDS = 3
+# spi_alert_tx_probe_o is the differential pair {alert_p, alert_n}. The leaf
+# takes the idle levels from the tap before the ALERT_TEST write (they must be
+# complementary) and counts an alert as a flip of both wires from idle.
+_ALERT_PAIR = 0b11
 
 # ---- Legs L1 to L4 -----------------------------------------------------------
 TEST = "sep_spi_ot_host_csr_irq_rand_test"
@@ -411,7 +468,7 @@ _FAM_SWRST = SPI_CSR_IRQ_FAM_SW | SPI_CSR_IRQ_FAM_DOM
 _FAM_SPIEN = SPI_CSR_IRQ_FAM_SZ | SPI_CSR_IRQ_FAM_QD
 _R = SPI_CONTROLLER
 ALERT_TEST = _R.addr("ALERT_TEST")
-# Write-only registers read, and read-only registers written, by _obs_wo_ro.
+# Write-only registers read, and read-only registers written, by _info_wo_ro.
 _WO_READS = (
     ("COMMAND", COMMAND),
     ("TXDATA", TXDATA),
@@ -439,7 +496,7 @@ _LEG_CHECKS = (
     "CHK-SPI-SPIEN",
     "CHK-SPI-CMDINVAL-SPIEN1",
 )
-_OPEN_CHECKS = 8
+_OPEN_CHECKS = 11
 # Separates the leg stream from the SepSpiHostCfg stream of the same seed.
 _LEG_SALT = 0x5350_4931
 _CTRL_BASE = CTRL_RESET | CTRL_SPIEN | CTRL_OUTPUT_EN
@@ -554,6 +611,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         "CHK-ZERO-STRB",
         "CHK-INTR",
         "CHK-SPI-ALERT-TEST",
+        "CHK-SPI-BUS-ERR",
+        "CHK-SPI-ALERT-BUS-ERR",
+        "CHK-SPI-INTG-FAULT",
         "CHK-ERR-W1C",
         "CHK-WATERMARK",
         "CHK-ENABLE",
@@ -570,7 +630,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
         await self._chk_reset()
         await self._chk_reg_rw()
-        await self._obs_wo_ro()
+        await self._info_wo_ro()
         await self._chk_alert_test()
         await self._chk_zero_strb()
         await self._chk_intr()
@@ -579,6 +639,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self._chk_watermark(half, wm, fill)
         await self._chk_enable()
         await self._extension_legs()
+        await self._chk_intg_fault()
 
     # ---- helpers ----------------------------------------------------------
     async def _sw_rst_pulse(self) -> None:
@@ -636,16 +697,66 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         self.logger.info("CHK-SPI-STATUS-RESET PASS: status=0x%08x %s expect=0", st, text)
         self.logger.info(
-            "OBS-SPI-STATUS-RESET status=0x%08x ready=%d txempty=%d rxempty=%d byteorder=%d",
+            "INFO-SPI-STATUS-RESET status=0x%08x ready=%d txempty=%d rxempty=%d byteorder=%d",
             st,
             *(field(f) for f in ("ready", "txempty", "rxempty", "byteorder")),
         )
 
-    # ---- OBS-SPI-WO-RO-ACCESS ---------------------------------------------
-    async def _obs_wo_ro(self) -> None:
+    # ---- PERIPH_BUS_ERR_STATUS.spi ---------------------------------------
+    async def _pbe(self) -> tuple[int, int, int]:
+        """(PERIPH_BUS_ERR_STATUS, sep_ras_o.periph_bus_err[spi], PIC source 43 level)."""
+        status = await self.spi.rd(PERIPH_STATUS_ADDR)
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        bit = ras_bit("periph_bus_err", _PBE_SPI)
+        ras = (self.rd_known(cocotb.top.sep_ras_probe_o, mask=1 << bit) >> bit) & 1
+        vec = cocotb.top.sep_internal_interrupts_probe_o
+        line = (self.rd_known(vec, mask=1 << IRQ_PERIPH_OR) >> IRQ_PERIPH_OR) & 1
+        await NextTimeStep()
+        return status, ras, line
+
+    async def _pbe_clear(self) -> None:
+        await self.spi.wr(PERIPH_CLEAR_ADDR, _PBE_SPI_CLR)
+
+    @staticmethod
+    def _pbe_text(tag: str, got: tuple[int, int, int]) -> str:
+        return f"{tag}=(status=0x{got[0]:x},ras={got[1]},src43={got[2]})"
+
+    # ---- INFO-SPI-WO-RO-ACCESS + CHK-SPI-BUS-ERR -------------------------
+    async def _info_wo_ro(self) -> None:
         """Log the response and data of a read of each write-only register and of a
-        write to each read-only register, with ERROR_STATUS after each write."""
+        write to each read-only register, with ERROR_STATUS after each write.
+
+        CHK-SPI-BUS-ERR grades the bridge fault path of PERIPH_BUS_ERR_STATUS.spi
+        on the same accesses (hw/sys/sep/doc/spi.adoc, Register-Bus Faults): an
+        access that completes with SLVERR sets the SPI bit alone, the RAS bit and
+        PIC source 43; an access that completes with OKAY leaves all three 0; a
+        write of PERIPH_BUS_ERR_CLEAR.spi returns all three to 0.
+        """
+        check_tap_width(cocotb.top.sep_ras_probe_o)
         rng = SepSeededRng(self.random_seed() ^ _WO_RO_SALT)
+        seed = self.random_seed()
+        clean = (0, 0, 0)
+        await self._pbe_clear()
+        base = await self._pbe()
+        steps = [self._pbe_text("base", base)]
+        ok = base == clean
+        resps: list[int] = []
+
+        async def grade(name: str, resp: int) -> None:
+            nonlocal ok
+            resps.append(resp)
+            got = await self._pbe()
+            bit = int(resp == _RESP_SLVERR)
+            exp = (_PBE_SPI_MASK if bit else 0, bit, bit)
+            steps.append(f"{name}:resp={resp}:{self._pbe_text('got', got)}")
+            ok = ok and resp in (_RESP_OKAY, _RESP_SLVERR) and got == exp
+            if bit:
+                await self._pbe_clear()
+                clr = await self._pbe()
+                steps.append(self._pbe_text("clr", clr))
+                ok = ok and clr == clean
+
         for name, addr in _WO_READS:
             seq = SepAxiAccessSeq(
                 f"spi_wo_rd_0x{addr:08x}",
@@ -656,11 +767,12 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             )
             await self.start_seq(seq)
             self.logger.info(
-                "OBS-SPI-WO-RO-ACCESS reg=%s dir=R resp=%d data=0x%08x err_status=-",
+                "INFO-SPI-WO-RO-ACCESS reg=%s dir=R resp=%d data=0x%08x err_status=-",
                 name,
                 seq.resp_code,
                 seq.rdata & 0xFFFF_FFFF,
             )
+            await grade(f"{name}/R", seq.resp_code)
         for name, addr in _RO_WRITES:
             word = rng.getrandbits(32)
             seq = SepAxiAccessSeq(
@@ -674,13 +786,27 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self.start_seq(seq)
             es = await self.spi.rd(ERROR_STATUS)
             self.logger.info(
-                "OBS-SPI-WO-RO-ACCESS reg=%s dir=W resp=%d data=0x%08x err_status=0x%08x",
+                "INFO-SPI-WO-RO-ACCESS reg=%s dir=W resp=%d data=0x%08x err_status=0x%08x",
                 name,
                 seq.resp_code,
                 word,
                 es,
             )
+            await grade(f"{name}/W", seq.resp_code)
         await self._clear_error_status()
+        text = f"seed={seed} " + " ".join(steps)
+        if _RESP_SLVERR not in resps or _RESP_OKAY not in resps:
+            msg = f"CTRL-MISSING SPI-BUS-ERR-RESP {text}: need one OKAY and one SLVERR access"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info(
+            "CTRL-SPI-BUS-ERR-RESP seed=%d okay=%d slverr=%d",
+            seed,
+            resps.count(_RESP_OKAY),
+            resps.count(_RESP_SLVERR),
+        )
+        assert ok, f"CHK-SPI-BUS-ERR FAIL: {text}"
+        self.logger.info("CHK-SPI-BUS-ERR PASS: %s", text)
 
     # ---- CHK-REG-RW (+ CHK-NONVAC) ---------------------------------------
     async def _chk_reg_rw(self) -> None:
@@ -866,10 +992,119 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             if v.is_resolvable:
                 base = int(v) if base is None else base
                 diff |= int(v) ^ base
-            if alert < 0 and self.rd_known(tap) == _ALERT_TX_FIRED:
+            if alert < 0 and self.rd_known(tap) == self._alert_fired:
                 alert = i
         await NextTimeStep()
         return high, first, diff, alert
+
+    async def _drop_held(self) -> None:
+        """Drop the owner-410 cells held while the window was open outside a leg."""
+        await RisingEdge(cocotb.top.clk_i)
+        set_spi_csr_irq_pass(SPI_CSR_IRQ_PASS_DROP, self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_spi_csr_irq_pass(0, self.logger)
+
+    async def _fault_trace(self, stop: list) -> dict[str, int]:
+        """Count, on each clk_i edge until ``stop`` is non-empty: falls and rises of
+        sep_ras_o.periph_bus_err[spi], fatal_fault alerts the SPI host sends, and
+        cycles with the SPI interrupt line high."""
+        dut = cocotb.top
+        bit = ras_bit("periph_bus_err", _PBE_SPI)
+        out = {"fall": 0, "rise": 0, "alert": 0, "line": 0}
+        prev, prev_tap = None, self._alert_idle
+        while not stop:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            v = (self.rd_known(dut.sep_ras_probe_o, mask=1 << bit) >> bit) & 1
+            if prev is not None:
+                out["fall"] += int(prev == 1 and v == 0)
+                out["rise"] += int(prev == 0 and v == 1)
+            prev = v
+            tap = self.rd_known(dut.spi_alert_tx_probe_o)
+            fired = self._alert_fired
+            out["alert"] += int(tap == fired and prev_tap != fired)
+            prev_tap = tap
+            vec = dut.sep_internal_interrupts_probe_o
+            out["line"] += (self.rd_known(vec, mask=1 << _SPI_AGG) >> _SPI_AGG) & 1
+        await NextTimeStep()
+        return out
+
+    async def _traced(self, action) -> dict[str, int]:
+        """Run ``action`` and _ALERT_WIN clk_i cycles after it under _fault_trace."""
+        stop: list = []
+        trace = cocotb.start_soon(self._fault_trace(stop))
+        await action()
+        await ClockCycles(cocotb.top.clk_i, _ALERT_WIN)
+        stop.append(True)
+        return await trace
+
+    async def _chk_intg_fault(self) -> None:
+        """CHK-SPI-INTG-FAULT: a TL-UL command-integrity error on the SPI host
+        register bus raises the fatal_fault alert, which sets
+        PERIPH_BUS_ERR_STATUS.spi, the RAS bit and PIC source 43, repeats until
+        reset so the bit sets again after each clear, and leaves INTR_STATE and
+        the SPI interrupt line 0 (hw/sys/sep/doc/spi.adoc, Register-Bus Faults).
+        The bench forces the checker input for one register read
+        (spi_host_intg_inject_i); the fault stays latched in the core, so this
+        runs last."""
+        dut = cocotb.top
+        seed = self.random_seed()
+        await self._clear_error_status()
+        await self.spi.wr(INTR_ENABLE, INTR_STATE_MASK)
+        await self.spi.wr(INTR_STATE, INTR_STATE_MASK)
+        await self._pbe_clear()
+        pre = await self._pbe()
+        ist_pre = await self.spi.rd(INTR_STATE)
+        steps = [self._pbe_text("pre", pre), f"intr_state_pre=0x{ist_pre:x}"]
+        ok = pre == (0, 0, 0) and ist_pre == 0
+        resp: list[int] = []
+
+        async def inject() -> None:
+            dut.spi_host_intg_inject_i.value = 1
+            seq = SepAxiAccessSeq(
+                "spi_intg_rd",
+                op=SepAxiOp.READ,
+                addr=STATUS,
+                length=4,
+                allow_ungraded_read_resp=True,
+            )
+            await self.start_seq(seq)
+            dut.spi_host_intg_inject_i.value = 0
+            resp.append(seq.resp_code)
+
+        tr = await self._traced(inject)
+        self.logger.info("INFO-SPI-INTG-RESP seed=%d resp=%d", seed, resp[0])
+        if tr["alert"] == 0:
+            msg = (
+                f"CTRL-MISSING SPI-INTG-REACH seed={seed} no fatal_fault alert on the SPI "
+                f"host alert tap after the forced integrity error ({tr})"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-SPI-INTG-REACH seed=%d alerts=%d", seed, tr["alert"])
+        got = await self._pbe()
+        steps.append(f"inject:{tr}:{self._pbe_text('got', got)}")
+        set_state = (_PBE_SPI_MASK, 1, 1)
+        ok = ok and got == set_state and tr["rise"] >= 1 and tr["line"] == 0
+        falls = 0
+        for r in range(_INTG_ROUNDS):
+            tr = await self._traced(self._pbe_clear)
+            got = await self._pbe()
+            steps.append(f"clr{r}:{tr}:{self._pbe_text('got', got)}")
+            falls += tr["fall"]
+            ok = ok and got == set_state and tr["alert"] >= 1 and tr["line"] == 0
+        ist = await self.spi.rd(INTR_STATE)
+        steps.append(f"intr_state=0x{ist:x}")
+        ok = ok and ist == 0
+        await self.spi.wr(INTR_ENABLE, 0)
+        text = f"seed={seed} " + " ".join(steps)
+        if falls == 0:
+            msg = f"CTRL-MISSING SPI-INTG-CLEAR {text}: no clear round shows the bit fall"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-SPI-INTG-CLEAR seed=%d falls=%d", seed, falls)
+        assert ok, f"CHK-SPI-INTG-FAULT FAIL: {text}"
+        self.logger.info("CHK-SPI-INTG-FAULT PASS: %s", text)
 
     async def _chk_alert_test(self) -> None:
         await self._clear_error_status()
@@ -879,14 +1114,18 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         pre = await self.spi.rd(INTR_STATE)
         await self.poll_internal_irq(_SPI_AGG, 0)
         seed = self.random_seed()
+        await self._pbe_clear()
+        pbe = [self._pbe_text("pre", await self._pbe())]
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
         alert_pre = self.rd_known(cocotb.top.spi_alert_tx_probe_o)
         await NextTimeStep()
-        if alert_pre != _ALERT_TX_IDLE:
+        self._alert_idle = alert_pre
+        self._alert_fired = alert_pre ^ _ALERT_PAIR
+        if alert_pre not in (0b01, 0b10):
             msg = (
                 f"CTRL-MISSING SPI-ALERT-REACH seed={seed} alert tap 0b{alert_pre:02b} before "
-                f"the ALERT_TEST write (idle 0b{_ALERT_TX_IDLE:02b})"
+                f"the ALERT_TEST write (an idle pair is complementary)"
             )
             self.logger.error(msg)
             raise AssertionError(msg)
@@ -898,6 +1137,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             length=4,
             allow_unverified_write_resp=True,
         )
+        open_graded_window(TEST, self.logger)
+        window = cocotb.start_soon(self._line_window())
         await self.start_seq(alert_wr)
         if alert_wr.timed_out:
             msg = (
@@ -908,19 +1149,36 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         self.logger.info(
             "CTRL-SPI-ALERT-RESP seed=%d reg=ALERT_TEST data=0x1 write response received", seed
         )
-        self.logger.info("OBS-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
-        high, _first, diff, alert_clk = await self._line_window()
+        self.logger.info("INFO-SPI-ALERT-RESP seed=%d bresp=%d", seed, alert_wr.resp_code)
+        high, _first, diff, alert_clk = await window
+        close_graded_window(self.logger)
+        await self._drop_held()
         if alert_clk < 0:
             msg = (
                 f"CTRL-MISSING SPI-ALERT-REACH seed={seed} no fatal_fault alert on the SPI host "
-                f"alert tap in {_ALERT_WIN} clk_i cycles after the ALERT_TEST write"
+                f"alert tap in {_ALERT_WIN} clk_i cycles from the ALERT_TEST write"
             )
             self.logger.error(msg)
             raise AssertionError(msg)
         self.logger.info("CTRL-SPI-ALERT-REACH seed=%d alert seen at clk=%d", seed, alert_clk)
+        # A SLVERR response would set the same bit through the bridge, so the
+        # alert path is graded only behind an OKAY write.
+        if alert_wr.resp_code != _RESP_OKAY:
+            msg = (
+                f"CTRL-MISSING SPI-ALERT-BUS-ERR-RESP seed={seed} ALERT_TEST write "
+                f"bresp={alert_wr.resp_code}; the alert path needs an OKAY write"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
         st = await self.spi.rd(INTR_STATE)
+        pbe.append(self._pbe_text("post", await self._pbe()))
+        await self._pbe_clear()
+        pbe.append(self._pbe_text("clr", await self._pbe()))
         self.logger.info(
-            "OBS-SPI-ALERT-TEST vec_diff=0x%x (bit %d excluded)", diff & ~(1 << _SPI_AGG), _SPI_AGG
+            "INFO-SPI-ALERT-TEST vec_diff=0x%x (bits %d and %d excluded) chk=CHK-SPI-ALERT-TEST",
+            diff & ~((1 << _SPI_AGG) | (1 << IRQ_PERIPH_OR)),
+            _SPI_AGG,
+            IRQ_PERIPH_OR,
         )
         # Control: an interrupt source at the same enable raises the line in
         # the same window.
@@ -930,6 +1188,19 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(INTR_STATE, INTR_ERROR)
         await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_ENABLE, 0)
+        pbe.append(self._pbe_text("late", await self._pbe()))
+        exp = [
+            self._pbe_text(t, v)
+            for t, v in (
+                ("pre", (0, 0, 0)),
+                ("post", (_PBE_SPI_MASK, 1, 1)),
+                ("clr", (0, 0, 0)),
+                ("late", (0, 0, 0)),
+            )
+        ]
+        pbe_text = f"seed={seed} {' '.join(pbe)}"
+        assert pbe == exp, f"CHK-SPI-ALERT-BUS-ERR FAIL: {pbe_text} expect {' '.join(exp)}"
+        self.logger.info("CHK-SPI-ALERT-BUS-ERR PASS: %s", pbe_text)
         text = (
             f"seed={seed} intr_state_pre=0x{pre:08x} intr_state=0x{st:08x} "
             f"line_high_clk={high} window={_ALERT_WIN} control_intr_test_rise_clk={ctl_first} "
@@ -2065,7 +2336,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         st = await self.ops.read_status()
         ie = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
         self.logger.info(
-            "OBS-SPI-CSID1 LOG seed=%d csid=0x1 err_status=0x%02x intr_error=%d active=%d cmdqd=%d "
+            "INFO-SPI-CSID1 LOG seed=%d csid=0x1 err_status=0x%02x intr_error=%d active=%d cmdqd=%d "
             "reason=the OT spi_host theory of operation says CSID is ignored at NumCS=1 and "
             "also that a CSID >= NumCS is CSIDINVAL",
             self.seed,
@@ -2695,7 +2966,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         set_open_value_leg_pass(None, self.logger)
         self.logger.info(
-            "OBS-SPI-CMDINVAL-SPIEN1 LOG seed=%d tx_word=0x%08x tx_bytes=%d cs_windows_held=%d "
+            "INFO-SPI-CMDINVAL-SPIEN1 LOG seed=%d tx_word=0x%08x tx_bytes=%d cs_windows_held=%d "
             "cmdqd_held=%d active_held=%d txqd_held=%d",
             self.seed,
             word,

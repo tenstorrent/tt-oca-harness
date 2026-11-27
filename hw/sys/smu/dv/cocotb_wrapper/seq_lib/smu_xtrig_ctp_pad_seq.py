@@ -84,10 +84,10 @@ S10 Every internal lane. With lane 0 back in point-to-point, its destination
     is routed in turn into the CT_SRC port of each DTP internal lane: the two
     the SMC keeps (``dtp_xtrig_ctm_src_req`` inside the SMU) and the eight the
     SMU exposes (``xtrig_ctm_src_req_o``). A request on lane 0 raises that lane
-    once and no other; a lane whose mode bit selects the handshake holds the
-    request until its acknowledge input retires it (``port_table.adoc``). Every
-    exposed lane's acknowledge input is then pulsed with no request in flight,
-    and no lane's request moves (``CHK-SMU-CTM-EVERY-LANE``).
+    once and no other; a point-to-point lane holds the request until its
+    acknowledge input retires it (``port_table.adoc``). Every exposed lane's
+    acknowledge input is then pulsed with no request in flight, and no lane's
+    request moves (``CHK-SMU-CTM-EVERY-LANE``).
 """
 
 from __future__ import annotations
@@ -104,7 +104,7 @@ from seq_lib.smu_boundary_regs import (
     cross_trigger_network_u32,
     cross_trigger_u32,
 )
-from seq_lib.smu_compose_helpers import bit_width, hier, sample
+from seq_lib.smu_compose_helpers import bit_width, hier, int_ct_p2p_mask, sample
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
@@ -856,8 +856,10 @@ class smu_xtrig_ctp_pad_seq:
         dtp_lanes = hier(smu_scope(dut), DTP_CTM_SRC_REQ_PATH)
         dtp_int_ct = NUM_CT_SRC - NUM_CTP
         reserved = dtp_int_ct - SMU_INT_CT_EXPOSED
-        # A handshake lane (mode bit set) holds its request until acknowledged.
-        mode = sample(hier(smu_scope(dut), DTP_INT_CT_MODE_PATH), DTP_INT_CT_MODE_PATH)
+        # A point-to-point lane holds its request until acknowledged.
+        mode = int_ct_p2p_mask(
+            sample(hier(smu_scope(dut), DTP_INT_CT_MODE_PATH), DTP_INT_CT_MODE_PATH), dtp_int_ct
+        )
         await self._set_mode(P2P_LANE, P2P)
         observed, want = {}, {}
         for lane in range(dtp_int_ct):

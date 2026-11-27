@@ -68,7 +68,7 @@ localparam int unsigned GPIO_CTRL_CONTROL_REG_ADDR                              
 localparam longint unsigned GPIO_INTF_DATA_CTRL_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned GPIO_INTF_DATA_CTRL_ENABLE_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned GPIO_INTF_ACCESS_FILTER_REG_DEFAULT                                                   = 32'h00010100;
-localparam longint unsigned GPIO_CTRL_CONTROL_REG_DEFAULT                                                         = 32'h00100002;
+localparam longint unsigned GPIO_CTRL_CONTROL_REG_DEFAULT                                                         = 32'h00000002;
 
 
 

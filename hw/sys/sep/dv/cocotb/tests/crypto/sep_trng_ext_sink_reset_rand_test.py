@@ -57,7 +57,7 @@ stays responsive (``reset_controller.adoc``), so the read completes; a DATA read
 the word or, on an empty pool, returns SLVERR (``entropy_pool.adoc``), so the response
 is SLVERR or OKAY with the sent pair. Control: one word in the pool, the read address
 handshake at or before the reset rise and the response not before it.
-``OBS-XRST-POOL-DATA-INFLIGHT`` logs which of the two outcomes occurs, the data and the
+``INFO-XRST-POOL-DATA-INFLIGHT`` logs which of the two outcomes occurs, the data and the
 clocks from the read address handshake to the reset rise and from the rise to the
 response (no text states which outcome wins the race).
 
@@ -96,7 +96,7 @@ Checkers:
                    :80, :132-134; ``otbn.hjson`` ``SecSkipUrndReseedAtStart``
                    default 0), and RND asks the EDN only on a read or a prefetch
                    (ToO:66, :70-71); the program reads RND first at its second
-                   instruction. Client numbers: ``hw/sys/sep/doc/trng.adoc`` :93.
+                   instruction. Client numbers: ``hw/sys/sep/doc/trng.adoc`` :95.
                    Control ``CTRL-XRST-URNDFIRST``: bit 3 reads 0 on the first
                    traced clock, so the rise is the EXECUTE reseed and not a
                    request still high from an earlier one.
@@ -1021,9 +1021,9 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             stale_pairs=stale, order_ok=int(pops == expect), bad_resp=bad_resp,
             pre_reset_level=pre_reset_level,
         )  # fmt: skip
-        await self._pool_inflight_obs()
+        await self._pool_inflight_info()
 
-    async def _pool_inflight_obs(self) -> None:
+    async def _pool_inflight_info(self) -> None:
         """A pool DATA read started with the TRNG reset write; its response is logged."""
         dut = cocotb.top
         w = self._next_word()
@@ -1075,7 +1075,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             and (seq.resp_code == RESP_SLVERR or (seq.resp_code == RESP_OKAY and data == pair)),
             timed_out=int(seq.timed_out), resp=seq.resp_code, legal="SLVERR|OKAY+sent_pair",
         )  # fmt: skip
-        self.chk.obs(
+        self.chk.info(
             "XRST-POOL-DATA-INFLIGHT",
             level_before=level,
             resp=seq.resp_code,
@@ -1083,6 +1083,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             timed_out=int(seq.timed_out),
             ar_to_rise_clk=t_rise - ar["clk"] if "clk" in ar else "na",
             rise_to_resp_clk=t_resp - t_rise if t_resp is not None else "na",
+            chk="CHK-XRST-POOL-INFLIGHT",
         )
 
     # --- consumer trials ----------------------------------------------------------------

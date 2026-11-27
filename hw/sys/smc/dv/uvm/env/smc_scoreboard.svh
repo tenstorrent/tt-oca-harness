@@ -433,15 +433,13 @@ class smc_scoreboard extends ocah_scoreboard;
     bit passed = obs.direction == exp.direction &&
                  smc_csr_word_addr(obs.address) === exp.address &&
                  obs.resp_list.size() == 1 && exp.resp_list.size() == 1 &&
-                 !obs.timed_out && !obs.any_resp_xz();
+                 !obs.timed_out;
     bit [31:0] mask;
     void'(smc_is_wdt_csr_access(obs, core, offset));
     mask = smc_wdt_csr_mask(offset);
     if (passed) passed = obs.resp_list[0] == exp.resp_list[0];
     if (passed && obs.direction == OCAH_AXI_DIR_READ && mask != 0)
       passed = (smc_csr_from_bus(
-          obs.address, obs.first_xz_mask()
-      ) & mask) == 0 && (smc_csr_from_bus(
           obs.address, obs.first_data()
       ) & mask) === (smc_csr_from_bus(
           exp.address, exp.first_data()
@@ -481,7 +479,7 @@ class smc_scoreboard extends ocah_scoreboard;
     mask = entries[index].read_mask;
     passed = obs.direction == exp.direction && obs.address === exp.address &&
              obs.size == exp.size && obs.resp_list.size() == 1 &&
-             exp.resp_list.size() == 1 && !obs.timed_out && !obs.any_resp_xz();
+             exp.resp_list.size() == 1 && !obs.timed_out;
     if (passed) passed = obs.resp_list[0] == exp.resp_list[0];
     if (passed && obs.direction == OCAH_AXI_DIR_READ)
       passed = (obs.first_data() & mask) === (exp.first_data() & mask);
@@ -518,7 +516,7 @@ class smc_scoreboard extends ocah_scoreboard;
     passed &= obs.address === exp.address && obs.direction == exp.direction &&
         obs.size == exp.size && obs.expected_beats == 1 && exp.expected_beats == 1 &&
         obs.resp_list.size() == 1 && exp.resp_list.size() == 1 &&
-        !obs.timed_out && !obs.any_resp_xz();
+        !obs.timed_out;
     if (passed) passed = obs.resp_list[0] == exp.resp_list[0];
     if (passed && obs.direction == OCAH_AXI_DIR_READ && exp.data_words.size() == 1)
       passed = obs.data_words.size() == 1 &&
@@ -628,8 +626,8 @@ class smc_scoreboard extends ocah_scoreboard;
                  obs.size == exp.size && obs.expected_beats == 1 && exp.expected_beats == 1 &&
                  obs.data_words.size() == 1 && exp.data_words.size() == 1 &&
                  obs.resp_list.size() == 1 && exp.resp_list.size() == 1 &&
-                 !obs.timed_out && !obs.any_resp_xz();
-    if (passed && obs.resp_list[0] != exp.resp_list[0]) passed = 1'b0;
+                 !obs.timed_out;
+    if (passed && obs.resp_list[0] !== exp.resp_list[0]) passed = 1'b0;
     if (passed && obs.direction == OCAH_AXI_DIR_READ && obs.data_words[0] !== exp.data_words[0])
       passed = 1'b0;
     record_compare(

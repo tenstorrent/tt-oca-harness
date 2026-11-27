@@ -467,7 +467,7 @@ SEP_ROM_MUX_NUM_PORTS
   // periph_bus_err vector assembled in sep.sv and the PERIPH_BUS_ERR_STATUS /
   // PERIPH_BUS_ERR_CLEAR fields in sep_cpu_ctrl.rdl; changing one without the other
   // silently misattributes faults to the wrong block.
-  parameter int unsigned NUM_PERIPH_BUS_ERRS = 7;
+  parameter int unsigned NUM_PERIPH_BUS_ERRS = 8;
   typedef enum int unsigned {
     PERIPH_BUS_ERR_AES   = 0,
     PERIPH_BUS_ERR_HMAC  = 1,
@@ -475,7 +475,8 @@ SEP_ROM_MUX_NUM_PORTS
     PERIPH_BUS_ERR_OTBN  = 3,
     PERIPH_BUS_ERR_CSRNG = 4,
     PERIPH_BUS_ERR_EDN   = 5,
-    PERIPH_BUS_ERR_WDT   = 6
+    PERIPH_BUS_ERR_WDT   = 6,
+    PERIPH_BUS_ERR_SPI   = 7
   } periph_bus_err_e;
 
   /////////
@@ -498,13 +499,14 @@ SEP_ROM_MUX_NUM_PORTS
     logic km_uncorrectable;    // Level while the Key Manager CPU is in its trap state; held until
                                // the Key Manager is reset.
     logic km_correctable;      // Level of the firmware-written Key Manager RECOVERABLE_ERR bit.
-    logic dma_alert;           // Pulse per DMA fatal alert; a level while an alert pair fails its
-                               // integrity check.
+    logic dma_alert;           // Pulse per DMA fatal alert handshake, repeated until reset; a level
+                               // while an alert pair fails its integrity check.
     logic dma_reg_bus_err;     // DMA register-bridge fault; sticky until DMA_BUS_ERR_CLEAR.
     logic dma_host_intg_err;   // DMA host integrity fault; sticky until DMA_BUS_ERR_CLEAR.
     logic [NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err;  // Register-bridge faults indexed by
-                                                     // periph_bus_err_e; each sticky until its
-                                                     // PERIPH_BUS_ERR_CLEAR bit.
+                                                     // periph_bus_err_e, the SPI bit also set by
+                                                     // the SPI host fatal alert; each sticky
+                                                     // until its PERIPH_BUS_ERR_CLEAR bit.
     logic csrng_fatal;         // Pulse per CSRNG fatal alert handshake; a fatal error repeats it
                                // until reset, and ALERT_TEST sends one.
     logic edn_fatal;           // Pulse per EDN fatal alert handshake; a fatal error repeats it

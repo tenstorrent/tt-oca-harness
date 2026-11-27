@@ -19,6 +19,8 @@
 //   REQ win <op>=<0|1>        the host opens or closes a per-clock vector window
 //   REQ dinj t=<on|off>       the host forces or releases the DMA alert pair
 //   REQ race i=<k> src=<s>    the host times a boundary pulse to the next meigwclr
+//   REQ trng t=<pulse|on|off> the host drives ext_trng_irq_i: a pulse of the
+//                             drawn width, or the level 1 or 0
 //   MEIP t=<tag> w0=.. w7=..  the eight meip words of one read
 //   FILL ip=.. full=.. ...    the FIFO-empty set-up of one IP
 //   FE ip=.. ...              the FIFO-empty enable-clear cell of one IP
@@ -30,6 +32,9 @@
 //   GWCLR v=.. held=.. after=..   one value of the clear-value corner
 //   GWL2E src=.. before=.. ...    the level-to-edge switch with the input asserted
 //   GWRACE i=.. src=.. ...    one meigwclr write with a timed boundary pulse
+//   T17E idle=.. dropped=.. held=.. after_clr=..  source 17 in an edge gateway
+//   T17L idle=.. asserted=.. clr_high=.. held=.. released=..  source 17 in a
+//                             level gateway
 //   DINJ under=.. held=.. after_clr=..  meip bit 12 around the malformed DMA alert pair
 //   HOLD src=.. ...           the level hold
 //   CLRIDLE src=.. ...        the idle clear
@@ -84,6 +89,7 @@ enum {
     P_SETTLE,             // settle window (clocks)
     P_FILL,               // bounded number of message-FIFO writes
     P_L2E,                // gateway index of the level-to-edge source
+    P_T17,                // source 17: hold (clocks) [15:0], level cell first [16]
     P_COUNT
 };
 
@@ -128,6 +134,7 @@ volatile uint32_t g_p[P_COUNT] = {
     64u,
     64u,
     8u,
+    64u,
 };
 
 // ---- Map sources (index = order of this table) ----
@@ -796,6 +803,7 @@ static uint32_t gw_src_of_cell(uint32_t want_cell, int event) {
 
 // The event source of gateway index g is held at its active level in level
 // mode, then its gateway switches to edge mode with the input still asserted.
+// A meigwclr write while the input is still asserted precedes the deassert.
 static void gw_level_to_edge(uint32_t g) {
     const struct src *s = &k_map[k_gw_map[g]];
     uint32_t id = s->id;
@@ -813,6 +821,9 @@ static void gw_level_to_edge(uint32_t g) {
     wait_clk(g_p[P_SETTLE]);
     uint32_t settled = meip_bit(id);
     uint32_t cfg_edge = pic_read_gateway(id);
+    gwclr_wr(id, 0u);
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t held_after_clr = meip_bit(id);
     gw_deassert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t released = meip_bit(id);
@@ -825,6 +836,7 @@ static void gw_level_to_edge(uint32_t g) {
     rec_num("after", after);
     rec_num("settled", settled);
     rec_num("type_after", (cfg_edge & EL2_PIC__MEIGWCTRL__IRQ_TYPE_bm) != 0u);
+    rec_num("held_after_clr", held_after_clr);
     rec_num("released", released);
     rec_num("after_clr", after_clr);
     rec_end();
@@ -1009,6 +1021,66 @@ static void gwclr_race(void) {
     gwclr_wr(id, 0u);
 }
 
+// External TRNG interrupt, source 17, active high. Edge gateway: a pulse of
+// the input, then the drawn hold with the input low, then meigwclr. Level
+// gateway: the input held at 1 across a meigwclr write and the drawn hold,
+// then dropped. The host drives the input at each "REQ trng" line.
+static void src17_edge(void) {
+    pic_set_gateway(SRC17, 1u, 0u);
+    gwclr_wr(SRC17, 0u);
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t idle = meip_bit(SRC17);
+    req_tag("trng", "pulse");
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t dropped = meip_bit(SRC17);
+    wait_clk(g_p[P_T17] & 0xFFFFu);
+    uint32_t held = meip_bit(SRC17);
+    gwclr_wr(SRC17, 0u);
+    uint32_t after_clr = meip_bit(SRC17);
+    sep_mbx_puts("T17E");
+    rec_num("idle", idle);
+    rec_num("dropped", dropped);
+    rec_num("held", held);
+    rec_num("after_clr", after_clr);
+    rec_end();
+}
+
+static void src17_level(void) {
+    pic_set_gateway(SRC17, 0u, 0u);
+    gwclr_wr(SRC17, 0u);
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t idle = meip_bit(SRC17);
+    req_tag("trng", "on");
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t asserted = meip_bit(SRC17);
+    gwclr_wr(SRC17, 0u);
+    uint32_t clr_high = meip_bit(SRC17);
+    wait_clk(g_p[P_T17] & 0xFFFFu);
+    uint32_t held = meip_bit(SRC17);
+    req_tag("trng", "off");
+    wait_clk(g_p[P_SETTLE]);
+    uint32_t released = meip_bit(SRC17);
+    sep_mbx_puts("T17L");
+    rec_num("idle", idle);
+    rec_num("asserted", asserted);
+    rec_num("clr_high", clr_high);
+    rec_num("held", held);
+    rec_num("released", released);
+    rec_end();
+}
+
+static void src17_gateway(void) {
+    if ((g_p[P_T17] >> 16) & 1u) {
+        src17_level();
+        src17_edge();
+    } else {
+        src17_edge();
+        src17_level();
+    }
+    pic_set_gateway(SRC17, 0u, 0u);
+    gwclr_wr(SRC17, 0u);
+}
+
 // Idle window: HMAC and KMAC hold an open message, OTBN runs a loop longer than
 // the hold window and AES streams blocks. It runs before the FIFO-empty set-up,
 // because the HMAC drain stall leaves the HMAC message unable to complete.
@@ -1090,6 +1162,7 @@ static void print_params(void) {
     rec_hex("idle0", g_p[P_IDLE0]);
     rec_hex("idle1", g_p[P_IDLE1]);
     rec_num("l2e", g_p[P_L2E]);
+    rec_hex("t17", g_p[P_T17]);
     rec_end();
 }
 
@@ -1345,6 +1418,8 @@ int main(void) {
     }
     rec_mark(1, "gwclr_race");
     gwclr_race();
+    rec_mark(1, "src17_gw");
+    src17_gateway();
 
     // Final release and clean-up of every touched entry.
     rec_mark(1, "final");

@@ -4,7 +4,8 @@
 // Declare pad and mux types for the SMC padring.
 //
 // Holds DefaultDirectionMap, the reset-default direction of each GPIO pad (GPIO 59-62 and
-// 64-66 output, all others input), and pad_enable_e, the active-low LSIO enable encoding
+// 64-66 output, all others input), LsioIdleLevelMap, the level each pad's LSIO input returns
+// while no LSIO select is active, and pad_enable_e, the active-low LSIO enable encoding
 // (ENABLED is 0, DISABLED is 1) used by smc_padring.
 
 package smc_padring_pkg;
@@ -81,6 +82,82 @@ package smc_padring_pkg;
     IsInput,  //  2.
     IsInput,  //  1.
     IsInput  //  0.
+  };
+
+  // Level a pad's LSIO input returns to its function while no LSIO select is active: high for
+  // the serial inputs that idle high (UART RX and CTS, I2C SCL, SDA and the SMBus ALERT and SUS
+  // inputs, I3C SCL and SDA).
+  localparam bit IdleHigh = 1'b1;
+  localparam bit IdleLow = 1'b0;
+
+  localparam bit [smc_pkg::NumGpioWraps-1:0] LsioIdleLevelMap = {
+    IdleHigh,  // 66.
+    IdleHigh,  // 65.
+    IdleLow,  // 64.
+    IdleLow,  // 63.
+    IdleLow,  // 62.
+    IdleLow,  // 61.
+    IdleLow,  // 60.
+    IdleLow,  // 59.
+    IdleLow,  // 58.
+    IdleLow,  // 57.
+    IdleLow,  // 56.
+    IdleLow,  // 55.
+    IdleLow,  // 54.
+    IdleLow,  // 53.
+    IdleLow,  // 52.
+    IdleLow,  // 51.
+    IdleLow,  // 50.
+    IdleLow,  // 49.
+    IdleHigh,  // 48.
+    IdleHigh,  // 47.
+    IdleHigh,  // 46.
+    IdleHigh,  // 45.
+    IdleHigh,  // 44.
+    IdleHigh,  // 43.
+    IdleHigh,  // 42.
+    IdleHigh,  // 41.
+    IdleHigh,  // 40.
+    IdleHigh,  // 39.
+    IdleHigh,  // 38.
+    IdleHigh,  // 37.
+    IdleHigh,  // 36.
+    IdleHigh,  // 35.
+    IdleHigh,  // 34.
+    IdleHigh,  // 33.
+    IdleHigh,  // 32.
+    IdleHigh,  // 31.
+    IdleHigh,  // 30.
+    IdleHigh,  // 29.
+    IdleHigh,  // 28.
+    IdleHigh,  // 27.
+    IdleHigh,  // 26.
+    IdleLow,  // 25.
+    IdleLow,  // 24.
+    IdleHigh,  // 23.
+    IdleHigh,  // 22.
+    IdleLow,  // 21.
+    IdleLow,  // 20.
+    IdleHigh,  // 19.
+    IdleHigh,  // 18.
+    IdleLow,  // 17.
+    IdleLow,  // 16.
+    IdleHigh,  // 15.
+    IdleHigh,  // 14.
+    IdleLow,  // 13.
+    IdleLow,  // 12.
+    IdleHigh,  // 11.
+    IdleLow,  // 10.
+    IdleLow,  //  9.
+    IdleLow,  //  8.
+    IdleLow,  //  7.
+    IdleLow,  //  6.
+    IdleLow,  //  5.
+    IdleLow,  //  4.
+    IdleLow,  //  3.
+    IdleLow,  //  2.
+    IdleLow,  //  1.
+    IdleLow  //  0.
   };
 
   //////////////////

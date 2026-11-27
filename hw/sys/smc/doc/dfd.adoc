@@ -56,9 +56,12 @@ is in the Programmer's Guide.
 Bit 0 of `xtrig_clk_halt_mask` in the DFX CSRs masks the CLA cross-trigger
 and halt-clock outputs, with every cross-trigger lane masked together; bits
 15:1 have no effect. The clocks-stopped output also requires
-`tdr_dbg_ctrl_clock_stop_en_i`, and it drives a CPU interrupt and a DTP
-clock-stop request. The debug interrupt drives a CPU interrupt. The sixteen
-custom actions leave the SMC, and the SMU wires five of them to the SEP CPU
+`tdr_dbg_ctrl_clock_stop_en_i`; it drives a DTP clock-stop request, and its
+rising edge pulses a CPU interrupt. A halt-clock action sets a request that
+is held until the SMC primary reset: `CDbgEapStatus`, `EnableEap`,
+`EnableCla` and `DisableGlobalClockHalt` do not release it, and the mask and
+`tdr_dbg_ctrl_clock_stop_en_i` gate the output without clearing it. The debug interrupt drives a CPU
+interrupt. The sixteen custom actions leave the SMC, and the SMU wires five of them to the SEP CPU
 debug controls. The CLA debug marker returns to the SMC debug bus. The
 `debug_marker`, `chiplet_enable`, `gpio_en`, `dtb_ns_en` and `dtb_ew_en`
 fields of `DEBUG_CTRL` have no effect in SMC.
@@ -83,6 +86,149 @@ signals are driven onto the bus, so a single analyzer can be pointed at
 different parts of the design without RTL changes. Software selects the
 observed signal set, then programs the event engine against the resulting
 bus value.
+
+=== Lane Map
+
+<<smc-debug-bus-lanes-table>> lists the 64 lanes of the `smc_base` debug bus.
+Lane _n_ occupies bits [16__n__+15:16__n__]. Bits a row does not name, and the
+reserved lanes, read 0. No lane carries the SMC CPU program counter.
+
+[[smc-debug-bus-lanes-table]]
+[cols="12%,88%",options="header"]
+.SMC debug-bus lanes
+|=======================================================================
+|Lane |Content
+|0 |AXI lane: `sys_axi_in`
+|1 |AXI lane: `output_axi`
+|2 |AXI lane: `cpu_axi_front_port`
+|3 |AXI lane: `cpu_axi_mmio_port`
+|4 |AXI lane: `sep_axi_in`
+|5 |AXI lane: `jtag_axi_in`
+|6 |AXI lane: `axi_data_accel`
+|7 |AXI-Lite lane: `axil_peripherals`
+|8 |AXI-Lite lane: `axil_log_engine`
+|9 |[2:0] zeroer FSM, [5:3] CPU scratch RAM zero-fill FSM, [7:6] OCTS pulse
+FSM, [8] iDMA frontend busy, [9] iDMA backend busy
+|10 to 12 |I2C 0 to 2, one lane each: [4:0] controller FSM, [9:5] target
+FSM, [11:10] bus monitor
+|13 |eFuse: [1:0] read FSM, [3:2] program FSM, [5:4] sense FSM
+|14 to 19 |Reserved
+|20 |Clock-gate `clk_active`: [0] mailbox, [1] outbound filter, [2] inbound
+filter, [3] M-mode remap, [4] Xvisor remap, [5] alias remap, [6] fabric,
+[7] system outbound filter, [8] system inbound filter, [9] iDMA frontend,
+[10] zeroer
+|21 |Clock-gate `bus_active`, in the bit order of lane 20
+|22 |Reserved
+|23 |[9:0] eFuse controller debug flags
+|24 |I2C debug status, 4 bits per I2C: I2C _i_ at [4__i__+3:4__i__]
+|25 |Telemetry receiver debug status, 4 bits per receiver: receiver _i_ at
+[4__i__+3:4__i__]
+|26 |AVS bus controller: [4:0] index of the set bit of the one-hot state,
+[5] state not one-hot
+|27 |OCTS: [8:0] credit count, [9] credits left
+|28 |[7:0] CLA debug marker, [11:8] per-core CPU first-stage watchdog
+timeout, [12] watchdog second timeout, [13] CPU cluster uncorrectable
+memory error, [14] DMA busy, [15] zeroer busy
+|29 |Remap: [2:0] JTAG read-region index, [5:3] JTAG write-region index,
+[8:6] MMIO read-region index, [11:9] MMIO write-region index, [12] JTAG
+read no-hit, [13] JTAG write no-hit, [14] MMIO read no-hit, [15] MMIO
+write no-hit
+|30 |Remap, in the layout of lane 29 with the DMA remap in place of JTAG and
+the log-engine remap in place of MMIO
+|31 |Filter hit index: [3:0] outbound read, [7:4] outbound write, [11:8]
+inbound read, [15:12] inbound write
+|32 to 63 |`ext_debug_bus_i` (see <<smc-debug-bus-external>>)
+|=======================================================================
+
+Every AXI and AXI-Lite lane, on this bus and on the SEP lanes, uses the
+layout of <<smc-debug-axi-lane-table>>. A handshake completes in a cycle in
+which both its valid and its ready bit are 1. The response bits are 1 for
+SLVERR and DECERR, and the last bits are 0 on an AXI-Lite lane.
+
+[[smc-debug-axi-lane-table]]
+[cols="20%,80%",options="header"]
+.Debug-bus AXI lane layout
+|=======================================================================
+|Bit |Signal
+|0, 1 |`aw_valid`, `aw_ready`
+|2, 3 |`w_valid`, `w_ready`
+|4, 5 |`b_valid`, `b_ready`
+|6, 7 |`ar_valid`, `ar_ready`
+|8, 9 |`r_valid`, `r_ready`
+|10, 11 |`w.last`, `r.last`
+|12, 13 |`b.resp[1]`, `r.resp[1]`
+|15:14 |0
+|=======================================================================
+
+[[smc-debug-bus-external]]
+=== External and SEP Lanes
+
+Lanes 32 to 63 carry the 512-bit `ext_debug_bus_i`: lane 32+__k__ is bits
+[16__k__+15:16__k__]. A three-stage synchronizer to `clk_smc_i` delays them three
+cycles behind lanes 0 to 31, and it synchronizes each bit on its own, so a
+multi-bit value from another clock domain can be sampled while it changes.
+
+In the SMU, lanes 32 to 55 carry the SEP's 384-bit `ext_debug_bus_o`, SEP lane
+_k_ on lane 32+__k__ (<<smc-debug-bus-sep-lanes-table>>), and lanes 56 to 63
+carry the SMU's 128-bit `ext_debug_bus_i`. In an SMU built without the SEP,
+lanes 32 to 55 read 0.
+
+[[smc-debug-bus-sep-lanes-table]]
+[cols="12%,88%",options="header"]
+.SEP lanes of the SMC debug bus in the SMU
+|=======================================================================
+|Lane |Content
+|32 |Reserved
+|33 |AXI lane: `sep_external_axi`
+|34 |Reserved
+|35 |AXI lane: secure DMA master
+|36 |AXI lane: `sep_ext_to_smc_axi`
+|37 |AXI lane: CPU instruction fetch from ROM
+|38 |AXI lane: CPU instruction fetch from SRAM
+|39 |AXI lane: CPU load/store into the local crossbar
+|40 |AXI lane: `smn_outbound_axi`, after the outbound filter
+|41 |AXI lane: `smn_inbound_axi`, before the inbound filter
+|42 |Inbound filter hit index: [3:0] read, [7:4] write
+|43 |Outbound filter hit index: [4:0] read, [9:5] write
+|44 |Local-master remap: [3:0] read-region index, [7:4] write-region index,
+[8] read no-hit, [9] write no-hit
+|45 |Reserved
+|46 |Crypto isolation sequencers, 2 bits each in `SW_RESET_N` order: [1:0]
+key manager, [3:2] OTBN, [5:4] AES, [7:6] HMAC, [9:8] KMAC, [11:10] TRNG,
+[13:12] ABR; 0 reset, 1 drain, 2 run
+|47 |eFuse: [9:0] controller flags, [11:10] read FSM, [13:12] program FSM,
+[15:14] sense FSM
+|48 |CPU debug: [0] MPC halt acknowledge, [1] MPC run acknowledge, [2]
+breakpoint status, [4] halt acknowledge, [5] halt status, [6] debug mode,
+[7] run acknowledge
+|49 |CPU trace: [11:0] `tval[11:0]`, [15:12] `ecause[3:0]`
+|50 |CPU trace: instruction [15:0]
+|51 |CPU trace: retired instruction address [15:0]
+|52 |[13] security disable, [14] watchdog reset request, [15] SEP reset
+(active low)
+|53 |Reserved
+|54 |[8] to [11] CPU performance counters 3 to 0, [12] DCCM uncorrectable
+error, [13] DCCM correctable error, [14] ICCM uncorrectable error, [15]
+ICCM correctable error
+|55 |CPU trace: [13] interrupt, [14] exception, [15] valid
+|=======================================================================
+
+=== Mux Programming
+
+From reset every debug-bus mux is in mode 0 with its lane selects at 0 and
+drives 0, so the CLA sees 0 on every input lane until each mux on the path is
+in mode 1. A mux updates its mode only while `DEBUG_BUS_MUX.Dbmid` equals its
+ID, and its lane selects only while `Dbmid` equals its ID and its mode is 1. A
+`DEBUG_BUS_MUX` write addressed to another mux, or with a `Dbmid` that no mux
+has (0 to 2, or 15 to 63), leaves every other mux's mode and selects as they
+were, so the muxes can be programmed in any order.
+
+The level-3 mux with ID 7+__m__ takes lanes 8__m__ to 8__m__+7. The level-2 mux
+with ID 3+__m__ takes the outputs of the level-3 muxes with IDs 7+2__m__ and
+8+2__m__ and drives CLA input lanes 4__m__ to 4__m__+3. In mode 2 a mux drives its
+ID on its first output lane and 0 on the others, and in mode 3 its outputs
+alternate every cycle between that pattern and its bitwise inverse; both
+modes check the path from a mux to the CLA without a live signal.
 
 == Core Logic Analyzer
 
@@ -123,8 +269,12 @@ complete, so a partially programmed pairing never triggers.
 
 An EAP can drive one or more actions:
 
-* *Debug interrupt* — raise the CLA interrupt, an ordinary maskable PLIC
-  source (see Interrupts below).
+* *Debug interrupt* — raise the CLA interrupt, a level PLIC source held
+  until software releases it: clear `EnableEap`, then write the EAP's
+  `CDbgEapStatus` W2C bit. A W2C write while `EnableEap` is set clears the
+  status bit but not the interrupt (see Interrupts below), and while the EAP
+  relation still holds on the current node the status bit sets again in the
+  same cycle and stays at 1.
 * *Clock stop* — halt clocks to freeze the design for inspection.
 * *GPIO toggle* — the generic block provides this action, but SMC terminates
   it on an unused local signal; it does not drive a pad.
@@ -137,6 +287,78 @@ Cross-trigger inputs let events elsewhere in the system arm or fire local
 actions, and cross-trigger outputs propagate local events outward, so
 debug conditions can be correlated across blocks rather than observed in
 isolation.
+
+=== Action Codes
+
+Each EAP has four 6-bit action fields, `Action0` to `Action3`, and the codes
+of <<smc-cla-action-codes-table>>. The actions of every EAP of the current node
+are combined and registered, so an action starts one cycle after its EAP
+relation holds and, unless the table says otherwise, lasts while the relation
+holds, the node stays current and `EnableEap` is set.
+
+[[smc-cla-action-codes-table]]
+[cols="15%,85%",options="header"]
+.SMC CLA action codes
+|=======================================================================
+|Code |Action
+|0 |None. The reset value of every action field.
+|1 |Clock halt. Sets a request held until the SMC primary reset; see
+<<smc-dfd-smu-signals>>. `DisableGlobalClockHalt` blocks it.
+`DisableLocalClockHalt` has no effect, because SMC leaves the local halt
+output unconnected.
+|2 |Debug interrupt. Sets the interrupt, which the rising edge of any
+`CDbgEapStatus` W2C bit clears; while the CLA stays in the node that fired
+with `EnableEap` set, the EAP sets it again.
+|3 |GPIO output. A level, not a toggle; SMC terminates it.
+|4, 5 |Trace start, trace stop.
+|6 |Trace pulse: the DST captures while the action is active.
+|7, 8 |Cross-trigger 0 out, cross-trigger 1 out.
+|16+4__n__ |Counter _n_ increment, by one each cycle while active and not
+auto-incrementing (_n_ = 0 to 3).
+|17+4__n__ |Counter _n_ clear. It also stops auto-increment and takes
+priority over the other counter actions.
+|18+4__n__ |Counter _n_ start auto-increment, which runs until stop or clear.
+|19+4__n__ |Counter _n_ stop auto-increment.
+|9 to 15, 32 to 63 |None.
+|=======================================================================
+
+Each cross-trigger output is the action ORed with a pulse of
+`Xtrigger0Stretch` or `Xtrigger1Stretch` plus one cycles started by its rising
+edge. With the stretch at 0, its reset value, the first rising edge holds the
+output at 1 until the SMC primary reset or until a nonzero stretch is
+written.
+
+`CustomAction0` and `CustomAction1` are not action codes: each holds the index,
+0 to 15, of a bit of the 16-bit custom action bus, set while the EAP's actions
+are active if `CustomAction0Enable` or `CustomAction1Enable` is 1.
+
+[[smc-dfd-smu-signals]]
+=== Signals in the SMU
+
+In the SMU, the CLA outputs reach the DTP and the SEP as listed in
+<<smc-dfd-smu-signals-table>>. They connect inside the SMU; none of them is an
+SMU port. The SMU ports `xtrig_ctm_*` and `xtrig_clk_stop_req_i`
+carry only the DTP lanes above these.
+
+[[smc-dfd-smu-signals-table]]
+[cols="35%,65%",options="header"]
+.SMC CLA signals in the SMU
+|=======================================================================
+|CLA signal |SMU connection
+|Cross-trigger out 0, 1 (`xtrigger_ss_o`) |DTP internal cross-trigger lanes
+0 and 1, in pulse-synchronizer mode. `xtrig_clk_halt_mask` bit 0 gates
+both.
+|Cross-trigger in 0, 1 (`xtrigger_ss_i`) |From the same DTP lanes. Their
+acknowledges are tied to 0.
+|Clock halt (`tdr_dbg_ctrl_clocks_stopped_by_cla_o`) |DTP clock-stop lane 0.
+It is the held clock-halt request ANDed with `xtrig_clk_halt_mask` bit 0 and
+with `tdr_dbg_ctrl_clock_stop_en_i`, which bit 2, `cla_clock_stop_en`, of the
+DTP's `DEBUG_CONTROL` JTAG test data register drives.
+|Custom action bits 0 to 4 (`cla_ext_action_custom_o`) |SEP CPU debug
+controls: 0 `mpc_debug_halt_req`, 1 `mpc_debug_run_req`, 2 inverted onto
+`mpc_reset_run_req` so that 1 starts the SEP CPU in debug mode out of reset,
+3 `cpu_halt_req`, 4 `cpu_run_req`. Bits 5 to 15 are unconnected.
+|=======================================================================
 
 == Trace
 
@@ -159,6 +381,108 @@ registers serve only a 128-bit debug bus. `CDbgMuxSelHi`, and `Muxselseg4`
 to `Muxselseg7` of `CDbgMuxSelLo`, select lanes beyond the four that the CLA
 mux drives.
 
+[[smc-dst-trace-format]]
+=== Trace RAM Format
+
+The DST writes a stream of packets of 1 to 10 bytes into the sink RAM, packed
+back to back in frames. Successive `trDstRamData` reads return successive
+4-byte words of the stream, the earliest byte in bits [7:0]. Read the RAM after
+clearing `trDstControl.Trdstenable`, which completes the last frame (see Frames
+below).
+
+Bit 7 of the first byte of a packet gives its type: 0 for a data packet, 1
+for a support packet. Bits [6:3] of that byte are the source ID, the low four
+bits of `trDstInstFeatures.Trdstsrcid`, which resets to 0. Bit 2, packet
+lost, is 1 when an earlier packet did not reach the RAM when the DST offered
+it: the RAM could not take it, a timestamp packet took the place of a data
+packet in the same cycle, or a trace stop discarded the last sample (see
+Frames below).
+
+[[smc-dst-data-packet-table]]
+[cols="20%,80%",options="header"]
+.DST data packet
+|=======================================================================
+|Byte, bits |Field
+|0, [0] |Trace start: the first packet of a trace
+|0, [1] |Trace stop: the last packet of a trace
+|0, [2] |Packet lost
+|0, [6:3] |Source ID
+|0, [7] |0
+|1 |Byte enables: bit _i_ is 1 when the packet carries byte _i_ of the
+64-bit CLA debug bus, bits [8__i__+7:8__i__]
+|2 onward |The enabled debug-bus bytes, lowest byte first, as sampled
+|=======================================================================
+
+A data packet is two bytes plus one per enabled byte.
+`trDstControl.Trdstformat` selects which bytes it carries:
+
+* 0: every byte of every sampled cycle.
+* 1: every byte, in a cycle in which any bit of the bus changed.
+* 3, the reset value: only the bytes that changed.
+* 2 and 4 to 7: only the packets that carry every byte regardless of format.
+
+A data packet carries every byte, whatever the format, when it carries the
+start or stop flag. It also carries every byte when the data packet of the
+previous cycle was lost, because the RAM could not take it or a timestamp
+packet took its place, and, with `Trdstsyncmode` at 1, when the data packet of
+the previous cycle was the first after a stream-count boundary. A timestamp
+packet in a cycle without a data packet does not force every byte. Nothing
+records how many cycles pass between data packets; only timestamp packets give
+elapsed time.
+
+[[smc-dst-support-packet-table]]
+[cols="20%,80%",options="header"]
+.DST support packet
+|=======================================================================
+|Byte, bits |Field
+|0, [0] |Null: the packet is this one byte
+|0, [1] |Extended: byte 1 follows
+|0, [2] |Packet lost
+|0, [6:3] |Source ID
+|0, [7] |1
+|1, [0] |Trace start
+|1, [1] |Trace stop
+|1, [7:4] |Form: 0 timestamp, 1 trace information
+|2 to 9 |Timestamp form only: the 64-bit timestamp, lowest byte first
+|=======================================================================
+
+A timestamp packet is 10 bytes. A trace-information packet is 2 bytes and
+carries a start or stop flag that could not travel in a data packet, such as
+the stop flag when `Trdstenable` is cleared. The DST sends a timestamp packet
+only while `Trdstsyncmode` is 2, once every 2^(`Trdstsyncmax`+4)^ DST clock
+cycles of a running trace, and none at trace start. With
+`trDstImpl.Trdsttimestampconfig` at 0, its reset value, the timestamp is the
+external input, which SMC ties to 0; at 1 it is the CLA timestamp,
+`CDbgClaTimestamp`, which counts `time_tick`.
+
+==== Frames
+
+A frame is 64 × `trDstImpl.Trdstvendorframelength` bytes, with the field at 1, 2,
+4 or 8, and `trDstRamImpl.Trdstramvendorframelength` must hold the same value.
+Frames fill the RAM in order from `trDstRamStartLow`, and `trDstRamWPLow`
+advances by a whole frame. With `CDbgDebugTraceCfg.FrameModeEnable` at 1, its
+reset value, every frame starts with a packet and no packet crosses into the
+next frame. The bytes after a frame's last packet hold
+`TraceFrameFillByte`. Its reset value, 0x81, reads as a null support packet with
+source ID 0, so a decoder can skip fill as null packets; keep the fill byte at a
+value with bit 7 and bit 0 at 1 and bit 1 at 0 to preserve that. With
+`FrameModeEnable` at 0, packets can cross frame boundaries and the stream
+cannot be aligned to frames, so keep frame mode on.
+
+`FrameClosureMode` decides what happens to a packet that does not fit in the
+rest of a frame. At 0 the frame is filled and the packet moves to the next
+frame; if a newer sample is ready first, the packet is dropped and the next
+packet has packet lost set. At 1 the DST closes each frame while it still has
+room for one maximum-size packet of 10 bytes, so no packet has to move.
+
+Clearing `trDstControl.Trdstenable` stops the trace and completes the frame.
+The DST discards the last sample, the one that would carry the stop flag, and
+sends null packets in its place. The stop flag follows in a trace-information
+packet with packet lost set, then null packets and fill up to the end of the
+frame. A trace stop from CLA action code 5 instead sends the last sample as a
+data packet with every byte and the stop flag set, and leaves the frame open;
+clearing `Trdstenable` afterwards adds only null packets and fill.
+
 == Interrupts
 
 The SMC interrupt table lists the two CLA-driven sources. See
@@ -169,7 +493,7 @@ ifdef::backend-pdf[]
 <<interrupts>>.
 endif::backend-pdf[]
 
-* *CLA clock stop* — asserted while the CLA has stopped clocks.
+* *CLA clock stop* — a one-cycle pulse when the clocks-stopped output rises.
 * *CLA debug interrupt* — the debug interrupt raised by a CLA action.
 
 == Memory Map and Register Reference

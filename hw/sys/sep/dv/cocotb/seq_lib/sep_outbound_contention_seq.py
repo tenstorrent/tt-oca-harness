@@ -79,8 +79,8 @@ DMA_PROT = 0b001
 def out_prot(prot: int) -> int:
     """AxPROT of a request to PAGE as the SMU path delivers it to PR-OUT.
 
-    The SMU path sets SEP's source ID in AxUSER; its number is not stated, so
-    callers grade AxUSER with ``env.sep_fabric_common.SepSrcIdGrade``.
+    The SMU path sets SEP's source ID in AxUSER[3:0]; callers grade AxUSER with
+    ``env.sep_fabric_common.SepSrcIdGrade``.
     """
     return (prot & 0b101) | (outbound_ns("smu", PAGE) << 1)
 
@@ -902,9 +902,6 @@ class OutboundLeaf:
     def _emit(self, chk: str, line: str) -> None:
         self._line(chk, line)
         self._pass(chk)
-
-    def _obs_row(self, tag: str, line: str) -> None:
-        self.logger.info("OBS-%s: %s", tag.removeprefix("CHK-"), line)
 
     def _info_row(self, tag: str, line: str) -> None:
         self.logger.info("INFO-%s: %s", tag, line)

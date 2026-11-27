@@ -2,14 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC CLA node 0 actions, programmed over JTAG2AXI, observed at the SMU.
 
-The CLA register description (``dfd_cla.rdl``) gives each field's position
-but not the encodings of ACTION0/ACTION1, LOGICALOP or EVENTTYPE0/1. The pair
-is LogicalOp NOR over two "none" event types, as the SMC CLA boot firmware
-programs it (``smc_cla_boot.h``), which holds its actions for as long as it
-is programmed. The action codes 1, 7 and 8, for clock halt and the two
-cross-trigger outputs, have no documented source. No compare depends on what
-those codes mean: the nets they drive are recorded, and the compares are the
-ones the register descriptions state.
+The CLA register description (``dfd_cla.rdl``) gives LOGICALOP 3 as the NOR
+of events 0 and 1 and the EVENTTYPE codes 62 and 63 as events that never
+fire. The pair is LogicalOp NOR over those two event types, as the SMC CLA
+boot firmware programs it (``smc_cla_boot.h``), which holds its actions for
+as long as it is programmed. The action codes 1, 7 and 8, for clock halt and the two
+cross-trigger outputs, are the codes of ``hw/sys/smc/doc/dfd.adoc`` (Action
+Codes). No compare depends on what those codes mean: the nets they drive are
+recorded, and the compares are the ones the register descriptions state.
 
 S1: CUSTOMACTION0/1 "select the bit position of custom action bus to be set
     when EAP trigger is met" (``dfd_cla.rdl``), so each custom action k in
@@ -61,8 +61,9 @@ def _field(prefix: str, name: str, value: int) -> int:
     return (value << cla_u32(f"{prefix}{name}_bp")) & cla_u32(f"{prefix}{name}_bm")
 
 
-# The "none" event types smc_cla_boot.h pairs under LogicalOp NOR, and the
-# action codes; no register description gives these encodings.
+# The never-firing event types smc_cla_boot.h pairs under LogicalOp NOR
+# (dfd_cla.rdl LogicalOp, EventType0), and the action codes of dfd.adoc
+# Action Codes.
 ACTION_CLOCK_HALT = 1
 ACTION_XTRIGGER0_OUT = 7
 ACTION_XTRIGGER1_OUT = 8

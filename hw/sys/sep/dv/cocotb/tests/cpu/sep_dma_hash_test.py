@@ -14,6 +14,30 @@ destination word at the sentinel (CTRL-SRC-FILL), so a copy that does not run ca
 source. The host also gates on CHK-SHA384, CHK-MULTICHUNK, CHK-DIGEST-SWAP, CHK-CFG, CHK-COMPLETE
 (the SHA-256 pass line, which no other pass prints), CHK-COPY and CHK-SHA384-COPY, and compares the
 printed hardware and software digests itself (CHK-DIGEST).
+
+An inline hash also copies its data (OpenTitan DMA ``programmers_guide.md``: the copy runs along
+with the hash), across chunks and into ICCM. The host grades these from the values the firmware
+prints:
+
+* CTRL-DCCM-DST-CLEAR: the DCCM image (``BSS_END``) ends at or below the DCCM destination.
+* CTRL-MULTICHUNK-SENTINEL: before the two-chunk SHA-256 GO, every destination word holds the
+  sentinel. CHK-MULTICHUNK-COPY: after DONE, every one of the 56 destination bytes equals the
+  message byte.
+* CTRL-ICCM-FILL: before the ICCM pass, every source word is filled and every word of the SRAM
+  readback buffer holds the sentinel. CTRL-ICCM-HASH-CLEAR: the code image, which the loader places
+  from the ICCM base (``dma_hash_test.itcm.hex`` byte offsets), ends at or below the ICCM
+  destination.
+* CHK-ICCM-HASH: the SHA-256 pass from SRAM into ICCM ends with the DONE interrupt and ERROR_CODE
+  0, and its hardware digest equals the software SHA-256 of the source.
+* CHK-ICCM-HASH-COPY: a DMA copy of the ICCM destination back to the SRAM buffer ends with the
+  DONE interrupt and ERROR_CODE 0, and every buffer word equals its source word. The CPU load/store
+  unit cannot read ICCM (``hw/sys/sep/doc/rom.adoc``), so the firmware witnesses the ICCM write
+  with this copy. On Verilator the host also reads the ICCM array at the destination address
+  (``env/sep_mem_backdoor.py``) and requires every word to equal the source word in the SRAM array;
+  VCS gives no access to the ICCM array, so there the host logs ``INFO-ICCM-ARRAY`` instead.
+
+The host pins each count the firmware prints to the firmware's sizes: 14 sentinel words and 56
+bytes for the two-chunk pass, 64 words (256 bytes) for the ICCM pass.
 """
 
 from __future__ import annotations
@@ -22,8 +46,11 @@ import os
 import re
 from pathlib import Path
 
+import cocotb
 import pyuvm
+from env import sep_mem_backdoor as mem
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_smc_mem import load_verilog_hex
 from sep_base_test import sep_base_test
 from sep_reg_meta import CHeaderRegBlock, ot_c_header, sym
 
@@ -33,6 +60,12 @@ _ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+# Sizes in dma_hash_test.c: the two-chunk message (FIPS_MSG_LEN) and the ICCM pass
+# (TEST_DATA_SIZE).
+_MC_BYTES = 56
+_MC_WORDS = _MC_BYTES // 4
+_ICCM_LEN = 0x100
+_ICCM_WORDS = _ICCM_LEN // 4
 # CFG_REGWEN reads its RDL reset (MUBI4 TRUE, unlocked) before any DMA
 # configuration; the value comes from the generated secure_dma C header.
 _CFG_REGWEN_RESET = CHeaderRegBlock("SECURE_DMA", ot_c_header("secure_dma")).reset("CFG_REGWEN")
@@ -44,6 +77,33 @@ _PROGRESS_EVERY = 5_000
 # Must match the banner dma_hash_test.c actually prints.
 _BANNER = "Secure DMA SHA-256 Hash Test"
 _SRC_FILL = re.compile(r"SRC-FILL src_live=(\d+)/(\d+) dst_sentinel=(\d+)/(\d+)")
+_DCCM_CLEAR = re.compile(r"DCCM-DST-CLEAR bss_end=0x([0-9a-f]+) dst=0x([0-9a-f]+)")
+_MC_SENTINEL = re.compile(r"MULTICHUNK-SENTINEL dst_sentinel=(\d+)/(\d+)")
+_MC_COPY = re.compile(r"MULTICHUNK-COPY match=(\d+)/(\d+)")
+_ICCM_FILL = re.compile(r"ICCM-FILL src_live=(\d+)/(\d+) buf_sentinel=(\d+)/(\d+)")
+_ICCM_DST = re.compile(r"ICCM-HASH-DST iccm_base=0x([0-9a-f]+) dst=0x([0-9a-f]+) len=(\d+)")
+_ICCM_HASH = re.compile(r"ICCM-HASH done=(\d+) error_code=0x([0-9a-f]+)")
+_ICCM_HW = re.compile(r"ICCM-HASH HW = ([0-9a-f]{64})")
+_ICCM_SW = re.compile(r"ICCM-HASH SW = ([0-9a-f]{64})")
+_ICCM_COPY = re.compile(
+    r"ICCM-HASH-COPY done=(\d+) error_code=0x([0-9a-f]+) match=(\d+)/(\d+) sentinel_left=(\d+)"
+)
+
+
+def _grab(rx: re.Pattern, console: str, rec: str) -> tuple[str, ...]:
+    """The groups of the firmware line ``rx``; a missing line fails ``rec``."""
+    m = rx.search(console)
+    if not m:
+        raise AssertionError(
+            f"{rec} FAIL: firmware console has no line matching {rx.pattern!r}. "
+            f"Console was:\n{console}"
+        )
+    return m.groups()
+
+
+def _itcm_image_bytes(path: str) -> int:
+    """Byte length of the ICCM image: the end of its last byte run, from offset 0."""
+    return max((addr + len(data) for addr, data in load_verilog_hex(path)), default=0)
 
 
 @pyuvm.test()
@@ -160,4 +220,94 @@ class sep_dma_hash_test(sep_base_test):
         self.logger.info(
             "CHK-DIGEST PASS: hardware SHA-256 digest == the software recomputation "
             "over the same SRAM bytes"
+        )
+        self._grade_copy_passes(console)
+
+    def _grade(self, rec: str, ok: bool, fields: str) -> None:
+        """Log ``rec`` PASS with its values, or raise ``rec`` FAIL with them."""
+        if not ok:
+            raise AssertionError(f"{rec} FAIL: {fields}")
+        self.logger.info("%s PASS: %s", rec, fields)
+
+    def _grade_copy_passes(self, console: str) -> None:
+        """The DCCM clearance, the two-chunk copy and the ICCM hash and copy-back records."""
+        bss_end, dst = (int(v, 16) for v in _grab(_DCCM_CLEAR, console, "CTRL-DCCM-DST-CLEAR"))
+        self._grade(
+            "CTRL-DCCM-DST-CLEAR",
+            bss_end <= dst,
+            f"bss_end=0x{bss_end:08x} dccm_dst=0x{dst:08x}",
+        )
+
+        sent, n = (int(v) for v in _grab(_MC_SENTINEL, console, "CTRL-MULTICHUNK-SENTINEL"))
+        self._grade(
+            "CTRL-MULTICHUNK-SENTINEL", n == _MC_WORDS and sent == n, f"dst_sentinel={sent}/{n}"
+        )
+        match, n = (int(v) for v in _grab(_MC_COPY, console, "CHK-MULTICHUNK-COPY"))
+        self._grade(
+            "CHK-MULTICHUNK-COPY",
+            n == _MC_BYTES and match == n,
+            f"dst_bytes_equal_source={match}/{n} (two-chunk SHA-256 pass, DCCM destination)",
+        )
+
+        src_live, src_n, buf_sent, buf_n = (
+            int(v) for v in _grab(_ICCM_FILL, console, "CTRL-ICCM-FILL")
+        )
+        self._grade(
+            "CTRL-ICCM-FILL",
+            src_n == _ICCM_WORDS and src_live == src_n and buf_n == src_n and buf_sent == buf_n,
+            f"src_live={src_live}/{src_n} buf_sentinel={buf_sent}/{buf_n}",
+        )
+        base_s, dst_s, length_s = _grab(_ICCM_DST, console, "CTRL-ICCM-HASH-CLEAR")
+        fw_base, iccm_dst, length = int(base_s, 16), int(dst_s, 16), int(length_s)
+        image_end = _ICCM_BASE + _itcm_image_bytes(_ITCM_HEX)
+        self._grade(
+            "CTRL-ICCM-HASH-CLEAR",
+            fw_base == _ICCM_BASE and length == _ICCM_LEN and image_end <= iccm_dst,
+            f"iccm_base=0x{_ICCM_BASE:08x} fw_iccm_base=0x{fw_base:08x} "
+            f"image_end=0x{image_end:08x} iccm_dst=0x{iccm_dst:08x} len={length}",
+        )
+
+        done_s, err_s = _grab(_ICCM_HASH, console, "CHK-ICCM-HASH")
+        (hw,) = _grab(_ICCM_HW, console, "CHK-ICCM-HASH")
+        (sw,) = _grab(_ICCM_SW, console, "CHK-ICCM-HASH")
+        done, err = int(done_s), int(err_s, 16)
+        self._grade(
+            "CHK-ICCM-HASH",
+            done == 1 and err == 0 and hw == sw,
+            f"done={done} error_code=0x{err:x} hw=0x{hw} sw=0x{sw}",
+        )
+
+        done, err, match, n, left = _grab(_ICCM_COPY, console, "CHK-ICCM-HASH-COPY")
+        done, err, match, n, left = int(done), int(err, 16), int(match), int(n), int(left)
+        self._grade(
+            "CHK-ICCM-HASH-COPY",
+            done == 1 and err == 0 and n == _ICCM_WORDS and match == n,
+            f"done={done} error_code=0x{err:x} words_equal_source={match}/{n} sentinel_left={left}",
+        )
+        self._grade_iccm_array(iccm_dst)
+
+    def _grade_iccm_array(self, iccm_dst: int) -> None:
+        """CHK-ICCM-HASH-COPY, array part: the ICCM words at the destination address equal the
+        source words of the ICCM pass at the SRAM base, both read from the storage arrays. The
+        arrays are reachable only on Verilator."""
+        sim = str(getattr(cocotb, "SIM_NAME", "") or "")
+        if "verilator" not in sim.lower():
+            self.logger.info(
+                "INFO-ICCM-ARRAY: array compare not run on %s (no access to the ICCM array); "
+                "the DMA copy-back above is the ICCM witness on this simulator",
+                sim,
+            )
+            return
+        banks, sram = mem.iccm_banks(), mem.sram_array()
+        bad = []
+        for i in range(_ICCM_WORDS):
+            src = (int(sram[i // 2].value) >> (32 * (i % 2))) & 0xFFFF_FFFF
+            got = mem.iccm_word(banks, iccm_dst + 4 * i)
+            if got != src:
+                bad.append(f"@0x{iccm_dst + 4 * i:08x} iccm=0x{got:08x} source=0x{src:08x}")
+        self._grade(
+            "CHK-ICCM-HASH-COPY",
+            not bad,
+            f"iccm_array_equal_source={_ICCM_WORDS - len(bad)}/{_ICCM_WORDS} at 0x{iccm_dst:08x} "
+            + "; ".join(bad[:4]),
         )

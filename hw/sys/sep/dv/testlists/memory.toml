@@ -35,7 +35,7 @@ timeout_sec = 900
 tags = ["sram", "memory", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+sep_sram_hex=sep_sram_preload.hex"]
 
 [[tests]]
 # Multi-beat FIXED and WRAP bursts into SEP SRAM answer SLVERR and leave SRAM unchanged
@@ -282,7 +282,7 @@ args = ["+skip_fuse_sense", "+sep_require_full_cpu"]
 # read, a load above the aperture does not reach the ROM port, a stored-bit flip returns the
 # stored data, and a cold reset during an access leaves the interface usable. A wdt_rst_ni
 # reset during an access and the response to a load above the aperture are logged only.
-# Real fuse sense of a PROD image whose ROM_CTL is 0.
+# Real fuse sense of a PROD image.
 name = "sep_boot_rom_aperture_sweep_test"
 module = "cpu.sep_boot_rom_aperture_sweep_test"
 seed = 1

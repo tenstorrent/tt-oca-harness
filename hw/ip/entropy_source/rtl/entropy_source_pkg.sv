@@ -5,6 +5,7 @@
 //
 // RegAddrWidth/RegDataWidth/RegStrbWidth and reg_addr_t/reg_data_t/reg_strb_t serve
 // register access; NRings is the generator-lane count.
+// rosc_ctrl_t drives entropy_rosc_array, the ring oscillators beside entropy_source.
 // entropy_source_err_bus_t collects every error and fault that drives INTR_STATUS sticky
 // bits; irq_o is the single OR of those bits masked by INTR_ENABLE.
 
@@ -19,6 +20,14 @@ package entropy_source_pkg;
   typedef logic [RegStrbWidth-1:0] reg_strb_t;
 
   localparam int unsigned NRings = 12;
+
+  // Ring-oscillator array control, driven from clk_i registers.
+  typedef struct packed {
+    logic [NRings-1:0] noise_enable;   // Bit i lets noise ring i oscillate.
+    logic [NRings-1:0] noise_detune;   // Bit i selects noise ring i's full-length feedback path.
+    logic              shared_enable;  // Lets the shared sample-clock ring oscillate.
+    logic              shared_detune;  // Selects the shared ring's full-length feedback path.
+  } rosc_ctrl_t;
 
   // ------------------------------------------------------------------------
   // Error / fault aggregation bus.
