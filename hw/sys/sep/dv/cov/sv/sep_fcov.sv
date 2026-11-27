@@ -382,6 +382,7 @@ module sep_fcov (
   input wire                 sep_wdt_reset_n_i, // sep_wdt_reset_n (watchdog timer reset)
   input wire [1:0]           km_cond_rst_n_i,   // {rst_cold_aasd_n, rst_warm_sync_n}
   input wire [1:0]           refcnt_rst_n_i,    // reference counter {clk_ref_i, clk_i} reset
+  input wire                 efuse_rst_n_i,     // u_efuse_interface_controller.u_reset_n_sync.q_o
   input sep_pkg::jtag_sep_reset_ctrl_t jtag_rst_ctrl_i,  // after the pin-or-TDR mux
   input wire [30:0]          dmi_rst_vec_i,     // reset-vector TDR, bits 31:1
   // u_sep_wdt_wrap adapter stages.
@@ -786,6 +787,7 @@ module sep_fcov (
   input wire                                esrc_stream_gated_i,   // esrc_stream_valid_gated_o
   input wire [19:0]                         esrc_div0_i,           // esrc_decor_div_lane0_o
   input wire                                esrc_cntr_inj_i,       // esrc_cntr_inject_i
+  input wire [2:0]                          esrc_cntr_tgt_i,       // esrc_cntr_inject_bit_i[7:5]
   input wire [31:0]                         esrc_compress_data_i,  // esrc_compress_data_o
   input wire                                seed_word_ready_i,     // seed packer csrng_word_ready_o
   input wire                                drbg_es_ack_i,         // drbg_es_ack_o
@@ -17097,12 +17099,12 @@ module sep_fcov (
     // Net: 0 sep_reset_n, 1 sep_cpu_reset_n, 2..7 ip_rst_n[1..6],
     // 8 aon_rst_n, 9 Key Manager cold, 10 Key Manager warm, 11 ip_rst_n[0],
     // 12 reference counter clk_ref_i reset, 13 reference counter clk_i reset,
-    // 14 sep_wdt_reset_n.
+    // 14 sep_wdt_reset_n, 15 eFuse interface reset synchronizer output.
     // Case 0 keeps its value (test_en_i 0), 1 low before the rise
     // (test_en_i 1), 2 the release of net 0 or 8 off the clock edge.
     cp_scan_net_effect: coverpoint s.sn iff (s.sn_v) {
-      bins te0_keeps[] = {[6'd0 : 6'd14]};
-      bins te1_low[] = {[6'd16 : 6'd30]};
+      bins te0_keeps[] = {[6'd0 : 6'd15]};
+      bins te1_low[] = {[6'd16 : 6'd31]};
       bins sep_reset_n_release_bypassed = {6'd32};
       bins aon_rst_n_release_bypassed = {6'd40};
     }
@@ -17779,7 +17781,7 @@ module sep_fcov (
       wildcard illegal_bins held_word_acked_to_other = {3'b1_??};
     }
     // After a TRNG reset the chain produces fresh data only after
-    // reinitialization (hw/sys/sep/doc/trng.adoc:197-199).
+    // reinitialization (hw/sys/sep/doc/trng.adoc:200-202).
     cp_trng_reinit: coverpoint s.tr iff (s.tr_v) {
       bins fresh_seed = {2'd0}; bins fips_lock_restored = {2'd1}; bins pool_pop_okay = {2'd2};
     }
@@ -18212,10 +18214,11 @@ module sep_fcov (
   logic mr_sn_arm = 1'b0;
   // Scan net samples on clk_i, in the bit order of mr_sn_now: the value and an
   // X flag per net. A net with X in the window fills no cp_scan_net_effect cell.
-  logic [14:0] mr_sn_now_q = '0;
-  logic [14:0] mr_sn_xv;
-  logic [14:0] mr_sn_xv_q = '0;
+  logic [15:0] mr_sn_now_q = '0;
+  logic [15:0] mr_sn_xv;
+  logic [15:0] mr_sn_xv_q = '0;
   always_comb begin
+    mr_sn_xv[15] = $isunknown(efuse_rst_n_i);
     mr_sn_xv[14] = $isunknown(sep_wdt_reset_n_i);
     mr_sn_xv[13] = $isunknown(refcnt_rst_n_i[0]);
     mr_sn_xv[12] = $isunknown(refcnt_rst_n_i[1]);
@@ -18566,9 +18569,9 @@ module sep_fcov (
   logic mr_ro_arm = 1'b0;
   logic mr_ro_low = 1'b0;
   logic mr_ro_bad_q = 1'b0;
-  logic [14:0] mr_sn_snap = '0;
-  logic [14:0] mr_sn_keep = '0;
-  logic [14:0] mr_sn_kn = '0;  // the net had no X from the edge before the fall
+  logic [15:0] mr_sn_snap = '0;
+  logic [15:0] mr_sn_keep = '0;
+  logic [15:0] mr_sn_kn = '0;  // the net had no X from the edge before the fall
   logic mr_sn_on = 1'b0;
   logic mr_sn_te = 1'b0;
   logic mr_sn_te_ok = 1'b0;
@@ -18579,7 +18582,8 @@ module sep_fcov (
   int unsigned mr_mp_tog = 0;
   logic mr_mp_rel = 1'b0;
   int unsigned mr_mp_cnt = 0;
-  wire [14:0] mr_sn_now = {
+  wire [15:0] mr_sn_now = {
+    efuse_rst_n_i === 1'b1,
     sep_wdt_reset_n_i === 1'b1,
     refcnt_rst_n_i[0] === 1'b1,
     refcnt_rst_n_i[1] === 1'b1,
@@ -18669,7 +18673,7 @@ module sep_fcov (
       u_sep_reset_source_cg.sample(e);
     end
 
-    // cp_scan_net_effect, the 30 net cells. A cell needs the net high on the
+    // cp_scan_net_effect, the 32 net cells. A cell needs the net high on the
     // last clk_i edge before the scan_rst_ni fall.
     if (mr_scan_q && !mr_scan) begin
       mr_sn_on    <= mr_own_scan;
@@ -18687,7 +18691,7 @@ module sep_fcov (
     end else if (mr_sn_on && !mr_scan_q && mr_scan) begin
       mr_sn_on <= 1'b0;
       if (mr_own_scan && mr_sn_te_ok && (mr_sn_w >= MrScanMinW)) begin
-        for (int n = 0; n < 15; n++) begin
+        for (int n = 0; n < 16; n++) begin
           if (mr_sn_kn[n] && mr_sn_snap[n] && (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n])) begin
             mr_src_t e;
             e      = '0;
@@ -28913,7 +28917,7 @@ module sep_fcov (
       cxt_gen   <= 1'b0;
     end else if (cxt_arm && mr_ip[5]) begin
       // fresh_seed: a seed after the generators are enabled again; a seed
-      // before that write is not reinitialized data (hw/sys/sep/doc/trng.adoc:198-199).
+      // before that write is not reinitialized data (hw/sys/sep/doc/trng.adoc:201-202).
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_RING_OSC_ENABLE_REG_ADDR) &&
           ((wr_data & ENTROPY_SOURCE_RING_OSC_ENABLE_ENABLE_MASK) != 32'h0)) begin
         cxt_gen <= 1'b1;
@@ -29156,6 +29160,8 @@ module sep_fcov (
     logic fi_v;  // 0 parity, 1 pointer copy, 2 write-one clear, 3 rise with no inject
     logic [1:0] se;
     logic se_v;  // MAIN_SM_STATUS.ERR: 0 set, 1 kept by a write of 0, 2 cleared by a write of 1, 3 cleared by the TRNG reset
+    logic [2:0] st;
+    logic st_v;  // counter-copy inject target of a set cell (esrc_cntr_inject_bit_i[7:5])
   } cz_falt_t;
 
   covergroup sep_esrc_fault_alert_cg with function sample (cz_falt_t s);
@@ -29216,6 +29222,17 @@ module sep_fcov (
       // is gone (CHK-SM-ERR-W1C).
       bins w1c_clears = {2'd2};
       bins reset_clears = {2'd3};
+    }
+    // The counter whose copy the inject of a set cell forced. Target 0, the
+    // REPCNT_TOTAL_FAILS counter, is the set cell of cp_sm_err.
+    cp_sm_err_target: coverpoint s.st iff (s.st_v) {
+      ignore_bins repcnt = {3'd0};
+      bins window = {3'd1};
+      bins lane_rep = {3'd2};
+      bins lane_apt = {3'd3};
+      bins lane_markov = {3'd4};
+      bins total = {3'd5};
+      bins alert = {3'd6};
     }
   endgroup
 
@@ -29848,6 +29865,10 @@ module sep_fcov (
       8: begin
         e.se   = v[1:0];
         e.se_v = 1'b1;
+      end
+      9: begin
+        e.st   = v[2:0];
+        e.st_v = 1'b1;
       end
       default: begin
         e.fi   = v[1:0];
@@ -33801,22 +33822,31 @@ module sep_fcov (
   logic       cz_se_live = 1'b0; // esrc_sm_err_i 1 at that read or since
   logic       cz_se_inj_q = 1'b0;
   logic [2:0] cz_se_pend = '0;   // pending {w1c_clears, reset_clears, set}
+  logic [2:0] cz_se_tgt = '0;    // esrc_cntr_tgt_i at the last counter-copy inject rise
+  logic       cz_st_pend = 1'b0; // cp_sm_err_target cell pending with the set cell
+  logic [2:0] cz_st_tgt = '0;    // its target
   always @(posedge clk_i) begin
     cz_se_inj_q <= esrc_cntr_inj_i;
     if (cz_pa_rel[CzPaSmErr]) begin
       if (cz_se_pend[0]) cz_falt(8, 6'd0);
       if (cz_se_pend[1]) cz_falt(8, 6'd3);
       if (cz_se_pend[2]) cz_falt(8, 6'd2);
+      if (cz_st_pend) cz_falt(9, 6'(cz_st_tgt));
       cz_se_pend <= '0;
+      cz_st_pend <= 1'b0;
     end
     if (cz_win_open || in_reset) begin
       cz_se_pend <= '0;
+      cz_st_pend <= 1'b0;
       cz_se_gone <= 1'b0;
     end
     if (!cy_own_espa || in_reset) begin
       cz_se_v <= 1'b0;
     end else begin
-      if (esrc_cntr_inj_i && !cz_se_inj_q) cz_se_inj <= 1'b1;
+      if (esrc_cntr_inj_i && !cz_se_inj_q) begin
+        cz_se_inj <= 1'b1;
+        cz_se_tgt <= esrc_cntr_tgt_i;
+      end
       if (cz_trng_rise) cz_se_rst <= 1'b1;
       if (esrc_sm_err_i) cz_se_live <= 1'b1;
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_MAIN_SM_STATUS_REG_ADDR)) begin
@@ -33826,7 +33856,11 @@ module sep_fcov (
         logic e;
         e = ((rd_data & CzErrMask) != 32'h0);
         if (cz_se_v) begin
-          if (!cz_se_rd && e && cz_se_inj && !cz_se_rst) cz_se_pend[0] <= 1'b1;
+          if (!cz_se_rd && e && cz_se_inj && !cz_se_rst) begin
+            cz_se_pend[0] <= 1'b1;
+            cz_st_pend    <= 1'b1;
+            cz_st_tgt     <= cz_se_tgt;
+          end
           if (cz_se_rd && !e && (cz_se_w == 2'd0) && cz_se_rst) cz_se_pend[1] <= 1'b1;
           if (cz_se_rd && !e && (cz_se_w == 2'd2) && !cz_se_inj && !cz_se_rst && !cz_se_live &&
               !esrc_sm_err_i)
@@ -34846,7 +34880,6 @@ module sep_fcov (
   localparam int unsigned EfWBl1 = SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET / 4;
   localparam int unsigned EfWBl2 = SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET / 4;
   localparam int unsigned EfWStatusRpt = SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET / 4;
-  localparam int unsigned EfWRomCtl = SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET / 4;
   localparam int unsigned EfWSysclk = SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_OFFSET / 4;
   localparam int unsigned EfWSigners = SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET / 4;
   localparam int unsigned EfWAlgs = SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET / 4;
@@ -35104,7 +35137,6 @@ module sep_fcov (
       bins transient_rma_en = {4'd2};
       bins chiplet_pubk_revoke = {4'd3};
       bins status_rpt = {4'd4};
-      bins rom_ctl = {4'd5};
       bins sysclk_freq_mhz = {4'd6};
       bins required_signers = {4'd7};
       bins required_algs = {4'd8};
@@ -35160,8 +35192,6 @@ module sep_fcov (
     logic al_v;  // x_algs_owner_value: owner * 4 + value
     logic [1:0] sr;
     logic sr_v;  // cp_status_rpt
-    logic [3:0] rc;
-    logic rc_v;  // cp_rom_ctl: {0, endianness} or {1, swap class}
     logic [1:0] sc;
     logic sc_v;  // cp_sysclk_class: 0 one, 1 middle, 2 max
     logic [1:0] rv;
@@ -35182,15 +35212,6 @@ module sep_fcov (
       bins system[] = {[4'd8 : 4'd11]};
     }
     cp_status_rpt: coverpoint s.sr iff (s.sr_v) {bins value[] = {[2'd0 : 2'd3]};}
-    // Swap class: 0 zero, 1 to 5 the single bit 1 to 5, 6 all five, 7 other.
-    cp_rom_ctl: coverpoint s.rc iff (s.rc_v) {
-      bins endian_0 = {4'b0_000};
-      bins endian_1 = {4'b0_001};
-      bins swap_zero = {4'b1_000};
-      bins swap_single[] = {[4'b1_001 : 4'b1_101]};
-      bins swap_all = {4'b1_110};
-      bins swap_other = {4'b1_111};
-    }
     // Value 0 is "ignored" and is not drawn, so it has no bin.
     cp_sysclk_class: coverpoint s.sc iff (s.sc_v) {
       bins one = {2'd0}; bins middle = {2'd1}; bins max = {2'd2};
@@ -37042,7 +37063,6 @@ module sep_fcov (
         SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR: ef_geo(3, 6'd2);
         SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR: ef_geo(3, 6'd3);
         SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR: ef_geo(3, 6'd4);
-        SEP_EFUSE_MAP_ROM_CTL_REG_ADDR: ef_geo(3, 6'd5);
         SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_REG_ADDR: ef_geo(3, 6'd6);
         SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_ADDR: ef_geo(3, 6'd7);
         SEP_EFUSE_MAP_REQUIRED_ALGS_REG_ADDR: ef_geo(3, 6'd8);
@@ -37081,7 +37101,6 @@ module sep_fcov (
   always @(posedge clk_i) begin
     ef_fld_t e;
     logic [31:0] w;
-    logic [4:0] sw;
     logic [10:0] clk;
     logic [511:0] cur, gain;
     if (ef_cmd_pg) ef_vb_prog <= 1'b1;
@@ -37100,17 +37119,6 @@ module sep_fcov (
         clk = efuse_shadow_i[32*EfWSysclk+:11];
         e.sc = (clk == 11'd1) ? 2'd0 : (clk == 11'h7FF) ? 2'd2 : 2'd1;
         e.sc_v = (clk != 11'd0);
-        w = efuse_shadow_i[32*EfWRomCtl+:32];
-        e.rc = {1'b0, 2'b00, w[0]};
-        e.rc_v = 1'b1;
-        ef_put_fld(e);
-        sw = w[5:1];
-        e = '0;
-        e.rc = (sw == 5'd0) ? 4'b1_000 : (sw == 5'h1F) ? 4'b1_110 : 4'b1_111;
-        for (int i = 0; i < 5; i++) begin
-          if (sw == (5'd1 << i)) e.rc = {1'b1, 3'(i + 1)};
-        end
-        e.rc_v = 1'b1;
         ef_put_fld(e);
         w = efuse_shadow_i[32*EfWAlgs+:32];
         for (int o = 0; o < 3; o++) begin
@@ -45991,6 +45999,7 @@ module sep_fcov (
   localparam int unsigned RasPbeCsrng = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_CSRNG;
   localparam int unsigned RasPbeEdn = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_EDN;
   localparam int unsigned RasPbeWdt = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_WDT;
+  localparam int unsigned RasPbeSpi = RasPeriphBusErr + sep_pkg::PERIPH_BUS_ERR_SPI;
   if (RasW != RasLcSigintErr + 1) begin : g_ras_width_check
     $fatal(1, "sep_ras_t is %0d bits, the sep_ras_cg map has %0d", RasW, RasLcSigintErr + 1);
   end
@@ -46016,6 +46025,7 @@ module sep_fcov (
       bins periph_bus_err_kmac = {RasPbeKmac};
       bins periph_bus_err_otbn = {RasPbeOtbn};
       bins periph_bus_err_wdt = {RasPbeWdt};
+      bins periph_bus_err_spi = {RasPbeSpi};
       bins csrng_fatal = {RasCsrngFatal};
       bins edn_fatal = {RasEdnFatal};
       bins crypto_alert = {RasCryptoAlert};
@@ -46047,6 +46057,7 @@ module sep_fcov (
       RasDmaRegBusErr, RasPbeAes, RasPbeHmac, RasPbeKmac, RasPbeOtbn, RasPbeWdt:
       return graded_owner == FcovOwnSepCpuBridgeFaultMatrixRandTest;
       RasDmaHostIntgErr: return graded_owner == FcovOwnSepDmaBasicTest;
+      RasPbeSpi: return graded_owner == FcovOwnSepSpiOtHostCsrIrqRandTest;
       RasCsrngFatal, RasEdnFatal:
       return (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) ||
           (graded_owner == FcovOwnSepPicPendingMapWalkRandTest);

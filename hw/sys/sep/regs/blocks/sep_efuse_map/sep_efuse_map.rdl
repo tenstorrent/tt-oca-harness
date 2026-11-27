@@ -811,24 +811,14 @@ addrmap sep_efuse_map {
     };
 
     reg ROM_CTL{
+        desc = "Reserved.";
         regwidth = 32;
         accesswidth = 32;
         field{
             sw = rw;
             hw = rw;
-            desc = "controls the endianness of the rom data out. 0->little endian; 1->big endian";
-        } rom_endianness_ctrl[0:0] = 0x0;
-
-        field{
-            sw = rw;
-            hw = rw;
-            desc = "controls how the rom slices are swapped";
-        } rom_swap_ctrl[5:1] = 0x0;
-        field{
-            sw = rw;
-            hw = rw;
             desc = "reserved";
-        } reserved[31:6] = 0x0;
+        } reserved[31:0] = 0x0;
     };
 
     reg SYSCLK_FREQ_MHZ {

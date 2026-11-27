@@ -508,6 +508,7 @@
         rand uvm_reg_field csrng;
         rand uvm_reg_field edn;
         rand uvm_reg_field wdt;
+        rand uvm_reg_field spi;
 
         function new(string name = "sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS");
             super.new(name, 64, UVM_NO_COVERAGE);
@@ -528,6 +529,8 @@
             this.edn.configure(this, 1, 5, "RO", 1, 'h0, 1, 1, 0);
             this.wdt = uvm_reg_field::type_id::create("wdt");
             this.wdt.configure(this, 1, 6, "RO", 1, 'h0, 1, 1, 0);
+            this.spi = uvm_reg_field::type_id::create("spi");
+            this.spi.configure(this, 1, 7, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS
 
@@ -541,6 +544,7 @@
         rand uvm_reg_field csrng;
         rand uvm_reg_field edn;
         rand uvm_reg_field wdt;
+        rand uvm_reg_field spi;
 
         function new(string name = "sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR");
             super.new(name, 64, UVM_NO_COVERAGE);
@@ -561,6 +565,8 @@
             this.edn.configure(this, 1, 5, "WO", 1, 'h0, 1, 1, 0);
             this.wdt = uvm_reg_field::type_id::create("wdt");
             this.wdt.configure(this, 1, 6, "WO", 1, 'h0, 1, 1, 0);
+            this.spi = uvm_reg_field::type_id::create("spi");
+            this.spi.configure(this, 1, 7, "WO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR
 

@@ -157,7 +157,7 @@ Checkers:
                    each trial.
   CHK-ESRC-HT-BYPASS
                    ``CTRL.BYPASS_ENTROPY_COMPRESSOR`` = 1: the 32-bit health test
-                   is clock-gated off (architecture.adoc:47-48; trng.adoc:62-63),
+                   is clock-gated off (architecture.adoc:47-48; trng.adoc:64-65),
                    so HEALTH_TEST_STATUS (entropy_source.rdl:352) reads 0 after a
                    write of 1 to its set bits and still reads 0 after 3W
                    constant-zero strobes. Control (CTRL-ESRC-HT-BYPASS): CTRL
@@ -1727,7 +1727,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         """Constant zero with the compressor bypassed: the 32-bit tester latches nothing.
 
         The windows are those of ``_zero_leg``. The 32-bit health test is clock-gated
-        off in bypass (architecture.adoc:47-48; trng.adoc:62-63), so
+        off in bypass (architecture.adoc:47-48; trng.adoc:64-65), so
         HEALTH_TEST_STATUS reads 0 after a write of 1 to its set bits and still
         reads 0 after the windows (CHK-ESRC-HT-BYPASS). The APT_LO and MARKOV_LO
         totals are INFO-ESRC-HT-BYPASS-TOTALS.

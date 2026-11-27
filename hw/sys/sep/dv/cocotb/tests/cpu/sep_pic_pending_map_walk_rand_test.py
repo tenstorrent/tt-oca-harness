@@ -58,6 +58,14 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    DATA_OUT equals the FIPS-197 C.1 ciphertext and the AES
                    status reads done after the encryption; the OTP and
                    life-cycle reads return (``CTRL-SLOTLESS-READS``).
+* CHK-SRC34        vector bit 33 (source 34, the locked-field access pulse)
+                   does not change over the OTP read window, and the read
+                   does not return ``0xBADCAB1E``: the read is of the
+                   ``LC_STATE`` shadow, which ignores its lock bits
+                   (``hw/sys/sep/doc/otp_fuse_controller.adoc:117-118``,
+                   ``:225-226``), and source 34 pulses for a shadow access
+                   that a field lock blocks (``hw/sys/sep/doc/interrupts.adoc:198-204``;
+                   ``otp_fuse_controller.adoc:112-115``).
 * CHK-ALERT-MEIP   meip[1] bit 1 (edge source 33) reads 1 after each alert
                    kind, before its meigwclr write.
 * CHK-MASKED-VISIBLE the held edge bits of sources 12 and 33 read 1 in
@@ -121,6 +129,26 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    copied meip bits equal the firmware values; CHK-GW-L2E is
                    not logged without it).
 
+* CHK-SRC17-EDGE   source 17 (``ext_trng_irq_i``) in an active-high edge
+                   gateway: ``meip`` bit 17 reads 0 before a pulse of the
+                   drawn width (at least two clocks), 1 after the input
+                   drops, 1 after the drawn hold with the input low, and 0
+                   after the ``meigwclr`` write (``hw/sys/sep/doc/interrupts.adoc:120-122``).
+* CHK-SRC17-LEVEL  source 17 in an active-high level gateway: ``meip`` bit 17
+                   reads 0 with the input low, 1 with the input high, 1 after
+                   a ``meigwclr`` write with the input high, 1 after the
+                   drawn hold, and 0 after the input drops (``interrupts.adoc:115-119``:
+                   the source follows the input, with no edge detection or
+                   pulse stretching; PRM ``interrupts.md:69``). Control:
+                   ``CTRL-SRC17-DRIVE`` (on the ``pic_rd_data_probe_o`` copies
+                   of the graded reads after each drive, vector bit 16 reads
+                   the driven level, the copied meip bits equal the firmware
+                   values, the pulse is one rise and one fall at least two
+                   clocks apart before the first read after it, and the level
+                   rises once and falls once, between the ``held`` and the
+                   ``released`` reads). The ``meigwclr`` writes to source 17
+                   are counted by ``CTRL-GWCLR-WRITES``.
+
 Logged, not graded, out of contract: ``INFO-GWCLR-RACE``, a one-clock pulse
 on the drawn boundary input in the clock of the ``meigwclr`` write to its
 source, and one and two clocks before it (``CTRL-GWCLR-RACE``: in each attempt
@@ -151,6 +179,15 @@ if any failed:
   CHK-RAS-DMA_ALERT-RISE   at least one rise in ``d1``..``d2`` (the DMA
                            ``ALERT_TEST`` write).
   CHK-RAS-DMA_ALERT-SHAPE  every high run there is one clock.
+  CHK-RAS-DMA_ALERT-MODE2  under the alert pair force ``di0``..``di1``, the
+                           field rises and has no fall from the rise to the
+                           release mark ``di1`` (``port_table.adoc:130``: a
+                           level for as long as an alert pair fails its
+                           integrity check). Control
+                           ``CTRL-RAS-DMA_ALERT-MODE2``: the pair reads the
+                           forced value on every clock from the first forced
+                           clock to ``di1``, and the rise is at least two
+                           clocks before ``di1``.
 * CHK-RAS-CRYPTO_ALERT-IDLE   0 on every clock of each ``aq<k>``..``aw<k>``,
                               of ``nw0``..``nw1`` and of the DMA alert
                               windows ``d0``..``d2``; the pair force window
@@ -159,6 +196,16 @@ if any failed:
   CHK-RAS-CRYPTO_ALERT-RISE   at least one rise in each ``aw<k>``..``ae<k>`` of
                               the 11 kinds.
   CHK-RAS-CRYPTO_ALERT-SHAPE  every high run there is one clock.
+  CHK-RAS-CRYPTO_ALERT-PAIR   over the pair window ``pr0``..``pr1``, the field
+                              is high on as many clocks as there are clocks
+                              with a handshake (the union of the receiver
+                              pulses ``crypto_alert_pulse_probe_o``), and its
+                              high runs equal the runs of that union, in order
+                              (``port_table.adoc:130``: each alert handshake
+                              gives a one-cycle pulse; the delay is not
+                              graded). Control
+                              ``CTRL-RAS-CRYPTO_ALERT-PAIR``: each of the two
+                              kinds pulses at least one receiver of its block.
 * CHK-RAS-CSRNG_FATAL-IDLE, -RISE, -SHAPE, -TEST and the same four of
   CHK-RAS-EDN_FATAL, for the CSRNG and EDN fatal alert kinds: 0 on every clock
   of ``aq<k>``..``aw<k>``, of every other kind's ``aq<j>``..``ae<j>``, of
@@ -174,20 +221,44 @@ if any failed:
 ``INFO-RAS-<FIELD>-DELAY`` logs the clocks from the opening mark to the first
 rise, and the pulse count: not graded; no open specification question.
 
-Logged, not graded: ``OBS-RAS-DMA_ALERT-MODE2`` (the field
-under the alert pair force: the rise after the first forced clock, the high
-clocks to the release mark ``di1`` and any fall before it; ``port_table.adoc:130``
-calls ``dma_alert`` a one-cycle pulse, while the ``sep_ras_t`` field comment it
-delegates to calls it a level while an alert pair fails; the port table wins),
-``OBS-RAS-DMA_ALERT-INTEG-FALL`` (the fall after the pair release),
-``OBS-RAS-CRYPTO_ALERT-PAIR`` (the run lengths of the pair window, where two
-pulses can be adjacent) and
-``INFO-RAS-CRYPTO_ALERT-MODE2`` (no crypto alert pair force and no crypto EDN
-adapter fault in this leaf).
+Logged, not graded: ``OBS-RAS-DMA_ALERT-INTEG-FALL`` (the fall after the
+pair release; no text states the fall delay), the rise delay after the first
+forced clock on the CHK-RAS-DMA_ALERT-MODE2 line (no text states it) and
+``INFO-RAS-CRYPTO_ALERT-MODE2`` (no crypto alert pair force in this leaf, so
+the level of ``crypto_alert`` while a pair fails its integrity check is not
+driven).
+
+EDN adapter fault legs (the last of the leaf; only ``rst_ni`` ends the fault).
+``+sep_edn_ack_sm_inject`` arms the bench force of one ``edn_ack_sm`` state
+register to an illegal encoding (``edn_ack_sm_inj_sel``); the crypto adapter
+leg forces one seeded endpoint of four, the pool adapter leg its one endpoint.
+A cold reset (``rst_ni``, CPU held off) lies between the two legs, so each
+adapter fault has its own held interval:
+
+* CTRL-EDN-FAULT-INJECT  before the force, source 33 reads 0 with no X and
+                   neither adapter ``err_o`` is set on every clock of the
+                   precondition window (after the cold reset too); the
+                   forced field of ``edn_ack_sm_state_o`` reads the injected
+                   value on the clock after the start, and the adapter's bit
+                   of ``edn_adapter_err_o`` reads 1 there. A failed part
+                   fails the leaf; the ``err_o`` part is judged after
+                   CHK-PIC-CRYPTO-ALERT-HOLD and CHK-RAS-CRYPTO_ALERT-EDN-FAULT.
+* CHK-PIC-CRYPTO-ALERT-HOLD  source 33 reads 1 with no X on every clock from
+                   the bound after the inject to the end of the leg, also
+                   after the force is released, with ``rst_ni`` high on each
+                   of those clocks (``hw/sys/sep/doc/crypto.adoc``, Crypto
+                   alert source: an adapter's ``err_o`` holds until reset,
+                   keeping the source high; ``interrupts.adoc``, source 33).
+* CHK-RAS-CRYPTO_ALERT-EDN-FAULT  ``sep_ras_o.crypto_alert`` reads 1 with no
+                   X on every clock that CHK-PIC-CRYPTO-ALERT-HOLD grades
+                   (``port_table.adoc:130``: ``crypto_alert`` is held high
+                   from a crypto or pool EDN adapter fault until reset). The
+                   line also logs the field's high runs from the start write
+                   and the high clocks of the adapter ``err_o``.
 
 Logged, not graded: ``INFO-IDLE-UNSTATED`` (sources 13, 15, 16, 37 and 38,
 masked in every compare; source 39 is masked in the same compares and graded
-by CHK-SRC39), ``OBS-SRC34``, ``INFO-SRC-SHAPE`` (the high clocks
+by CHK-SRC39), ``INFO-SRC-SHAPE`` (the high clocks
 and rises of each source line over the single-source walk, and the source 12
 latency and shape; no specification states the shape of a source line, except
 that source 33 pulses per crypto alert, which CHK-ALERT-AGG grades for each
@@ -210,7 +281,9 @@ holds only the FIFO read side, so the HMAC message cannot complete after it
 
 Every expected value comes from the stimulus model (the drawn sources,
 enables, gateway cells and clear values; ``env/sep_pic_map``) and the PIC
-register text, never from a DUT read. cpu run mode, ``+skip_fuse_sense``.
+register text, never from a DUT read. cpu run mode, ``+skip_fuse_sense``,
+``+sep_edn_ack_sm_inject`` and ``+sep_edn_ack_sm_assert_waive`` (the
+assertions the illegal state trips by construction; four-state simulator only).
 """
 
 from __future__ import annotations
@@ -321,17 +394,39 @@ GAP_MAX = 64
 P_MAGIC_WORD = 0x3A1C9E21
 # Salt of the open-value leg draws, so the draws above keep their seed mapping.
 _LEG_SALT = 0x4F56_4C47 << 32
+# Salt of the EDN adapter fault endpoint draw.
+_EDN_SALT = 0x4544_4E46 << 32
+# The tb_top EDN ack state machine inject hook: edn_ack_sm_inj_sel 1-4 force
+# crypto adapter endpoints 0-3, 5 the pool adapter endpoint; the state of the
+# endpoint of select s is the 9-bit field at 9 * (s - 1) of edn_ack_sm_state_o,
+# and edn_adapter_err_o carries err_o of each adapter.
+EDN_CRYPTO_SELS = (1, 2, 3, 4)
+EDN_POOL_SEL = 5
+EDN_STATE_W = 9
+EDN_ERR_BIT = {"crypto": 0, "pool": 1}
+# Fault leg clocks: the precondition window, the forced clocks, the clocks from
+# the inject to the first graded clock, and the clocks after the release.
+FAULT_PRE_CLK = 64
+FAULT_FORCE_CLK = 16
+FAULT_BOUND = 4
+FAULT_POST_CLK = HOLD_CLK
 # meigwclr race: the pulse clock relative to the write clock, per timed attempt
 # (attempt 0 measures the write clock), and the bound on each attempt.
 RACE_OFFSETS = (0, -1, -2)
 RACE_BOUND = 4096
+# Source 17 cells: the edge pulse width (clocks; interrupts.adoc: at least two)
+# and the hold after the drop (edge) or after the clear (level).
+T17_WIDTH = (2, 16)
+T17_HOLD = (SETTLE_CLK, HOLD_CLK)
+# Read data of a shadow access that a field lock blocks (otp_fuse_controller.adoc).
+LOCKED_RDATA = 0xBADCAB1E
 # sep_ras_o pulse fields this leaf grades, and the alert kind that drives each
 # fatal field through ALERT_TEST.
 RAS_FIELDS = ("dma_alert", "crypto_alert", "csrng_fatal", "edn_fatal")
 RAS_FATAL_KIND = {"csrng_fatal": ("csrng", "fatal"), "edn_fatal": ("edn", "fatal")}
 RAS_HALVES = {
-    "dma_alert": ("IDLE", "RISE", "SHAPE"),
-    "crypto_alert": ("IDLE", "RISE", "SHAPE"),
+    "dma_alert": ("IDLE", "RISE", "SHAPE", "MODE2"),
+    "crypto_alert": ("IDLE", "RISE", "SHAPE", "PAIR"),
     "csrng_fatal": ("IDLE", "RISE", "SHAPE", "TEST"),
     "edn_fatal": ("IDLE", "RISE", "SHAPE", "TEST"),
 }
@@ -412,6 +507,10 @@ class WalkCfg:
     ext_width: int
     dinj_val: int
     l2e: int
+    t17_width: int
+    t17_hold: int
+    t17_level_first: int
+    edn_sel: int
 
     @classmethod
     def from_seed(cls, seed: int, ext_width: int) -> "WalkCfg":
@@ -445,9 +544,13 @@ class WalkCfg:
         leg = SepSeededRng(seed ^ _LEG_SALT)
         dinj_val = leg.getrandbits(1)
         l2e = GW_SRCS.index(leg.choice(GW_EVENT))
+        t17_width = leg.randrange(T17_WIDTH[0], T17_WIDTH[1] + 1)
+        t17_hold = leg.randrange(T17_HOLD[0], T17_HOLD[1] + 1)
+        t17_level_first = leg.getrandbits(1)
+        edn_sel = SepSeededRng(seed ^ _EDN_SALT).choice(EDN_CRYPTO_SELS)
         return cls(seed, ord1, ord2, gap1, gap2, alert_order, (k1, k2), pair_gap, akind,
                    native_order, mask1, gw_cell, gw_order, clr_x, (b1, b2, b3), ext_width,
-                   dinj_val, l2e)  # fmt: skip
+                   dinj_val, l2e, t17_width, t17_hold, t17_level_first, edn_sel)  # fmt: skip
 
     def enabled(self, src: int, pas: int) -> bool:
         on = bool((self.mask1 >> src) & 1)
@@ -476,6 +579,7 @@ class WalkCfg:
             SETTLE_CLK,
             FILL_MAX,
             self.l2e,
+            self.t17_hold | (self.t17_level_first << 16),
         ]
 
     def cell(self, src: int) -> str:
@@ -530,6 +634,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         "CHK-SRC39",
         "CHK-IDLE-BAND",
         "CHK-SLOTLESS",
+        "CHK-SRC34",
+        "CHK-SRC17-EDGE",
+        "CHK-SRC17-LEVEL",
         "CHK-ALERT-MEIP",
         "CHK-MASKED-VISIBLE",
         "CHK-MASKED-CLEAR",
@@ -543,6 +650,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         "CHK-GW-NONVAC",
         "CHK-EXT-IN",
         "CHK-GW-L2E",
+        "CHK-PIC-CRYPTO-ALERT-HOLD",
+        "CHK-RAS-CRYPTO_ALERT-EDN-FAULT",
         *(f"CHK-RAS-{f.upper()}-{h}" for f, halves in RAS_HALVES.items() for h in halves),
         f"CHK-RAS-{RAS_POOL_ERR.upper()}-IDLE",
         "CHK-FW-IDENTITY",
@@ -633,6 +742,18 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 if self.dinj_forced == 0:
                     self.dinj_first_ras_clk = self.wr.clk
                 self.dinj_forced += 1
+            elif self.dinj_forced:
+                self.dinj_lapse += 1
+
+    async def _req_trng(self, kv: dict) -> None:
+        """Drive ``ext_trng_irq_i``: a pulse of the drawn width, or the level 1 or 0."""
+        clk, pin, t = self.dut.clk_i, self.dut.ext_trng_irq_drive_i, kv["t"]
+        await RisingEdge(clk)
+        self.t17_marks[t] = self.wv.mark()
+        pin.value = 0 if t == "off" else 1
+        if t == "pulse":
+            await ClockCycles(clk, self.wc.t17_width)
+            pin.value = 0
 
     async def _req_race(self, kv: dict) -> None:
         """Time a one-clock pulse of boundary bit b1 against the next meigwclr write.
@@ -1203,7 +1324,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             masked = set(idle_bits)
             if op == "otp":
                 masked.add(src34)
-                self.logger.info("OBS-SRC34 LOG op=otp bit33_changed_clk=%d", changes[src34])
+                src34_changes = changes[src34]
             other = sum(n for i, n in changes.items() if i not in masked)
             text = (
                 f"op={op} ctrl_src24_high_clk={ctrl_high} window_clk={clks} "
@@ -1238,6 +1359,16 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                     f"out={_hexw(out)} want_out={_hexw(AES_C1_OUT)}"
                 )
             self._check(ok, "CHK-SLOTLESS", text)
+        # The OTP read is of the LC_STATE shadow, which ignores its lock bits,
+        # so no field lock blocks it and source 34 does not pulse.
+        otp = [kv for _, kv in self._lines("CTRL-SLOTLESS-READS")][0]["otp"]
+        self._check(
+            src34_changes == 0 and otp != LOCKED_RDATA,
+            "CHK-SRC34",
+            f"op=otp field=LC_STATE vec_bit{src34}_changed_clk={src34_changes} "
+            f"otp_read=0x{otp:08x} locked_rdata=0x{LOCKED_RDATA:08x} "
+            f"window_clk={self.slot_rec['otp'][0]}",
+        )
 
     def _chk_masked_visible(self) -> None:
         pio = [kv for _, kv in self._lines("CTRL-PICIO")]
@@ -1263,12 +1394,13 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
 
         Per source, the firmware count of its meigwclr writes equals the write
         count on ``pic_wr_probe_o``, and every source that CHK-CLR-IDLE or
-        CHK-GWCLR-LEVEL grades has at least one write, so a graded write that
-        never reaches the PIC fails here.
+        CHK-GWCLR-LEVEL grades, and source 17, has at least one write, so a
+        graded write that never reaches the PIC fails here.
         """
         fw = {int(kv["src"]): int(kv["n"]) for _, kv in self._lines("GWCLR-WR")}
         graded = {s for s in GW_SRCS if self.wc.cell(s) == "LH"}
         graded.add(next(s for s in GW_EVENT if self.wc.cell(s) == "EH"))
+        graded.add(SRC_TIED)
         bad = []
         for src in sorted(set(fw) | set(self.gwclr_bus) | graded):
             n_fw, n_bus = fw.get(src, 0), self.gwclr_bus[src]
@@ -1414,6 +1546,98 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"after_release={len(rel)} ctrl_src24={int(live)} width={self.wc.ext_width}",
             )
 
+    def _t17_reads(self, line_idx: int, n: int, body: str) -> list[tuple[int, int, int, int]]:
+        """The last ``n`` tap copies of meip word 0 before console line ``line_idx``.
+
+        Each is (meip bit 17, vector bit 16, X on either, ``vec_all`` clock).
+        """
+        caps = [c for c in self.rd_caps if c[0] == line_idx and c[1] == MEIP0_OFF]
+        if len(caps) < n:
+            raise AssertionError(
+                f"CTRL-MISSING SRC17-DRIVE: {body} meip_reads={len(caps)} want={n}"
+            )
+        vb = vec_bit(SRC_TIED)
+        return [
+            (
+                (c[2] >> SRC_TIED) & 1,
+                (c[4][0] >> vb) & 1,
+                ((c[3] >> SRC_TIED) | (c[4][1] >> vb)) & 1,
+                c[5],
+            )
+            for c in caps[-n:]
+        ]
+
+    def _t17_edges(self, t: str, until: int) -> tuple[list[int], list[int]]:
+        """Rise and fall clocks of vector bit 16 from the host drive ``t`` to clock ``until``."""
+        bit, m = f"v{vec_bit(SRC_TIED)}", self.t17_marks[t]
+        self.wv.high_clocks_since(m, bit)
+        rises = [c for c in self.wv.rise_clks_since(m, bit) if c <= until]
+        falls = [c for c in self.wv.fall_clks_since(m, bit) if c <= until]
+        return rises, falls
+
+    def _chk_src17_gateway(self) -> None:
+        """CTRL-SRC17-DRIVE, CHK-SRC17-EDGE and CHK-SRC17-LEVEL."""
+        reqs = {kv["t"]: i for i, kv in self._lines("REQ trng")}
+        e, lv = self._lines("T17E"), self._lines("T17L")
+        body = f"seed={self.wc.seed} width={self.wc.t17_width} hold={self.wc.t17_hold}"
+        if len(e) != 1 or len(lv) != 1 or sorted(reqs) != ["off", "on", "pulse"]:
+            raise AssertionError(
+                f"CTRL-MISSING SRC17-DRIVE: {body} T17E={len(e)} T17L={len(lv)} reqs={sorted(reqs)}"
+            )
+        if sorted(self.t17_marks) != ["off", "on", "pulse"]:
+            raise AssertionError(
+                f"CTRL-MISSING SRC17-DRIVE: {body} drives={sorted(self.t17_marks)}"
+            )
+        (ei, ekv), (li, lkv) = e[0], lv[0]
+        # Edge: dropped, held and after_clr follow the pulse.
+        er = self._t17_reads(ei, 3, body)
+        e_fw = tuple(int(ekv[k]) for k in ("dropped", "held", "after_clr"))
+        rises, falls = self._t17_edges("pulse", er[-1][3])
+        width = falls[0] - rises[0] if len(rises) == 1 and len(falls) == 1 else 0
+        e_ok = (
+            width >= 2
+            and falls[0] < er[0][3]
+            and all(r[1] == 0 and r[2] == 0 for r in er)
+            and tuple(r[0] for r in er) == e_fw
+        )
+        # Level: asserted, clr_high and held before the "off" request line;
+        # released after it.
+        lr = self._t17_reads(reqs["off"], 3, body) + self._t17_reads(li, 1, body)
+        l_fw = tuple(int(lkv[k]) for k in ("asserted", "clr_high", "held", "released"))
+        l_rises, l_falls = self._t17_edges("on", lr[-1][3])
+        l_ok = (
+            len(l_rises) == 1
+            and len(l_falls) == 1
+            and lr[2][3] < l_falls[0] < lr[3][3]
+            and tuple(r[1] for r in lr) == (1, 1, 1, 0)
+            and not any(r[2] for r in lr)
+            and tuple(r[0] for r in lr) == l_fw
+        )
+        body += (
+            f" pulse_rises={len(rises)} pulse_falls={len(falls)} pulse_high_clk={width} "
+            f"edge_line={[r[1] for r in er]} edge_tap_meip={[r[0] for r in er]} "
+            f"level_rises={len(l_rises)} level_falls={len(l_falls)} "
+            f"level_line={[r[1] for r in lr]} level_tap_meip={[r[0] for r in lr]} "
+            f"read_clks={[r[3] for r in er + lr]}"
+        )
+        if not (e_ok and l_ok):
+            raise AssertionError(f"CTRL-MISSING SRC17-DRIVE: {body}")
+        self.logger.info("CTRL-SRC17-DRIVE LOG %s", body)
+        e_got = (int(ekv["idle"]), *e_fw)
+        self._check(
+            e_got == (0, 1, 1, 0),
+            "CHK-SRC17-EDGE",
+            f"gateway=edge pol=high width_clk={width} hold_clk={self.wc.t17_hold} "
+            f"idle,dropped,held,after_clr={e_got} want=(0, 1, 1, 0)",
+        )
+        l_got = (int(lkv["idle"]), *l_fw)
+        self._check(
+            l_got == (0, 1, 1, 1, 0),
+            "CHK-SRC17-LEVEL",
+            f"gateway=level pol=high hold_clk={self.wc.t17_hold} "
+            f"idle,asserted,clr_high,held,released={l_got} want=(0, 1, 1, 1, 0)",
+        )
+
     # ---- sep_ras_o pulse fields ----
     def _ras(self, ok: bool, field: str, half: str, **fields) -> None:
         self.ras_chk.ok(f"RAS-{field.upper()}-{half}", ok, **fields)
@@ -1475,7 +1699,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
 
     def _ras_dma_alert_mode2(self) -> None:
-        """Log the field under the pair force: its rise, its high clocks to ``di1``, any fall."""
+        """CHK-RAS-DMA_ALERT-MODE2: under the pair force the field rises and holds to ``di1``."""
         f = "dma_alert"
         (m0, _), (m1, _) = self._mark("di0")[5], self._mark("di1")[5]
         self.wr.high_clocks_since(m1, f)
@@ -1486,19 +1710,82 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         drop = [c for c in falls if rise is not None and rise < c <= m1.clk]
         span = m1.clk - rise + 1 if rise is not None else 0
         lat = rise - first if rise is not None and first is not None else None
-        self.ras_chk.obs(
-            "RAS-DMA_ALERT-MODE2",
+        ctrl = (
+            f"seed={self.wc.seed} val={self.wc.dinj_val} forced_clk={self.dinj_forced} "
+            f"lapse_clk={self.dinj_lapse} rise_clk={rise} hold_clk={span}"
+        )
+        if self.dinj_forced == 0 or self.dinj_lapse or (rise is not None and span < 2):
+            raise AssertionError(f"CTRL-MISSING RAS-DMA_ALERT-MODE2: {ctrl}")
+        self.logger.info("CTRL-RAS-DMA_ALERT-MODE2 LOG %s", ctrl)
+        # port_table.adoc:130: a level for as long as an alert pair fails its
+        # integrity check. The rise delay is not stated and is only logged.
+        self._ras(
+            rise is not None and not drop,
+            f,
+            "MODE2",
             mode="pair_force",
             val=self.wc.dinj_val,
             first_forced_clk=first,
             rise_clk=rise,
             rise_after_forced_clk=lat,
             hold_clk=span,
-            falls_before_release=drop[:4],
+            falls_before_release=drop[:4] or "none",
         )
         after = self.wr.fall_clks_since(m1, f)
         self.ras_chk.obs(
             "RAS-DMA_ALERT-INTEG-FALL", release_to_fall_clk=after[0] - m1.clk if after else "none"
+        )
+
+    def _ras_crypto_alert_pair(self) -> None:
+        """CHK-RAS-CRYPTO_ALERT-PAIR: the field pulses once per handshake clock over ``pr0..pr1``.
+
+        A handshake is one high clock of a receiver pulse on
+        ``crypto_alert_pulse_probe_o`` (``prim_alert_receiver`` ``alert_o``).
+        The field is one bit, so handshakes of several receivers in one clock
+        show as one high clock: the golden is the union of the receiver pulse
+        clocks. The field's high runs equal the runs of that union, in order;
+        the delay between them is not stated and is not graded.
+        """
+        f = "crypto_alert"
+        high, runs, _ = self._ras_win("pr0", "pr1", f)
+        a0, a1 = self._mark("pr0")[1], self._mark("pr1")[1]
+        per_idx, clks = [], set()
+        for i in range(N_ALERT_IDX):
+            b = f"a{i}"
+            per_idx.append(self.wa.high_clocks_since(a0, b) - self.wa.high_clocks_since(a1, b))
+            falls = self.wa.fall_clks_since(a0, b)
+            for r in (c for c in self.wa.rise_clks_since(a0, b) if c <= a1.clk):
+                end = next((c for c in falls if c > r), a1.clk + 1)
+                clks.update(range(r, min(end, a1.clk + 1)))
+        hs = sum(per_idx)
+        hs_runs, prev = [], None
+        for c in sorted(clks):
+            if prev is not None and c == prev + 1:
+                hs_runs[-1] += 1
+            else:
+                hs_runs.append(1)
+            prev = c
+        field_runs = [w for _, w in runs]
+        kinds = [ALERTS[k] for k in self.wc.pair]
+        hit = [sum(per_idx[lo : hi + 1]) for _, _, (lo, hi) in kinds]
+        ctrl = (
+            f"seed={self.wc.seed} kinds={','.join(f'{b}.{k}' for b, k, _ in kinds)} "
+            f"handshakes_per_kind={hit}"
+        )
+        if not all(hit):
+            raise AssertionError(f"CTRL-MISSING RAS-CRYPTO_ALERT-PAIR: {ctrl}")
+        self.logger.info("CTRL-RAS-CRYPTO_ALERT-PAIR LOG %s", ctrl)
+        self._ras(
+            high == len(clks) and field_runs == hs_runs,
+            f,
+            "PAIR",
+            window="pr0..pr1",
+            high_clk=high,
+            handshake_clks=len(clks),
+            run_lengths=field_runs or "none",
+            handshake_runs=hs_runs or "none",
+            handshakes=hs,
+            per_receiver=per_idx,
         )
 
     def _chk_ras(self) -> None:
@@ -1523,11 +1810,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             [*(f"aq{k}..aw{k}" for k in order), "nw0..nw1", "d0..d2"],
             [f"aw{k}..ae{k}" for k in order],
         )
-        _, runs, _ = self._ras_win("pr0", "pr1", "crypto_alert")
-        self.ras_chk.obs("RAS-CRYPTO_ALERT-PAIR", run_lengths=[w for _, w in runs] or "none")
-        self.ras_chk.info(
-            "RAS-CRYPTO_ALERT-MODE2", driven=0, pair_force=0, crypto_edn_adapter_fault=0
-        )
+        self._ras_crypto_alert_pair()
+        self.ras_chk.info("RAS-CRYPTO_ALERT-MODE2", driven=0, pair_force=0)
         for f, kind in RAS_FATAL_KIND.items():
             k = next(i for i, a in enumerate(ALERTS) if a[:2] == kind)
             idle = [f"aq{k}..aw{k}", *(w for j, w in zip(order, alert_wins) if j != k)]
@@ -1678,6 +1962,160 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 int(recs[i]["after"]),
             )
 
+    # ---- EDN adapter fault legs (last; only rst_ni ends a fault) ----
+    def _edn_fault_sample(self, sel: int) -> dict[str, int]:
+        """One ``clk_i`` sample of the fault leg signals; a bit that reads X or Z counts as 0."""
+        d = self.dut
+        vec, vxm = _value_bits(d.sep_internal_interrupts_probe_o)
+        ras, rxm = _value_bits(d.sep_ras_probe_o)
+        err, exm = _value_bits(d.edn_adapter_err_o)
+        st, sxm = _value_bits(d.edn_ack_sm_state_o)
+        rst, rstx = _value_bits(d.rst_ni)
+        vb, rb, sh = vec_bit(SRC_CRYPTO_ALERT), ras_bit("crypto_alert"), EDN_STATE_W * (sel - 1)
+        smask = (1 << EDN_STATE_W) - 1
+        return {
+            "src33": (vec >> vb) & 1 & ~(vxm >> vb),
+            "src33_x": (vxm >> vb) & 1,
+            "ras": (ras >> rb) & 1 & ~(rxm >> rb),
+            "err": err & ~exm & 0b11,
+            "err_x": exm & 0b11,
+            "state": (st >> sh) & smask,
+            "state_x": int((sxm >> sh) & smask != 0),
+            "rst": rst & ~rstx & 1,
+        }
+
+    async def _edn_fault_leg(self, adapter: str, sel: int) -> None:
+        """Force one ``edn_ack_sm`` of ``adapter`` illegal and grade the hold of source 33.
+
+        Clock 0 is the clock of the start write; clock 1, the clock after it, is
+        the inject clock. The graded interval is clock ``1 + FAULT_BOUND`` to the
+        last clock of the leg; the release write lands on clock
+        ``FAULT_FORCE_CLK + 1``.
+        """
+        dut, clk, seed = self.dut, self.dut.clk_i, self.wc.seed
+        eb = EDN_ERR_BIT[adapter]
+        val, vxm = _value_bits(dut.edn_ack_sm_inj_val)
+        pre = Counter()
+        for _ in range(FAULT_PRE_CLK):
+            await RisingEdge(clk)
+            await ReadOnly()
+            s = self._edn_fault_sample(sel)
+            pre["src33"] += s["src33"]
+            pre["src33_x"] += s["src33_x"]
+            pre["err"] += int(s["err"] != 0 or s["err_x"] != 0)
+        await RisingEdge(clk)
+        dut.edn_ack_sm_inj_sel.value = sel
+        release = FAULT_FORCE_CLK + 1
+        last = release + FAULT_POST_CLK
+        first_graded = 1 + FAULT_BOUND
+        at_inject: dict[str, int] = {}
+        hold = Counter()
+        first_low = first_rise = None
+        runs: list[list] = []
+        ras_prev = 0
+        for n in range(last + 1):
+            if n > 0:
+                await RisingEdge(clk)
+                if n == release:
+                    dut.edn_ack_sm_inj_sel.value = 0
+            await ReadOnly()
+            s = self._edn_fault_sample(sel)
+            if n == 1:
+                at_inject = s
+            if n >= 1 and first_rise is None and s["src33"]:
+                first_rise = n - 1
+            if s["ras"] and not ras_prev:
+                runs.append([n - 1, None])
+            elif ras_prev and not s["ras"]:
+                runs[-1][1] = n - 1 - runs[-1][0]
+            ras_prev = s["ras"]
+            if n < first_graded:
+                continue
+            hold["clk"] += 1
+            hold["after_release"] += int(n > release)
+            hold["high"] += s["src33"]
+            hold["x"] += s["src33_x"]
+            hold["rst_low"] += int(not s["rst"])
+            hold["ras_high"] += s["ras"]
+            hold["err_high"] += (s["err"] >> eb) & 1
+            if first_low is None and not s["src33"]:
+                first_low = n - 1
+        ctrl = (
+            f"seed={seed} adapter={adapter} sel={sel} ep={sel - 1 if adapter == 'crypto' else 0} "
+            f"inj_val=0x{val:03x} pre_clk={FAULT_PRE_CLK} pre_src33_high_clk={pre['src33']} "
+            f"pre_src33_x_clk={pre['src33_x']} pre_err_clk={pre['err']} "
+            f"state_at_inject=0x{at_inject['state']:03x} state_x={at_inject['state_x']} "
+            f"err_at_inject=0b{at_inject['err']:02b} err_x=0b{at_inject['err_x']:02b} "
+            f"force_clk={FAULT_FORCE_CLK} release_clk={release}"
+        )
+        reach = (
+            vxm == 0
+            and pre["src33"] == 0
+            and pre["src33_x"] == 0
+            and pre["err"] == 0
+            and at_inject["state_x"] == 0
+            and at_inject["state"] == val
+        )
+        if not reach:
+            raise AssertionError(f"CTRL-MISSING EDN-FAULT-INJECT {ctrl}")
+        self.logger.info("CTRL-EDN-FAULT-INJECT LOG %s", ctrl)
+        name = "CHK-PIC-CRYPTO-ALERT-HOLD"
+        ok = (
+            hold["clk"] > 0
+            and hold["after_release"] > 0
+            and hold["high"] == hold["clk"]
+            and hold["x"] == 0
+            and hold["rst_low"] == 0
+        )
+        text = (
+            f"adapter={adapter} seed={seed} sel={sel} bound_clk={FAULT_BOUND} "
+            f"graded_clk={hold['clk']} after_release_clk={hold['after_release']} "
+            f"high_clk={hold['high']} x_clk={hold['x']} rst_low_clk={hold['rst_low']} "
+            f"first_low_clk={'none' if first_low is None else first_low} "
+            f"rise_after_inject_clk={'none' if first_rise is None else first_rise}"
+        )
+        assert ok, f"{name} FAIL {text}"
+        self.logger.info("%s PASS %s", name, text)
+        self.n_pass[name] += 1
+        # port_table.adoc:130: crypto_alert is held high from a crypto or pool
+        # EDN adapter fault until reset. An X reads 0, so it fails the count.
+        ras_ok = self.ras_chk.ok(
+            "RAS-CRYPTO_ALERT-EDN-FAULT",
+            hold["ras_high"] == hold["clk"],
+            adapter=adapter,
+            graded_clk=hold["clk"],
+            high_clk=hold["ras_high"],
+            runs=[f"{r}:{'open' if w is None else w}" for r, w in runs] or "none",
+            err_high_clk=hold["err_high"],
+        )
+        assert ras_ok, self.ras_chk.fails[-1]
+        self.n_pass["CHK-RAS-CRYPTO_ALERT-EDN-FAULT"] += 1
+        if not (at_inject["err"] >> eb) & 1 or (at_inject["err_x"] >> eb) & 1:
+            raise AssertionError(
+                f"CTRL-MISSING EDN-FAULT-INJECT {ctrl}: err_o of the {adapter} adapter reads 0"
+            )
+
+    async def _edn_fault_legs(self) -> None:
+        """The crypto adapter leg, a cold reset with the CPU held off, then the pool adapter leg."""
+        dut = self.dut
+        assert len(dut.edn_ack_sm_state_o) == EDN_STATE_W * EDN_POOL_SEL, (
+            f"edn_ack_sm_state_o is {len(dut.edn_ack_sm_state_o)} bits wide"
+        )
+        await self._edn_fault_leg("crypto", self.wc.edn_sel)
+        retired = self.cpu_trace_mon.trace_count
+        await RisingEdge(dut.clk_i)
+        dut.mpc_reset_run_req.value = 0
+        por = await self.pulse_rst_ni()
+        await self._edn_fault_leg("pool", EDN_POOL_SEL)
+        self.logger.info(
+            "INFO-EDN-FAULT-POR LOG seed=%d cpu_run_after_reset=0 sep_reset_n_at_hold_end=%d "
+            "release_clks=%d retired_after_reset=%d",
+            self.wc.seed,
+            por["sep_reset_n_at_hold_end"],
+            por["release_clks"],
+            self.cpu_trace_mon.trace_count - retired,
+        )
+
     async def _pass_legs(self, legs: tuple[str, ...]) -> None:
         """Raise the FCOV pass label of each leg whose control passed (two clocks each)."""
         clk = self.dut.clk_i
@@ -1701,8 +2139,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             p2["idle0"],
             p2["idle1"],
             int(p2["l2e"]),
+            p2["t17"],
         )
-        exp = (w[27], w[28], w[31], w[32], w[2], w[6], w[33], w[34], w[38])
+        exp = (w[27], w[28], w[31], w[32], w[2], w[6], w[33], w[34], w[38], w[39])
         assert got == exp, f"firmware ran params {got}, patched {exp}"
 
     # ---- scenario ----
@@ -1712,6 +2151,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.wc = WalkCfg.from_seed(self.random_seed(), width)
         c = self.wc
         self.logger.info("INFO-SEED seed=%d", c.seed)
+        for arg in ("sep_edn_ack_sm_inject", "sep_edn_ack_sm_assert_waive"):
+            if arg not in cocotb.plusargs:
+                raise AssertionError(f"CTRL-MISSING EDN-FAULT-INJECT seed={c.seed} no +{arg}")
         self.logger.info("INFO-DRAW order_pass1=%s", ",".join(str(MAP[i]) for i in c.ord1))
         self.logger.info("INFO-DRAW order_pass2=%s", ",".join(str(MAP[i]) for i in c.ord2))
         self.logger.info("INFO-DRAW gaps_pass1=%s", ",".join(map(str, c.gap1)))
@@ -1739,6 +2181,13 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.logger.info(
             "INFO-DRAW dma_alert_pair_val=%d level_to_edge_src=%d", c.dinj_val, GW_SRCS[c.l2e]
         )
+        self.logger.info(
+            "INFO-DRAW src17_width=%d src17_hold=%d src17_level_first=%d",
+            c.t17_width,
+            c.t17_hold,
+            c.t17_level_first,
+        )
+        self.logger.info("INFO-DRAW edn_fault_crypto_ep=%d", c.edn_sel - 1)
         patched = os.path.join(os.getcwd(), "sep_dtcm_pic_walk.hex")
         patch_param_block(_DTCM_HEX, patched, P_MAGIC_WORD, c.words())
 
@@ -1750,7 +2199,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.slot_rec: dict = {}
         self.rd_caps: list = []
         self.dinj_on = False
-        self.dinj_clk = self.dinj_forced = 0
+        self.dinj_clk = self.dinj_forced = self.dinj_lapse = 0
+        self.t17_marks: dict = {}
         self.dinj_first_ras_clk: int | None = None
         self.ras_chk = RasChkLines(self.logger, c.seed)
         self.race: list = []
@@ -1807,6 +2257,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.con.on_request("win", self._req_win)
         self.con.on_request("dinj", self._req_dinj)
         self.con.on_request("race", self._req_race)
+        self.con.on_request("trng", self._req_trng)
         # The firmware brings the entropy stack up for the AES and OTBN runs; the
         # ring oscillators take their raw noise from this driver (+esrc_noise_force).
         noise = self.start_esrc_noise_driver()
@@ -1831,6 +2282,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             await self.wr.stop()
             self.dut.sep_ext_interrupts_i.value = 0
             self.dut.dma_alert_inject_i.value = 0
+            self.dut.ext_trng_irq_drive_i.value = 0
             self.dut.hmac_fifo_drain_stall_i.value = 0
             self.dut.kmac_fifo_drain_stall_i.value = 0
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
@@ -1851,6 +2303,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self._ctrl_gwclr_writes()
         self._chk_gateway()
         self._chk_ext()
+        self._chk_src17_gateway()
         self._chk_masked_visible()
         um = [kv for _, kv in self._lines("UNMASKED")]
         assert len(um) == 1, f"expected one UNMASKED line, got {len(um)}"
@@ -1882,6 +2335,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             "CHK-SRC39": 1,
             "CHK-IDLE-BAND": 1,
             "CHK-SLOTLESS": 3,
+            "CHK-SRC34": 1,
+            "CHK-SRC17-EDGE": 1,
+            "CHK-SRC17-LEVEL": 1,
             "CHK-ALERT-MEIP": 1,
             "CHK-MASKED-VISIBLE": 1,
             "CHK-MASKED-CLEAR": 1,
@@ -1894,10 +2350,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             "CHK-GWCLR-VALUE": 1,
             "CHK-GW-NONVAC": 1,
             "CHK-EXT-IN": 2,
+            "CHK-PIC-CRYPTO-ALERT-HOLD": 2,
+            "CHK-RAS-CRYPTO_ALERT-EDN-FAULT": 2,
         }
-        bad = {k: (self.n_pass[k], v) for k, v in want.items() if self.n_pass[k] != v}
-        assert not bad, f"CHK-COUNT FAIL (got, want): {bad}"
-        self.logger.info("INFO-CHK-COUNT LOG %s", " ".join(f"{k}={v}" for k, v in want.items()))
         self._leg_dma_alert_integ()
         self._leg_gw_level_to_edge()
         self._leg_gwclr_race()
@@ -1906,4 +2361,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             raise AssertionError(
                 f"{len(self.ras_chk.fails)} RAS check(s) failed: " + "; ".join(self.ras_chk.fails)
             )
+        await self._edn_fault_legs()
+        bad = {k: (self.n_pass[k], v) for k, v in want.items() if self.n_pass[k] != v}
+        assert not bad, f"CHK-COUNT FAIL (got, want): {bad}"
+        self.logger.info("INFO-CHK-COUNT LOG %s", " ".join(f"{k}={v}" for k, v in want.items()))
         self.result_pass(_TEST, c.seed, len(want) + 1)

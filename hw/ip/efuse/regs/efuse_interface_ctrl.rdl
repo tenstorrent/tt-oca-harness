@@ -66,14 +66,14 @@ addrmap efuse_interface_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Data to program to eFuse.  If this bit is 0, the program request will be ignored";
+            desc="Data to program to eFuse.  If this bit is 0, a program request is refused: it issues no command and completes at once with program_done 1 and program_status 1";
         } efuse_data [16:16] = 0x0;
 
         field {
             sw = rw;
             hw = r;
             singlepulse = true;
-            desc = "When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set";
+            desc = "When set, triggers a program to the eFuse.  A request made while program_enable is clear, efuse_data is 0, the address is out of bounds, or the bit is locked or blocked is refused: it issues no command and completes at once with program_done 1 and program_status 1";
         } efuse_program_go [17:17] = 0x0;
 
         // bit 18: reserved
@@ -87,13 +87,13 @@ addrmap efuse_interface_ctrl {
         field {
             sw=r;
             hw=w;
-            desc="When set, the program has completed, the status of which is in program_status";
+            desc="When set, the program has completed, the status of which is in program_status.  Cleared when the next efuse_program_go is accepted; a refused request leaves it set and updates program_status";
         } program_done[25:25] = 0x0;
 
         field {
             sw=r;
             hw=w;
-            desc="0: No Error.  1: Error";
+            desc="0: No Error.  1: Error. Set when efuse_program_go is refused, or the program request fails or times out.";
         } program_status [26:26] = 0x0;
 
         field {
@@ -112,7 +112,7 @@ addrmap efuse_interface_ctrl {
             sw = rw;
             hw = r;
             singlepulse = true;
-            desc = "When set, triggers a read to efuse.";
+            desc = "When set, triggers a read to efuse.  A request made while read_enable is clear, the address is out of bounds, or the word is locked or blocked is refused: it issues no command and completes at once with read_done 1 and read_status 1";
         } efuse_read_go [16:16] = 0x0;
 
         field {
@@ -124,7 +124,7 @@ addrmap efuse_interface_ctrl {
         field {
             sw=r;
             hw=w;
-            desc="When set, the read has completed, the status of which is in read_status";
+            desc="When set, the read has completed, the status of which is in read_status.  Cleared when the next efuse_read_go is accepted; a refused request leaves it set and updates read_status";
         } read_done[25:25] = 0x0;
 
         field {

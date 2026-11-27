@@ -313,12 +313,13 @@ def _selftest() -> int:
 
     print("-- values land where the generated map says --")
     ok(
-        "ROM_CTL packs its bitfields LSB-first",
-        "[ROM_CTL]\n"
-        "  [ROM_CTL.fields.rom_endianness_ctrl]\n  value = 0x1\n"
-        "  [ROM_CTL.fields.rom_swap_ctrl]\n  value = 0x6\n",
-        0x1 | (0x6 << 1),
-        lambda i: i.field_int("ROM_CTL"),
+        "REQUIRED_ALGS packs its bitfields LSB-first",
+        "[REQUIRED_ALGS]\n"
+        "  [REQUIRED_ALGS.fields.chiplet_algs]\n  value = 0x1\n"
+        "  [REQUIRED_ALGS.fields.sip_algs]\n  value = 0x6\n"
+        "  [REQUIRED_ALGS.fields.sys_algs]\n  value = 0x3\n",
+        0x1 | (0x6 << 4) | (0x3 << 8),
+        lambda i: i.field_int("REQUIRED_ALGS"),
     )
     ok(
         "whole-register form fills a 256-bit field",
@@ -401,8 +402,8 @@ def _selftest() -> int:
     )
     err(
         "value wider than its field",
-        "[ROM_CTL]\n  [ROM_CTL.fields.rom_swap_ctrl]\n  value = 0x20\n",
-        "does not fit in 5 bits",
+        "[REQUIRED_ALGS]\n  [REQUIRED_ALGS.fields.sip_algs]\n  value = 0x10\n",
+        "does not fit in 4 bits",
     )
     err(
         "value wider than its register",

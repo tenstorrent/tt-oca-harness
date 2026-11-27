@@ -79,7 +79,7 @@ Checkers:
                   (PREFETCHED also 0 after the partial beat); the next DATA read returns the first live beat
                   and the next prefetched word (PREFETCH_DATA and DATA) is the
                   second live beat, with no byte of the partial beat
-                  (architecture.adoc:859-863, 824-828, 833; trng.adoc:118 for
+                  (architecture.adoc:859-863, 824-828, 833; trng.adoc:120 for
                   the full live beats). The check does not show whether the
                   withdrawal or the start of the DATA read drops the partial
                   byte; CHK-SMP-PRE-PARTIAL grades PREFETCHED after the same

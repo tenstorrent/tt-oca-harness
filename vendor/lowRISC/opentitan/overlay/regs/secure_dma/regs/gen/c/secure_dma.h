@@ -252,8 +252,9 @@ typedef union {
 
 // reg - secure_dma::RANGE_REGWEN
 // Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
-// Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.
-// Default Value = kMultiBitBool4True -> Unlocked at reset.
+// The range registers are writable only while this field reads kMultiBitBool4True (0x6), its reset value.
+// A write from the reset value stores the written value, so writing kMultiBitBool4False (0x9) reads back 0x9, and any value other than 0x6 locks the range.
+// After that, writes can only clear bits 1 and 2 and set bits 0 and 3, so the field cannot return to kMultiBitBool4True before a reset.
 #define SECURE_DMA__RANGE_REGWEN__REGWEN_bm 0xf
 #define SECURE_DMA__RANGE_REGWEN__REGWEN_bp 0
 #define SECURE_DMA__RANGE_REGWEN__REGWEN_bw 4
@@ -261,8 +262,9 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         // Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
-        // Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.
-        // Default Value = kMultiBitBool4True -> Unlocked at reset.
+        // The range registers are writable only while this field reads kMultiBitBool4True (0x6), its reset value.
+        // A write from the reset value stores the written value, so writing kMultiBitBool4False (0x9) reads back 0x9, and any value other than 0x6 locks the range.
+        // After that, writes can only clear bits 1 and 2 and set bits 0 and 3, so the field cannot return to kMultiBitBool4True before a reset.
         uint32_t REGWEN :4;
         uint32_t :28;
     } f;
@@ -440,29 +442,31 @@ typedef union {
 } secure_dma__CONTROL_t;
 
 // reg - secure_dma::SRC_CONFIG
-// Defines the increment behavior after every DMA read.
-// When 0: Source address is not changed.
-// All reads are done from the same address.
-// When 1: Source address is incremented by transfer_width after each read.
+// Defines the address step within a chunk.
+// When 0: every read of a chunk uses the chunk's start address.
+// When 1: each read is transfer_width bytes above the previous one.
+// WRAP sets where the next chunk starts.
 #define SECURE_DMA__SRC_CONFIG__INCREMENT_bm 0x1
 #define SECURE_DMA__SRC_CONFIG__INCREMENT_bp 0
 #define SECURE_DMA__SRC_CONFIG__INCREMENT_bw 1
 #define SECURE_DMA__SRC_CONFIG__INCREMENT_reset 0x0
-// When 0: Chunks occupy contiguous ascending addresses.
-// When 1: Source address wraps back to the starting address when finishing a chunk.
+// When 0: each chunk starts where the previous one ended: with INCREMENT = 0, SRC_ADDR_LO/HI advance by CHUNK_DATA_SIZE after each chunk; with INCREMENT = 1, reads continue ascending from the end of the previous chunk.
+// When 1: every chunk starts at SRC_ADDR_LO/HI.
+// Set INCREMENT = 0 and WRAP = 1 to read every chunk from one fixed address, such as a peripheral FIFO.
 #define SECURE_DMA__SRC_CONFIG__WRAP_bm 0x2
 #define SECURE_DMA__SRC_CONFIG__WRAP_bp 1
 #define SECURE_DMA__SRC_CONFIG__WRAP_bw 1
 #define SECURE_DMA__SRC_CONFIG__WRAP_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Defines the increment behavior after every DMA read.
-        // When 0: Source address is not changed.
-        // All reads are done from the same address.
-        // When 1: Source address is incremented by transfer_width after each read.
+        // Defines the address step within a chunk.
+        // When 0: every read of a chunk uses the chunk's start address.
+        // When 1: each read is transfer_width bytes above the previous one.
+        // WRAP sets where the next chunk starts.
         uint32_t INCREMENT :1;
-        // When 0: Chunks occupy contiguous ascending addresses.
-        // When 1: Source address wraps back to the starting address when finishing a chunk.
+        // When 0: each chunk starts where the previous one ended: with INCREMENT = 0, SRC_ADDR_LO/HI advance by CHUNK_DATA_SIZE after each chunk; with INCREMENT = 1, reads continue ascending from the end of the previous chunk.
+        // When 1: every chunk starts at SRC_ADDR_LO/HI.
+        // Set INCREMENT = 0 and WRAP = 1 to read every chunk from one fixed address, such as a peripheral FIFO.
         uint32_t WRAP :1;
         uint32_t :30;
     } f;
@@ -470,29 +474,31 @@ typedef union {
 } secure_dma__SRC_CONFIG_t;
 
 // reg - secure_dma::DST_CONFIG
-// Defines the increment behavior after every DMA write.
-// When 0: Destination address is not changed.
-// All writes are done to the same address.
-// When 1: Destination address is incremented by transfer_width after each write.
+// Defines the address step within a chunk.
+// When 0: every write of a chunk uses the chunk's start address.
+// When 1: each write is transfer_width bytes above the previous one.
+// WRAP sets where the next chunk starts.
 #define SECURE_DMA__DST_CONFIG__INCREMENT_bm 0x1
 #define SECURE_DMA__DST_CONFIG__INCREMENT_bp 0
 #define SECURE_DMA__DST_CONFIG__INCREMENT_bw 1
 #define SECURE_DMA__DST_CONFIG__INCREMENT_reset 0x0
-// When 0: Chunks occupy contiguous ascending addresses.
-// When 1: Destination address wraps back to the starting address when finishing a chunk.
+// When 0: each chunk starts where the previous one ended: with INCREMENT = 0, DST_ADDR_LO/HI advance by CHUNK_DATA_SIZE after each chunk; with INCREMENT = 1, writes continue ascending from the end of the previous chunk.
+// When 1: every chunk starts at DST_ADDR_LO/HI.
+// Set INCREMENT = 0 and WRAP = 1 to write every chunk to one fixed address, such as a peripheral FIFO.
 #define SECURE_DMA__DST_CONFIG__WRAP_bm 0x2
 #define SECURE_DMA__DST_CONFIG__WRAP_bp 1
 #define SECURE_DMA__DST_CONFIG__WRAP_bw 1
 #define SECURE_DMA__DST_CONFIG__WRAP_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Defines the increment behavior after every DMA write.
-        // When 0: Destination address is not changed.
-        // All writes are done to the same address.
-        // When 1: Destination address is incremented by transfer_width after each write.
+        // Defines the address step within a chunk.
+        // When 0: every write of a chunk uses the chunk's start address.
+        // When 1: each write is transfer_width bytes above the previous one.
+        // WRAP sets where the next chunk starts.
         uint32_t INCREMENT :1;
-        // When 0: Chunks occupy contiguous ascending addresses.
-        // When 1: Destination address wraps back to the starting address when finishing a chunk.
+        // When 0: each chunk starts where the previous one ended: with INCREMENT = 0, DST_ADDR_LO/HI advance by CHUNK_DATA_SIZE after each chunk; with INCREMENT = 1, writes continue ascending from the end of the previous chunk.
+        // When 1: every chunk starts at DST_ADDR_LO/HI.
+        // Set INCREMENT = 0 and WRAP = 1 to write every chunk to one fixed address, such as a peripheral FIFO.
         uint32_t WRAP :1;
         uint32_t :30;
     } f;

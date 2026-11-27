@@ -74,12 +74,12 @@ typedef union {
 
 // reg - efuse_interface_ctrl::EFUSE_PROGRAM_CTRL
 // eFuse program control and status. Configures the program data, triggers a program of the bit at EFUSE_PROGRAM_ADDR, and reports program progress and completion status.
-// Data to program to eFuse.  If this bit is 0, the program request will be ignored
+// Data to program to eFuse.  If this bit is 0, a program request is refused: it issues no command and completes at once with program_done 1 and program_status 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bp 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_reset 0x0
-// When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
+// When set, triggers a program to the eFuse.  A request made while program_enable is clear, efuse_data is 0, the address is out of bounds, or the bit is locked or blocked is refused: it issues no command and completes at once with program_done 1 and program_status 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm 0x20000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bp 17
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bw 1
@@ -89,12 +89,12 @@ typedef union {
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bp 24
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_reset 0x0
-// When set, the program has completed, the status of which is in program_status
+// When set, the program has completed, the status of which is in program_status.  Cleared when the next efuse_program_go is accepted; a refused request leaves it set and updates program_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm 0x2000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bp 25
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_reset 0x0
-// 0: No Error.  1: Error
+// 0: No Error.  1: Error. Set when efuse_program_go is refused, or the program request fails or times out.
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bm 0x4000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bp 26
 #define EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_STATUS_bw 1
@@ -107,16 +107,16 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t :16;
-        // Data to program to eFuse.  If this bit is 0, the program request will be ignored
+        // Data to program to eFuse.  If this bit is 0, a program request is refused: it issues no command and completes at once with program_done 1 and program_status 1
         uint32_t efuse_data :1;
-        // When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
+        // When set, triggers a program to the eFuse.  A request made while program_enable is clear, efuse_data is 0, the address is out of bounds, or the bit is locked or blocked is refused: it issues no command and completes at once with program_done 1 and program_status 1
         uint32_t efuse_program_go :1;
         uint32_t :6;
         // When set, the program is in progress
         uint32_t program_busy :1;
-        // When set, the program has completed, the status of which is in program_status
+        // When set, the program has completed, the status of which is in program_status.  Cleared when the next efuse_program_go is accepted; a refused request leaves it set and updates program_status
         uint32_t program_done :1;
-        // 0: No Error.  1: Error
+        // 0: No Error.  1: Error. Set when efuse_program_go is refused, or the program request fails or times out.
         uint32_t program_status :1;
         // When set, enables the program request
         uint32_t program_enable :1;
@@ -127,7 +127,7 @@ typedef union {
 
 // reg - efuse_interface_ctrl::EFUSE_READ_CTRL
 // eFuse read control and status. Triggers a read of the word at EFUSE_READ_ADDR and reports read progress and completion status.
-// When set, triggers a read to efuse.
+// When set, triggers a read to efuse.  A request made while read_enable is clear, the address is out of bounds, or the word is locked or blocked is refused: it issues no command and completes at once with read_done 1 and read_status 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm 0x10000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bp 16
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bw 1
@@ -137,7 +137,7 @@ typedef union {
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bp 24
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bw 1
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_reset 0x0
-// When set, the read has completed, the status of which is in read_status
+// When set, the read has completed, the status of which is in read_status.  Cleared when the next efuse_read_go is accepted; a refused request leaves it set and updates read_status
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bm 0x2000000
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bp 25
 #define EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bw 1
@@ -155,12 +155,12 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t :16;
-        // When set, triggers a read to efuse.
+        // When set, triggers a read to efuse.  A request made while read_enable is clear, the address is out of bounds, or the word is locked or blocked is refused: it issues no command and completes at once with read_done 1 and read_status 1
         uint32_t efuse_read_go :1;
         uint32_t :7;
         // When set, the read is in progress
         uint32_t read_busy :1;
-        // When set, the read has completed, the status of which is in read_status
+        // When set, the read has completed, the status of which is in read_status.  Cleared when the next efuse_read_go is accepted; a refused request leaves it set and updates read_status
         uint32_t read_done :1;
         // 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
         uint32_t read_status :1;

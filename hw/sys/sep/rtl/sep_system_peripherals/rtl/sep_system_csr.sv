@@ -856,6 +856,7 @@ module sep_system_csr (
   assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.csrng.next = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_CSRNG];
   assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.edn.next  = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_EDN];
   assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.wdt.next  = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_WDT];
+  assign sep_cpu_ctrl_hwif_in.PERIPH_BUS_ERR_STATUS.spi.next  = periph_bus_err_i[sep_pkg::PERIPH_BUS_ERR_SPI];
 
   assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_AES]  = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.aes.value;
   assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_HMAC] = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.hmac.value;
@@ -864,6 +865,7 @@ module sep_system_csr (
   assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_CSRNG] = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.csrng.value;
   assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_EDN]  = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.edn.value;
   assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_WDT]  = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.wdt.value;
+  assign periph_bus_err_clr_o[sep_pkg::PERIPH_BUS_ERR_SPI]  = sep_cpu_ctrl_hwif_out.PERIPH_BUS_ERR_CLEAR.spi.value;
 
   ///////////////////////
   // Scratch Registers //
