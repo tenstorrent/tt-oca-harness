@@ -19,12 +19,11 @@ passes ``+sep_spi_four_lane`` so the DUT receives ``spi_sd_i`` on every lane
 unique words at address 0 for the READ (0x03) of the handshake runs, and
 seeded data at three seeded addresses for the lane reads. The leaf builds one
 ``SepSpiByteOrder`` (``env/sep_spi_lane_responder.py``): every RXDATA word and
-every destination word is graded against the flash-model bytes in one in-word
-byte order, the same order for every word of the leaf; which of the two orders
-of OpenTitan spi_host "Input and Output Byte Ordering" the DUT uses is not
-graded. The command and address bytes are pushed with the first byte in
-TXDATA[7:0], so the TX side works only with ``ByteOrder = 1``; that is a
-stimulus precondition, not a check.
+every destination word is graded against the flash-model bytes in the
+ByteOrder = 1 order of OpenTitan spi_host "Input and Output Byte Ordering":
+the first wire byte is bits 7:0 (``spi_controller.rdl:124-127``). The command
+and address bytes are pushed with the first byte in TXDATA[7:0], in the same
+order.
 
 Runs, each from a cold reset (``rst_ni`` pulse, bounded wait for
 ``dbg_sep_reset_n_o``), since CFG_REGWEN locks the DMA configuration while a
@@ -163,7 +162,7 @@ Checkers:
                   pulse between two polls also fails.
   CHK-HS-DATA     handshake run: the n chunks the DMA moved, read from the
                   destination over the frontdoor, carry the flash bytes at
-                  address 0 in the leaf's in-word byte order, word for word and
+                  address 0 in the ByteOrder = 1 order, word for word and
                   in order. Control: the reference words are distinct
                   (``ref_distinct``), so a chunk in the wrong place fails.
   CHK-HS-TRIG-EQ  trigger cell: with RXQD = W_eq-1 the trigger probe is low and
@@ -188,14 +187,14 @@ Checkers:
                   no clock count, so the rise and the fall are graded inside
                   TRIG_RISE_CLKS only.
   CHK-HS-LANE-RX  lane reads: the RXDATA words of each read carry the seeded
-                  flash bytes at its address in the leaf's in-word byte order
+                  flash bytes at its address in the ByteOrder = 1 order
                   (``width=``, ``bytes=``).
   CHK-SPI-SESSION-FRAMES  per session: the monitor saw at least one frame, and
                   every frame carries one scoreboard expectation whose bytes
                   cover the frame's RX segment (the handshake frame: the moved
                   chunks).
   CHK-SPI-SB-RX   per session (``SepSpiScoreboard.expect_rx``): the bytes the DUT
-                  delivered (its words read in the leaf's in-word byte order)
+                  delivered (its words read in the ByteOrder = 1 order)
                   == the flash ``data_out`` prefix == the monitor wire decode
                   at the command's lane width.
   CHK-SPI-WIRE    per session: no wire or output-enable rule violation
@@ -292,11 +291,10 @@ Checkers:
                   and HANDSHAKE_INTR_ENABLE read back as written before GO,
                   and the trigger probe is high in the window.
 
-  INFO-SPI-BYTEORDER one line at the end of the leaf: the in-word byte order
-                  the words carried (``lsb_first``, ``msb_first`` or
-                  ``undecided``), the compare that fixed it, the word counts
-                  and STATUS.BYTEORDER of the last STATUS read. Logged, not
-                  graded: no SEP text states the order.
+  CHK-SPI-BYTEORDER one line at the end of the leaf: no word matched only
+                  the other in-word order, and STATUS.BYTEORDER of the last
+                  STATUS read is 1 (``spi_controller.rdl:124-127``); the line
+                  carries the word counts.
 
 Controls: RX depth above W+1; mask=1 run fills the destination; trigger high in
 each "never" window; 1 <= n_moved, and the chunks moved before the GO clear are
@@ -615,6 +613,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         "CHK-SPI-SESSION-FRAMES",
         "CHK-SPI-SB-RX",
         "CHK-SPI-WIRE",
+        "CHK-SPI-BYTEORDER",
     )
 
     # The open wire monitor session; None between sessions.
@@ -647,15 +646,15 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         await self.wire.monitor.start()
 
     def _rx_bytes(self, words: list[int], expect: bytes, where: str) -> bytes:
-        """The bytes ``words`` carry, read in the leaf's in-word byte order.
+        """The bytes ``words`` carry, read in the ByteOrder = 1 order.
 
         ``expect`` is the flash-model golden of the words. The result equals
-        ``expect`` exactly when every word carries it in the leaf order; a word
+        ``expect`` exactly when every word carries it in that order; a word
         count that does not match ``expect`` returns every word, so the caller's
         compare fails.
         """
         if 4 * len(words) != len(expect):
-            return word_image(words, self.order.order or "lsb_first")
+            return word_image(words, self.order.order)
         return self.order.bytes_of(words, len(expect), expect=expect, where=where)
 
     def _expect_rx(
@@ -1736,7 +1735,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         golden = fb[: 4 * nw]
         # MUTATION hook (step 14, item 2): reverse the chunk order of ``golden``
         # (chunks of cfg.chunk bytes); CHK-HS-DATA fails.
-        ref_img = word_image(ref[:nw], self.order.order or "lsb_first")
+        ref_img = word_image(ref[:nw], self.order.order)
         ref_match = sum(1 for i in range(0, 4 * nw, 4) if ref_img[i : i + 4] == golden[i : i + 4])
         self.logger.info(
             "CTRL-HS-REF LOG seed=%d words=%d ref_distinct=%d ref_match_golden=%d/%d "

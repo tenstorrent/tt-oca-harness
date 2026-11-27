@@ -28,13 +28,14 @@ the exempt cell 1, the order cell 2 and the chain leg 2.
 
 With ``+sep_pin_cell=<cell>`` the plan seed is the fixed seed of the cell in
 ``_PIN`` in place of the run seed: ``chain`` draws the chain leg, ``single`` the
-single-bit image (its plan seed draws the write-lock kind of slot 1) and ``exempt`` the
-exempt cell. The entry that sets it stages the same image with ``+sep_efuse_preload``.
+single-bit image (its plan seed draws the write-lock kind of slot 1), ``exempt`` the
+exempt cell and ``uid_rdlock`` a lock leg with a UID slot that has no lock, so
+CHK-UID-RDLOCK-PROG runs. The entry that sets it stages the same image with ``+sep_efuse_preload``.
 The run seed stays the ``seed=`` of every check line;
 INFO-SEED prints the plan seed as ``seed=`` and ``run_seed=``, ``plan_seed=`` and
 ``pin=``. ``+sep_pin_plan_seed=<n>`` replaces the plan seed of the cell.
-CTRL-PIN-LEG: the plan draws the pinned leaf kind, and for ``single`` slot 1 with
-the write-lock kind; a plan that draws another kind or cell logs
+CTRL-PIN-LEG: the plan draws the pinned leaf kind, for ``single`` slot 1 with
+the write-lock kind, and for ``uid_rdlock`` at least one UID slot with no lock; a plan that draws another kind or cell logs
 ``CTRL-MISSING PIN-LEG`` and ends the leaf before its first DUT access.
 
 Checkers:
@@ -393,6 +394,7 @@ _PIN = {
     "chain": (4, "chain", {}),
     "single": (5, "single_bit", {"slot": 1, "lock_kind": "write"}),
     "exempt": (44, "exempt", {}),
+    "uid_rdlock": (2, "lock_leg", {}),
 }
 # LC_STATE bits a program may set from TEST_DEV and the raw state each one reaches
 # (otp_fuse_controller.adoc:219-220; lifecycle_controller.adoc:118, :126-131).
@@ -766,7 +768,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             self.required_evidence += ("CHK-LOCK-READ-DONE",)
         if kind == "single_bit" and p.leg["lock_kind"] == "read":
             self.required_evidence += ("CHK-LOCK-READ",)
-        if kind == "lock_leg" and _free_uid_slots(p.leg["layout"]):
+        free_uid = _free_uid_slots(p.leg["layout"]) if kind == "lock_leg" else []
+        if free_uid:
             self.required_evidence += ("CHK-UID-RDLOCK-PROG",)
         self.logger.info(
             "INFO-EVIDENCE seed=%d kind=%s required=%s",
@@ -777,12 +780,15 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         self.chk = SepChkLog(self, TEST, seed)
         if cell is not None and not self.chk.ctrl(
             "PIN-LEG",
-            kind == _PIN[cell][1] and all(p.leg.get(k) == v for k, v in _PIN[cell][2].items()),
+            kind == _PIN[cell][1]
+            and all(p.leg.get(k) == v for k, v in _PIN[cell][2].items())
+            and (cell != "uid_rdlock" or bool(free_uid)),
             pin=cell,
             plan_seed=plan_seed,
             kind=kind,
             slot=p.leg.get("slot", "none"),
             lock_kind=p.leg.get("lock_kind", "none"),
+            free_uid_slots=free_uid,
         ):
             self.chk.finish()
             return

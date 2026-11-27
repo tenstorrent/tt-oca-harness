@@ -591,8 +591,6 @@
     // reg - sep_efuse_map.ROM_CTL
     class sep_efuse_map__ROM_CTL extends uvm_reg;
         `uvm_object_utils(sep_efuse_map__ROM_CTL)
-        rand uvm_reg_field rom_endianness_ctrl;
-        rand uvm_reg_field rom_swap_ctrl;
         rand uvm_reg_field reserved;
 
         function new(string name = "sep_efuse_map__ROM_CTL");
@@ -600,12 +598,8 @@
         endfunction : new
 
         virtual function void build();
-            this.rom_endianness_ctrl = uvm_reg_field::type_id::create("rom_endianness_ctrl");
-            this.rom_endianness_ctrl.configure(this, 1, 0, "RW", 1, 'h0, 1, 1, 0);
-            this.rom_swap_ctrl = uvm_reg_field::type_id::create("rom_swap_ctrl");
-            this.rom_swap_ctrl.configure(this, 5, 1, "RW", 1, 'h0, 1, 1, 0);
             this.reserved = uvm_reg_field::type_id::create("reserved");
-            this.reserved.configure(this, 26, 6, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved.configure(this, 32, 0, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__ROM_CTL
 

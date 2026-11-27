@@ -172,13 +172,16 @@ def _rdl_lsb(reg: str, fld: str) -> int:
 # Used bits of the narrow 32-bit fields. RDL field masks where the RDL field is the
 # used range; the contract range (hw/sys/sep/dv/docs/SEP_VPLAN.adoc entry of
 # sep_efuse_field_layout_rand_test, used masks) at the RDL position otherwise.
+# ROM_CTL has no used bit (otp_fuse_controller.adoc: "32 (0 used)"); its one reserved
+# rw field is the storage that the staging, program and lock draws use, and no test
+# grades a function of it.
 _ALGS_NIBBLES = ("chiplet_algs", "sip_algs", "sys_algs")
 NARROW_USED: dict[str, int] = {
     "SBOOT_DIS": _rdl_mask("SBOOT_DIS", "disable_secure_boot"),
     "TRANSIENT_RMA_EN": _rdl_mask("TRANSIENT_RMA_EN", "transient_rma_en"),
     "CHIPLET_PUBK_REVOKE": _rdl_mask("CHIPLET_PUBK_REVOKE", "select") & 0x03FF_FFFF,
     "STATUS_RPT": _rdl_mask("STATUS_RPT", "rpt"),
-    "ROM_CTL": _rdl_mask("ROM_CTL", "rom_endianness_ctrl", "rom_swap_ctrl"),
+    "ROM_CTL": _rdl_mask("ROM_CTL", "reserved"),
     "SYSCLK_FREQ_MHZ": _rdl_mask("SYSCLK_FREQ_MHZ", "sysclk_freq_mhz"),
     "REQUIRED_SIGNERS": _rdl_mask("REQUIRED_SIGNERS", "required_signers"),
     "REQUIRED_ALGS": sum(0x3 << _rdl_lsb("REQUIRED_ALGS", n) for n in _ALGS_NIBBLES),
@@ -818,7 +821,8 @@ def build_image(
     lock_bits: int = 0,
     pins: dict[str, int] | None = None,
 ) -> SepEfuseImage:
-    """A full 256-word image: every field set, reserved and unused bits 0.
+    """A full 256-word image: every field set, reserved and unused bits 0 (the reserved
+    field of ``ROM_CTL`` is its staged storage, see ``NARROW_USED``).
 
     ``lc_raw`` may be any 4-bit code: the word holds ``{~raw, raw}``. ``vectors``
     maps a 256-bit field to an index of ``FIELD_VECTORS`` (default: its own);
@@ -1140,7 +1144,6 @@ FIELD_LAYOUT_GRADED = (
     "REQUIRED_SIGNERS",
     "REQUIRED_ALGS",
     "SYSCLK_FREQ_MHZ",
-    "ROM_CTL",
     "CHIPLET_PUBK_REVOKE",
 )
 _FIELD_LAYOUT_N_CLASSES = {
@@ -1149,7 +1152,6 @@ _FIELD_LAYOUT_N_CLASSES = {
     "REQUIRED_SIGNERS": 4,
     "REQUIRED_ALGS": 64,
     "SYSCLK_FREQ_MHZ": 3,
-    "ROM_CTL": 16,
     "CHIPLET_PUBK_REVOKE": 4,
 }
 # A word of TRANSIENT_RMA_EN is redrawn through SBOOT_DIS, which sets it.
@@ -1171,10 +1173,10 @@ def plan_field_layout(seed: int) -> SepEfusePlan:
 
     Order: narrow fields, each class then value (``SBOOT_DIS``, with
     ``TRANSIENT_RMA_EN`` = 1 - ``SBOOT_DIS``; ``STATUS_RPT``; ``REQUIRED_SIGNERS``;
-    the three ``REQUIRED_ALGS`` nibbles; ``SYSCLK_FREQ_MHZ``; ``ROM_CTL`` endianness
-    and swap; ``CHIPLET_PUBK_REVOKE``); the vector of each 256-bit field (no two
-    alike); the ``LOCKS`` set; the ``LOCKS_SPARE`` set; the pair; the adjacent-equal
-    redraws (procedure step 3); ``jtag_id_i[31:1]`` (procedure step 4).
+    the three ``REQUIRED_ALGS`` nibbles; ``SYSCLK_FREQ_MHZ``; ``CHIPLET_PUBK_REVOKE``);
+    the vector of each 256-bit field (no two alike); the ``LOCKS`` set; the
+    ``LOCKS_SPARE`` set; the pair; the adjacent-equal redraws (procedure step 3);
+    ``jtag_id_i[31:1]`` (procedure step 4).
 
     Adjacent-equal redraw: while two adjacent staged words are equal, one word of the
     first equal pair is redrawn and every pair is checked again. A 256-bit field takes
@@ -1197,10 +1199,6 @@ def plan_field_layout(seed: int) -> SepEfusePlan:
         return idx, int(v)
 
     four = ((0,), (1,), (2,), (3,))
-    named_swaps = (0b00000, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111)
-    swap_classes = tuple((v,) for v in named_swaps) + (
-        tuple(v for v in range(32) if v not in named_swaps),
-    )
     revoke_classes = (
         (0,),
         tuple(1 << i for i in range(26)),
@@ -1235,13 +1233,6 @@ def plan_field_layout(seed: int) -> SepEfusePlan:
             c, v = cls_value(f"{pfx}SYSCLK_FREQ_MHZ", ((1,), (2047,), tuple(range(2, 2047))))
             narrow[name] = v
             classes[name] = c
-        elif name == "ROM_CTL":
-            ce, e = cls_value(f"{pfx}ROM_CTL.endianness", ((0,), (1,)))
-            cs, sw = cls_value(f"{pfx}ROM_CTL.swap", swap_classes)
-            narrow[name] = e << _rdl_lsb("ROM_CTL", "rom_endianness_ctrl") | sw << _rdl_lsb(
-                "ROM_CTL", "rom_swap_ctrl"
-            )
-            classes[name] = (ce, cs)
         elif name == "CHIPLET_PUBK_REVOKE":
             c, v = cls_value(f"{pfx}CHIPLET_PUBK_REVOKE", revoke_classes)
             narrow[name] = v

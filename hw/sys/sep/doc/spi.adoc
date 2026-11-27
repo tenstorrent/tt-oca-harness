@@ -90,6 +90,25 @@ not a latched error event.
 either state bit. `ERROR_ENABLE` selects the configurable error events;
 invalid register accesses always generate an error event.
 
+[[sep-spi-faults]]
+== Register-Bus Faults
+
+Two faults on the SPI host register path set `PERIPH_BUS_ERR_STATUS.spi`:
+
+* The AXI4-Lite to TL-UL bridge receives a TL-UL error response. The faulting
+  access also completes with SLVERR.
+* The core raises its `fatal_fault` alert, on a TL-UL integrity error on its
+  register bus or on a write of 1 to `ALERT_TEST.fatal_fault`. A
+  `prim_alert_receiver` in `sep_ot_spi_wrap` terminates the alert; its alert
+  pulse and its integrity failure both set the bit. Alert ping is disabled.
+
+The bit holds until firmware writes `PERIPH_BUS_ERR_CLEAR.spi`. Like the
+other `PERIPH_BUS_ERR_STATUS` bits, it is part of the peripheral
+register-bridge fault PIC source and drives bit `PERIPH_BUS_ERR_SPI` of the
+`periph_bus_err` field of `sep_ras_o`. An integrity fault is fatal: the core
+repeats the alert until the boot-qualified SEP reset, so the bit sets again
+after each clear. Neither fault sets `INTR_STATE` or raises the SPI interrupt.
+
 [[sep-spi-dma]]
 == DMA Trigger
 

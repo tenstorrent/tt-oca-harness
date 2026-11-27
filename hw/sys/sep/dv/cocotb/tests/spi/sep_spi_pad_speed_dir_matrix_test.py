@@ -26,13 +26,13 @@ short name ``ToO`` below):
   on the wire in one of two in-word orders, first byte in bits 7:0 or in bits
   31:24 (``ToO:415-419``; "the first byte received is always packed into
   either the most- or least-significant byte read from the `RXDATA` memory
-  window", ``ToO:539``). No SEP text states which order the SEP SPI host uses,
-  so the leaf grades the order-free part: one ``SepSpiByteOrder``
-  (``env/sep_spi_lane_responder.py``) per leaf, every TX and RX data word in
-  one order, the same order for every word of the leaf. The order seen is
-  logged once on INFO-SPI-BYTEORDER with STATUS.BYTEORDER ("The value of the
-  ByteOrder parameter",
-  ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:124``).
+  window", ``ToO:539``). SEP sets ``ByteOrder = 1`` ("Reads 1 in SEP
+  (ByteOrder = 1)",
+  ``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:124-127``),
+  the order with the first byte in bits 7:0, so one ``SepSpiByteOrder``
+  (``env/sep_spi_lane_responder.py``) per leaf grades every TX and RX data
+  word in that order, and CHK-SPI-BYTEORDER grades it once per leaf with
+  STATUS.BYTEORDER = 1.
   At the end of a TX segment the unused bytes of its last TXDATA word are
   dropped ("unused bytes from the latest TX FIFO word are simply ignored at
   the end of a segment.", ``ToO:484``), and each RX segment starts
@@ -83,16 +83,14 @@ Checks:
 * CHK-SPI-RX-PAD: for an Rx or bidirectional segment whose LEN+1 is not a
   multiple of 4, the bytes of the last RXDATA word that carry no received
   byte read 0 ("the partial word will be zero-padded", ``ToO:485``), at the
-  pad position of the leaf's in-word byte order (most significant bytes for
-  the first byte in bits 7:0, least significant for the first byte in bits
-  31:24, ``ToO:486``). Every seed draws at least one Rx cell whose LEN+1 is
+  pad position of ``ByteOrder = 1``, the most significant bytes
+  (``ToO:486``). Every seed draws at least one Rx cell whose LEN+1 is
   greater than 4 and not a multiple of 4, with no zero byte in the RXDATA word
   before the last, so a pad byte that keeps stale data does not read 0;
   ``CTRL-SPI-RX-PAD`` logs the count of graded segments and of those longer
   than 4 bytes, and a count of 0 longer ones fails the leaf.
-* INFO-SPI-RX-PAD: per such segment, the pad position (``upper`` or
-  ``lower`` bytes) and STATUS.BYTEORDER, logged, not graded: no SEP text
-  states the byte order.
+* INFO-SPI-RX-PAD: per such segment, the pad position (``upper``) and
+  STATUS.BYTEORDER, logged; CHK-SPI-RX-PAD and CHK-SPI-BYTEORDER grade them.
 * CHK-SPI-DUMMY: a dummy segment leaves TXQD and RXQD unchanged and runs LEN+1
   sck cycles. Control: both
   are at least 1 before the segment.
@@ -135,9 +133,9 @@ Checks:
   wire monitor and the responder are stopped for this leg, so it runs at the
   cost of the sampler alone.
 * CHK-SPI-WIRE: the wire checks of ``SepSpiWireMonitor`` over the leaf.
-* INFO-SPI-BYTEORDER: one line at the end of the leaf: the in-word byte order
-  the data words carried, the compare that fixed it, the word counts and
-  STATUS.BYTEORDER. Logged, not graded.
+* CHK-SPI-BYTEORDER: one line at the end of the leaf: no data word matched
+  only the first-byte-in-bits-31:24 order and the last STATUS.BYTEORDER read
+  is 1 (``spi_controller.rdl:124-127``), with the word counts.
 
 FCOV: after a frame passes, the leaf writes one ``spi_lane_fcov`` data record
 per width and direction it graded, and one chain record per chain (0 one
@@ -859,7 +857,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             "msb_first": (1 << (8 * pad_bytes)) - 1,
         }
         position = {"lsb_first": "upper", "msb_first": "lower"}
-        orders = [self.order.order] if self.order.order else list(masks)
+        orders = [self.order.order]
         zero = [o for o in orders if not last_word & masks[o]]
         self.logger.info(
             "INFO-SPI-RX-PAD seed=%d speed=%d dir=%d bytes=%d last_word=0x%08x pad_bytes=%s "
@@ -874,7 +872,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         )
         line = (
             f"seed={seed} speed={seg.speed} dir={seg.direction} bytes={nbytes} "
-            f"last_word=0x{last_word:08x} order={self.order.order or 'undecided'} "
+            f"last_word=0x{last_word:08x} order={self.order.order} "
             f"pad=" + ",".join(f"0x{last_word & masks[o]:08x}" for o in orders) + " expect_pad=0"
         )
         if not zero:
@@ -1125,6 +1123,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         required = ["CHK-SPI-CELL", "CHK-SPI-RXCNT", "CHK-SPI-DUMMY", "CHK-SPI-CHAIN"]
         required += ["CHK-SPI-SB-FRAME", "CHK-SPI-LANE-DATA", "CHK-SPI-OE-SEG"]
         required += ["CHK-SPI-ILLEGAL", "CHK-SPI-WIRE", "CHK-SPI-LONGDUMMY", "CHK-SPI-RX-PAD"]
+        required += ["CHK-SPI-BYTEORDER"]
         self.required_evidence = tuple(required)
         self.ran: set[str] = set()
         self.lane_graded: set[tuple[int, bool]] = set()
@@ -1178,6 +1177,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             self.order.log_info(
                 self.logger, self.seed, status_byteorder=self.ops.status_log[-1].byteorder
             )
+            self.ran.add("CHK-SPI-BYTEORDER")
         finally:
             close_graded_window()
             await self.rsp.stop()

@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Used bits of nine narrow fuse registers at drawn edge values; no shadow word holds the JTAG ID.
+"""Used bits of eight narrow fuse registers at drawn edge values; no shadow word holds the JTAG ID.
 
 The used-bit ranges of ``LC_STATE``, ``SBOOT_DIS``, ``TRANSIENT_RMA_EN``,
-``CHIPLET_PUBK_REVOKE``, ``STATUS_RPT``, ``ROM_CTL``, ``SYSCLK_FREQ_MHZ``,
-``REQUIRED_SIGNERS`` and ``REQUIRED_ALGS`` read back as staged, at edge values that the
-seed draws. A drawn non-zero ``jtag_id_i[31:1]`` enters no shadow word: the JTAG ID is
+``CHIPLET_PUBK_REVOKE``, ``STATUS_RPT``, ``SYSCLK_FREQ_MHZ``, ``REQUIRED_SIGNERS`` and
+``REQUIRED_ALGS`` read back as staged, at edge values that the seed draws. ``ROM_CTL``
+has no used bit and is not graded here. A drawn non-zero ``jtag_id_i[31:1]`` enters no shadow word: the JTAG ID is
 not in the fuse map and is a top-level port.
 
 Sources: ``hw/sys/sep/doc/otp_fuse_controller.adoc`` (section Fuse Fields, field table
@@ -68,7 +68,6 @@ _GRADED = (
     "TRANSIENT_RMA_EN",
     "CHIPLET_PUBK_REVOKE",
     "STATUS_RPT",
-    "ROM_CTL",
     "SYSCLK_FREQ_MHZ",
     "REQUIRED_SIGNERS",
     "REQUIRED_ALGS",
@@ -185,7 +184,7 @@ class sep_efuse_field_layout_rand_test(sep_base_test):
             )
         hook = self._hook_ok(self._port(), "field_reads") and hook
 
-        # Step 7: the nine graded narrow registers, one 32-bit read each.
+        # Step 7: the eight graded narrow registers, one 32-bit read each.
         offs = {n: off for n, off, _nw in table}
         open_graded_window(TEST, self.logger)
         n_lines = 0

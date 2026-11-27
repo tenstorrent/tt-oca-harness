@@ -55,7 +55,7 @@ Reset scope determines which state survives a restart. In normal operation
 |Cold reset (`rst_ni`)
 |Resets the early infrastructure, including the local AXI crossbar, OTP controller, watchdog register path and reset-isolation sequencers. This infrastructure can operate before the boot-qualified SEP reset is released.
 |Boot-qualified SEP reset (`sep_reset_n`)
-|The OTP controller qualifies release with fuse sensing complete, cold reset released and `ext_boot_seq_done_i` asserted. The SEP Reset Controller applies the SEP JTAG override and synchronizes release to `clk_i`. This reset feeds system peripherals and the reset-controller registers, and qualifies the software-controlled engine resets.
+|The OTP controller qualifies release with fuse sensing complete, cold reset released and `ext_boot_seq_done_i` asserted. The SEP Reset Controller applies the SEP JTAG override and synchronizes release to `clk_i`. This reset feeds system peripherals, including every `sep_cpu_ctrl` register, and the reset-controller registers, and qualifies the software-controlled engine resets. Only cold reset and the JTAG `sep_reset_n` override assert it; a watchdog reset and a debugger `ndmreset` do not.
 |CPU reset (`sep_cpu_reset_n`)
 |Combines `sep_reset_n` with the aggregated SMC/SEP watchdog reset input, `wdt_rst_ni`. A watchdog reset restarts the CPU without asserting the boot-qualified SEP reset or the software-controlled cryptographic resets. It also clears the warm scratch register bank through the system CSR warm-reset input.
 |Watchdog reset (`sep_wdt_reset_n`)
@@ -64,7 +64,14 @@ Reset scope determines which state survives a restart. In normal operation
 |Separate requests for Key Manager, OTBN, AES, HMAC, KMAC, Adams Bridge and the shared TRNG domain. Each sequencer isolates its required AXI paths and waits for the isolation acknowledgements before asserting reset.
 |===
 
-A watchdog restart therefore does not return the cryptographic engines or
+`SEP_NMI_VEC`, `SEP_NMI_VEC_LOCK`, `EXT_TRNG_SRC_SEL`, `EXT_TRNG_SRC_SEL_LOCK`,
+`SEP_GLOBAL_BASE_ADDR`, `SEP_LOCAL_BASE_ADDR`, `SEP_REGION_SIZE`,
+`SMU_GLOBAL_BASE_ADDR` and `SMU_REGION_SIZE` therefore keep their values and
+locks across a watchdog restart. The boot ROM does not program `SEP_NMI_VEC`, so
+restarted firmware runs with the vector, and its lock if set, from before the
+restart.
+
+A watchdog restart also does not return the cryptographic engines or
 their software reset requests to cold-reset defaults; see the
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-software-reset[software reset section]

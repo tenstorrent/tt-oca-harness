@@ -41,12 +41,12 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>27</td><td>program_enable</td><td>RW</td><td>0x0</td><td>When set, enables the program request</td></tr>
-<tr><td>26</td><td>program_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error</td></tr>
-<tr><td>25</td><td>program_done</td><td>R</td><td>0x0</td><td>When set, the program has completed, the status of which is in program_status</td></tr>
+<tr><td>26</td><td>program_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error. Set when efuse_program_go is refused, or the program request fails or times out.</td></tr>
+<tr><td>25</td><td>program_done</td><td>R</td><td>0x0</td><td>When set, the program has completed, the status of which is in program_status.  Cleared when the next efuse_program_go is accepted; a refused request leaves it set and updates program_status</td></tr>
 <tr><td>24</td><td>program_busy</td><td>R</td><td>0x0</td><td>When set, the program is in progress</td></tr>
 <tr><td>23:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>17</td><td>efuse_program_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set</td></tr>
-<tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, the program request will be ignored</td></tr>
+<tr><td>17</td><td>efuse_program_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a program to the eFuse.  A request made while program_enable is clear, efuse_data is 0, the address is out of bounds, or the bit is locked or blocked is refused: it issues no command and completes at once with program_done 1 and program_status 1</td></tr>
+<tr><td>16</td><td>efuse_data</td><td>RW</td><td>0x0</td><td>Data to program to eFuse.  If this bit is 0, a program request is refused: it issues no command and completes at once with program_done 1 and program_status 1</td></tr>
 <tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="EFUSE_READ_CTRL">EFUSE_READ_CTRL</h3>
@@ -56,10 +56,10 @@
 <tr><td>28</td><td>read_enable</td><td>RW</td><td>0x0</td><td>When set, enables the read request</td></tr>
 <tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>26</td><td>read_status</td><td>R</td><td>0x0</td><td>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</td></tr>
-<tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status</td></tr>
+<tr><td>25</td><td>read_done</td><td>R</td><td>0x0</td><td>When set, the read has completed, the status of which is in read_status.  Cleared when the next efuse_read_go is accepted; a refused request leaves it set and updates read_status</td></tr>
 <tr><td>24</td><td>read_busy</td><td>R</td><td>0x0</td><td>When set, the read is in progress</td></tr>
 <tr><td>23:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>16</td><td>efuse_read_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a read to efuse.</td></tr>
+<tr><td>16</td><td>efuse_read_go</td><td>RW 1P</td><td>0x0</td><td>When set, triggers a read to efuse.  A request made while read_enable is clear, the address is out of bounds, or the word is locked or blocked is refused: it issues no command and completes at once with read_done 1 and read_status 1</td></tr>
 <tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="EFUSE_PROGRAM_INTERFACE_READ_DATA">EFUSE_PROGRAM_INTERFACE_READ_DATA</h3>
