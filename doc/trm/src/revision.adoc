@@ -206,4 +206,14 @@ reference clock, reset and powergood rows as having no dedicated interface in
 the harness. Added GPIO pad integration guidance on the bonded and unbonded pad
 counts, the pad types for the JTAG PTAP/STAP, cross trigger ports and the
 clock/reset/powergood inputs.
+|0.5.37 |2026-11-18 |Haohao Liao |Specified the 1.0 SEP secure-boot signing
+policy against the OCA Payload Manifest. Fuse map: REQUIRED_SIGNERS and
+REQUIRED_ALGS widened from 32 to 64 bits (co-signer mask with owner codes and a
+ROOT owner code; per-entity algorithm minimum), new 64-bit SIGNATURE_REVOKE at
+lock slot 32, spare8 reduced from 256 to 128 bits, and CHIPLET_PUBK_REVOKE
+renamed PUBK_REVOKE. Lock slots 0-31 do not move; the nine spare fields move to
+slots 33-41, and field offsets change from REQUIRED_ALGS onward. The four
+policy fields ignore their lock fuse bits. Life Cycle Controller: added
+Secure-Boot Signing Model, Signature Algorithm Revocation and Policy Fuse
+Updates.
 |=======================================================================
