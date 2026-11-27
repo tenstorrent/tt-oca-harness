@@ -33,7 +33,10 @@ this order, over the CPU-LSU master on ``s_axi``:
   otherwise), and the watchdog alert (tap ``wdt_alert_probe_o``) reads 0 before
   the write and rises within ``SRC13_WINDOW`` ``clk_i`` cycles after it
   (CTRL-WDT-ALERT-REACH, CTRL-MISSING otherwise), so a refused write fails the
-  leaf. INFO-WDT-ALERT-RESP logs the response code, not graded: no
+  leaf. Over the same window PIC source 13 (vector bit 12 of the aggregator
+  probe) has the rises and high clocks of the watchdog alert tap: the alert
+  pulses "are ORed into ``wdt_alert_o``, which drives PIC source 13"
+  (``hw/sys/sep/doc/watchdog.adoc:23``; CHK-WDT-ALERT-SRC13). INFO-WDT-ALERT-RESP logs the response code, not graded: no
   specification states the response code of a legal register write. With
   ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, the count advance over
   ``WDT_WAIT`` ``clk_wdt_i`` periods matches the ``clk_wdt_i`` edges between
@@ -372,7 +375,7 @@ CHK-BITE-HOLD, CHK-WDT-RATE, CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-S
 CHK-WDT-PET-HOLD, CHK-WDT-PET-BITE, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
 CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ, CHK-WDT-CLKSTOP-COUNT,
 CHK-WDT-CLKSTOP-BITE, CHK-WDT-BARK-REARM, CHK-WDT-INTRTEST-COUNT, CHK-WDT-NO-SPURIOUS,
-CHK-WDT-BITE-FIRST, CHK-WDT-FIRE-NOT-EARLY, CHK-WDT-PAUSE-RUN.
+CHK-WDT-BITE-FIRST, CHK-WDT-FIRE-NOT-EARLY, CHK-WDT-PAUSE-RUN, CHK-WDT-ALERT-SRC13.
 Controls (not counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
 CTRL-WKUP-SMALL, CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
 CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
@@ -745,6 +748,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-WDT-BITE-FIRST",
         "CHK-WDT-FIRE-NOT-EARLY",
         "CHK-WDT-PAUSE-RUN",
+        "CHK-WDT-ALERT-SRC13",
     )
 
     # -- primitives -----------------------------------------------------------
@@ -1792,7 +1796,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         src13 = SepBitWatch(
             cocotb.top.sep_internal_interrupts_probe_o, {"src13": 12}, name="src13"
         ).start()
-        m13 = src13.mark()
         seed = self.tcfg.seed
         alert = SepBitWatch(cocotb.top.wdt_alert_probe_o, name="wdt_alert").start()
         await RisingEdge(cocotb.top.clk_i)
@@ -1806,6 +1809,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             self.logger.error(msg)
             raise AssertionError(msg)
         ma = alert.mark()
+        m13 = src13.mark()
         # CHK-WDT-NO-SPURIOUS does not grade the alert from here to the end of leg T.
         self.nospur_alert_test = self.nospur_alert.mark()
         seq = SepAxiAccessSeq(
@@ -1824,9 +1828,9 @@ class sep_timer_clock_contract_test(sep_base_test):
             raise AssertionError(msg)
         self.logger.info("CTRL-WDT-ALERT-RESP seen: seed=%d write response received", seed)
         self.logger.info("INFO-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
-        # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         alert_rises = alert.rises_since(ma)
+        alert_high = alert.high_clocks_since(ma)
         await alert.stop()
         if alert_rises == 0:
             msg = (
@@ -1841,13 +1845,19 @@ class sep_timer_clock_contract_test(sep_base_test):
             alert_rises,
             SRC13_WINDOW,
         )
-        self.logger.info(
-            "OBS-SRC-SHAPE src=13 kind=wdt_alert_test rises=%d high_clk=%d window_clk=%d",
-            src13.rises_since(m13),
-            src13.high_clocks_since(m13),
-            SRC13_WINDOW,
-        )
+        # The alert pulses "are ORed into wdt_alert_o, which drives PIC source 13"
+        # (hw/sys/sep/doc/watchdog.adoc:23), so source 13 rises and stays high on the
+        # same clocks as the alert tap over the window.
+        src_rises = src13.rises_since(m13)
+        src_high = src13.high_clocks_since(m13)
         await src13.stop()
+        line = (
+            f"seed={seed} src=13 rises={src_rises} high_clk={src_high} "
+            f"exp_rises={alert_rises} exp_high_clk={alert_high} window_clk={SRC13_WINDOW}"
+        )
+        if (src_rises, src_high) != (alert_rises, alert_high):
+            raise AssertionError(f"CHK-WDT-ALERT-SRC13 FAIL: {line}")
+        self.logger.info("CHK-WDT-ALERT-SRC13 PASS: %s", line)
 
     def _rst_req_quiet(self, watch, samples: dict, chk: str, where: str) -> None:
         """Fail ``chk`` when the ``wdt_timer_rst_req_o`` watcher of leg T ended or read a 1."""

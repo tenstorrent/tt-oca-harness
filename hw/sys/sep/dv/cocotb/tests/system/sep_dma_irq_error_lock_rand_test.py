@@ -97,7 +97,7 @@ reason other than the lock fails the control. These values are the pre-lock
 values of that context. After the lock write and after
 each attempt the leaf writes new BASE and LIMIT values and RANGE_VALID=0 and
 reads all four registers back. The RANGE_REGWEN read-back is logged, not
-graded (``INFO-DMA-LOCK-READBACK``: its golden is an open specification
+graded (``OBS-DMA-LOCK-READBACK``: its golden is an open specification
 question); CHK-DMA-LOCK grades that the lock holds. The texts disagree on the
 value: the field is ``onwrite = wzc`` (``secure_dma.rdl:146``), a per-bit
 write-0-to-clear (``doc/trm/src/register-field-access.adoc:58,72-74``) that
@@ -337,7 +337,7 @@ Checkers:
                     value 0x6; after the size error and before the lock,
                     new BASE and LIMIT writes landed, RANGE_REGWEN read 0x6
                     and STATUS.ERROR read 1.
-  INFO-DMA-LOCK-READBACK per L3 lock write and unlock attempt, in both
+  OBS-DMA-LOCK-READBACK per L3 lock write and unlock attempt, in both
                     contexts: the RANGE_REGWEN read-back, logged with
                     ``chk=CHK-DMA-LOCK``, which grades the lock hold.
   INFO-DMA-REGWEN-NONMUBI after a cold reset, the read-back of a first
@@ -1886,7 +1886,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             limit = await ops.rd(RANGE_LIMIT)
             valid = (await ops.rd(RANGE_VALID) & VALID_MASK) >> _VALID_LSB
             self.logger.info(
-                "INFO-DMA-LOCK-READBACK chk=CHK-DMA-LOCK seed=%d ctx=%s attempt=%s regwen=0x%x "
+                "OBS-DMA-LOCK-READBACK chk=CHK-DMA-LOCK seed=%d ctx=%s attempt=%s regwen=0x%x "
                 "written=0x%x",
                 c.seed,
                 ctx,
