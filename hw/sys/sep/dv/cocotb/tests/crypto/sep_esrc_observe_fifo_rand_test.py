@@ -30,7 +30,8 @@ inject is released at each set-up and at the end of the leaf.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the order of the 16 ``LANE_SEL`` values (every write changes the
-effective lane), z per lane change (both values, z = 1 at least once), the flush
+effective lane), z per lane change (both values; drawn for every change and set
+to 1 at the changes to 12 to 15), the flush
 lane, its z and the words f before the flush, the words k at the lock moment,
 z of each lock pass, the lane and bits of the sample-clock sequence leg, the
 lane-0 ``LANE_SEL`` value 12 to 15 of the same-lane write, and the bits of the
@@ -94,6 +95,15 @@ Checkers:
                     (architecture.adoc:75).
                     Control: every sample edge lies at least 150 ps from each ``clk_i``
                     rising and falling edge, measured.
+  CHK-OBS-NOISE-TO-DECOR same leg, with the noise force released on the lane: on
+                    every ``clk_i`` rising edge the leg watches, the decorrelator input
+                    ``esrc_decor_noise_o[lane]`` (``u_decorrelator.noise_i``) equals
+                    the synchronized bit ``esrc_noise_bit_o[lane]``
+                    (``u_generator.noise_bit``): the synchronized sample enters the
+                    decorrelator (architecture.adoc:75, :108, :110-112). The two taps
+                    are the two ends of one connection, so the check fails only on a
+                    connectivity fault or a force that does not release. The count
+                    of compared clocks must be above 0.
   CHK-OBS-MAIN      with ``SHA256_WHITENING_ENABLE`` = 0, the ``esrc_compress_vld_o``
                     word count over 256 decorrelator strobes with both observe paths
                     on equals the count over 256 strobes with both off
@@ -413,6 +423,8 @@ def draw_plan(seed: int, clk_ps: int) -> Plan:
     z_lane: list[int] = []
     for _ in range(DRAW_TRIES):
         z_lane = [rng.getrandbits(1) for _ in range(LANE_SEL_VALUES)]
+        # At 12 to 15 lane 0 carries 1, so a select that reads 0 there fails.
+        z_lane = [1 if v >= NUM_LANES else z for v, z in zip(order, z_lane)]
         if 0 in z_lane and 1 in z_lane:
             break
     else:
@@ -485,6 +497,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         "CHK-OBS-OFF",
         "CHK-OBS-SEQ",
         "CHK-SYNC-DEPTH",
+        "CHK-OBS-NOISE-TO-DECOR",
         "CHK-OBS-MAIN",
         "CHK-OBS-OVF-KEEP",
         "CHK-OBS-POP-LEVEL",
@@ -1458,6 +1471,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         times: list[int] = []
         clk_times: list[int] = []
         samples: list[tuple[int, int, int]] = []
+        decor: dict = {"clocks": 0, "first": None}
         done = Event()
         watched = Event()
 
@@ -1477,12 +1491,16 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             open_k: int | None = None
             first = 0
             k = 0
-            for _ in range(bound):
+            for cycle in range(bound):
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
                 clk_times.append(get_sim_time("ps"))
                 lvl = self.rd(dut.entropy_rosc_sample_clk_i)
                 bit = (self.rd(dut.esrc_noise_bit_o, mask=1 << lane) >> lane) & 1
+                dec = (self.rd(dut.esrc_decor_noise_o, mask=1 << lane) >> lane) & 1
+                decor["clocks"] += 1
+                if dec != bit and decor["first"] is None:
+                    decor["first"] = (cycle, clk_times[-1], bit, dec)
                 if open_k is not None:
                     samples.append((open_k, first, bit))
                     open_k = None
@@ -1539,6 +1557,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             "times": times,
             "clk_times": clk_times,
             "samples": samples,
+            "decor": decor,
             "level": level,
             "words": words,
             "pre": pre,
@@ -1628,5 +1647,15 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             and transitions > 0
             and not early
             and not late,
+            **fields,
+        )
+        decor = res["decor"]
+        fields = {"lane": lane, "graded_clocks": decor["clocks"]}
+        if decor["first"] is not None:
+            cycle, ts, bit, dec = decor["first"]
+            fields.update(cycle=cycle, time_ps=ts, noise_bit=bit, decor_noise=dec)
+        self.chk.ok(
+            "OBS-NOISE-TO-DECOR",
+            decor["clocks"] > 0 and decor["first"] is None,
             **fields,
         )

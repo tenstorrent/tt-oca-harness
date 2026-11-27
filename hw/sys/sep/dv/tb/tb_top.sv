@@ -1803,12 +1803,20 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.rst_cold_aasd_n,
         `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.rst_warm_sync_n
     };
+    // ML-KEM shared-key interrupt input of the Key Manager, in every build.
+    // Read-only XMR.
+    assign km_abr_sk_irq_in_probe_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.abr_mlkem_sharedkey_irq_i;
     // The two synchronized resets of the reference counter: bit 1 the clk_ref_i
     // side, bit 0 the clk_i side. Read-only XMRs.
     assign refcnt_rst_n_probe_o = {
         `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_reference_counter_counter.prstb_synced_rd,
         `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_reference_counter_counter.prstb_synced_write
     };
+    // Output of the eFuse interface reset synchronizer, the source of
+    // sep_intermediate_reset_n. Read-only XMR.
+    assign efuse_rst_sync_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_reset_n_sync.q_o;
     // Output of the CPU run-request synchronizer; the CPU stub has none.
 `ifndef SEP_CPU_STUB
     assign mpc_run_sync_probe_o = `SEP_CORE.u_sep_cpu.mpc_reset_run_req_sync;
@@ -3762,39 +3770,116 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // ESRC health-test counter-copy inject.
     // ------------------------------------------------------------------
-    // At the rise of esrc_cntr_inject_i the bench captures the secondary copy of
-    // the REPCNT_TOTAL_FAILS counter (u_entropy_src_cntr_reg_repcnt, a prim_count
-    // with a primary and a secondary copy) with bit esrc_cntr_inject_bit_i
-    // inverted, and holds that copy at that value while the input stays 1. The
-    // two copies then disagree, which is the counter integrity error that sets
+    // Each health-test counter is a prim_count with a primary and a secondary
+    // copy whose sum is the counter maximum. At the rise of esrc_cntr_inject_i
+    // the bench captures the secondary copy of the selected counter with bit
+    // esrc_cntr_inject_bit_i[4:0] inverted, and holds that copy at that value
+    // while the input stays 1 and the selection does not change. The two
+    // copies then disagree, which is the counter integrity error that sets
     // MAIN_SM_STATUS.ERR. Software cannot move one copy of a counter, so this
     // error has no frontdoor. The counter flop reloads from its own next-state
     // logic after the release, so the copies stay apart until the next ESRC
     // reset. Re-issued on every falling edge for Verilator, released when the
     // input drops. Default 0: no force.
-`define ESRC_CNTR_COPY \
-    `SEP_ESRC.u_entropy_src_cntr_reg_repcnt.u_prim_count_cntr_reg.gen_cnts[1].cnt_unforced_q
-    logic        esrc_cntr_inj_on;
-    logic [31:0] esrc_cntr_inj_val;
-    initial begin
-        esrc_cntr_inj_on  = 1'b0;
-        esrc_cntr_inj_val = '0;
+    //
+    // esrc_cntr_inject_bit_i[7:5] selects the target (EsrcCc* below). For the
+    // lane targets esrc_cntr_inj_lane is the lane (0 to 11) and
+    // esrc_cntr_inj_slot the counter of that lane's test (gen_cntrs, 0 to 7,
+    // one per bit of the 8-bit lane stream). For the total target
+    // esrc_cntr_inj_slot selects 0 APT high, 1 APT low, 2 Markov high,
+    // 3 Markov low, 4 any-alert fails; for the alert target 0 repetition count,
+    // 1 APT high, 2 APT low, 3 Markov high, 4 Markov low. The other targets
+    // ignore both variables. cocotb writes them before the rise of
+    // esrc_cntr_inject_i. A selection that names no counter forces nothing,
+    // and a bit index at or above the counter width flips no bit.
+    localparam logic [2:0] EsrcCcRepcnt     = 3'd0;  // REPCNT_TOTAL_FAILS
+    localparam logic [2:0] EsrcCcWindow     = 3'd1;  // u_generator_complex.u_window_cntr
+    localparam logic [2:0] EsrcCcLaneRep    = 3'd2;  // lane repetition-count test
+    localparam logic [2:0] EsrcCcLaneApt    = 3'd3;  // lane adaptive-proportion test
+    localparam logic [2:0] EsrcCcLaneMarkov = 3'd4;  // lane Markov test
+    localparam logic [2:0] EsrcCcTotal      = 3'd5;  // total-fails counters
+    localparam logic [2:0] EsrcCcAlert      = 3'd6;  // alert-fails counters
+    int unsigned esrc_cntr_inj_lane = 0;
+    int unsigned esrc_cntr_inj_slot = 0;
+    wire [2:0] esrc_cc_tgt = esrc_cntr_inject_bit_i[7:5];
+    wire esrc_cc_lane_tgt = esrc_cc_tgt inside {EsrcCcLaneRep, EsrcCcLaneApt, EsrcCcLaneMarkov};
+    wire esrc_cc_slot_tgt = esrc_cc_lane_tgt || (esrc_cc_tgt inside {EsrcCcTotal, EsrcCcAlert});
+    wire [31:0] esrc_cc_lane = esrc_cc_lane_tgt ? esrc_cntr_inj_lane : 32'd0;
+    wire [31:0] esrc_cc_slot = esrc_cc_slot_tgt ? esrc_cntr_inj_slot : 32'd0;
+    wire esrc_cc_named =
+        (esrc_cc_tgt inside {EsrcCcRepcnt, EsrcCcWindow}) ||
+        (esrc_cc_lane_tgt && (esrc_cc_lane < 32'(entropy_source_pkg::NRings)) && (esrc_cc_slot < 32'd8)) ||
+        ((esrc_cc_tgt inside {EsrcCcTotal, EsrcCcAlert}) && (esrc_cc_slot < 32'd5));
+    wire [31:0] esrc_cc_pri [8][entropy_source_pkg::NRings][8];
+    wire [31:0] esrc_cc_sec [8][entropy_source_pkg::NRings][8];
+    wire        esrc_cc_err [8][entropy_source_pkg::NRings][8];
+`define ESRC_CC_HOOK(KIND, TGT, L, S, W, NODE) \
+    if (1) begin : g_esrc_cc_``KIND``_``L``_``S \
+        logic         on  = 1'b0; \
+        logic [W-1:0] val = '0; \
+        wire sel = (esrc_cntr_inject_i === 1'b1) && (esrc_cc_tgt == TGT) && \
+                   (esrc_cc_lane == L) && (esrc_cc_slot == S); \
+        always @(negedge clk_i) begin \
+            if (sel) begin \
+                if (!on) begin \
+                    on  = 1'b1; \
+                    val = NODE.gen_cnts[1].cnt_unforced_q ^ W'(64'h1 << esrc_cntr_inject_bit_i[4:0]); \
+                    $display("[tb] ESRC counter-copy inject: target=%0d lane=%0d slot=%0d bit=%0d value=0x%08x", \
+                             TGT, L, S, esrc_cntr_inject_bit_i[4:0], 32'(val)); \
+                end \
+                force NODE.gen_cnts[1].cnt_unforced_q = val; \
+            end else if (on) begin \
+                on = 1'b0; \
+                release NODE.gen_cnts[1].cnt_unforced_q; \
+            end \
+        end \
+        assign esrc_cc_pri[TGT][L][S] = 32'(NODE.gen_cnts[0].cnt_unforced_q); \
+        assign esrc_cc_sec[TGT][L][S] = 32'(NODE.gen_cnts[1].cnt_unforced_q); \
+        assign esrc_cc_err[TGT][L][S] = NODE.err_o; \
     end
-    always @(negedge clk_i) begin
-        if (esrc_cntr_inject_i === 1'b1) begin
-            if (!esrc_cntr_inj_on) begin
-                esrc_cntr_inj_on  = 1'b1;
-                esrc_cntr_inj_val = `ESRC_CNTR_COPY ^ (32'h1 << esrc_cntr_inject_bit_i);
-                $display("[tb] ESRC counter-copy inject: bit=%0d value=0x%08x",
-                         esrc_cntr_inject_bit_i, esrc_cntr_inj_val);
-            end
-            force `ESRC_CNTR_COPY = esrc_cntr_inj_val;
-        end else begin
-            esrc_cntr_inj_on = 1'b0;
-            release `ESRC_CNTR_COPY;
-        end
-    end
-`undef ESRC_CNTR_COPY
+`define ESRC_CC_LANE_SLOT(L, S) \
+    `ESRC_CC_HOOK(rep, EsrcCcLaneRep, L, S, 16, \
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[L].u_generator.u_health_test.u_repcnt_ht.gen_cntrs[S].u_prim_count_rep_cntr) \
+    `ESRC_CC_HOOK(apt, EsrcCcLaneApt, L, S, 16, \
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[L].u_generator.u_health_test.u_adaptp_ht.gen_cntrs[S].u_prim_count_test_cnt) \
+    `ESRC_CC_HOOK(markov, EsrcCcLaneMarkov, L, S, 16, \
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[L].u_generator.u_health_test.u_markov_ht.gen_cntrs[S].u_prim_count_pair_cntr)
+`define ESRC_CC_LANE(L) \
+    `ESRC_CC_LANE_SLOT(L, 0) `ESRC_CC_LANE_SLOT(L, 1) `ESRC_CC_LANE_SLOT(L, 2) `ESRC_CC_LANE_SLOT(L, 3) \
+    `ESRC_CC_LANE_SLOT(L, 4) `ESRC_CC_LANE_SLOT(L, 5) `ESRC_CC_LANE_SLOT(L, 6) `ESRC_CC_LANE_SLOT(L, 7)
+`define ESRC_CC_REG(KIND, TGT, S, W, REG) \
+    `ESRC_CC_HOOK(KIND, TGT, 0, S, W, `SEP_ESRC.u_entropy_src_cntr_reg_``REG.u_prim_count_cntr_reg)
+    `ESRC_CC_REG(repcnt, EsrcCcRepcnt, 0, 32, repcnt)
+    `ESRC_CC_HOOK(window, EsrcCcWindow, 0, 0, 16, `SEP_ESRC.u_generator_complex.u_window_cntr)
+    `ESRC_CC_LANE(0)
+    `ESRC_CC_LANE(1)
+    `ESRC_CC_LANE(2)
+    `ESRC_CC_LANE(3)
+    `ESRC_CC_LANE(4)
+    `ESRC_CC_LANE(5)
+    `ESRC_CC_LANE(6)
+    `ESRC_CC_LANE(7)
+    `ESRC_CC_LANE(8)
+    `ESRC_CC_LANE(9)
+    `ESRC_CC_LANE(10)
+    `ESRC_CC_LANE(11)
+    `ESRC_CC_REG(total, EsrcCcTotal, 0, 32, apt_hi)
+    `ESRC_CC_REG(total, EsrcCcTotal, 1, 32, apt_lo)
+    `ESRC_CC_REG(total, EsrcCcTotal, 2, 32, markov_hi)
+    `ESRC_CC_REG(total, EsrcCcTotal, 3, 32, markov_lo)
+    `ESRC_CC_REG(total, EsrcCcTotal, 4, 16, any_alert_fails)
+    `ESRC_CC_REG(alert, EsrcCcAlert, 0, 4, repcnt_alert)
+    `ESRC_CC_REG(alert, EsrcCcAlert, 1, 4, apt_hi_alert)
+    `ESRC_CC_REG(alert, EsrcCcAlert, 2, 4, apt_lo_alert)
+    `ESRC_CC_REG(alert, EsrcCcAlert, 3, 4, markov_hi_alert)
+    `ESRC_CC_REG(alert, EsrcCcAlert, 4, 4, markov_lo_alert)
+`undef ESRC_CC_REG
+`undef ESRC_CC_LANE
+`undef ESRC_CC_LANE_SLOT
+`undef ESRC_CC_HOOK
+    assign esrc_cntr_copy_pri_o = esrc_cc_named ? esrc_cc_pri[esrc_cc_tgt][esrc_cc_lane][esrc_cc_slot] : 32'd0;
+    assign esrc_cntr_copy_sec_o = esrc_cc_named ? esrc_cc_sec[esrc_cc_tgt][esrc_cc_lane][esrc_cc_slot] : 32'd0;
+    assign esrc_cntr_copy_err_o = esrc_cc_named ? esrc_cc_err[esrc_cc_tgt][esrc_cc_lane][esrc_cc_slot] : 1'b0;
 
     // ESRC main state machine error-output inject. While
     // esrc_main_sm_err_inject_i is 1 the bench forces main_sm_err (the
@@ -4283,6 +4368,109 @@ module sep_uvm_top
 `undef CRYPTO_EDN_TAP
     assign edn_crypto_arb_req_o = `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan.arb_req;
     assign edn_crypto_arb_gnt_o = `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan.arb_gnt;
+
+    // ------------------------------------------------------------------
+    // EDN adapter ack state machine inject (+sep_edn_ack_sm_inject).
+    // ------------------------------------------------------------------
+    // While the plusarg is present and edn_ack_sm_inj_sel is non-zero, the
+    // bench forces the state register of one edn_ack_sm to edn_ack_sm_inj_val,
+    // which is not an encoding of edn_ack_sm state_e: sel 1 to 4 endpoint 0 to
+    // 3 of the crypto adapter (u_axis_edn_crypto_s3c_scan), sel 5 endpoint 0 of
+    // the pool adapter (u_axis_edn_pool_s3c_scan). Under SIMULATION the state
+    // machine reads the behavioral state_q flop and prim_sparse_fsm_flop keeps
+    // its own copy (u_state_regs.u_state_flop.q_o); both take the one value so
+    // that their equivalence assertion holds. The state machine then reports
+    // the illegal state on ack_sm_err_o and moves to Error, which only rst_ni
+    // leaves. Software cannot place an illegal encoding in that register, so
+    // the fault has no frontdoor. cocotb writes edn_ack_sm_inj_sel to start the
+    // force and writes 0 to release it; the force is re-issued on every falling
+    // edge for Verilator. Without the plusarg the variable has no effect.
+    // Readback: edn_ack_sm_state_o and edn_adapter_err_o.
+    logic        edn_ack_sm_inj_armed;
+    int unsigned edn_ack_sm_inj_sel = 0;
+    logic [8:0]  edn_ack_sm_inj_val = 9'h000;
+    initial edn_ack_sm_inj_armed = $test$plusargs("sep_edn_ack_sm_inject");
+    // The illegal state moves the state machine to Error, which
+    // AxisEdnAllAckSmHealthy_A and FpvSecCmErrorStEscalate_A forbid. With
+    // +sep_edn_ack_sm_assert_waive they are off for the injected adapter only,
+    // from the time edn_ack_sm_inj_sel selects one of its endpoints to the next
+    // rise of rst_ni: Error holds until rst_ni. The force starts on the next
+    // falling edge of clk_i, after they are off. The other adapter keeps them,
+    // and AckSmErrTriggersErr_A, which checks that the fault reaches err_o,
+    // stays on. Verilator compiles these assertions out.
+`ifndef VERILATOR
+    bit edn_ack_sm_waive_plusarg;
+    initial edn_ack_sm_waive_plusarg = $test$plusargs("sep_edn_ack_sm_assert_waive");
+    always @(edn_ack_sm_inj_sel) begin
+        if (edn_ack_sm_waive_plusarg && edn_ack_sm_inj_sel inside {[1:4]}) begin
+            $display("%0t: [tb] EDN crypto adapter health checks off to rst_ni %s", $time,
+                     "(+sep_edn_ack_sm_assert_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .AxisEdnAllAckSmHealthy_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[0].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[1].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[2].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[3].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+        end
+        if (edn_ack_sm_waive_plusarg && edn_ack_sm_inj_sel == 5) begin
+            $display("%0t: [tb] EDN pool adapter health checks off to rst_ni %s", $time,
+                     "(+sep_edn_ack_sm_assert_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+                .AxisEdnAllAckSmHealthy_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+                .gen_ep[0].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+        end
+    end
+    always @(posedge rst_ni) begin
+        if (edn_ack_sm_waive_plusarg) begin
+            $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .AxisEdnAllAckSmHealthy_A);
+            $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+                .AxisEdnAllAckSmHealthy_A);
+            $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[0].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[1].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[2].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[3].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+            $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+                .gen_ep[0].u_edn_ack_sm.FpvSecCmErrorStEscalate_A);
+        end
+    end
+`endif
+`define EDN_ACK_SM_INJ(SEL, ADAPTER, EP) \
+    always @(negedge clk_i) begin \
+        if (edn_ack_sm_inj_armed && (edn_ack_sm_inj_sel == SEL)) begin \
+            force `SEP_CORE.u_sep_crypto.ADAPTER.gen_ep[EP].u_edn_ack_sm.u_state_regs.u_state_flop.q_o = \
+                edn_ack_sm_inj_val; \
+            force `SEP_CORE.u_sep_crypto.ADAPTER.gen_ep[EP].u_edn_ack_sm.state_q = edn_ack_sm_inj_val; \
+        end else if (edn_ack_sm_inj_armed) begin \
+            release `SEP_CORE.u_sep_crypto.ADAPTER.gen_ep[EP].u_edn_ack_sm.u_state_regs.u_state_flop.q_o; \
+            release `SEP_CORE.u_sep_crypto.ADAPTER.gen_ep[EP].u_edn_ack_sm.state_q; \
+        end \
+    end \
+    assign edn_ack_sm_state_o[9*((SEL)-1) +: 9] = \
+        `SEP_CORE.u_sep_crypto.ADAPTER.gen_ep[EP].u_edn_ack_sm.state_q
+    // The injected encoding is not a member of state_e, which is the property
+    // under test; ENUMVALUE is waived for these forces only.
+    /* verilator lint_off ENUMVALUE */
+    `EDN_ACK_SM_INJ(1, u_axis_edn_crypto_s3c_scan, 0);
+    `EDN_ACK_SM_INJ(2, u_axis_edn_crypto_s3c_scan, 1);
+    `EDN_ACK_SM_INJ(3, u_axis_edn_crypto_s3c_scan, 2);
+    `EDN_ACK_SM_INJ(4, u_axis_edn_crypto_s3c_scan, 3);
+    `EDN_ACK_SM_INJ(5, u_axis_edn_pool_s3c_scan, 0);
+    /* verilator lint_on ENUMVALUE */
+`undef EDN_ACK_SM_INJ
+    assign edn_adapter_err_o = {
+        `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan.err_o,
+        `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan.err_o
+    };
 
     // Client-side EDN synchronizer taps: the prim_sync_reqack_data instance of
     // each native client (AES, KMAC, OTBN RND inside prim_edn_req, OTBN URND).
@@ -7494,6 +7682,7 @@ module sep_uvm_top
         .sep_wdt_reset_n_i (sep_wdt_reset_n_probe_o),
         .km_cond_rst_n_i   (km_cond_rst_probe_o),
         .refcnt_rst_n_i    (refcnt_rst_n_probe_o),
+        .efuse_rst_n_i     (efuse_rst_sync_probe_o),
         .jtag_rst_ctrl_i   (jtag_sep_reset_ctrl_drive),
         .dmi_rst_vec_i     (fcov_dmi_rst_vec),
         .wdt_axi_req_i     (`SEP_CORE.u_sep_wdt_wrap.sep_wdt_tlul_axi_req),
@@ -7869,6 +8058,7 @@ module sep_uvm_top
         .esrc_stream_gated_i   (esrc_stream_valid_gated_o),
         .esrc_div0_i           (esrc_decor_div_lane0_o),
         .esrc_cntr_inj_i       (esrc_cntr_inject_i === 1'b1),
+        .esrc_cntr_tgt_i       (esrc_cntr_inject_bit_i[7:5]),
         .esrc_compress_data_i  (esrc_compress_data_o),
         .seed_word_ready_i     (`SEP_DRBG.u_csrng_seed_adapter.csrng_word_ready_o),
         .drbg_es_ack_i         (drbg_es_ack_o),
