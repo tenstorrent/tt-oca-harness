@@ -7,9 +7,9 @@ to ``0x1000_0000`` (``hw/sys/sep/doc/fabric.adoc``, "Address Remapping" and
 "Fabric Topology"; ``hw/sys/sep/doc/memory_map.adoc``), so the alias of a local
 address is the direct address plus ``0xC000_0000`` at the reset base. After the
 reset-base reads the firmware moves the window to a base B that the test draws
-from the run seed, 16 MiB aligned in [``0xD100_0000``, ``0xEF00_0000``]; the
-specification states no legal range for ``SEP_LOCAL_BASE_ADDR``, so the legal
-range is an open specification question.
+from the run seed, 16 MiB aligned in [``0xD100_0000``, ``0xEF00_0000``], inside the
+legal range ``0xD000_0000`` to ``0xFFFF_FFFF`` of ``SEP_LOCAL_BASE_ADDR``
+(``hw/sys/sep/doc/cpu.adoc:59-62``).
 
 The ``alias_twin_test`` firmware runs on the CPU: the alias remap sits in the
 core path, so the ``no_cpu`` splice cannot drive it. The host draws the values
@@ -41,10 +41,52 @@ host grades the printed values against the seeded values and the RDL:
 
 * CHK-CPU-AXPROT: every PR-CPU-LSU read and write carries AxPROT ``0b001``
   (``hw/sys/sep/doc/cpu.adoc``, table ``sep-cpu-axprot-table``).
+* CHK-CPU-AXBURST, CHK-CPU-AXLOCK, CHK-CPU-AXQOS: every LSU AW and AR beat on
+  the raw core port (PR-CPU-LSU-ATTR, before the alias remap) carries AxBURST
+  ``0b01``, AxLOCK 0 and AxQOS ``0b0000``. The VeeR EL2 Programmer's Reference
+  Manual (``complex-ports.md``, core complex signals; delegated by
+  ``hw/sys/sep/doc/cpu.adoc``) states ``lsu_axi_awburst`` and
+  ``lsu_axi_arburst`` "hardwired to 0b01", ``lsu_axi_awlock`` and
+  ``lsu_axi_arlock`` "hardwired to 0", and ``lsu_axi_awqos`` and
+  ``lsu_axi_arqos`` "hardwired to 0b0000". One line per beat and field; an X or
+  Z fails. These three records and CHK-CPU-AXPROT are graded together, and the
+  leaf raises once with every FAIL line.
 * CHK-CPU-SINGLE-BEAT: every LSU read and write handshake on PR-LSU-XBAR and
   PR-LSU-ROM inside the graded window carries AxLEN 0, with at least one read
   and one write (``hw/sys/sep/doc/fabric.adoc:38-39``, "The CPU masters and the
   DMA issue single-beat transactions only"). An X or Z AxLEN fails.
+
+* CHK-LSU-AXCACHE-MRAC: before the seed writes the firmware stores to and loads
+  from one SRAM word direct (region ``0x1``, side-effect under the crt0
+  ``mrac``), then sets region ``0xD`` cacheable and not side-effect, stores to
+  and loads from the alias of the same word, then sets region ``0xD`` neither
+  cacheable nor side-effect, stores to and loads from the alias of a second
+  SRAM word, and restores the crt0 ``mrac``. Each ``mrac`` read-back equals the
+  value written. Every raw LSU beat (PR-CPU-LSU-ATTR) carries AxCACHE
+  ``0b0000`` when the ``mrac`` side-effect bit of its region is set and
+  ``0b1111`` otherwise (``hw/sys/sep/doc/cpu.adoc:120-122``); the cacheable
+  bit takes no part in the golden. The ``mrac`` of a beat is the leg value for
+  the attribute accesses and the crt0 value for every other beat. Each
+  attribute access shows at least one beat on each of its channels. One line
+  per attribute beat and one summary line for the other beats.
+* CHK-LSU-AXREGION: every raw LSU beat carries AxREGION equal to bits [31:28]
+  of its address, the address before the alias remap
+  (``hw/sys/sep/doc/cpu.adoc:123-124``). One summary line.
+* CHK-TWIN-MOVED-BUSERR: with the window at B, before the seed writes, the
+  firmware loads from, stores to, and fetches at reset-base alias addresses
+  below B, each armed by its own handler (``hw/sys/sep/doc/cpu.adoc:68-74``).
+  The load takes exactly one NMI with ``mcause`` ``0xF000_0001``, the store
+  exactly one with ``mcause`` ``0xF000_0000``; ``mdseac`` holds the access
+  address (VeeR EL2 PRM, ``memory-map.md``, delegated by ``cpu.adoc``). The
+  fetch takes exactly one exception with ``mcause`` ``0x1`` (instruction access
+  fault) and ``mepc`` at the fetch address. The scratch word still holds the
+  control marker after the store, so the store did not reach it. No NMI
+  arrives while no access is armed.
+* CTRL-TWIN-MOVED-BUSERR: in the same leg, before the faulting accesses, a
+  store and a load through the moved alias of the scratch word and a call of a
+  two-word SRAM routine through its moved alias complete with no NMI and no
+  exception: the load and a direct read return the marker, and the routine
+  returns 42. ``SEP_LOCAL_BASE_ADDR`` reads back B, then its reset value.
 
 An X in a read value makes the console byte unknown, and the console sampler
 of ``sep_base_test`` raises on it, so the leaf fails on VCS. PR-SRAM records an
@@ -59,10 +101,9 @@ reset-value read are held and sample only when ``twin_pass``
 the window, which drops them. An LSU AxPROT other than ``0b001`` samples an
 illegal bin of ``cp_master_ch`` at once.
 
-The leaf drives no LSU access to the extension window, and no access to the
-reset-base alias while the window is at B: the extension tie-off answers DECERR,
-the reset-base alias then matches no local route, and the specification states
-no CPU consequence of an error response on a load.
+The leaf drives no LSU access to the extension window. The only accesses to the
+reset-base alias while the window is at B are the armed accesses of
+CHK-TWIN-MOVED-BUSERR.
 
 cpu / ``+skip_fuse_sense``: the leaf reads no fuse data.
 """
@@ -79,7 +120,13 @@ import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
-from env.sep_fabric_tap import AXPROT_LSU, SepFabricTap, check_axprot, log_axprot
+from env.sep_fabric_tap import (
+    AXPROT_LSU,
+    SepFabricTap,
+    check_axfield,
+    check_axprot,
+    log_axprot,
+)
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_twin_pass
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
@@ -116,6 +163,44 @@ _WINDOW_BASE = sym("SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_REG_DEFAULT")
 _LOCAL_BASE = sym("SEP_TOP_REG_MAP_BASE_ADDR")
 _ALIAS_DELTA = _WINDOW_BASE - _LOCAL_BASE
 
+# LSU side-band fields that the VeeR EL2 PRM (complex-ports.md, core complex
+# signals) states as hardwired: (record, tap field, value, width in bits).
+_LSU_AXFIELDS = (
+    ("CHK-CPU-AXBURST", "burst", 0b01, 2),
+    ("CHK-CPU-AXLOCK", "lock", 0, 1),
+    ("CHK-CPU-AXQOS", "qos", 0b0000, 4),
+)
+# SRAM word of the attribute accesses. Must equal ATTR_WORD - SRAM_BASE of
+# fw/tests/alias_twin_test/alias_twin_test.c.
+_ATTR_OFF = 0x40
+# mrac holds two bits per 256 MiB region r: bit 2r cacheable, bit 2r+1
+# side-effect (VeeR EL2 PRM, memory-map.md, mrac).
+_MRAC_REGION_SHIFT = 28
+# SRAM word of the accesses with region 0xD neither cacheable nor side-effect.
+# Must equal ATTR_NEUTRAL_WORD - SRAM_BASE of the firmware.
+_ATTR_NEUTRAL_OFF = 0x48
+# mrac values the firmware writes. _MRAC_BOOT is the crt0 value
+# (fw/startup/crt0.s); _MRAC_CACHEABLE sets region 0xD to 0b01 and
+# _MRAC_NEUTRAL sets it to 0b00. Must equal MRAC_* of the firmware.
+_MRAC_BOOT = 0xA8AA_AAAA
+_MRAC_CACHEABLE = 0xA4AA_AAAA
+_MRAC_NEUTRAL = 0xA0AA_AAAA
+# hw/sys/sep/doc/cpu.adoc:120-122: LSU AxCACHE per the mrac side-effect bit.
+_AXCACHE_SIDE_EFFECT = 0b0000
+_AXCACHE_OTHER = 0b1111
+
+# Bus-error leg. Must equal CODE_WORD - SRAM_BASE, BUSERR_CTL_MARK and
+# CODE_RET_VAL of the firmware.
+_CODE_OFF = 0x80
+_BUSERR_CTL_MARK = 0xC7A1_1E55
+_CODE_RET_VAL = 42
+# hw/sys/sep/doc/cpu.adoc:68-74: bus-error NMI causes; an instruction access
+# fault is exception code 1 (RISC-V privileged specification, mcause).
+_MCAUSE_NMI_LOAD = 0xF000_0001
+_MCAUSE_NMI_STORE = 0xF000_0000
+_MCAUSE_IFETCH_ACCESS = 0x1
+_WINDOW_TOP = 0xFFFF_FFFF
+
 # Unit class -> (direct address, writable). The firmware reads the same words.
 _UNITS: dict[str, tuple[int, bool]] = {
     "scratch": (sym("SEP_SCRATCH_COLD_SCRATCH_3__REG_ADDR"), True),
@@ -141,6 +226,20 @@ _RE_MOVED_BASE = re.compile(rf"TWIN-MOVED-BASE base={_HEX} readback={_HEX}")
 _RE_MOVED = re.compile(rf"TWIN-MOVED unit=(\w+) d1={_HEX} a={_HEX} d2={_HEX}\n")
 _RE_MOVED_WR = re.compile(rf"TWIN-MOVED-WR alias={_HEX} direct={_HEX}")
 _RE_MOVED_RESTORE = re.compile(rf"TWIN-MOVED-RESTORE readback={_HEX}")
+_RE_ATTR = re.compile(
+    rf"TWIN-ATTR word={_HEX} alias={_HEX} neutral={_HEX} mrac_side_effect={_HEX}"
+    rf" mrac_cacheable={_HEX} mrac_neutral={_HEX} mrac_restored={_HEX}"
+)
+_RE_BUSERR_CTL = re.compile(
+    rf"TWIN-BUSERR-CTL base={_HEX} readback={_HEX} ld={_HEX} st={_HEX} fn={_HEX}"
+    rf" nmi={_HEX} traps={_HEX}"
+)
+_RE_BUSERR = re.compile(
+    rf"TWIN-BUSERR kind=(ld|st|if) addr={_HEX} n={_HEX} mcause={_HEX} addr_csr={_HEX}"
+    rf" mepc={_HEX} scratch={_HEX}"
+)
+_RE_BUSERR_RESTORE = re.compile(rf"TWIN-BUSERR-RESTORE readback={_HEX}")
+_RE_NMI_STRAY = re.compile(rf"TWIN-NMI-STRAY n={_HEX} mcause={_HEX}")
 
 # Moved window base B: 16 MiB aligned in [_MOVED_LO, _MOVED_HI]. The range keeps
 # B above the reset base and keeps every moved alias the leaf uses below 2**32.
@@ -238,7 +337,13 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         "CHK-TWIN-WR",
         "CHK-TWIN-MOVED",
         "CHK-CPU-AXPROT",
+        "CHK-CPU-AXBURST",
+        "CHK-CPU-AXLOCK",
+        "CHK-CPU-AXQOS",
         "CHK-CPU-SINGLE-BEAT",
+        "CHK-LSU-AXCACHE-MRAC",
+        "CHK-LSU-AXREGION",
+        "CHK-TWIN-MOVED-BUSERR",
     )
 
     def build_phase(self) -> None:
@@ -289,6 +394,9 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         sram = SepFabricTap("PR-SRAM").start()
         # CHK-CPU-AXPROT grades the LSU AxPROT; the IFU AxPROT is logged only here.
         cpu_lsu = SepFabricTap("PR-CPU-LSU").start()
+        # CHK-CPU-AXBURST/AXLOCK/AXQOS, CHK-LSU-AXCACHE-MRAC and
+        # CHK-LSU-AXREGION: the raw LSU port.
+        cpu_attr = SepFabricTap("PR-CPU-LSU-ATTR").start()
         cpu_ifu = SepFabricTap("PR-CPU-IFU", xz_fail=False).start()
         # CHK-CPU-SINGLE-BEAT: the LSU AxLEN after the split, over the window.
         self._lsu_split = {n: SepFabricTap(n) for n in _LSU_SPLIT_TAPS}
@@ -307,6 +415,7 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
             finally:
                 await sram.stop()
                 await cpu_lsu.stop()
+                await cpu_attr.stop()
                 await cpu_ifu.stop()
                 for tap in self._lsu_split.values():
                     await tap.stop()
@@ -320,16 +429,22 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
                     "M",
                     leaf="sep_cpu_ifu_lsu_alias_remap_matrix_test",
                 )
+                # Graded also when the boot raised, so a run that stalls still
+                # logs every field of every beat.
+                attr_fails = self._grade_lsu_attr(cpu_lsu, cpu_attr)
 
-            # CHK-CPU-AXPROT: every LSU read and write carries the stated AxPROT.
-            for ch in ("ar", "aw"):
-                check_axprot(self.logger, "CHK-CPU-AXPROT", cpu_lsu, "lsu", ch, AXPROT_LSU)
+            if attr_fails:
+                raise AssertionError(
+                    f"{len(attr_fails)} LSU AXI attribute failure(s):\n" + "\n".join(attr_fails)
+                )
             self._check_single_beat()
 
             # Grade the printed values first: a firmware that trapped part way
             # still names the first word whose alias read went wrong.
             console = self.sb.console_text()
             self._check_params(console)
+            self._check_attr(console, cpu_attr)
+            self._check_buserr(console)
             self._check_twin(console, sram)
             self._check_twin_wr(console)
             self._check_twin_moved(console)
@@ -343,6 +458,185 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
             close_graded_window(self.logger)
             raise
         await self._release()
+
+    def _grade_lsu_attr(self, cpu_lsu: SepFabricTap, cpu_attr: SepFabricTap) -> list[str]:
+        """CHK-CPU-AXPROT, CHK-CPU-AXBURST, CHK-CPU-AXLOCK, CHK-CPU-AXQOS.
+
+        Grades every record on both channels and returns every FAIL line, so
+        one run reports every field that differs.
+        """
+        fails: list[str] = []
+        for ch in ("ar", "aw"):
+            try:
+                check_axprot(self.logger, "CHK-CPU-AXPROT", cpu_lsu, "lsu", ch, AXPROT_LSU)
+            except AssertionError as exc:
+                fails.append(str(exc))
+            for chk, fld, expect, width in _LSU_AXFIELDS:
+                cite = f"VeeR EL2 PRM complex-ports.md, lsu_axi_{ch}{fld}"
+                fails += check_axfield(
+                    self.logger, chk, cpu_attr, "lsu", ch, fld, expect, width, cite
+                )
+        return fails
+
+    def _check_attr(self, console: str, cpu_attr: SepFabricTap) -> None:
+        """CHK-LSU-AXCACHE-MRAC and CHK-LSU-AXREGION over every raw LSU beat."""
+        m = _RE_ATTR.search(console)
+        assert m is not None, "CHK-LSU-AXCACHE-MRAC FAIL: firmware console has no TWIN-ATTR line"
+        word, alias, neutral, mrac_se, mrac_c, mrac_n, mrac_rst = (int(x, 16) for x in m.groups())
+        want = (
+            _SRAM_BASE + _ATTR_OFF,
+            _alias(_SRAM_BASE + _ATTR_OFF),
+            _alias(_SRAM_BASE + _ATTR_NEUTRAL_OFF),
+        )
+        assert (word, alias, neutral) == want, (
+            f"CHK-LSU-AXCACHE-MRAC FAIL: firmware accessed word=0x{word:08x} "
+            f"alias=0x{alias:08x} neutral=0x{neutral:08x}, model "
+            + " ".join(f"0x{a:08x}" for a in want)
+        )
+        for kind, got, exp in (
+            ("side_effect", mrac_se, _MRAC_BOOT),
+            ("cacheable", mrac_c, _MRAC_CACHEABLE),
+            ("neutral", mrac_n, _MRAC_NEUTRAL),
+            ("restored", mrac_rst, _MRAC_BOOT),
+        ):
+            assert got == exp, (
+                f"CHK-LSU-AXCACHE-MRAC FAIL: mrac {kind} read back 0x{got:08x}, written 0x{exp:08x}"
+            )
+        legs = {
+            word: ("side_effect", _MRAC_BOOT),
+            alias: ("cacheable", _MRAC_CACHEABLE),
+            neutral: ("neutral", _MRAC_NEUTRAL),
+        }
+        fails: list[str] = []
+        seen = {(a, ch): 0 for a in legs for ch in ("aw", "ar")}
+        other = 0
+        for b in cpu_attr.beats:
+            if b.addr is None:
+                fails.append(f"CHK-LSU-AXCACHE-MRAC FAIL: X/Z address on {b.fmt()}")
+                continue
+            kind, mrac = legs.get(b.addr, ("other", _MRAC_BOOT))
+            region = b.addr >> _MRAC_REGION_SHIFT
+            side_effect = (mrac >> (2 * region + 1)) & 1
+            exp = _AXCACHE_SIDE_EFFECT if side_effect else _AXCACHE_OTHER
+            line = (
+                f"kind={kind} ch={b.ch} beat={b.seq} addr=0x{b.addr:08x} region=0x{region:x} "
+                f"mrac=0x{mrac:08x} cache={'X' if b.cache is None else f'0b{b.cache:04b}'} "
+                f"expect=0b{exp:04b} (cpu.adoc:120-122)"
+            )
+            if b.cache != exp:
+                fails.append(f"CHK-LSU-AXCACHE-MRAC FAIL: {line}")
+            elif kind != "other":
+                self.logger.info("CHK-LSU-AXCACHE-MRAC PASS: %s", line)
+            if kind == "other":
+                other += 1
+            else:
+                seen[(b.addr, b.ch)] += 1
+            if b.region != region:
+                got = "X" if b.region is None else f"0x{b.region:x}"
+                fails.append(
+                    f"CHK-LSU-AXREGION FAIL: ch={b.ch} beat={b.seq} addr=0x{b.addr:08x} "
+                    f"region={got} expect=0x{region:x} (cpu.adoc:123-124)"
+                )
+        fails += [
+            f"CHK-LSU-AXCACHE-MRAC FAIL: no raw LSU {ch} beat for the {legs[a][0]} access "
+            f"at 0x{a:08x}"
+            for (a, ch), n in seen.items()
+            if n == 0
+        ]
+        if fails:
+            for f in fails:
+                self.logger.error(f)
+            raise AssertionError(
+                f"{len(fails)} LSU AxCACHE/AxREGION failure(s):\n" + "\n".join(fails)
+            )
+        self.logger.info(
+            "CHK-LSU-AXCACHE-MRAC PASS: other beats count=%d mrac=0x%08x mismatches=0 "
+            "(cpu.adoc:120-122)",
+            other,
+            _MRAC_BOOT,
+        )
+        self.logger.info(
+            "CHK-LSU-AXREGION PASS: beats=%d mismatches=0 (cpu.adoc:123-124)",
+            len(cpu_attr.beats),
+        )
+
+    def _check_buserr(self, console: str) -> None:
+        """CTRL-TWIN-MOVED-BUSERR, then CHK-TWIN-MOVED-BUSERR."""
+        base = self._cfg.moved_base
+        scratch = _UNITS["scratch"][0]
+        mask, _ = _word_fields(scratch)
+        out = {
+            "ld": _alias(scratch),
+            "st": _alias(scratch),
+            "if": _alias(_SRAM_BASE + _CODE_OFF),
+        }
+        for kind, addr in out.items():
+            assert _WINDOW_BASE <= addr < base <= _WINDOW_TOP, (
+                f"CHK-TWIN-MOVED-BUSERR FAIL: model address 0x{addr:08x} of {kind} is not "
+                f"in [0x{_WINDOW_BASE:08x}, moved base 0x{base:08x})"
+            )
+
+        m = _RE_BUSERR_CTL.search(console)
+        assert m is not None, "CTRL-TWIN-MOVED-BUSERR FAIL: firmware console has no TWIN-BUSERR-CTL"
+        wrote, rb, ld, rd, fn, nmi, traps = (int(x, 16) for x in m.groups())
+        line = (
+            f"base=0x{wrote:08x} readback=0x{rb:08x} expect_base=0x{base:08x} "
+            f"moved_ld=0x{ld:08x} direct_rd=0x{rd:08x} marker=0x{_BUSERR_CTL_MARK:08x} "
+            f"fn=0x{fn:x} expect_fn=0x{_CODE_RET_VAL:x} nmi={nmi} traps={traps}"
+        )
+        ok = (
+            wrote == rb == base
+            and field_compare(ld, _BUSERR_CTL_MARK, mask).ok
+            and field_compare(rd, _BUSERR_CTL_MARK, mask).ok
+            and fn == _CODE_RET_VAL
+            and nmi == 0
+            and traps == 0
+        )
+        assert ok, f"CTRL-TWIN-MOVED-BUSERR FAIL: {line}"
+        self.logger.info("CTRL-TWIN-MOVED-BUSERR PASS: %s", line)
+
+        recs = {
+            r.group(1): [int(x, 16) for x in r.groups()[1:]] for r in _RE_BUSERR.finditer(console)
+        }
+        for kind, cause in (
+            ("ld", _MCAUSE_NMI_LOAD),
+            ("st", _MCAUSE_NMI_STORE),
+            ("if", _MCAUSE_IFETCH_ACCESS),
+        ):
+            assert kind in recs, f"CHK-TWIN-MOVED-BUSERR FAIL: no TWIN-BUSERR kind={kind} line"
+            addr, n, mcause, mdseac, mepc, after = recs[kind]
+            # The fetch fault names its address in mepc, a bus error in mdseac.
+            where = mepc if kind == "if" else mdseac
+            line = (
+                f"kind={kind} base=0x{base:08x} addr=0x{addr:08x} expect_addr=0x{out[kind]:08x} "
+                f"n={n} mcause=0x{mcause:08x} expect_mcause=0x{cause:08x} mdseac=0x{mdseac:08x} "
+                f"mepc=0x{mepc:08x} scratch=0x{after:08x} expect_scratch=0x{_BUSERR_CTL_MARK:08x} "
+                "(cpu.adoc:68-74)"
+            )
+            ok = (
+                addr == where == out[kind]
+                and n == 1
+                and mcause == cause
+                and field_compare(after, _BUSERR_CTL_MARK, mask).ok
+            )
+            assert ok, f"CHK-TWIN-MOVED-BUSERR FAIL: {line}"
+            self.logger.info("CHK-TWIN-MOVED-BUSERR PASS: %s", line)
+
+        m = _RE_BUSERR_RESTORE.search(console)
+        assert m is not None, "CTRL-TWIN-MOVED-BUSERR FAIL: no TWIN-BUSERR-RESTORE line"
+        restored = int(m.group(1), 16)
+        assert restored == _WINDOW_BASE, (
+            f"CTRL-TWIN-MOVED-BUSERR FAIL: SEP_LOCAL_BASE_ADDR read 0x{restored:08x} after the "
+            f"restore, expected 0x{_WINDOW_BASE:08x}"
+        )
+        m = _RE_NMI_STRAY.search(console)
+        assert m is not None, "CHK-TWIN-MOVED-BUSERR FAIL: no TWIN-NMI-STRAY line"
+        stray, stray_mc = (int(x, 16) for x in m.groups())
+        assert stray == 0, (
+            f"CHK-TWIN-MOVED-BUSERR FAIL: {stray} NMI(s) while no access was armed, "
+            f"last mcause=0x{stray_mc:08x}"
+        )
+        self.logger.info("CHK-TWIN-MOVED-BUSERR PASS: restored=0x%08x stray_nmi=0", restored)
 
     def _check_single_beat(self) -> None:
         """CHK-CPU-SINGLE-BEAT: AxLEN 0 on every LSU AR and AW after the split."""

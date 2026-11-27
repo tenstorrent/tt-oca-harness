@@ -30,7 +30,9 @@ holds two FIFOs of eight 64-bit entries, and `WRITE_DATA` in one port pushes the
 FIFO that `READ_DATA` in the other port pops. Every port has its own
 level-sensitive, active-high interrupt. The eight inbound-port interrupts are
 SEP CPU PIC sources 1 to 8. The eight outbound-port interrupts leave SEP on
-`smc_mailbox_interrupt_o` and reach the SMC as its peripheral interrupts 7 to 0.
+`smc_mailbox_interrupt_o`: the outbound port of mailbox _m_ drives bit _m_,
+which reaches the SMC as its peripheral interrupt _m_, raw SMC CPU interrupt
+256 + _m_ (PLIC source ID 257 + _m_).
 
 SEP uses mailboxes to exchange service requests with system clients, such as
 software running on application-processor (AP) cores. A client is the requester

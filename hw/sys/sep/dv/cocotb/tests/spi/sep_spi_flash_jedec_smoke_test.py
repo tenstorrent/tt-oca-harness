@@ -3,9 +3,9 @@
 """The OpenTitan SPI host sends JEDEC ID (0x9F) on the pads and returns the flash ID in RXDATA.
 
 The flash BFM must log 0x9F as its last opcode, and the RXDATA word must carry
-the BFM's three ID bytes in wire order, in one in-word byte order, with its
-fourth byte 0 (CHK-JEDEC-ID). The in-word order is not graded: the one
-OBS-SPI-BYTEORDER line logs it. CTRL-SPI-CONFIGOPTS: CONFIGOPTS reads back the
+the BFM's three ID bytes in wire order, the first in bits 7:0 (ByteOrder = 1,
+``spi_controller.rdl:124-127``), with its fourth byte 0 (CHK-JEDEC-ID). The one
+CHK-SPI-BYTEORDER line grades the word counts. CTRL-SPI-CONFIGOPTS: CONFIGOPTS reads back the
 written Mode 0 word (CLKDIV 9, CSNIDLE, CSNTRAIL and CSNLEAD 2; every field is
 ``sw = rw`` in ``spi_controller.rdl``), else the leaf fails before CHK-JEDEC-ID,
 because the reset value 0 also runs Mode 0. Run mode: no_cpu with
@@ -31,6 +31,8 @@ from seq_lib.sep_spi_flash_jedec_seq import (
 @pyuvm.test()
 class sep_spi_flash_jedec_smoke_test(sep_base_test):
     """The flash BFM sees opcode 0x9F, and RXDATA holds the BFM's JEDEC ID bytes."""
+
+    required_evidence = ("CHK-JEDEC-ID", "CHK-SPI-BYTEORDER")
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
@@ -71,17 +73,17 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
                 )
                 raise AssertionError(
                     f"CHK-JEDEC-ID FAIL: rxdata=0x{seq.rxdata:08x} carries {got.hex()}, "
-                    f"expected {want.hex()} and a zero pad byte in one in-word order"
+                    f"expected {want.hex()} and a zero pad byte in the ByteOrder = 1 order"
                 )
             self.logger.info(
                 "CHK-JEDEC-ID PASS: opcode=0x9F rxdata=0x%08x bytes=%s order=%s",
                 seq.rxdata,
                 got.hex(),
-                order.order or "undecided",
+                order.order,
             )
             sb.expect_rx(0x9F, got, source="dut", label="RXDATA")
         finally:
             await flash.stop()
         await wire.finish(self.logger, seed=self.random_seed(), flash=flash)
         sb.finish()
-        order.log_obs(self.logger, self.random_seed())
+        order.log_info(self.logger, self.random_seed())

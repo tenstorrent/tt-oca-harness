@@ -1,0 +1,59 @@
+cla_mmrs, dst_sink_mmrs: state that every trDstRamData read advances the pointer and that an EAP set beats its w2c clear
+
+trDstRamRPLow and trDstRamData said the read pointer moves only on a read
+that returns unread data, but the sink advances it on every read; an empty
+read returns 0 and still moves it. CDbgEapStatus did not say that a status
+bit whose relation still holds on the current node is set again in the
+cycle of a w2c write, so the write leaves it at 1.
+
+Recorded as a patch so the hand-mirrored upstream/ tree stays
+reproducible from the vendored spec plus patches/ applied in order.
+diff --git a/rtl/mmr/spec/cla_mmrs.yml b/rtl/mmr/spec/cla_mmrs.yml
+diff --git a/rtl/mmr/spec/cla_mmrs.yml b/rtl/mmr/spec/cla_mmrs.yml
+index c2ed4de29..9bec20b08 100644
+--- a/rtl/mmr/spec/cla_mmrs.yml
++++ b/rtl/mmr/spec/cla_mmrs.yml
+@@ -3214,7 +3214,11 @@ c_dbg_eap_status:
+       action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI).
+       A w2c write does not release a debug interrupt while EnableEap is set: the EAP
+       holds the interrupt and the write clears only the status bit. To release it, clear
+-      EnableEap, then write the w2c bit.'
++      EnableEap, then write the w2c bit. A status bit sets in every cycle in which its
++      EAP relation holds while its node is current and EnableEap is set, and that set
++      takes priority over a w2c write in the same cycle, which then leaves the bit at
++      1. Write the w2c bit once the relation is false, the node is no longer current
++      or EnableEap is clear.'
+     RESET_PORT: reset_n_warm_ovrride
+     HW_READ: CLA
+     HW_WRITE: CLA
+diff --git a/rtl/mmr/spec/dst_sink_mmrs.yml b/rtl/mmr/spec/dst_sink_mmrs.yml
+index e6ab2de16..5b52f4ef2 100644
+--- a/rtl/mmr/spec/dst_sink_mmrs.yml
++++ b/rtl/mmr/spec/dst_sink_mmrs.yml
+@@ -284,8 +284,9 @@ trDstRamRPLow:
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+     DESCRIPTION: Read pointer, in 32-bit words; bits [31:2] of the byte address of
+-      the word the next trDstRamData read returns. Each trDstRamData read that returns
+-      unread data advances it by one word, and from trDstRamLimitLow it wraps to trDstRamStartLow.
++      the word the next trDstRamData read returns. Every trDstRamData read advances it
++      by one word, including a read while the RAM holds no unread data, and from
++      trDstRamLimitLow it wraps to trDstRamStartLow.
+     HW_WRITE: DST_SINK
+     SW_WRITE: W
+     SW_READ: R
+@@ -336,9 +337,11 @@ trDstRamData:
+     FIELDS_RANGE: '31:0'
+     RESET_VALUE: '0'
+     LEGAL_VALUE: ''
+-    DESCRIPTION: Reading launches a trace-RAM read at trDstRamRPLow. When the RAM
+-      holds unread data, the read returns that 32-bit word and advances trDstRamRPLow;
+-      otherwise the pointer does not move.
++    DESCRIPTION: Reading returns the 32-bit word at trDstRamRPLow and advances
++      trDstRamRPLow by one word. A read while the RAM holds no unread data returns 0
++      and still advances the pointer, so software that polls this register while the
++      sink is empty skips words it has not yet received. Read only while trDstRamWPLow
++      differs from trDstRamRPLow or trDstRamWrap is set.
+     SW_READ: R
+     SW_TYPE: ''
+ scratch_lo:

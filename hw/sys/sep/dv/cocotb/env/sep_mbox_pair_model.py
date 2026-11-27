@@ -46,7 +46,7 @@ Usage::
     mbx = MboxSystem()
     resp = mbx[3].push("in", 0x1234)        # an inbound push to mailbox 3
     exp_vec = mbx.in_lines()                # expected probe bits [7:0]
-    exp_count = mbx.out_count()             # expected popcount of the SMC port
+    exp_smc = mbx.out_mask()                # expected smc_mailbox_interrupt_o
 """
 
 from __future__ import annotations
@@ -305,9 +305,13 @@ class MboxSystem:
         return sum(p.line("in") << p.m for p in self.pairs)
 
     def out_lines(self) -> list[int]:
-        """The outbound line of each mailbox. No port-bit map is stated, so a
-        caller grades the SMC port as a set (``out_count``)."""
+        """The outbound line of each mailbox, indexed by mailbox."""
         return [p.line("out") for p in self.pairs]
+
+    def out_mask(self) -> int:
+        """Expected ``smc_mailbox_interrupt_o``: bit m is the outbound line of m
+        (``hw/sys/sep/doc/mailbox.adoc:32-35``)."""
+        return sum(p.line("out") << p.m for p in self.pairs)
 
     def out_count(self) -> int:
         """Expected number of high bits of ``smc_mailbox_interrupt_o``."""
@@ -328,7 +332,7 @@ def _selftest() -> None:
     assert p.status("in") & ST_EMPTY == 0  # inbound reads FIFO A
     assert p.reg("out", "IRQS") == IRQ_WTIRQ and p.line("out") == 0
     p.write_reg("out", "IRQEN", IRQ_WTIRQ)
-    assert p.line("out") == 1 and s.out_count() == 1 and s.in_lines() == 0
+    assert p.line("out") == 1 and s.out_mask() == 1 << 2 and s.in_lines() == 0
     # The latch holds below the threshold until the acknowledge.
     resp, data, _ = p.pop("in")
     assert resp == OKAY and data == 0x1111_2222_3333_4444
@@ -371,7 +375,7 @@ def _selftest() -> None:
     # Reset.
     s.reset()
     assert all(x.status(pt) == ST_EMPTY for x in s.pairs for pt in PORTS)
-    assert s.in_lines() == 0 and s.out_count() == 0
+    assert s.in_lines() == 0 and s.out_mask() == 0
 
 
 if __name__ == "__main__":

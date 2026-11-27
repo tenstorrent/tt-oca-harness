@@ -34,12 +34,12 @@ segment; Tx words are seeded. The shared SPI monitor
 (``env/sep_spi_wire_monitor.py``) decodes every frame from the pad taps, and
 the scoreboard (``env/sep_spi_scoreboard.py``) grades each frame of each leg
 at its width: Tx bytes queued against the wire decode; Rx bytes driven against
-the wire decode and the RXDATA words the DUT delivered. No SEP text states the
-in-word byte order of TXDATA and RXDATA (``theory_of_operation.md:415-419``
-names two), so one ``SepSpiByteOrder`` (``env/sep_spi_lane_responder.py``)
-grades every Tx and Rx data word of the leaf in one order, the same order for
-every word; the order seen is logged once on OBS-SPI-BYTEORDER with
-STATUS.BYTEORDER, not graded. Each width also runs one Tx and one Rx data
+the wire decode and the RXDATA words the DUT delivered. SEP sets
+``ByteOrder = 1`` (``spi_controller.rdl:124-127``), so the first wire byte is
+bits 7:0 of a TXDATA or RXDATA word (``theory_of_operation.md:415-419``); one
+``SepSpiByteOrder`` (``env/sep_spi_lane_responder.py``) grades every Tx and Rx
+data word of the leaf in that order, and CHK-SPI-BYTEORDER grades it once per
+leaf with STATUS.BYTEORDER = 1. Each width also runs one Tx and one Rx data
 frame of seeded length.
 
 Monitor sessions. The monitor runs from the first segment to the end, except
@@ -61,7 +61,7 @@ Checkers:
                    RXFULL.
   CHK-SPI-WM       TXWM reads 0 at TX_WATERMARK 0 and 1 at the TX depth plus 1,
                    at each occupancy up to the full FIFO. RXWM equals
-                   (RXQD > RX_WATERMARK) one below and one above RX_WATERMARK
+                   (RXQD >= RX_WATERMARK) one below and one above RX_WATERMARK
                    0, 1 and a drawn mid value, and reads 0 when a drain takes
                    RXQD to RX_WATERMARK minus 1. Control: TX_WATERMARK 1 with
                    TXQD 0 gives TXWM=1. Control: CONTROL reads back each
@@ -71,12 +71,23 @@ Checkers:
                    occupancy q: TXWM "If high, the amount of data in the TX
                    FIFO has fallen below the level of CONTROL.TX_WATERMARK
                    words" (spi_host.hjson:282).
+  CHK-SPI-WM-EQ    RXWM reads 1 when the drain after the RX_WATERMARK plus 1
+                   segment takes RXQD to RX_WATERMARK (0, 1 and the mid value,
+                   per width): the RX watermark is reached at a depth of
+                   RX_WATERMARK words
+                   (``vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:60-62``),
+                   and STATUS.RXWM is high when the RX FIFO holds "greater
+                   than or equal to" RX_WATERMARK words
+                   (``spi_controller.rdl:118-119``), so RXWM sets at RXQD >=
+                   RX_WATERMARK. One PASS line per
+                   watermark; a drain that never reaches RXQD = RX_WATERMARK
+                   fails. INFO-SPI-WM logs the same read.
   CHK-SPI-QD       With ACTIVE=0 each RXDATA read lowers RXQD by 1. TXFULL is
                    set with ACTIVE=1 during a Tx segment of twice the TX depth
                    in words, and that segment ends with every sck cycle. An Rx
                    segment of exactly the RX depth sets RXFULL; one more 4-byte
                    segment does not raise RXQD above the depth; the drain
-                   count after it is logged (OBS-SPI-RX-EXTRA: no source states
+                   count after it is logged (INFO-SPI-RX-EXTRA: no source states
                    a count). TXFULL/TXEMPTY and RXFULL/RXEMPTY
                    are never set together in any STATUS read; each of the four
                    flags is set in at least one read (control).
@@ -94,7 +105,7 @@ Checkers:
                    width whether it was graded. RXQD/TXQD give "how many unread/unsent 32-bit
                    words are currently in the RX/TX FIFO"; only "When active"
                    may they under- or overestimate (spi_host.hjson:322-333).
-                   A read with ACTIVE=1 is logged as OBS-SPI-QD. At least one
+                   A read with ACTIVE=1 is logged as INFO-SPI-QD. At least one
                    graded read per run (required evidence).
   CHK-SPI-QD-ACTIVE At each STATUS read of the RX stall drain with ACTIVE=1,
                    RXQD <= ceil(lanes * e / 32) - d: e is the leading sck
@@ -108,7 +119,7 @@ Checkers:
                    from STATUS. One PASS line per width with the sample
                    count, which must be at least 1 (the first drain read is
                    in the stalled segment).
-  OBS-SPI-TXQD-ACTIVE At each STATUS read of the TX stall leg with ACTIVE=1:
+  INFO-SPI-TXQD-ACTIVE At each STATUS read of the TX stall leg with ACTIVE=1:
                    TXQD, the TXDATA words written, the words shifted out
                    (floor(lanes * e / 32), e the leading sck edges since the
                    COMMAND write) and their difference. Logged, not graded:
@@ -121,7 +132,7 @@ Checkers:
                    queue empties. Control: the head is held (ACTIVE=1,
                    TXSTALL=1) and at least one COMMAND is accepted. Whether
                    and by how much CMDQD changes after each accepted COMMAND
-                   is logged as OBS-SPI-CMDQD-STEP, not graded: the texts
+                   is logged as INFO-SPI-CMDQD-STEP, not graded: the texts
                    conflict. CMDQD "Indicates how many unread 32-bit words
                    are currently in the command segment queue."
                    (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:318-319``)
@@ -160,7 +171,7 @@ Checkers:
                    buffers for the sck, csb, and sd lines."
                    (spi_host.hjson:222). Control: one pad sample before the
                    first CONTROL write that sets OUTPUT_EN reads cs_oe =
-                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:291-292``:
+                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:352-353``:
                    the host "drives no pad until software sets its
                    ``CONTROL.OUTPUT_EN``"), else CTRL-MISSING. One clean
                    frame (Tx then Rx, CSAAT) at the same width follows and is
@@ -199,7 +210,7 @@ Checkers:
                    20000-clock window, and the fill ends because READY stays
                    0, not at the write cap; else CTRL-MISSING. The fill grades
                    no CMDQD step per COMMAND.
-  OBS-SPI-CMDQD-FULL The CMDQD at which READY stays 0, the head count c0 and
+  INFO-SPI-CMDQD-FULL The CMDQD at which READY stays 0, the head count c0 and
                    the READY trail, with the CMDQD before and after each fill
                    COMMAND, are logged, not graded. "The register
                    STATUS.READY indicates that there is room in the command
@@ -226,12 +237,11 @@ Checkers:
 Every CHK line of a per-width leg carries ``width=x1|x2|x4``; the TX
 watermark leg has no segment and no width.
 
-Not graded: TXQD while ACTIVE=1 (logged with OBS-SPI-QD and OBS-SPI-TXQD-ACTIVE),
-RXQD while ACTIVE=1 outside the RX stall drain (OBS-SPI-QD), the CMDQD at which
+Not graded: TXQD while ACTIVE=1 (logged with INFO-SPI-QD and INFO-SPI-TXQD-ACTIVE),
+RXQD while ACTIVE=1 outside the RX stall drain (INFO-SPI-QD), the CMDQD at which
 READY stays 0 and the head-segment count of CMDQD (logged with
-OBS-SPI-CMDQD-FULL), RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F
-against the reset value, the in-word byte order (OBS-SPI-BYTEORDER), overflow
-and underflow.
+INFO-SPI-CMDQD-FULL), RX_WATERMARK 0x7F
+against the reset value, overflow and underflow.
 
 Run mode: no_cpu (target ``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+sep_spi_four_lane``, no ``rst_ni`` pulse. Every draw comes from
@@ -377,6 +387,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         "CHK-SPI-TXSTALL",
         "CHK-SPI-RXSTALL",
         "CHK-SPI-WM",
+        "CHK-SPI-WM-EQ",
         "CHK-SPI-QD",
         "CHK-SPI-QD-IDLE",
         "CHK-SPI-QD-ACTIVE",
@@ -389,6 +400,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         "CHK-SPI-SB-FRAME",
         "CHK-SPI-LANE-DATA",
         "CHK-SPI-SESSION-FRAMES",
+        "CHK-SPI-BYTEORDER",
     )
 
     # ------------------------------------------------------------------
@@ -553,9 +565,9 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self._gate(False)
         await self.ops.sw_rst()
 
-    def _obs_qd(self, st: SpiStatus, where: str) -> None:
+    def _info_qd(self, st: SpiStatus, where: str) -> None:
         self.logger.info(
-            "OBS-SPI-QD seed=%d txqd=%d rxqd=%d where=%s active=%d",
+            "INFO-SPI-QD seed=%d txqd=%d rxqd=%d where=%s active=%d",
             self.seed,
             st.txqd,
             st.rxqd,
@@ -568,13 +580,13 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         edges = self.pads.sck_edges_between(mark.clk + 1, st.clk1 + 1)
         return sum(1 for _, lvl in edges if lvl != SCK_IDLE)
 
-    def _obs_txqd_active(self, st: SpiStatus, mark, written: int, where: str) -> None:
-        """OBS-SPI-TXQD-ACTIVE: TXQD with the pad-side count of a read with ACTIVE=1."""
+    def _info_txqd_active(self, st: SpiStatus, mark, written: int, where: str) -> None:
+        """INFO-SPI-TXQD-ACTIVE: TXQD with the pad-side count of a read with ACTIVE=1."""
         if not st.active:
             return
         shifted = LANES[self.speed] * self._lead_edges(mark, st) // WORD_BITS
         self.logger.info(
-            "OBS-SPI-TXQD-ACTIVE seed=%d width=%s where=%s txqd=%d written=%d shifted=%d unsent=%d",
+            "INFO-SPI-TXQD-ACTIVE seed=%d width=%s where=%s txqd=%d written=%d shifted=%d unsent=%d",
             self.seed,
             self._w,
             where,
@@ -587,7 +599,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
     def _chk_qd_idle(self, st: SpiStatus, where: str, tx: int, rx: int) -> bool:
         """Grade TXQD/RXQD against the known FIFO content when ACTIVE=0; True when graded."""
         if st.active:
-            self._obs_qd(st, where)
+            self._info_qd(st, where)
             return False
         line = (
             f"seed={self.seed} where={where} txqd={st.txqd} expect_txqd={tx} "
@@ -598,9 +610,14 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self.logger.info("CHK-SPI-QD-IDLE PASS %s", line)
         return True
 
-    def _obs_txstall(self, st: SpiStatus, where: str) -> None:
+    def _info_txstall(self, st: SpiStatus, where: str) -> None:
+        chks = []
+        if where == "tx_stall":
+            chks.append("CHK-SPI-TXSTALL")
+        if where == "pre_push" and not st.active:
+            chks.append("CHK-SPI-QD-IDLE")
         self.logger.info(
-            "OBS-SPI-TXSTALL seed=%d where=%s txstall=%d active=%d txqd=%d rxqd=%d cs_low=%d",
+            "INFO-SPI-TXSTALL seed=%d where=%s txstall=%d active=%d txqd=%d rxqd=%d cs_low=%d%s",
             self.seed,
             where,
             st.txstall,
@@ -608,6 +625,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             st.txqd,
             st.rxqd,
             int(self.pads.cs_low()),
+            f" chk={','.join(chks)}" if chks else "",
         )
 
     def _done_read(self, st: SpiStatus, mark, windows: int) -> bool:
@@ -792,7 +810,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         await self._session_end()
         await self.wire.finish(self.logger, seed=self.seed)
         self._gate(False)
-        self.order.log_obs(
+        self.order.log_info(
             self.logger, self.seed, status_byteorder=self.ops.status_log[-1].byteorder
         )
         self.result_pass(TEST, self.seed, 10)
@@ -1018,8 +1036,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         mark = self.pads.mark()
         await self.ops.issue_command(command_word(4 * m - 1, speed=self.speed, direction=DIR_TX))
         st_pre = await self.ops.read_status()
-        self._obs_txstall(st_pre, "pre_push")
-        self._obs_txqd_active(st_pre, mark, 0, "pre_push")
+        self._info_txstall(st_pre, "pre_push")
+        self._info_txqd_active(st_pre, mark, 0, "pre_push")
         self._chk_qd_idle(st_pre, "pre_push", 0, 0)
         for w in words[:m1]:
             await self.ops.push_tx(w)
@@ -1029,11 +1047,11 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         except AssertionError as exc:
             self._fail(chk, f"sck cycles of the first {m1} words: {exc}")
         st0 = await self._poll(lambda s: s.txstall == 1, self._seg_bound(4, 0), "TXSTALL=1", chk)
-        self._obs_txstall(st0, "tx_stall")
-        self._obs_txqd_active(st0, mark, m1, "tx_stall_start")
+        self._info_txstall(st0, "tx_stall")
+        self._info_txqd_active(st0, mark, m1, "tx_stall_start")
         await self._clocks(self._stall_win())
         st1 = await self.ops.read_status()
-        self._obs_txqd_active(st1, mark, m1, "tx_stall_end")
+        self._info_txqd_active(st1, mark, m1, "tx_stall_end")
         edges = len(self.pads.sck_edges_between(st0.clk1, st1.clk0))
         span = st1.clk0 - st0.clk1
         self.logger.info(
@@ -1068,7 +1086,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             chk,
         )
         in_seg = int(self.pads.cs_low())
-        self._obs_txqd_active(st2, mark, m, "tx_stall_released")
+        self._info_txqd_active(st2, mark, m, "tx_stall_released")
         if st2.txstall != 0 or not in_seg:
             self._fail(
                 chk, f"TXSTALL still set with the data written: in_segment={in_seg} {st2.fmt()}"
@@ -1260,6 +1278,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             # Step 11: drain after the Wr+1 run; each read lowers RXQD by 1.
             prev = rs[-1]
             crossed = False
+            at_wm = False
             words: list[int] = []
             while True:
                 st = await self.ops.read_status()
@@ -1277,8 +1296,22 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                 steps_ok += 1
                 prev = st2.rxqd
                 if st2.rxqd == wr:
+                    if st2.rxwm != 1:
+                        self._fail("CHK-SPI-WM-EQ", f"side=rx wm={wr} q={wr} flag=0 expect=1")
+                    at_wm = True
                     self.logger.info(
-                        "OBS-SPI-WM seed=%d side=rx wm=%d q=%d flag=%d (not graded)",
+                        "CHK-SPI-WM-EQ PASS seed=%d width=%s side=rx wm=%d q=%d flag=%d "
+                        "expect=1 status_masked=0x%x mask=0x%x",
+                        self.seed,
+                        self._w,
+                        wr,
+                        wr,
+                        st2.rxwm,
+                        st2.raw & ST_RXWM,
+                        ST_RXWM,
+                    )
+                    self.logger.info(
+                        "INFO-SPI-WM seed=%d side=rx wm=%d q=%d flag=%d chk=CHK-SPI-WM-EQ",
                         self.seed,
                         wr,
                         wr,
@@ -1299,6 +1332,8 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                         st2.raw & ST_RXWM,
                         ST_RXWM,
                     )
+            if not at_wm:
+                self._fail("CHK-SPI-WM-EQ", f"side=rx wm={wr}: the drain never reached RXQD={wr}")
             if wr >= 1 and not crossed:
                 self._fail(
                     chk, f"side=rx crossing=out wm={wr}: the drain never reached RXQD={wr - 1}"
@@ -1358,7 +1393,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
                 if st2.cmdqd != prev or self.pads.now() > step_end:
                     break
             self.logger.info(
-                "OBS-SPI-CMDQD-STEP seed=%d prev=%d after=%d moved=%d",
+                "INFO-SPI-CMDQD-STEP seed=%d prev=%d after=%d moved=%d",
                 self.seed,
                 prev,
                 st2.cmdqd,
@@ -1414,7 +1449,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         self.logger.info("%s PASS seed=%d %s", dchk, self.seed, line)
         await spi_lane_fcov(TEST, "cmdq", lanes=LANES[self.speed])
         self.logger.info(
-            "OBS-SPI-CMDQD-FULL seed=%d width=%s full_cmdqd=%d c0=%d queued=%d trail=%s",
+            "INFO-SPI-CMDQD-FULL seed=%d width=%s full_cmdqd=%d c0=%d queued=%d trail=%s",
             self.seed,
             self._w,
             held,
@@ -1606,7 +1641,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         # buffers", with no count), so the count is logged. A returned extra
         # word is compared with the data of its segment.
         self.logger.info(
-            "OBS-SPI-RX-EXTRA seed=%d width=%s words_after_extra=%d rx_depth=%d",
+            "INFO-SPI-RX-EXTRA seed=%d width=%s words_after_extra=%d rx_depth=%d",
             self.seed,
             self._w,
             words,

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Generate one entropy lane from a noise source, decorrelator, health tests, and auto-tune.
+// Generate one entropy lane from a noise sampler, decorrelator, health tests, and auto-tune.
 //
-// Combines a TOTAL_LENGTH/TAPPED_LENGTH ring oscillator sampled on sample_clk_i with
+// Samples the lane's ring oscillator, noise_async_i, on sample_clk_i and feeds the bit to
 // decorrelation and Repetition/APT/Markov tests.
 //
 // Controls:
 //
-// - auto_tune_enable_i lets health failures retune detune through the tune FSM;
-//   detune_ro_i forces detune.
+// - detune_o drives the lane's ring detune: the tune FSM retunes it on health failures
+//   while auto_tune_enable_i is high, detune_ro_i sets it otherwise.
 // - bypass_decorrelator_i and entropy_byte_mask_i configure the decorrelator;
 //   sample_clk_div_i sets its downsample.
 // - test_enable_i and the limit/threshold inputs program the three health tests;
@@ -18,23 +18,21 @@
 // count_err_o is this lane's health-test counter-disagreement error.
 
 module entropy_generator #(
-  parameter int unsigned TOTAL_LENGTH  = 17,  // Full ring-oscillator stage count.
-  parameter int unsigned TAPPED_LENGTH = 13,  // Stage count of the shorter feedback tap, used while
-                                              // detune is low.
-  parameter int unsigned CLKDIV_WIDTH  = 24  // Downsample divider counter width.
+  parameter int unsigned CLKDIV_WIDTH = 24  // Downsample divider counter width.
 ) (
   input       logic                    clk_i,  // System clock.
   input       logic                    rst_ni,  // Active-low asynchronous reset.
 
   input       logic                    sample_clk_i,  // Ring-oscillator sample clock.
+  input       logic                    noise_async_i,  // Lane ring-oscillator output,
+                                                       // asynchronous.
+  output      logic                    detune_o,  // Lane ring detune: high selects the full-length
+                                                  // feedback path, low the shorter tap.
 
-  input       logic                    enable_i,  // Enables the noise ring oscillator and the
-                                                  // decorrelator.
-  input       logic                    auto_tune_enable_i,  // High lets the tune FSM drive the ring
-                                                            // detune in place of detune_ro_i.
-  input       logic                    detune_ro_i,  // Manual ring detune while auto-tune is off:
-                                                     // high selects the full TOTAL_LENGTH feedback
-                                                     // path, low the shorter tap.
+  input       logic                    enable_i,  // Enables the decorrelator.
+  input       logic                    auto_tune_enable_i,  // High lets the tune FSM drive detune_o
+                                                            // in place of detune_ro_i.
+  input       logic                    detune_ro_i,  // Manual ring detune while auto-tune is off.
   input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,  // Decorrelator downsample period minus
                                                           // one, in clk_i cycles.
 
@@ -58,7 +56,7 @@ module entropy_generator #(
                                                              // evaluates and restarts the APT and
                                                              // Markov tests.
 
-  output      logic                    noise_bit_monitor_o,  // Synchronized noise-source bit, for
+  output      logic                    noise_bit_monitor_o,  // Synchronized noise-sampler bit, for
                                                              // debug observation.
   output      logic [7:0]              test_status_o,  // Health-test status byte, encoded as
                                                        // entropy_health_test status_o.
@@ -88,6 +86,7 @@ module entropy_generator #(
   /////////////////
 
   assign detune           = auto_tune_enable_i ? auto_tune_state : detune_ro_i;
+  assign detune_o         = detune;
   assign noise_bit_monitor_o = noise_bit;
   assign test_fail        = |test_status_o;
 
@@ -95,16 +94,12 @@ module entropy_generator #(
   // Sub-instances
   /////////////////
 
-  entropy_noise_source #(
-    .TOTAL_LENGTH  (TOTAL_LENGTH),
-    .TAPPED_LENGTH (TAPPED_LENGTH)
-  ) u_noise_source (
+  entropy_noise_sampler u_noise_sampler (
     .clk_i,
     .rst_ni,
-    .sample_clk_i (sample_clk_i),
-    .enable_i     (enable_i),
-    .detune_i     (detune),
-    .noise_o      (noise_bit)
+    .sample_clk_i,
+    .noise_async_i,
+    .noise_o       (noise_bit)
   );
 
   entropy_decorrelator #(

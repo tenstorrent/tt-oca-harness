@@ -56,7 +56,7 @@ ifdef::backend-pdf[]
 endif::backend-pdf[]
   page.
 * *Cross Trigger Network* parameters (CTP count, internal CT count, clock-stop
-  request count, per-CTP operating mode) — see the
+  request count, per-lane mode and stretch of the internal CTPs) — see the
 ifdef::backend-html5[]
   xref:ip:cross_trigger_network/doc/index.adoc[Cross-Trigger Network]
 endif::backend-html5[]

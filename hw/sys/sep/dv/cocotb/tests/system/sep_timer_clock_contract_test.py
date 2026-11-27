@@ -24,7 +24,7 @@ this order, over the CPU-LSU master on ``s_axi``:
   Bite Reset; ``aon_timer.adoc``). Three ``INTR_TEST`` writes (wakeup bit, bark
   bit, both; drawn order) with both timers counting force exactly their bits,
   clear on a write of 1, and leave both counts advancing with no bite request
-  (CHK-WDT-INTRTEST-COUNT); OBS-WDT-INTRTEST-WKUP-CAUSE logs ``WKUP_CAUSE``
+  (CHK-WDT-INTRTEST-COUNT); INFO-WDT-INTRTEST-WKUP-CAUSE logs ``WKUP_CAUSE``
   after each write. After a bark, a ``WDOG_BARK_THOLD`` raised a drawn 64 to 128
   counts above the count and a clear of the bark bit keep the bark line and
   status at 0 until the count reaches the new threshold (CHK-WDT-BARK-REARM). A
@@ -33,17 +33,18 @@ this order, over the CPU-LSU master on ``s_axi``:
   otherwise), and the watchdog alert (tap ``wdt_alert_probe_o``) reads 0 before
   the write and rises within ``SRC13_WINDOW`` ``clk_i`` cycles after it
   (CTRL-WDT-ALERT-REACH, CTRL-MISSING otherwise), so a refused write fails the
-  leaf. OBS-WDT-ALERT-RESP logs the response code, not graded: no
+  leaf. INFO-WDT-ALERT-RESP logs the response code, not graded: no
   specification states the response code of a legal register write. With
-  ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, OBS-WDT-PAUSE-RUN logs the
-  count advance over ``WDT_WAIT`` ``clk_wdt_i`` periods against the
-  ``clk_wdt_i`` edges between the two count reads; no specification states
-  the level of the sleep input of the timer in SEP. Control
-  CTRL-WDT-PAUSE-RUN: ``WDOG_CTRL`` reads both bits 1 before the first count
-  read.
+  ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, the count advance over
+  ``WDT_WAIT`` ``clk_wdt_i`` periods matches the ``clk_wdt_i`` edges between
+  the two count reads within ``A`` (CHK-WDT-PAUSE-RUN; ``pause_in_sleep`` "has
+  no effect", ``hw/sys/sep/doc/watchdog.adoc:23``). The CPU is a stub in this
+  leaf, so no debug halt runs. Control CTRL-WDT-PAUSE-RUN: ``WDOG_CTRL`` reads
+  both bits 1 before the first count read.
 * Leg H. The watchdog runs with ``clk_i`` held low past its bite threshold; the
   count advances by the ``clk_wdt_i`` edges of the hold (CHK-WDT-CLKSTOP-COUNT),
-  and OBS-WDT-CLKSTOP logs the bite request (not graded).
+  and the bite request rises in the hold at or above the bite threshold
+  (CHK-WDT-CLKSTOP-BITE).
 * Leg W. The wakeup expiry follows the 64-bit threshold across the 32-bit
   boundary at prescaler 0, 1 and a drawn value of 2 to 15, with both half
   orders, within the same early and late count bounds, and a larger threshold
@@ -69,7 +70,9 @@ this order, over the CPU-LSU master on ``s_axi``:
   wakeup registers land.
 * Leg P. A pet restarts the watchdog count and holds off the bark; bark
   threshold 0 barks once enabled; a bark and then a bite threshold written at or
-  below the running count fire.
+  below the running count fire; a bite threshold below the bark threshold bites
+  with the bark line and status at 0 (CHK-WDT-BITE-FIRST,
+  ``hw/sys/sep/doc/watchdog.adoc:27``).
 * Leg K. The wakeup timer at prescaler 4095 with threshold 0: periods per
   count, the expired status and ``WKUP_CAUSE`` at the first prescaler
   completion, and a ``WKUP_CTRL`` write that restarts the prescaler.
@@ -113,12 +116,13 @@ WDOG_BARK_THOLD" (``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:
   ``clk_i`` edge where the bark line, the bite request or the wakeup bit of
   ``aon_wkup_probe_o`` first rises, the count tap (``wdt_wdog_count_o``, or the
   low word of ``aon_wkup_probe_o``) is at or above the threshold
-  (``README.md:35,55-56``), so an event that fires early fails with no
-  allowance. ``A`` stays only in the bounds on the bus reads. A rise later than
-  the threshold passes this bound, so whether the watchdog compare includes the
-  threshold itself is not graded: OBS-WDT-BITE-EQ logs, for each run of
-  CHK-WDT-ORDER and CHK-WDT-MAX, the count tap at the first bark and bite rise
-  minus its threshold ("none" for a missing rise).
+  (``README.md:35,55-56``; for the watchdog, CHK-WDT-FIRE-NOT-EARLY: each "fires once
+  the watchdog count reaches its own threshold", ``hw/sys/sep/doc/watchdog.adoc:27``),
+  so an event that fires early fails with no allowance. ``A`` stays only in the
+  bounds on the bus reads. No text states the latency from the threshold to
+  the rise at the taps: OBS-WDT-BITE-LAT logs, for each run of CHK-WDT-ORDER
+  and CHK-WDT-MAX, the count tap at the first bark and bite rise minus its
+  threshold.
 
 Each of these windows also requires ``dcount x (p + 1) > 2 x bound``, so a count
 at half or twice the stated rate is outside the bound. Control: CTRL-WDT-ENABLE
@@ -221,7 +225,7 @@ edges in (t0, t1].
   ``wdt_timer_rst_req_o`` reads 1 at the ``clk_i`` edge before the pulse
   (control) and at the first edge of the pulse, reads 0 within the bound, and
   stays 0 over ``BITE_STAY_CLKS`` ``clk_i`` cycles after the release. The
-  ``clk_i`` edge of the fall is logged as OBS-BITE-CLEAR-EDGE and not graded.
+  ``clk_i`` edge of the fall is logged as INFO-BITE-CLEAR-EDGE and not graded.
   The request stays 0 because ``WDOG_CTRL.enable``
   resets to 0 ("When set to 1, the watchdog timer will count.",
   ``<aon_rdl>:73-74``) and a bite needs an enabled timer (``<aon>/README.md:56``).
@@ -308,15 +312,21 @@ lowers a CHK-WDT-PET read, and the two bracketed steps of CHK-WKUP-PRESC-MAX see
 same copy delay. The lower count bounds of CHK-WKUP-CARRY-READ use ``A`` for the
 age of the count copy.
 
-Leg H grades the count and logs the bite request. The timer core runs on
+Leg H grades the count and the bite request. The timer core runs on
 ``clk_wdt_i`` (``hw/sys/sep/doc/clk_rst.adoc:25-26``;
 ``hw/sys/sep/doc/port_table.adoc:22``, "``clk_wdt_i`` ... 200 kHz clock for
-watchdog timer.") and the count "increments on every tick of the AON clock"
-(``<aon>/README.md:52``), so the count advances while ``clk_i`` is stopped. The
-watchdog clock input is "independent of the system clock so that the WDT can
-detect system clock failures" (``doc/integrator/src/smu-sep.adoc:51-53``;
-``doc/trm/src/clock_domains.adoc:84-86``): that states intent, and no sentence
-says that the bite request rises while ``clk_i`` is stopped. The leg enables the
+watchdog timer."; ``hw/sys/sep/doc/watchdog.adoc:23``, the timer domain reset is
+synchronized to ``clk_wdt_i``) and the count "increments on every tick of the
+AON clock" (``<aon>/README.md:52``), so the count advances while ``clk_i`` is
+stopped. ``wdt_timer_rst_req_o`` is "the bite reset request that fires when the
+second timeout stage expires" (``watchdog.adoc:27``), the bite occurs "on every
+AON clock tick when the count is at least ``WDOG_BITE_THOLD``"
+(``<aon>/README.md:56``), and the request is "driven on the AON domain"
+(``<aon>/doc/theory_of_operation.md:9``), so it rises while ``clk_i`` is
+stopped. The watchdog clock input is "independent of the system clock so that
+the WDT can detect system clock failures"
+(``doc/integrator/src/smu-sep.adoc:51-53``;
+``doc/trm/src/clock_domains.adoc:84-86``). The leg enables the
 watchdog from a count of 0 with a drawn bark and bite threshold, reads
 ``WDOG_COUNT`` once, and then holds ``clk_i`` low over ``N`` ``clk_wdt_i``
 periods, ``N`` = the bite threshold minus the count tap at the hold start plus
@@ -331,13 +341,25 @@ periods, ``N`` = the bite threshold minus the count tap at the hold start plus
   ``clk_wdt_i`` falling edge. A count that stops with ``clk_i`` (``dcount`` 0) or
   runs at half rate is outside the bound when ``E_wdt`` is at least
   ``CLKSTOP_MIN_E`` (CTRL-MISSING otherwise).
-* OBS-WDT-CLKSTOP. The count tap ``wdt_wdog_count_o`` at the start and the end
-  of the hold, the ``clk_wdt_i`` edges counted at the pin between them, and the
-  level of ``wdt_timer_rst_req_o`` at both ends with the time and the
-  ``clk_wdt_i`` edge index of its first rise in the hold. After ``clk_i`` runs
-  again: a ``WDOG_COUNT`` read, the bark status and the bite pin.
+* CHK-WDT-CLKSTOP-BITE. The ``sep`` output ``wdt_timer_rst_req_o`` is 0 at the
+  hold start (precondition), rises inside the hold, reads 1 at its end, and the
+  count tap ``wdt_wdog_count_o`` at the rise is at or above the bite threshold.
+  A bite comes "on every AON clock tick when the count is at least"
+  ``WDOG_BITE_THOLD``; no text states whether that count is the value before or
+  after the tick, or how many register stages lie between the bite and
+  ``wdt_timer_rst_req_o``. The tap at the rise therefore reads the threshold or
+  above under every reading, and a rise while the tap is below the threshold
+  fails. A bite one tick early that reads the threshold at the rise is the
+  legal value of another reading, so the exact offset is logged, not graded
+  (``count_tap_before_rise``: the tap at the last ``clk_wdt_i`` falling edge
+  before the rise). No upper latency bound is stated; the hold runs
+  ``CLKSTOP_PAST`` ticks past the threshold. The line also logs the count taps
+  at both ends of the hold, the ``clk_wdt_i`` edges between them, and the time
+  and ``clk_wdt_i`` edge index of the rise.
+* INFO-WDT-CLKSTOP-AFTER. After ``clk_i`` runs again: a ``WDOG_COUNT`` read, the
+  bark status and the bite pin.
 * CTRL-CLKI-STOPPED. No ``clk_i`` rising edge at the pin in the hold window, else
-  the leaf fails: without it the OBS line shows nothing about a stopped clock.
+  the leaf fails: without it neither check shows anything about a stopped clock.
 
 The leg ends as leg T does: the baseline sets the far thresholds and, when the
 bite request holds, a ``wdt_rst_ni_i`` pulse clears it (CHK-BITE-CLEAR).
@@ -349,16 +371,17 @@ CHK-REGWEN-STICKY, CHK-REGWEN-HOLD, CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE
 CHK-BITE-HOLD, CHK-WDT-RATE, CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-SCOPE, CHK-WDT-PET,
 CHK-WDT-PET-HOLD, CHK-WDT-PET-BITE, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
 CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ, CHK-WDT-CLKSTOP-COUNT,
-CHK-WDT-BARK-REARM, CHK-WDT-INTRTEST-COUNT, CHK-WDT-NO-SPURIOUS. Controls (not
-counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
+CHK-WDT-CLKSTOP-BITE, CHK-WDT-BARK-REARM, CHK-WDT-INTRTEST-COUNT, CHK-WDT-NO-SPURIOUS,
+CHK-WDT-BITE-FIRST, CHK-WDT-FIRE-NOT-EARLY, CHK-WDT-PAUSE-RUN.
+Controls (not counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
 CTRL-WKUP-SMALL, CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
 CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
 CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY,
 CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-PAUSE-RUN, CTRL-WDT-ALERT-RESP,
 CTRL-WDT-ALERT-REACH, CTRL-WDT-INTRTEST-WKUP-CAUSE.
-Observations (not graded): OBS-WDT-CLKSTOP, OBS-BITE-CLEAR-EDGE,
-OBS-REFCNT-SPACED-LAT, OBS-WDT-PAUSE-RUN, OBS-WDT-BITE-FIRST, OBS-WDT-BITE-EQ,
-OBS-WDT-ALERT-RESP, OBS-WDT-INTRTEST-WKUP-CAUSE.
+Observations (not graded): INFO-WDT-CLKSTOP-AFTER, INFO-BITE-CLEAR-EDGE,
+INFO-REFCNT-SPACED-LAT, OBS-WDT-BITE-LAT,
+INFO-WDT-ALERT-RESP, INFO-WDT-INTRTEST-WKUP-CAUSE.
 
 The graded window (owner code of this test) opens at leg R and closes for the
 enable control run, the pause-in-sleep run, leg H, the small wakeup control
@@ -715,9 +738,13 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-WKUP-RESTART",
         "CHK-WKUP-CARRY-READ",
         "CHK-WDT-CLKSTOP-COUNT",
+        "CHK-WDT-CLKSTOP-BITE",
         "CHK-WDT-BARK-REARM",
         "CHK-WDT-INTRTEST-COUNT",
         "CHK-WDT-NO-SPURIOUS",
+        "CHK-WDT-BITE-FIRST",
+        "CHK-WDT-FIRE-NOT-EARLY",
+        "CHK-WDT-PAUSE-RUN",
     )
 
     # -- primitives -----------------------------------------------------------
@@ -788,8 +815,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         for n in range(1, POLL_READS + 1):
             got = await self._rd(addr)
             if (got & mask) == (want & mask):
-                if got & ~mask & M32:
-                    self.logger.info("OBS-WDT-RSVD: reg=%s raw=0x%08x", name, got)
                 return got
             await ClockCycles(cocotb.top.clk_i, POLL_GAP)
         raise AssertionError(
@@ -1133,7 +1158,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         want = v2
         first, polls, e_2, stale = await self._reload_poll(tb2, want, chk)
         self.logger.info(
-            "OBS-REFCNT-SPACED-LAT: pair=%d polls=%d stale_reads=%d E_since_b2=%d",
+            "INFO-REFCNT-SPACED-LAT: pair=%d polls=%d stale_reads=%d E_since_b2=%d",
             idx,
             polls,
             stale,
@@ -1216,7 +1241,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         every edge from the edge before the pulse. A receiver that keeps its state
         over the pulse while its sender resets raises no alert in this window, so
         this clause does not show the receiver reset. The fall edge is logged
-        as OBS-BITE-CLEAR-EDGE. Controls: ``sep_cpu_reset_n_o`` reads 0 in the
+        as INFO-BITE-CLEAR-EDGE. Controls: ``sep_cpu_reset_n_o`` reads 0 in the
         pulse and ``dbg_sep_reset_n_o`` (the SEP reset) stays 1 over the pulse
         and the stay window (clk_rst.adoc:60).
         """
@@ -1263,7 +1288,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
         self.n_bite_clear += 1
         self.logger.info(
-            "OBS-BITE-CLEAR-EDGE: seed=%d where=%s n=%d fall_clk_i_edge=%s clk_wdt_i_edges=%d",
+            "INFO-BITE-CLEAR-EDGE: seed=%d where=%s n=%d fall_clk_i_edge=%s clk_wdt_i_edges=%d",
             seed,
             where,
             self.n_bite_clear,
@@ -1395,7 +1420,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             if seen_x is not None:
                 phase, ci_ar = seen_x
                 self.logger.info(
-                    "OBS-WDT-XING-LAT run=%s wdt_phase_clk=%d ar_to_r_clk=%d count=0x%x",
+                    "INFO-WDT-XING-LAT run=%s wdt_phase_clk=%d ar_to_r_clk=%d count=0x%x",
                     chk,
                     phase,
                     self.pins.count["clk_i"] - ci_ar,
@@ -1479,23 +1504,26 @@ class sep_timer_clock_contract_test(sep_base_test):
         )
         if early or not after or not all(after):
             self._fail(f"{chk} FAIL: bark line: {line_txt}")
-        # The count tap at the first rise of each event is at or above its threshold
-        # (aon_timer README.md: a bark or bite while the count is at or above the
-        # threshold), so an event that fires early fails with no allowance.
+        # CHK-WDT-FIRE-NOT-EARLY: each event fires "once the watchdog count reaches its own
+        # threshold" (hw/sys/sep/doc/watchdog.adoc:27), so the count tap at the
+        # first rise of each event is at or above its threshold, with no allowance.
         rise = run["rise"]
         rise_txt = (
             f"count_at_bark_rise={rise.get('bark')} count_at_bite_rise={rise.get('bite')} "
             f"bark_thold={bx} bite_thold={dx}"
         )
-        if "bark" not in rise or "bite" not in rise or rise["bark"] < bx or rise["bite"] < dx:
+        if "bark" not in rise or "bite" not in rise:
             raise AssertionError(f"{chk} FAIL: run={tag} event rise: {rise_txt}")
-        above = {
-            ev: "none" if rise.get(ev) is None else rise[ev] - thr
-            for ev, thr in (("bark", bx), ("bite", dx))
-        }
+        eq_txt = f"seed={self.tcfg.seed} chk={chk} run={tag} {rise_txt}"
+        if rise["bark"] < bx or rise["bite"] < dx:
+            raise AssertionError(f"CHK-WDT-FIRE-NOT-EARLY FAIL: {eq_txt}")
+        self.logger.info("CHK-WDT-FIRE-NOT-EARLY PASS: %s", eq_txt)
+        # No text states the latency from the threshold to the rise at the taps, so a
+        # compare that fires one count late (">" for ">=") is not graded.
+        above = {ev: rise[ev] - thr for ev, thr in (("bark", bx), ("bite", dx))}
         self.logger.info(
-            "OBS-WDT-BITE-EQ: seed=%d chk=%s run=%s bark_rise_minus_thold=%s "
-            "bite_rise_minus_thold=%s bark_thold=%d bite_thold=%d",
+            "OBS-WDT-BITE-LAT: seed=%d chk=%s run=%s bark_rise_minus_thold=%d "
+            "bite_rise_minus_thold=%d bark_thold=%d bite_thold=%d",
             self.tcfg.seed,
             chk,
             tag,
@@ -1795,7 +1823,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             self.logger.error(msg)
             raise AssertionError(msg)
         self.logger.info("CTRL-WDT-ALERT-RESP seen: seed=%d write response received", seed)
-        self.logger.info("OBS-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
+        self.logger.info("INFO-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
         # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         alert_rises = alert.rises_since(ma)
@@ -1836,7 +1864,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             )
 
     async def _intrtest_count(self, watch, samples: dict) -> None:
-        """CHK-WDT-INTRTEST-COUNT and OBS-WDT-INTRTEST-WKUP-CAUSE.
+        """CHK-WDT-INTRTEST-COUNT and INFO-WDT-INTRTEST-WKUP-CAUSE.
 
         "Each timer increases its count as long as its enable signal ... is set"
         (``<aon>/doc/theory_of_operation.md:4``); an ``INTR_TEST`` field write
@@ -1852,7 +1880,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         ``clk_i`` edge of the step (the watcher of CHK-WDT-INTRTEST).
 
         No line says whether a forced interrupt sets ``WKUP_CAUSE``:
-        OBS-WDT-INTRTEST-WKUP-CAUSE logs it after each write. Control: it reads 0
+        INFO-WDT-INTRTEST-WKUP-CAUSE logs it after each write. Control: it reads 0
         before the first write. The step ends with ``WKUP_CAUSE`` written 0 and
         read 0, and the wakeup timer stopped.
         """
@@ -1903,7 +1931,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             cl = await self._poll_eq("INTR_STATE", INTR_STATE, 0, both, chk)
             cause = await self._rd(WKUP_CAUSE)
             self.logger.info(
-                "OBS-WDT-INTRTEST-WKUP-CAUSE: seed=%d mask=0x%x wkup_cause=0x%x "
+                "INFO-WDT-INTRTEST-WKUP-CAUSE: seed=%d mask=0x%x wkup_cause=0x%x "
                 "wkup_cause_before=0x%x",
                 seed,
                 mask,
@@ -2094,7 +2122,17 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.logger.info("CHK-WDT-NO-SPURIOUS PASS: %s", line)
 
     async def _pause_run(self, bx: int, dx: int) -> None:
-        """Count window with ``WDOG_CTRL`` enable and ``pause_in_sleep`` set (window closed)."""
+        """CHK-WDT-PAUSE-RUN: ``pause_in_sleep`` = 1 leaves the watchdog count rate unchanged.
+
+        "SEP ties ``wdt_debug_sleep_mode_i`` low, so the timer keeps counting while
+        the CPU is halted in debug and ``WDOG_CTRL.pause_in_sleep`` has no effect."
+        (``hw/sys/sep/doc/watchdog.adoc:23``; also
+        ``doc/programmer/src/sep-programming.adoc:675-677``). With enable and
+        ``pause_in_sleep`` both 1, the count advance between two reads lies in
+        ``[E_min - A, E_max + A]``, where ``E_min`` and ``E_max`` are the
+        ``clk_wdt_i`` edges inside and around the two reads. The graded window
+        is closed over the run.
+        """
         seed = self.tcfg.seed
         want = WDOG_EN | WDOG_PAUSE
         was = await self._ungraded()
@@ -2121,19 +2159,19 @@ class sep_timer_clock_contract_test(sep_base_test):
         c1, s1, e1 = await self._timed_rd(WDOG_COUNT)
         st = await self._rd(INTR_STATE)
         await self._wr(WDOG_CTRL, 0)
-        self.logger.info(
-            "OBS-WDT-PAUSE-RUN seed=%d wdog_ctrl=0x%x count0=0x%x count1=0x%x dcount=%d "
-            "clk_wdt_edges_min=%d clk_wdt_edges_max=%d wait_wdt=%d bark=%d",
-            seed,
-            ctrl,
-            c0,
-            c1,
-            c1 - c0,
-            self._edges("clk_wdt_i", e0, s1),
-            self._edges("clk_wdt_i", s0, e1),
-            WDT_WAIT,
-            int(bool(st & BARK_BIT)),
+        a = COUNT_ALLOW
+        e_min = self._edges("clk_wdt_i", e0, s1)
+        e_max = self._edges("clk_wdt_i", s0, e1)
+        line = (
+            f"seed={seed} wdog_ctrl=0x{ctrl:x} count0=0x{c0:x} count1=0x{c1:x} "
+            f"dcount={c1 - c0} clk_wdt_edges_min={e_min} clk_wdt_edges_max={e_max} "
+            f"allow={a} wait_wdt={WDT_WAIT} bark={int(bool(st & BARK_BIT))}"
         )
+        if e_min <= 2 * a:
+            raise AssertionError(f"CTRL-MISSING CHK-WDT-PAUSE-RUN: window too short: {line}")
+        if not e_min - a <= c1 - c0 <= e_max + a:
+            raise AssertionError(f"CHK-WDT-PAUSE-RUN FAIL: {line}")
+        self.logger.info("CHK-WDT-PAUSE-RUN PASS: %s", line)
         await self._regraded(was)
 
     # -- leg H ------------------------------------------------------------------
@@ -2141,8 +2179,8 @@ class sep_timer_clock_contract_test(sep_base_test):
     async def _leg_h(self) -> None:
         """Watchdog with ``clk_i`` held low past the bite threshold.
 
-        CHK-WDT-CLKSTOP-COUNT grades the count over the hold; OBS-WDT-CLKSTOP logs
-        the bite request.
+        CHK-WDT-CLKSTOP-COUNT grades the count over the hold; CHK-WDT-CLKSTOP-BITE
+        grades the bite request rise in the hold.
         """
         cfg = self.tcfg
         dut = cocotb.top
@@ -2164,13 +2202,23 @@ class sep_timer_clock_contract_test(sep_base_test):
             )
         n_hold = hd - c_start + CLKSTOP_PAST
         hold_ps = (n_hold + 2) * wdt_ps
-        rise = {"t": None}
+        rise = {"t": None, "count": None, "before": None}
 
         async def _watch_rise() -> None:
             await RisingEdge(dut.wdt_timer_rst_req_o)
             rise["t"] = self._now()
+            await ReadOnly()
+            rise["count"] = self.rd(dut.wdt_wdog_count_o)
+
+        async def _watch_before() -> None:
+            while True:
+                await FallingEdge(dut.clk_wdt_i)
+                if rise["t"] is not None:
+                    return
+                rise["before"] = self.rd(dut.wdt_wdog_count_o)
 
         watch = cocotb.start_soon(_watch_rise())
+        before = cocotb.start_soon(_watch_before())
         mark = self.pins.mark()
         t0 = self._now()
         self.restart_clock("clk_i", self.cfg.sys_clk_period_ns, hold_ps)
@@ -2182,29 +2230,28 @@ class sep_timer_clock_contract_test(sep_base_test):
         c_end = self.rd(dut.wdt_wdog_count_o)
         req_end = self.rd(dut.wdt_timer_rst_req_o)
         t_rise = rise["t"]
-        if not watch.done():
-            watch.cancel()
+        for task in (watch, before):
+            if not task.done():
+                task.cancel()
         line = f"window_ps={t1 - t0} hold_ps={hold_ps} clk_i_edges={n_clk} E_wdt={e_wdt} N={n_hold}"
         if n_clk != 0:
             raise AssertionError(f"CTRL-CLKI-STOPPED FAIL: {line}")
         self.logger.info("CTRL-CLKI-STOPPED: %s", line)
-        self.logger.info(
-            "OBS-WDT-CLKSTOP: phase=hold seed=%d bark_thold=%d bite_thold=%d count_read=0x%x "
-            "count_tap_start=0x%x count_tap_end=0x%x dcount=%d E_wdt=%d rst_req_start=%d "
-            "rst_req_end=%d rst_req_rise_ps=%s rst_req_rise_E_wdt=%s",
-            cfg.seed,
-            hb,
-            hd,
-            c_rd,
-            c_start,
-            c_end,
-            c_end - c_start,
-            e_wdt,
-            req_start,
-            req_end,
-            "none" if t_rise is None else t_rise - t0,
-            "none" if t_rise is None else self._edges("clk_wdt_i", t0, t_rise),
+        c_rise, c_before = rise["count"], rise["before"]
+        rise_ok = t_rise is not None and t0 < t_rise <= t1 and c_rise is not None
+        bite_line = (
+            f"seed={cfg.seed} bark_thold={hb} bite_thold={hd} count_read=0x{c_rd:x} "
+            f"count_tap_start=0x{c_start:x} count_tap_end=0x{c_end:x} dcount={c_end - c_start} "
+            f"E_wdt={e_wdt} rst_req_start={req_start} rst_req_end={req_end} "
+            f"rst_req_rise_ps={'none' if t_rise is None else t_rise - t0} "
+            f"rst_req_rise_E_wdt={'none' if t_rise is None else self._edges('clk_wdt_i', t0, t_rise)} "
+            f"count_tap_at_rise={'none' if c_rise is None else f'0x{c_rise:x}'} "
+            f"count_tap_before_rise={'none' if c_before is None else f'0x{c_before:x}'} "
+            "exp=rise_in_hold,count_at_rise>=bite_thold,rst_req_end=1"
         )
+        if not (rise_ok and c_rise >= hd and req_end == 1):
+            raise AssertionError(f"CHK-WDT-CLKSTOP-BITE FAIL: {bite_line}")
+        self.logger.info("CHK-WDT-CLKSTOP-BITE PASS: %s", bite_line)
         dcount = c_end - c_start
         count_line = (
             f"seed={cfg.seed} count_tap_start=0x{c_start:x} count_tap_end=0x{c_end:x} "
@@ -2224,7 +2271,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         c_after = await self._rd(WDOG_COUNT)
         st = await self._rd(INTR_STATE)
         self.logger.info(
-            "OBS-WDT-CLKSTOP: phase=after WDOG_COUNT=0x%x bark=%d rst_req=%d clk_i_restart_ps=%d",
+            "INFO-WDT-CLKSTOP-AFTER: WDOG_COUNT=0x%x bark=%d rst_req=%d clk_i_restart_ps=%d",
             c_after,
             int(bool(st & BARK_BIT)),
             self.rd(dut.wdt_timer_rst_req_o),
@@ -2407,7 +2454,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         # The wakeup request and the wakeup interrupt of the timer have no stated
         # consumer: the internal interrupt vector is logged at the cause read.
         self.logger.info(
-            "OBS-WKUP-CONSUMER wkup_cause=0x%x sep_internal_interrupts=0x%x",
+            "INFO-WKUP-CONSUMER wkup_cause=0x%x sep_internal_interrupts=0x%x",
             cause & CAUSE_FIELD,
             self.rd(cocotb.top.sep_internal_interrupts_probe_o, allow_unknown=True),
         )
@@ -2594,8 +2641,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         for c in ctrl_reads:
             fc = field_compare(c, WDOG_EN, WDOG_CTRL_FIELDS)
             assert fc.ok, f"CHK-WDT-COHERENT FAIL: WDOG_CTRL while counting {fc.fields()}"
-            if c & ~WDOG_CTRL_FIELDS & M32:
-                self.logger.info("OBS-WDT-RSVD: reg=WDOG_CTRL raw=0x%08x", c)
         assert segs[1][0] >= 0x1000, f"CHK-WDT-COHERENT FAIL: first read 0x{segs[1][0]:x} < 0x1000"
         assert inc >= 3, f"CHK-WDT-COHERENT FAIL: only {inc} increases"
         self.logger.info(
@@ -3290,17 +3335,22 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.logger.info("CHK-WDT-PET-BITE PASS: %s", line)
 
     async def _bite_first(self) -> None:
-        """OBS-WDT-BITE-FIRST: one run with the bite threshold below the bark threshold.
+        """CHK-WDT-BITE-FIRST: a bite threshold below the bark threshold bites with no bark.
 
-        ``watchdog.adoc`` and the aon_timer README state two separate
-        thresholds, but ``watchdog.adoc`` also calls the bite the second stage
-        that fires after an unanswered bark, so the bark status when the bite
-        comes first is an open question. The run logs the bark status, the
-        clk_i edges of the bite request and the bark line, and the count tap
-        ``wdt_wdog_count_o`` on the ``clk_i`` edge of the first bite rise ("none"
-        when no rise comes within the bound).
+        "The bark and bite thresholds are independent: each fires once the
+        watchdog count reaches its own threshold, whether or not the other has
+        fired." (``hw/sys/sep/doc/watchdog.adoc:27``). With the bite threshold
+        ``BITE_FIRST_BITE`` below the bark threshold ``BITE_FIRST_BARK``, the bite
+        request rises within the bound, the count tap ``wdt_wdog_count_o`` on the
+        ``clk_i`` edge of the first rise is at or above the bite threshold, the
+        bark line (tap ``wdt_bark_probe_o``) reads 0 on every ``clk_i`` edge from
+        the enable write to the end of the status read, and that read shows the
+        bark status 0. Control: a ``WDOG_COUNT`` read after the status read is
+        below the bark threshold, so the bark is not due at the status read
+        (CTRL-MISSING otherwise).
         """
         dut = cocotb.top
+        chk = "CHK-WDT-BITE-FIRST"
         was = await self._ungraded()
         await self._wdt_baseline(BITE_FIRST_BARK, BITE_FIRST_BITE, 0)
         watch = SepBitWatch(dut.wdt_timer_rst_req_o, name="wdt_timer_rst_req_o").start()
@@ -3322,22 +3372,27 @@ class sep_timer_clock_contract_test(sep_base_test):
                 break
         tap.kill()
         st = await self._rd(INTR_STATE)
+        bark_high = bark.high_clocks_since(mb)
+        cnt = await self._rd(WDOG_COUNT)
         bite_cnt = rise.get("bite")
-        self.logger.info(
-            "OBS-WDT-BITE-FIRST bite_thold=0x%x bark_thold=0x%x bite_rise_clk=%s "
-            "bark_rise_clk=%s bark_status=%d count_at_bite_rise=%s",
-            BITE_FIRST_BITE,
-            BITE_FIRST_BARK,
-            watch.rise_clks_since(mw)[:1] or "none",
-            bark.rise_clks_since(mb)[:1] or "none",
-            int(bool(st & BARK_BIT)),
-            "none" if bite_cnt is None else f"0x{bite_cnt:x}",
+        line = (
+            f"seed={self.tcfg.seed} bite_thold=0x{BITE_FIRST_BITE:x} "
+            f"bark_thold=0x{BITE_FIRST_BARK:x} "
+            f"bite_rise_clk={watch.rise_clks_since(mw)[:1] or 'none'} "
+            f"count_at_bite_rise={'none' if bite_cnt is None else f'0x{bite_cnt:x}'} "
+            f"bark_line_high_clk={bark_high} bark_status={int(bool(st & BARK_BIT))} "
+            f"count_after_status=0x{cnt:x}"
         )
         await watch.stop()
         await bark.stop()
         await self._wr(WDOG_CTRL, 0)
         if self.rd(dut.wdt_timer_rst_req_o):
             await self._bite_clear("bite_first")
+        if cnt >= BITE_FIRST_BARK:
+            raise AssertionError(f"CTRL-MISSING {chk}: count reached the bark threshold: {line}")
+        if bite_cnt is None or bite_cnt < BITE_FIRST_BITE or bark_high or st & BARK_BIT:
+            raise AssertionError(f"{chk} FAIL: {line}")
+        self.logger.info("%s PASS: %s", chk, line)
         await self._regraded(was)
 
     async def _leg_p(self) -> None:

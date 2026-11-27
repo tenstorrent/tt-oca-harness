@@ -56,6 +56,14 @@
 //                            traps once with the timer's mcause, not before B
 //                            core clocks; stopped with mitcnt B - 1 it takes
 //                            no trap, stopped with mitcnt B it traps once
+//   CHK-INT-TIMER-CASCADE    with mitctl1.cascade 1, mitb0 a drawn B well
+//                            below 0xFFFF_FFFF and mitb1 0xFFFF_FFFF: mitcnt1
+//                            holds H while mitcnt0 runs up to B; when mitcnt0
+//                            reaches B, mitcnt1 reads H + 1 and mitcnt0
+//                            restarts from 0; mitb0 written below a running
+//                            mitcnt0 clears mitcnt0 and increments mitcnt1
+//                            once; mitctl1 reads back the written enable and
+//                            cascade bits (outside every graded window)
 //
 // The priord flip leg raises the drawn sources with mstatus.MIE 0, prints
 // their meip bits and the priord read back before the flip
@@ -91,7 +99,9 @@
 // clocks while mitctl.enable (bit 0) is 1 and signals its interrupt while
 // mitcnt >= mitb; mitb resets to 0xFFFF_FFFF. A bound of 0 keeps the timer
 // pending on every clock. trap_dispatch clears both mie.MITIE bits on an
-// internal-timer entry, so each arming takes one trap.
+// internal-timer entry, so each arming takes one trap. mitctl1 bit 3 (cascade)
+// makes mitcnt1 increment only on a clock where mitcnt0 >= mitb0, and a counter
+// at or above its bound clears on the next clock (PRM chapter 6).
 
 #include <stdint.h>
 
@@ -150,7 +160,10 @@ enum {
     P_PF_FROM,      // priord of the flip leg before the flip
     P_PF_N,         // number of flip-leg sources
     P_PF_SRC,       // S_MAX words of flip-leg sources, then S_MAX of their meipl values
-    P_EXT_END = P_PF_SRC + 2 * S_MAX
+    P_IT_CAS_HI = P_PF_SRC + 2 * S_MAX, // mitcnt1 written for the cascade leg (H)
+    P_IT_CAS_K,                         // mitcnt0 written K below mitb0 in the cascade leg
+    P_IT_CAS_B0,                        // mitb0 of the cascade leg (B)
+    P_EXT_END
 };
 #define P_PF_RAW (P_PF_SRC + S_MAX)
 #define P_WORDS P_EXT_END
@@ -196,7 +209,9 @@ volatile uint32_t g_prm[P_WORDS] = {
 // meipX registers report a disabled source that is pending (PRM 8.9, 8.12.3).
 #define CSR_MCGC 0x7F8
 #define MCGC_PICIO (1u << 9)
-#define MITCTL_ENABLE 1u       // mitctl.enable, bit 0
+#define MITCTL_ENABLE 1u // mitctl.enable, bit 0
+// mitctl1.cascade, bit 3, mitctl1 only (VeeR EL2 PRM chapter 6, mitctl table).
+#define MITCTL1_CASCADE (1u << 3)
 #define MITB_RESET 0xFFFFFFFFu // mitb reset value
 // hw/sys/sep/doc/interrupts.adoc:294-298: pending and enable bits, cause codes.
 #define MIP_MITIP0 (1u << 29)
@@ -1165,6 +1180,133 @@ static void leg_it_trap(uint32_t k) {
     chk_end(pass);
 }
 
+static inline uint32_t mitctl1_rd(void) {
+    uint32_t v;
+    __asm__ volatile("csrr %0, %1" : "=r"(v) : "i"(CSR_MITCTL1));
+    return v;
+}
+
+static inline uint32_t mitb0_rd(void) {
+    uint32_t v;
+    __asm__ volatile("csrr %0, %1" : "=r"(v) : "i"(CSR_MITB0));
+    return v;
+}
+
+// Polls mitcnt0 at most max times until it reads below lim; returns 1 when it
+// does and counts the polls in *polls.
+static int it_cnt0_below(uint32_t lim, uint32_t max, uint32_t *polls) {
+    while (*polls < max) {
+        (*polls)++;
+        if (it_cnt(0u) < lim) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// One {mitcnt1, mitcnt0} read in the order mitcnt1, mitcnt0, mitcnt1. The pair
+// is consistent when both mitcnt1 reads agree. One carry at most occurs during
+// one snapshot of the cascade leg, so one retry follows an inconsistent read; a
+// second inconsistent read returns 0.
+static int it_cas_snap(uint32_t *hi, uint32_t *lo, uint32_t *retries) {
+    for (uint32_t i = 0; i < 2u; i++) {
+        uint32_t h1 = it_cnt(1u);
+        uint32_t l = it_cnt(0u);
+        uint32_t h2 = it_cnt(1u);
+        if (h1 == h2) {
+            *hi = h1;
+            *lo = l;
+            return 1;
+        }
+        (*retries)++;
+    }
+    return 0;
+}
+
+// Cascade leg, outside every graded window, with mstatus.MIE 0 and both
+// mie.MITIE bits 0. PRM timers.md: in cascade mode mitcnt1 increments only on a
+// clock where mitcnt0 >= mitb0, and a counter at or above its bound clears on
+// the next clock.
+// Bound step: both timers stopped, mitb0 = B (drawn, well below 0xFFFF_FFFF),
+// mitb1 = 0xFFFF_FFFF, mitcnt1 = H and mitcnt0 = B - K. Timer 1 is enabled with
+// cascade first, while mitcnt0 is below mitb0, then timer 0 with the same enable
+// bits. The pair read after the enable holds mitcnt1 H and mitcnt0 in
+// [B - K, B). Once mitcnt0 reads below B - K (polled at most K + 64 times), the
+// pair reads mitcnt1 H + 1 and mitcnt0 below B - K. A plain 32-bit carry keeps
+// mitcnt0 counting past B and mitcnt1 at H.
+// Above step: both timers running, mitb0 = 0xFFFF_FFFF, mitcnt1 = H and
+// mitcnt0 = B + K; mitb0 = B is then written with mitcnt0 above it. Once
+// mitcnt0 reads below B (polled at most 64 times), the pair reads mitcnt1 H + 1
+// and mitcnt0 below B. A counter that compares mitcnt0 == mitb0 only keeps
+// counting past B.
+static void leg_it_cascade(void) {
+    uint32_t hi0 = g_prm[P_IT_CAS_HI];
+    uint32_t k = g_prm[P_IT_CAS_K];
+    uint32_t b0 = g_prm[P_IT_CAS_B0];
+    uint32_t lo0 = b0 - k;
+    uint32_t ctl1_wr = MITCTL_ENABLE | MITCTL1_CASCADE;
+    mstatus_mie(0);
+    __asm__ volatile("csrw mie, %0" ::"r"(MIE_WRITE));
+    it_csrw(0u, IT_CTL, 0u);
+    it_csrw(1u, IT_CTL, 0u);
+    it_csrw(0u, IT_B, b0);
+    it_csrw(1u, IT_B, MITB_RESET);
+    uint32_t b0_rd = mitb0_rd();
+    it_csrw(1u, IT_CNT, hi0);
+    it_csrw(0u, IT_CNT, lo0);
+    it_csrw(1u, IT_CTL, ctl1_wr);
+    uint32_t ctl1 = mitctl1_rd();
+    it_csrw(0u, IT_CTL, MITCTL_ENABLE);
+    uint32_t retries = 0u;
+    uint32_t pre_hi = 0u, pre_lo = 0u, post_hi = 0u, post_lo = 0u;
+    int pre_ok = it_cas_snap(&pre_hi, &pre_lo, &retries);
+    uint32_t polls = 0u;
+    int restarted = it_cnt0_below(lo0, k + 64u, &polls);
+    int post_ok = restarted && it_cas_snap(&post_hi, &post_lo, &retries);
+    it_csrw(0u, IT_B, MITB_RESET);
+    it_csrw(0u, IT_CNT, b0 + k);
+    it_csrw(1u, IT_CNT, hi0);
+    uint32_t above_rd = it_cnt(0u);
+    it_csrw(0u, IT_B, b0);
+    uint32_t ab_polls = 0u;
+    uint32_t ab_hi = 0u, ab_lo = 0u;
+    int ab_restarted = it_cnt0_below(b0, 64u, &ab_polls);
+    int ab_ok = ab_restarted && it_cas_snap(&ab_hi, &ab_lo, &retries);
+    it_csrw(0u, IT_CTL, 0u);
+    it_csrw(1u, IT_CTL, 0u);
+    it_csrw(0u, IT_CNT, 0u);
+    it_csrw(1u, IT_CNT, 0u);
+    it_csrw(0u, IT_B, MITB_RESET);
+    it_csrw(1u, IT_B, MITB_RESET);
+    __asm__ volatile("csrw mie, %0" ::"r"(MIE_WRITE));
+    int pass = ctl1 == ctl1_wr && b0_rd == b0 && pre_ok && pre_hi == hi0 && pre_lo >= lo0 &&
+               pre_lo < b0 && post_ok && post_hi == hi0 + 1u && post_lo < lo0 &&
+               above_rd >= b0 + k && ab_ok && ab_hi == hi0 + 1u && ab_lo < b0;
+    rec_chk("INT-TIMER-CASCADE", pass);
+    rec_hex("hi0", hi0);
+    rec_num("k", k);
+    rec_hex("mitb0", b0);
+    rec_hex("mitb0_rd", b0_rd);
+    rec_hex("mitctl1_wr", ctl1_wr);
+    rec_hex("mitctl1_rd", ctl1);
+    rec_num("pre_ok", (uint32_t)pre_ok);
+    rec_hex("pre_hi", pre_hi);
+    rec_hex("pre_lo", pre_lo);
+    rec_num("restarted", (uint32_t)restarted);
+    rec_num("polls", polls);
+    rec_num("post_ok", (uint32_t)post_ok);
+    rec_hex("post_hi", post_hi);
+    rec_hex("post_lo", post_lo);
+    rec_hex("above_rd", above_rd);
+    rec_num("ab_restarted", (uint32_t)ab_restarted);
+    rec_num("ab_polls", ab_polls);
+    rec_num("ab_ok", (uint32_t)ab_ok);
+    rec_hex("ab_hi", ab_hi);
+    rec_hex("ab_lo", ab_lo);
+    rec_num("retries", retries);
+    chk_end(pass);
+}
+
 static void req_tint(uint32_t on) {
     rec_req("tint");
     rec_num("on", on);
@@ -1523,8 +1665,9 @@ int main(void) {
         wr32(k_ot[i].enable, 0u);
     }
 
-    // Threshold, nesting and internal-timer legs. Each leg prints its graded
-    // marker after its set-up and a control marker before its clean-up.
+    // Threshold, nesting and internal-timer legs. Each graded leg prints its
+    // graded marker after its set-up and a control marker before its clean-up;
+    // the cascade leg runs after a control marker only.
     rec_mark(0, "threshold_setup");
     leg_threshold();
     rec_mark(0, "nest_setup");
@@ -1538,6 +1681,8 @@ int main(void) {
         rec_mark(0, "itimer_setup");
         leg_it_trap(k);
     }
+    rec_mark(0, "itimer_cascade");
+    leg_it_cascade();
 
     rec_mark(0, "mie_meie_setup");
     leg_mie_meie();

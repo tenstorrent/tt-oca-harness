@@ -19,7 +19,7 @@ The cp_partial_narrow outcomes of a probe sample only on the pass label
 pbem_pass, which the leaf raises after the last check of that probe passed.
 
 No specification sentence states the register value after a refused partial
-write, so the leaf logs the read-back of the register as OBS-MISALIGN-REG-KEPT
+write, so the leaf logs the read-back of the register as INFO-MISALIGN-REG-KEPT
 and does not grade it.
 """
 
@@ -32,7 +32,7 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_pbem_pass
 from sep_base_test import sep_base_test
 from sep_reg_meta import HMAC
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
 from seq_lib.sep_irq_aggregator_seq import (
     DMA_CLEAR_ADDR,
     DMA_CLR_BIT,
@@ -56,6 +56,7 @@ TEST = "sep_periph_bus_err_misaligned_test"
 # HMAC CFG and Secure DMA INTR_STATE own byte 0, so lanes 2 and 3 miss an owned byte.
 _PROBE_BYTES = 2
 _PROBE_OFFSET = 2
+_PROBE_SIZE = 2
 _RESP_OKAY = 0
 # The monitor records an R beat on its own clock edge, which may not have run
 # when start_seq returns.
@@ -68,14 +69,25 @@ _LABEL_CLOCKS = 2
 class sep_periph_bus_err_misaligned_test(sep_base_test):
     """A partial register write must latch the block's bit; a narrow read must not."""
 
-    async def _read_beats(self, name: str, addr: int) -> tuple[SepAxiAccessSeq, list]:
-        """Read ``_PROBE_BYTES`` at ``addr`` and return the RRESP of every R beat."""
+    async def _read_beats(
+        self, name: str, addr: int
+    ) -> tuple[SepAxiAccessSeq, list, dict[str, int] | None]:
+        """Read ``_PROBE_BYTES`` at ``addr``.
+
+        Return the sequence, the RRESP of every R beat, and the AR handshake on
+        ``s_axi`` (None when no handshake was seen). The ``s_axi`` AR nets drive
+        the DUT LSU request without change, and the handshake needs the DUT's
+        ARREADY, so the AR values are the request the DUT accepted.
+        """
         mon = self.env.axi_monitor
         mon.start_beat_capture()
-        seq = SepAxiAccessSeq(name, op=SepAxiOp.READ, addr=addr, length=_PROBE_BYTES, size=2)
+        ar = cocotb.start_soon(capture_addr_handshake("ar"))
+        seq = SepAxiAccessSeq(
+            name, op=SepAxiOp.READ, addr=addr, length=_PROBE_BYTES, size=_PROBE_SIZE
+        )
         await self.start_seq(seq)
         await ClockCycles(cocotb.top.clk_i, _BEAT_SETTLE_CYCLES)
-        return seq, mon.take_beat_capture()
+        return seq, mon.take_beat_capture(), take_handshake(ar)
 
     async def _status(self) -> tuple[int, int]:
         """Return (PERIPH_BUS_ERR_STATUS, DMA_BUS_ERR_STATUS)."""
@@ -121,7 +133,7 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
         graded: bool,
     ) -> None:
         pass_tag = "graded" if graded else "first"
-        ctrl, beats = await self._read_beats(f"{block}_aligned_rd", aligned)
+        ctrl, beats, _ = await self._read_beats(f"{block}_aligned_rd", aligned)
         status = await self._status()
         assert (ctrl.resp_code, beats, status) == (_RESP_OKAY, [_RESP_OKAY], before), (
             f"{block} aligned read @0x{aligned:08x} returned resp={ctrl.resp_code} over R "
@@ -137,7 +149,19 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
         )
 
         addr = aligned + _PROBE_OFFSET
-        narrow, beats = await self._read_beats(f"{block}_narrow_rd", addr)
+        narrow, beats, ar = await self._read_beats(f"{block}_narrow_rd", addr)
+        ar_txt = (
+            "no AR handshake"
+            if ar is None
+            else f"ARADDR=0x{ar['addr']:08x} ARLEN={ar['len']} ARSIZE={ar['size']}"
+        )
+        # An aligned-down ARADDR gives the same OKAY beat and status as the
+        # aligned control, so the narrow read is proven only by the bus address.
+        assert ar is not None and (ar["addr"], ar["len"], ar["size"]) == (addr, 0, _PROBE_SIZE), (
+            f"CTRL-MISALIGN{tag}-NARROW FAIL: pass={pass_tag} {block} narrow read observed "
+            f"{ar_txt} on s_axi; expected ARADDR=0x{addr:08x} ARLEN=0 ARSIZE={_PROBE_SIZE}"
+        )
+        self.logger.info("CTRL-MISALIGN%s-NARROW PASS: pass=%s %s", tag, pass_tag, ar_txt)
         status = await self._status()
         assert (narrow.resp_code, beats, status) == (_RESP_OKAY, [_RESP_OKAY], before), (
             f"{block} narrow read @0x{addr:08x} returned resp={narrow.resp_code} over R "
@@ -146,7 +170,10 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
             f"({before[0]:#x}, {before[1]:#x})"
         )
         self.logger.info(
-            "CHK-MISALIGN%s-RD PASS: pass=%s 0x%08x one OKAY beat, no latch", tag, pass_tag, addr
+            "CHK-MISALIGN%s-RD PASS: pass=%s ARADDR=0x%08x one OKAY beat, no latch",
+            tag,
+            pass_tag,
+            ar["addr"],
         )
 
         wr = SepAxiAccessSeq(
@@ -155,12 +182,12 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
             addr=addr,
             wdata=0xFFFF,
             length=_PROBE_BYTES,
-            size=2,
+            size=_PROBE_SIZE,
             expect_error=True,
         )
         await self.start_seq(wr)
         status = await self._status()
-        readback, _ = await self._read_beats(f"{block}_readback_rd", aligned)
+        readback, _, _ = await self._read_beats(f"{block}_readback_rd", aligned)
         # The response code needs its own comparison: the scoreboard's expect_error
         # arm accepts any non-OKAY. The status shows the latch.
         assert (wr.resp_code, status) == (RESP_SLVERR, after), (
@@ -178,7 +205,7 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
         # No specification sentence states the register value after a refused
         # partial write, so the read-back is logged only.
         self.logger.info(
-            "OBS-MISALIGN-REG-KEPT: pass=%s block=%s 0x%08x before=%#x after=%#x same=%d",
+            "INFO-MISALIGN-REG-KEPT: pass=%s block=%s 0x%08x before=%#x after=%#x same=%d",
             pass_tag,
             block,
             aligned,

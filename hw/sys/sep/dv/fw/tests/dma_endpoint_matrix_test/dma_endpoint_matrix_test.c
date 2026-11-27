@@ -173,8 +173,8 @@ volatile uint32_t g_p[P_COUNT] = {
 #define POOL_LEVEL(st) \
     (((st)&SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bm) >> SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bp)
 // EXT_TRNG_SRC_SEL bit 2 selects the source of stream 2, the entropy pool fill
-// (integration/rdl/sep/sep_cpu_ctrl.rdl:308-310; hw/sys/sep/doc/trng.adoc:94-95).
-// With bit 2 at 1 the internal endpoint is backpressured (trng.adoc:104-105), so
+// (integration/rdl/sep/sep_cpu_ctrl.rdl:308-310; hw/sys/sep/doc/trng.adoc:96-97).
+// With bit 2 at 1 the internal endpoint is backpressured (trng.adoc:106-107), so
 // only the words the test sends on the external stream 2 reach the pool.
 #define EXT_SEL SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_BASE_ADDR
 #define EXT_SEL_MASK SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bm
@@ -340,6 +340,7 @@ static uint32_t g_rec_n;
 static int recovery(const char *after) {
     mark('C', "recovery");
     dma_clear();
+    uint32_t ec_clr = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     uint32_t tag = 0x100u + g_rec_n++;
     uint32_t n = REC_LEN / 4u;
     stage_src(SRAM + B_REC_SRC, n, tag);
@@ -355,6 +356,7 @@ static int recovery(const char *after) {
     sep_mbx_puts(" after=");
     sep_mbx_puts(after);
     kv("tag", tag);
+    kv("ec_clr", ec_clr);
     rec_run(st);
     kv("nbad", bad);
     kv("dsum", h);
@@ -819,6 +821,7 @@ static void stack_leg(void) {
     uint32_t pre1 = g_pre;
     uint32_t ec1 = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     dma_clear();
+    uint32_t rec_ec_clr = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     // Recovery copy inside the stack window; its record is printed below.
     uint32_t tag = 0x100u + g_rec_n++;
     uint32_t n = REC_LEN / 4u;
@@ -875,6 +878,7 @@ static void stack_leg(void) {
     rec("RECOV");
     sep_mbx_puts(" after=stack");
     kv("tag", tag);
+    kv("ec_clr", rec_ec_clr);
     kv("pre", rpre);
     kv("st", rst);
     kv("ec", rec_ec);
@@ -1245,9 +1249,10 @@ static void nc_legs(void) {
         else
             recovery("nc_km_src");
     }
-    // The KM mailbox SEP_IRQ_ENABLE word as the destination and as the source,
-    // each logged. The write sets only enable bits whose IRQ_STATUS bit reads
-    // 0, so no mailbox interrupt rises; the CPU then restores the word.
+    // The KM mailbox SEP_IRQ_ENABLE word as the destination and as the source.
+    // Each leg changes only enable bits whose IRQ_STATUS bit reads 0, so no
+    // mailbox interrupt rises; the CPU restores the word after the run. The
+    // read leg copies a value that differs from the value before the leg.
     if (!timed_out) {
         uint32_t s0 = rd(KM_IRQ_STATUS), e0 = rd(KM_IRQ_ENABLE);
         uint32_t v = e0 ^ (KM_IRQ_EN_FIELDS & ~s0);
@@ -1274,11 +1279,14 @@ static void nc_legs(void) {
             recovery("nc_km_wr");
     }
     if (!timed_out) {
-        uint32_t e1 = rd(KM_IRQ_ENABLE);
-        wr(d, ~e1);
+        uint32_t s1 = rd(KM_IRQ_STATUS), e1 = rd(KM_IRQ_ENABLE);
+        wr(KM_IRQ_ENABLE, e1 ^ (KM_IRQ_EN_FIELDS & ~s1));
+        uint32_t v1 = rd(KM_IRQ_ENABLE);
+        wr(d, ~v1);
         mark('C', "nc_km_rd");
         e = nc_run(KM_IRQ_ENABLE, d);
-        nc_rec("km_rd", e, 1, e1, rd(d));
+        wr(KM_IRQ_ENABLE, e1);
+        nc_rec("km_rd", e, 1, v1, rd(d));
         if (e == 2u)
             timed_out = 1;
         else
@@ -1315,10 +1323,10 @@ static void nc_legs(void) {
 // start, so the boot phase of the source can end before this step. The CPU
 // therefore always resets and programs the entropy domain: that write selects
 // the internal DRBG for every stream (EXT_TRNG_SRC_SEL resets to all external,
-// hw/sys/sep/doc/trng.adoc:98-100), enables CSRNG and stages the EDN commands.
+// hw/sys/sep/doc/trng.adoc:100-102), enables CSRNG and stages the EDN commands.
 // Before EDN starts, the CPU selects the external source for stream 2 again, so
 // the internal pool endpoint is backpressured and keeps its words
-// (trng.adoc:104-105) and the pool level is set by the test alone. The record
+// (trng.adoc:106-107) and the pool level is set by the test alone. The record
 // logs the source select that the CPU reads back after it.
 static int entropy_bringup_fresh(void) {
     sep_entropy_configure();

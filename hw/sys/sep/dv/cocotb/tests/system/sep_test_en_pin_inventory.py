@@ -3,18 +3,21 @@
 """Graded-pin inventory of ``sep_test_en_pin_reach_test``.
 
 Bench configuration, not a behaviour golden. Each entry is the hierarchy path
-of one test pin below ``u_dut`` on the ``lsu_stub_all_live`` build and its pin
-class. Selection rule (the SEP-owned boundary): the test inputs of the
-clock-gater and AXI cell instances that OCAH RTL instantiates (clock gater:
-port ``test_en_i``; AXI cell: port ``test_i``), without the pins inside
-``sep_cpu``. Pins inside vendor IP or a third-party library are not entries.
+of one test pin below ``u_dut`` and its pin class. Selection rule (the
+SEP-owned boundary): the test inputs of the clock-gater and AXI cell instances
+that OCAH RTL instantiates (clock gater: port ``test_en_i``; AXI cell: port
+``test_i``). ``GRADED_PINS`` holds the pins outside ``sep_cpu``, which every
+build has. ``CPU_GRADED_PINS`` holds the SEP-owned AXI cells inside
+``sep_cpu``, graded on the full-CPU build only, because the CPU stub has a
+different ``sep_cpu`` module. Pins inside vendor IP or a third-party library,
+including the vendor core inside ``sep_cpu``, are not entries.
 The inventory changes only by a reviewed edit; the record of the scope is
 ``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``
-(``sep-standin-test-en-inventory``). The leaf grades every entry: an entry
-that the hierarchy walk does not find, or finds with another class, fails
-CTRL-PIN-WALK by name. The inventory sets the scope of the "every such input"
-reading of ``hw/sys/sep/doc/port_table.adoc`` (``test_en_i``); the expected
-value of each pin comes from that sentence, not from this file.
+(``sep-standin-test-en-inventory``). The leaf grades every entry it selects:
+an entry that the hierarchy walk does not find, or finds with another class,
+fails CTRL-PIN-WALK by name. The inventory sets the scope of the "every such
+input" reading of ``hw/sys/sep/doc/port_table.adoc`` (``test_en_i``); the
+expected value of each pin comes from that sentence, not from this file.
 """
 
 from __future__ import annotations
@@ -619,4 +622,11 @@ GRADED_PINS: tuple[tuple[str, str], ...] = (
     ("u_dut.u_sep.u_sram_burst_err_slv.test_i", "axi_cell"),
     ("u_dut.u_sep_ip_integration.u_axi_extension_err_slv.test_i", "axi_cell"),
     ("u_dut.u_sep_ip_integration.u_ext_trng_axil_err_slv.u_axi_err_slv.test_i", "axi_cell"),
+)
+
+# SEP-owned AXI cells inside ``sep_cpu``: graded on the full-CPU build only.
+CPU_GRADED_PINS: tuple[tuple[str, str], ...] = (
+    ("u_dut.u_sep.u_sep_cpu.u_ifu_axi_demux.test_i", "axi_cell"),
+    ("u_dut.u_sep.u_sep_cpu.u_ifu_axi_err_slv.test_i", "axi_cell"),
+    ("u_dut.u_sep.u_sep_cpu.u_lsu_axi_demux.test_i", "axi_cell"),
 )

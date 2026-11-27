@@ -13,9 +13,9 @@ armed CLA:
 * **The four counters.** ``CDbgClaCounter<n>Cfg`` splits into fields software
   writes -- ``Target``, ``UpperTarget``, ``ResetOnTarget`` -- and fields
   hardware drives -- ``Counter`` and ``UpperCounter``, both ``sw = r``. The
-  counters are moved by the CLA action bus, and which action code increments,
-  clears or free-runs a counter is published by no RDL, generated header or
-  MMR specification, so this sequence names none: it drives ``Action0`` over
+  counters are moved by the CLA action bus. ``dfd.adoc`` Action Codes gives
+  the increment, clear and auto-increment codes of each counter; this sequence
+  holds the DUT to none of them and names none: it drives ``Action0`` over
   its whole 6-bit range with an activating pair and reads the hardware-driven
   counter fields back after each value. Every counter has to be seen counting
   and every counter has to be seen back at zero afterwards.

@@ -65,9 +65,9 @@ Checks:
                            address, and ERROR_STATUS stays 0.
     CHK-SPI-LANE-PROGRAM : the quad page program (0x32), read back with 0x03,
                            returns the seeded words, and ERROR_STATUS stays 0.
-    RXDATA order       : CHK-JEDEC fixes the in-word order of RXDATA from the
+    RXDATA order       : CHK-JEDEC finds the in-word order of RXDATA from the
                            JEDEC ID word (the ID bytes and a zero pad in one
-                           order) and prints ``OBS-SPI-BYTEORDER fw order=``;
+                           order) and prints ``INFO-SPI-BYTEORDER fw order=``;
                            CHK-RDSR, CHK-WRDI, CHK-WEL-AUTOCLR, CHK-RDSR2,
                            CHK-ERR-RECOVER and CHK-SPI-LANE-READ take each
                            response byte in that order, and the bytes past the
@@ -80,7 +80,7 @@ Checks:
       neighbour read, post-erase RDSR, the ignored WEL-clear PP and its read,
       WREN, RDSR2, WRDI, recovery JEDEC);
     - the PAGE PROGRAM (0x02) landed at the random addr with the random data
-      words in the leaf's in-word byte order, and the device accepted it
+      words in the ByteOrder = 1 order, and the device accepted it
       (``ok``): its frame ended on a byte boundary;
     - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards)
       and left the neighbour 4 KiB sector intact;
@@ -96,16 +96,18 @@ Checks:
                            command's lane width, and the flash record. A TX
                            payload and the primary READ, which returns the
                            programmed bytes, expect the seeded words in the
-                           leaf's in-word byte order; a lane read expects the
+                           ByteOrder = 1 order; a lane read expects the
                            preloaded flash bytes.
   In-word byte order (OpenTitan SPI_HOST "Input and Output Byte Ordering"):
-    one order for every TXDATA and RXDATA word of the leaf
-    (``SepSpiByteOrder`` of ``env/sep_spi_lane_responder.py``). The leaf
-    takes the firmware's order with ``adopt``; an order that differs from the
-    one the TX words showed fails CHK-SPI-SB-RX. Which order is not graded:
-    one OBS-SPI-BYTEORDER line per leaf logs it. The opcode and address bytes
-    in TXDATA[7:0] first, and the WIP poll of the flash driver, are stimulus
-    that assumes the order with the first byte in bits 7:0.
+    SEP sets ByteOrder = 1 (``spi_controller.rdl:124-127``), so the first wire
+    byte of every TXDATA and RXDATA word is bits 7:0 (``SepSpiByteOrder`` of
+    ``env/sep_spi_lane_responder.py``). The leaf takes the firmware's order
+    with ``adopt``, so every run, ``+spi1_directed`` included, has one
+    decisive word: an order other than ``lsb_first`` fails CHK-SPI-BYTEORDER,
+    and a missing or ``undecided`` firmware line is CTRL-MISSING. One
+    CHK-SPI-BYTEORDER line per leaf grades the word counts. The opcode and
+    address bytes in TXDATA[7:0] first, and the WIP poll of the flash driver,
+    use the same order.
     CHK-SPI-LANE-FW      : the firmware console holds exactly one PASS line per
                            lane entry, with its opcode, width and word count.
 
@@ -168,7 +170,7 @@ _LANE_MAX = 5  # LANE_MAX in the firmware
 # Sectors of the lane leg: above the standard leg's sectors (1..31 and their
 # neighbours), inside the 16 MiB flash model.
 _LANE_SECTORS = range(32, 4096)
-_FW_ORDER = re.compile(r"OBS-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided)")
+_FW_ORDER = re.compile(r"INFO-SPI-BYTEORDER fw order=(lsb_first|msb_first|undecided)")
 _LANE_LINE = re.compile(
     r"(CHK-SPI-LANE-(?:READ|PROGRAM)) PASS: op=0x([0-9a-f]{8}) width=x(\d) "
     r"words=0x([0-9a-f]{8}) bytes=0x([0-9a-f]{8})"
@@ -346,7 +348,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
 
     build_env = False
     # The leaf's own graded records; the base-class records do not count.
-    required_evidence = ("CHK-READ", "CHK-RAND-REP")
+    required_evidence = ("CHK-READ", "CHK-RAND-REP", "CHK-SPI-BYTEORDER")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -458,23 +460,22 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             for entry in cfg.lanes:
                 await spi_lane_fcov(_TEST, "opcode", lanes=entry.lanes, opcode=entry.opcode)
                 await spi_lane_fcov(_TEST, "data", lanes=entry.lanes, rx=not entry.is_program)
-        order.log_obs(self.logger, self.random_seed())
+        order.log_info(self.logger, self.random_seed())
 
     def _adopt_fw_order(self, order: SepSpiByteOrder) -> None:
-        """Take the firmware's RXDATA order; it must equal the order the leaf saw."""
+        """Take the RXDATA order the firmware found at CHK-JEDEC; it must be ``lsb_first``."""
         console = self.sb.console_text()
         found = _FW_ORDER.findall(console)
-        if len(found) != 1:
+        if len(found) != 1 or found[0] == "undecided":
             raise AssertionError(
-                f"CTRL-MISSING seed={self.random_seed()}: {len(found)} firmware "
-                f"OBS-SPI-BYTEORDER line(s), expected 1. Console was:\n{console}"
+                f"CTRL-MISSING CHK-SPI-BYTEORDER seed={self.random_seed()}: firmware "
+                f"INFO-SPI-BYTEORDER orders {found}, expected one decided order. "
+                f"Console was:\n{console}"
             )
-        if found[0] == "undecided":
-            return
         if not order.adopt(found[0], where="fw CHK-JEDEC"):
             raise AssertionError(
-                f"CHK-SPI-SB-RX FAIL seed={self.random_seed()}: the firmware read RXDATA in "
-                f"order {found[0]}, the leaf saw {order.order} at {order.fixed_at}"
+                f"CHK-SPI-BYTEORDER FAIL seed={self.random_seed()}: the firmware read RXDATA in "
+                f"order {found[0]}, expected {order.order} ({order.fixed_at})"
             )
 
     def _preload_lane_reads(self, flash, cfg) -> None:
@@ -550,7 +551,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         """Independent BFM-side golden: confirm the random program/erase actually
         traversed the SPI datapath (not just the firmware's own readback). All
         expectations come from the single SepSpiFlashCmdCfg object, read in the
-        leaf's in-word byte order. Returns the primary program's wire bytes."""
+        ByteOrder = 1 order. Returns the primary program's wire bytes."""
         txns = flash.get_transactions()
         for t in txns:
             din = t.get("data_in") or b""

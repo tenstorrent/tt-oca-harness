@@ -70,8 +70,10 @@ module system_timer_octs_core
 
     output logic [8:0]            cur_credits_debug_o,      // Secondary steps consumed since the
                                                             // last credit or sync pulse.
-    output logic                  credits_left_debug_o      // High while cur_credits_debug_o is
+    output logic                  credits_left_debug_o,     // High while cur_credits_debug_o is
                                                             // below reg_credit_val_i.
+    output logic [1:0]            pulse_state_debug_o       // Outbound pulse FSM state: 00 idle,
+                                                            // 01 sync load, 10 credit.
 );
 
     /////////////////////////
@@ -363,5 +365,6 @@ module system_timer_octs_core
     // Debug outputs
     assign cur_credits_debug_o      = cur_credits;
     assign credits_left_debug_o     = credits_left;
+    assign pulse_state_debug_o      = pulse_active;
 
 endmodule

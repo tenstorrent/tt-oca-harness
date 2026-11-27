@@ -184,14 +184,16 @@ typedef union {
 #define SPI_CONTROLLER__STATUS__CMDQD_bp 16
 #define SPI_CONTROLLER__STATUS__CMDQD_bw 4
 #define SPI_CONTROLLER__STATUS__CMDQD_reset 0x0
-// If high, the number of 32-bits in the RX FIFO now exceeds the
-// !!CONTROL.RX_WATERMARK entries (32b each).
+// If high, the number of 32-bit words in the RX FIFO is greater
+// than or equal to !!CONTROL.RX_WATERMARK.
 #define SPI_CONTROLLER__STATUS__RXWM_bm 0x100000
 #define SPI_CONTROLLER__STATUS__RXWM_bp 20
 #define SPI_CONTROLLER__STATUS__RXWM_bw 1
 #define SPI_CONTROLLER__STATUS__RXWM_reset 0x0
 // The value of the ByteOrder parameter, provided so that firmware
-// can confirm proper IP configuration.
+// can confirm proper IP configuration. Reads 1 in SEP (ByteOrder = 1);
+// the listed reset value of 0 holds only for the first clock after
+// reset.
 #define SPI_CONTROLLER__STATUS__BYTEORDER_bm 0x400000
 #define SPI_CONTROLLER__STATUS__BYTEORDER_bp 22
 #define SPI_CONTROLLER__STATUS__BYTEORDER_bw 1
@@ -264,12 +266,14 @@ typedef union {
         // Command queue depth. Indicates how many unread 32-bit words are
         // currently in the command segment queue.
         uint32_t CMDQD :4;
-        // If high, the number of 32-bits in the RX FIFO now exceeds the
-        // !!CONTROL.RX_WATERMARK entries (32b each).
+        // If high, the number of 32-bit words in the RX FIFO is greater
+        // than or equal to !!CONTROL.RX_WATERMARK.
         uint32_t RXWM :1;
         uint32_t :1;
         // The value of the ByteOrder parameter, provided so that firmware
-        // can confirm proper IP configuration.
+        // can confirm proper IP configuration. Reads 1 in SEP (ByteOrder = 1);
+        // the listed reset value of 0 holds only for the first clock after
+        // reset.
         uint32_t BYTEORDER :1;
         // If high, signifies that an ongoing transaction has stalled
         // due to lack of available space in the RX FIFO
@@ -645,7 +649,7 @@ typedef union {
 #define SPI_CONTROLLER__EVENT_ENABLE__TXEMPTY_bw 1
 #define SPI_CONTROLLER__EVENT_ENABLE__TXEMPTY_reset 0x0
 // Assert to send a spi_event interrupt whenever the number of 32-bit words in
-// the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+// the RX FIFO is greater than or equal to !!CONTROL.RX_WATERMARK. To prevent the
 // reassertion of this interrupt, read more data from the RX FIFO, or
 // increase !!CONTROL.RX_WATERMARK.
 #define SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm 0x4
@@ -681,7 +685,7 @@ typedef union {
         // goes high
         uint32_t TXEMPTY :1;
         // Assert to send a spi_event interrupt whenever the number of 32-bit words in
-        // the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+        // the RX FIFO is greater than or equal to !!CONTROL.RX_WATERMARK. To prevent the
         // reassertion of this interrupt, read more data from the RX FIFO, or
         // increase !!CONTROL.RX_WATERMARK.
         uint32_t RXWM :1;

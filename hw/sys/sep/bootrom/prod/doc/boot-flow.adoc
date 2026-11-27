@@ -46,7 +46,8 @@ else (no)
 endif
 :Scrub DCCM, copy .data, and clear .bss;
 :Enter rom_main;
-:Read straps, initialize status and clock;
+:Read straps and wait for fuse sense;
+:Apply the status eFuse/strap policy and initialize the clock;
 :Initialize BL0 state and validate lifecycle;
 :Run crypto self-test and initialize memory and DMA;
 if (Primary normal boot?) then (yes)
@@ -95,8 +96,9 @@ ROM scrub DCCM, copy initialized data from ROM, clear BSS, and call
 
 . Verify that `.data` and `.bss` were initialized.
 . Probe the SMC scratch round-trip and report the ROM version and hash.
-. Read the captured straps and initialize status reporting and the selected
-  clock.
+. Read the captured straps and wait for fuse sensing.
+. Apply the `STATUS_RPT` eFuse/`STATUS_RPT_DISABLE` strap policy to the SMC
+  status ring, then initialize the selected clock.
 . Initialize `bl0_state`, check that its DCCM reserve does not overlap the
   stack, validate the lifecycle state, and read the chip ID.
 . Run the peripheral/bus reset sequence and the SHA-256 self-test, apply the

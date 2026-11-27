@@ -36,6 +36,9 @@ schema_version = 1
 #     named for the verification scope it exercises (`csr_uvm_extended`,
 #     `wdt_uvm_extended`, `cg_uvm_extended`, `mailbox_uvm_extended`,
 #     `reset_uvm_extended`) and runs on demand.
+#     `uvm_extended` (not scope-named) collects the UVM leaves that run on Verilator or VCS;
+#     the two left out of it are kept on VCS, a four-state simulator, because each samples
+#     DUT taps on every clock of its watch window with `$isunknown` as a check term of its own.
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
@@ -60,20 +63,6 @@ expect_fail_match = "CHK-WARM-DOMAIN-ACCESS-IN-RESET FAIL"
 # checker off on the warm-reset cycles where that AR is presented, so its
 # VALID-low-in-reset rule does not report the read the leaf makes on purpose.
 args = ["+smc_misc_warm_in_reset_assertoff"]
-
-[[tests]]
-# The CLA debug interrupt stays asserted after the CDbgEapStatus W2C write
-# (cla_node_eap.sv feeds the interrupt flop back without consulting the
-# status; core_logic_analyzer.sv gives the set priority over the clear);
-# dfd_cla.rdl names the W2C as the ISR's acknowledge.
-name = "smc_dfd_cla_irq_w2c_release_test"
-module = "smc_dfd_cla_irq_w2c_release_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "the CLA debug interrupt is not released by the EapStatus W2C write"
-expect_fail_match = "CHK-CLA-IRQ-W2C-RELEASE FAIL"
 
 [[tests]]
 # The CLA global clock-halt request is a set-only flop (cla_action_gen.sv)
@@ -155,47 +144,58 @@ run_modes = ["smoke"]
 
 [[tests]]
 # Checks sparse byte strobes on side-effect-free wide register-block words.
+# SV-UVM only; runs on Verilator or VCS.
 name = "smc_regblock_sparse_strobe_test"
 module = { uvm = "smc_regblock_sparse_strobe_test" }
 seed = 1
 timeout_sec = 1800
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 tags = ["uvm", "csr"]
 run_modes = ["smoke"]
 
 [[tests]]
 # Checks watchdog feed, sampled compare rollover, scaled count and interrupt clearing.
+# SV-UVM only; runs on Verilator or VCS.
 name = "smc_wdt_feed_zerocmp_test"
 module = { uvm = "smc_wdt_feed_zerocmp_test" }
 seed = 1
 timeout_sec = 1800
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 tags = ["uvm", "wdt"]
 run_modes = ["smoke"]
 
 [[tests]]
 # Checks watchdog count gating across software core reset and always-count priority.
+# SV-UVM only; runs on Verilator or VCS.
 name = "smc_wdt_core_awake_gate_test"
 module = { uvm = "smc_wdt_core_awake_gate_test" }
 seed = 1
 timeout_sec = 1800
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 tags = ["uvm", "wdt"]
 run_modes = ["smoke"]
 
 [[tests]]
 # Checks keyed and bitwise lock ordering with overlapping SEP_IN writes.
+# SV-UVM only; runs on Verilator or VCS.
 name = "smc_lock_pipelined_write_test"
 module = { uvm = "smc_lock_pipelined_write_test" }
 seed = 1
 timeout_sec = 1800
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 tags = ["uvm", "csr", "wdt"]
 run_modes = ["smoke"]
 
 [[tests]]
 # Checks second-stage service, wrong-core service, warm-reset recovery,
-# watchdog reset values and WDT_TIMEOUT retention.
+# watchdog reset values and WDT_TIMEOUT retention. SV-UVM only; kept on a
+# four-state simulator (VCS): a per-cycle `$isunknown` watch of the timeout and reset
+# taps is a term of its own in `CHK-WDT-STAGE2-SCOPE`, `-FIRST` and `-HELD`, not a
+# guard on a compared value, and cannot fail on a two-state simulator. The other
+# legs of those checks and the leaf's other checks would also grade on a two-state
+# simulator, where they lose only their X/Z parts: the X/Z part of their tap and response
+# compares, the read helpers' X/Z-mask term, the `*_KNOWN` AXI rules and
+# `SMC_AXI_R_DATA_KNOWN`.
 name = "smc_wdt_second_stage_reset_test"
 module = { uvm = "smc_wdt_second_stage_reset_test" }
 seed = 1
@@ -206,6 +206,12 @@ run_modes = ["smoke"]
 
 [[tests]]
 # Checks cold CSR wake and retirement through filter/remapper register gates.
+# SV-UVM only; kept on a four-state simulator (VCS): a per-cycle `$isunknown` watch of the
+# `cg_clk_active` and `cg_bus_active` taps is a term of its own in `CHK-REG-CG-SCOPE`, not a
+# guard on a compared value, and cannot fail on a two-state simulator. The bounded-idle leg of
+# `CHK-REG-CG-SCOPE` and the leaf's other checks would also grade on a two-state simulator,
+# where they lose only their X/Z parts: the X/Z part of their tap and response compares, the
+# read helpers' X/Z-mask term, the `*_KNOWN` AXI rules and `SMC_AXI_R_DATA_KNOWN`.
 name = "smc_fabric_reg_clock_gate_test"
 module = { uvm = "smc_fabric_reg_clock_gate_test" }
 seed = 1
@@ -229,22 +235,6 @@ tags = ["rtl_issue"]
 run_modes = ["smoke"]
 expect_fail = "an SPM write cut by a watchdog warm reset receives no B after the release and later writes with its AXI ID bits [2:0] never complete"
 expect_fail_match = "CHK-SPM-WRITE-CUT-BY-WARM-RESET FAIL"
-
-[[tests]]
-# With THD_DAT 25 to 32 the I2C controller starts the transfer queued behind
-# a STOP T_R + TSU_STA + 7 cycles after it whatever TIMING4.T_BUF holds, below
-# T_BUF in some samples, where i2c.rdl gives T_BUF as the time between a STOP
-# and START condition. The leaf runs the smc_i2c_timing_set_rand_test draw (its
-# six graded pairs are the arm leg) and asserts every bus-free time of the
-# T_BUF pair at least the programmed T_BUF and moving with it.
-name = "smc_i2c_tbuf_bus_free_test"
-module = "smc_i2c_tbuf_bus_free_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "the I2C bus-free time after a STOP ignores TIMING4.T_BUF when THD_DAT is long"
-expect_fail_match = "CHK-ITS-TBUF-BUS-FREE FAIL"
 
 [[tests]]
 # The vendored axi_demux sizes its per-ID-bucket in-flight counter to
@@ -276,11 +266,12 @@ tests = [
 
 [[tests]]
 # Checks occupied mailbox state clearing and fresh traffic across cool reset.
+# SV-UVM only; runs on Verilator or VCS.
 name = "smc_mailbox_cool_reset_recovery_test"
 module = { uvm = "smc_mailbox_cool_reset_recovery_test" }
 seed = 1
 timeout_sec = 1800
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 tags = ["uvm", "mailbox", "reset"]
 run_modes = ["smoke"]
 
@@ -291,32 +282,35 @@ expected_count = 1
 tests = ["smc_mailbox_cool_reset_recovery_test"]
 
 [[tests]]
-# External reset-unit byte lanes, neighbors and isolation effects; run on demand.
+# External reset-unit byte lanes, neighbors and isolation effects.
+# SV-UVM only; runs on Verilator or VCS.
 name = "smc_external_reg_lane_test"
 module = { uvm = "smc_external_reg_lane_test" }
 seed = 1
 timeout_sec = 1800
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 tags = ["uvm", "csr", "reset"]
 run_modes = ["smoke"]
 
 [[tests]]
-# Narrow FIFO/acquire reads and null-write side effects; licensed on-demand leaf.
+# Narrow FIFO/acquire reads and null-write side effects.
+# SV-UVM only; runs on Verilator or VCS.
 name = "smc_narrow_access_side_effect_test"
 module = { uvm = "smc_narrow_access_side_effect_test" }
 seed = 1
 timeout_sec = 1800
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 tags = ["uvm", "csr", "mailbox"]
 run_modes = ["smoke"]
 
 [[tests]]
 # Checks cool reset with held SEP_IN responses and same-ID SPM recovery.
+# SV-UVM only; runs on Verilator or VCS.
 name = "smc_ingress_reset_inflight_test"
 module = { uvm = "smc_ingress_reset_inflight_test" }
 seed = 1
 timeout_sec = 1800
-tools = ["vcs"]
+tools = ["vcs", "verilator"]
 tags = ["uvm", "reset"]
 run_modes = ["smoke"]
 
@@ -348,15 +342,28 @@ tests = [
 ]
 
 [[groups]]
-# Filed-defect reproducers; the weekly tier's own row.
-name = "rtl_issue"
+# Every SV-UVM-only leaf that also runs on a two-state simulator; run on demand.
+name = "uvm_extended"
 expected_count = 8
 tests = [
+    "smc_regblock_sparse_strobe_test",
+    "smc_lock_pipelined_write_test",
+    "smc_external_reg_lane_test",
+    "smc_narrow_access_side_effect_test",
+    "smc_wdt_feed_zerocmp_test",
+    "smc_wdt_core_awake_gate_test",
+    "smc_mailbox_cool_reset_recovery_test",
+    "smc_ingress_reset_inflight_test",
+]
+
+[[groups]]
+# Filed-defect reproducers; the weekly tier's own row.
+name = "rtl_issue"
+expected_count = 6
+tests = [
     "smc_warm_domain_access_during_reset_test",
-    "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
     "smc_spm_write_cut_by_warm_reset_test",
-    "smc_i2c_tbuf_bus_free_test",
     "smc_flr_hold_edge_requeue_test",
     "smc_clock_gate_inflight_completes_test",
     "smc_fabric_demux_bucket_limits_test",

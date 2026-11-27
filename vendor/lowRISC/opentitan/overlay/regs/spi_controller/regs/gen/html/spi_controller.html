@@ -74,9 +74,9 @@
 <tr><td>25</td><td>RXFULL</td><td>R</td><td>0x0</td><td>When high, indicates that the receive fifo is full.  Any<br>ongoing transactions will stall until firmware reads some<br>data from !!RXDATA.</td></tr>
 <tr><td>24</td><td>RXEMPTY</td><td>R</td><td>0x0</td><td>When high, indicates that the receive fifo is empty.<br>Any reads from RX FIFO will cause an error interrupt.</td></tr>
 <tr><td>23</td><td>RXSTALL</td><td>R</td><td>0x0</td><td>If high, signifies that an ongoing transaction has stalled<br>due to lack of available space in the RX FIFO</td></tr>
-<tr><td>22</td><td>BYTEORDER</td><td>R</td><td>0x0</td><td>The value of the ByteOrder parameter, provided so that firmware<br>can confirm proper IP configuration.</td></tr>
+<tr><td>22</td><td>BYTEORDER</td><td>R</td><td>0x0</td><td>The value of the ByteOrder parameter, provided so that firmware<br>can confirm proper IP configuration. Reads 1 in SEP (ByteOrder = 1);<br>the listed reset value of 0 holds only for the first clock after<br>reset.</td></tr>
 <tr><td>21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>20</td><td>RXWM</td><td>R</td><td>0x0</td><td>If high, the number of 32-bits in the RX FIFO now exceeds the<br>!!CONTROL.RX_WATERMARK entries (32b each).</td></tr>
+<tr><td>20</td><td>RXWM</td><td>R</td><td>0x0</td><td>If high, the number of 32-bit words in the RX FIFO is greater<br>than or equal to !!CONTROL.RX_WATERMARK.</td></tr>
 <tr><td>19:16</td><td>CMDQD</td><td>R</td><td>0x0</td><td>Command queue depth. Indicates how many unread 32-bit words are<br>currently in the command segment queue.</td></tr>
 <tr><td>15:8</td><td>RXQD</td><td>R</td><td>0x0</td><td>Receive queue depth. Indicates how many unread 32-bit words are<br>currently in the RX FIFO.  When active, this result may an<br>underestimate due to synchronization delays.</td></tr>
 <tr><td>7:0</td><td>TXQD</td><td>R</td><td>0x0</td><td>Transmit queue depth.<br>Indicates how many unsent 32-bit words are currently in the TX FIFO.<br>When active, this result may be an overestimate due to synchronization delays.</td></tr>
@@ -135,7 +135,7 @@
 <tr><td>5</td><td>IDLE</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever !!STATUS.ACTIVE<br>goes low</td></tr>
 <tr><td>4</td><td>READY</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever !!STATUS.READY<br>goes high</td></tr>
 <tr><td>3</td><td>TXWM</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever the number of 32-bit words in<br>the TX FIFO is less than !!CONTROL.TX_WATERMARK.  To prevent the<br>reassertion of this interrupt add more data to the TX FIFO, or<br>reduce !!CONTROL.TX_WATERMARK.</td></tr>
-<tr><td>2</td><td>RXWM</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever the number of 32-bit words in<br>the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the<br>reassertion of this interrupt, read more data from the RX FIFO, or<br>increase !!CONTROL.RX_WATERMARK.</td></tr>
+<tr><td>2</td><td>RXWM</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever the number of 32-bit words in<br>the RX FIFO is greater than or equal to !!CONTROL.RX_WATERMARK. To prevent the<br>reassertion of this interrupt, read more data from the RX FIFO, or<br>increase !!CONTROL.RX_WATERMARK.</td></tr>
 <tr><td>1</td><td>TXEMPTY</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever !!STATUS.TXEMPTY<br>goes high</td></tr>
 <tr><td>0</td><td>RXFULL</td><td>RW</td><td>0x0</td><td>Assert to send a spi_event interrupt whenever !!STATUS.RXFULL<br>goes high</td></tr>
 </table>

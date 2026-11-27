@@ -224,7 +224,7 @@ After the alias remap, traffic routing is done as follows:
 * Any transaction that doesn’t get routed to local resources is directly
 routed out to the SMN.
 
-Both the chiplet ID and chiplet BAR are available in SMC as MMRs. The
+The hardware does not derive the apertures from a chiplet ID. The
 Programmer's Guide gives the
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence].
@@ -335,6 +335,13 @@ The inbound filter blocks traffic by default. Its entries reside in the system
 CSRs, reached directly by local masters and by external masters only through
 an enabled inbound filter entry (or the stated SEP debug bypass). Matching
 rules are in <<sep-traffic-filter-decode,Filtering and Protection>>.
+
+The system boots before SEP, and it must send no traffic on `smn_inbound`
+while SEP is in reset. While `sep_reset_n` is low, the port accepts AW, AR and W
+beats and discards them without a response, so such a request never completes
+and its initiator waits on it indefinitely. After `sep_reset_n` releases, the
+inbound filter blocks every request and answers it with DECERR until firmware
+enables a matching entry, unless SEP-scope debug bypasses the filter.
 
 ifdef::backend-html5[]
 [[mailboxes]]

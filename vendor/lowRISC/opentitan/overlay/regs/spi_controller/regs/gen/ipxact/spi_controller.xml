@@ -252,8 +252,8 @@ currently in the command segment queue.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>RXWM</ipxact:name>
-            <ipxact:description>If high, the number of 32-bits in the RX FIFO now exceeds the
-!!CONTROL.RX_WATERMARK entries (32b each).</ipxact:description>
+            <ipxact:description>If high, the number of 32-bit words in the RX FIFO is greater
+than or equal to !!CONTROL.RX_WATERMARK.</ipxact:description>
             <ipxact:bitOffset>20</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -267,7 +267,9 @@ currently in the command segment queue.</ipxact:description>
           <ipxact:field>
             <ipxact:name>BYTEORDER</ipxact:name>
             <ipxact:description>The value of the ByteOrder parameter, provided so that firmware
-can confirm proper IP configuration.</ipxact:description>
+can confirm proper IP configuration. Reads 1 in SEP (ByteOrder = 1);
+the listed reset value of 0 holds only for the first clock after
+reset.</ipxact:description>
             <ipxact:bitOffset>22</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -812,7 +814,7 @@ goes high</ipxact:description>
           <ipxact:field>
             <ipxact:name>RXWM</ipxact:name>
             <ipxact:description>Assert to send a spi_event interrupt whenever the number of 32-bit words in
-the RX FIFO is greater than !!CONTROL.RX_WATERMARK. To prevent the
+the RX FIFO is greater than or equal to !!CONTROL.RX_WATERMARK. To prevent the
 reassertion of this interrupt, read more data from the RX FIFO, or
 increase !!CONTROL.RX_WATERMARK.</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>

@@ -8,7 +8,7 @@
 // muxes it with the Key Manager AXI-Lite path into the eFuse controller register port. The
 // controller's shim CSR port leaves through an axi_cut.
 // In a restricted state (PROD / RMA_SiP, or an LC-state differential-decode integrity
-// error), JTAG accesses outside the MMR / token register space receive DECERR with read
+// error), JTAG accesses outside the MMR / token register space receive SLVERR with read
 // data 0xBADCAB1E; the MMR space stays accessible for RMA_SiP token programming.
 // secure_tm_req_i is latched into secure_tm_o on the second clock edge after rst_ni
 // release when security is disabled, and otherwise on the rising edge of fuse sense done.
@@ -16,6 +16,7 @@
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 `include "ocah_registers.svh"
+`include "ocah_assert.svh"
 
 module sep_efuse_wrapper #(
   parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
@@ -53,7 +54,7 @@ module sep_efuse_wrapper #(
                                                            // of fuse sense done.
 
   input  sep_efuse_pkg::efuse_axil_req_t     axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager interface, filtered by the lifecycle JTAG policy.
-  output sep_efuse_pkg::efuse_axil_resp_t    axil_sep_otp_jtag_resp_o,  // Response to the OTP debug manager; DECERR for accesses the JTAG policy blocks.
+  output sep_efuse_pkg::efuse_axil_resp_t    axil_sep_otp_jtag_resp_o,  // Response to the OTP debug manager; SLVERR for accesses the JTAG policy blocks.
 
   input  sep_efuse_pkg::efuse_axil_req_t     km_efuse_axil_req_i,  // Key Manager AXI-Lite manager
                                                                    // interface, muxed with the
@@ -75,16 +76,16 @@ module sep_efuse_wrapper #(
   output logic                               sep_intermediate_reset_no,  // Active-low SEP reset, synchronized to clk_i and released once fuse sense and
                                                                          // the external boot sequence are done; to sep_reset_ctrl before the JTAG override.
 
-  output logic [9:0]                         sep_efuse_debug_o,  // eFuse controller debug flags:
+  output logic [15:0]                        sep_efuse_debug_o,  // eFuse controller debug flags:
                                                                  // [0] shadow write locked, [1]
                                                                  // shadow read locked, [2] program
                                                                  // locked, [3] read locked, [4]
                                                                  // write set-only, [5] LC-state
                                                                  // access, [6] read timeout, [7]
                                                                  // program timeout, [8] request
-                                                                 // error, [9] secure TM blocked.
-  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,  // RMA SiP token match status code; 6'b010101 indicates a match.
-  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,  // RMA chiplet token match status code; 6'b010101 indicates a match.
+                                                                 // error, [9] secure TM blocked;
+                                                                 // FSM states [11:10] read, [13:12]
+                                                                 // program, [15:14] sense.
 
   output logic                               locked_field_access_interrupt_o,  // Interrupt raised when an access targets a locked eFuse field.
 
@@ -281,6 +282,7 @@ module sep_efuse_wrapper #(
     .AXI_DATA_WIDTH(sep_efuse_pkg::DataWidth),
     .axil_req_t    (sep_efuse_pkg::efuse_axil_req_t),
     .axil_resp_t   (sep_efuse_pkg::efuse_axil_resp_t),
+    .RESP          (axi_pkg::RESP_SLVERR),
     .RESP_WIDTH    (sep_efuse_pkg::DataWidth),
     .RESP_DATA     (32'hbadcab1e),
     .MAX_TRANS     (2)
@@ -323,6 +325,15 @@ module sep_efuse_wrapper #(
   /////////////////////////////////////////////////////////////
   // eFuse Interface Controller
   /////////////////////////////////////////////////////////////
+
+  // Every field-map idx other than '1 must have a lock pair in the 2 * (NumEfuseFields - 1) lock
+  // bits the controller gives the map. The lock lookups read an idx outside the vector as locked,
+  // so this check finds the malformed map.
+  for (genvar i = 0; i < sep_efuse_pkg::NumEfuseFields; i++) begin : gen_field_lock_idx
+    `OCAH_ASSERT_STATIC(FieldMapIdxHasLockPair_A,
+                        (sep_efuse_pkg::EfuseFieldMap[i].idx == '1) ||
+        (int'(sep_efuse_pkg::EfuseFieldMap[i].idx) < int'(sep_efuse_pkg::NumEfuseFields - 1)))
+  end
 
   efuse_interface_controller #(
     .ADDR_WIDTH                 (sep_efuse_pkg::AddrWidth),
@@ -397,11 +408,13 @@ module sep_efuse_wrapper #(
     .secure_tm_i                (secure_tm_n0_scan),
     .security_disable_i         (security_disable), // Driven by this controller's own security_disable_o
     .efuse_field_map_i          (sep_efuse_pkg::EfuseFieldMap),
+    .supplementary_field_map_i        ('0),
 
     .reset_n_o                  (sep_intermediate_reset_no),
     .fuse_sense_done_o          (fuse_sense_done),
     .security_disable_o         (security_disable),
     .shadow_regs_o              (shadow_regs_o),
+    .supplementary_shadow_regs_o      (),
 
     .ext_boot_seq_done_i        (ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication
 
@@ -416,12 +429,13 @@ module sep_efuse_wrapper #(
     .is_program_timeout_debug_o         (sep_efuse_debug_o[7]),
     .is_efuse_req_err_o                 (sep_efuse_debug_o[8]),
     .is_secure_tm_blocked_o             (sep_efuse_debug_o[9]),
-    .is_rma_sip_token_match_debug_o     (sep_efuse_token_match_sip_debug_o),
-    .is_rma_chiplet_token_match_debug_o (sep_efuse_token_match_chiplet_debug_o),
+    .is_rma_sip_token_match_debug_o     (),
+    .is_rma_chiplet_token_match_debug_o (),
 
     .locked_field_access_interrupt_o    (locked_field_access_interrupt_o),
 
-    .token_match_fault_o                (token_match_fault_o)
+    .token_match_fault_o                (token_match_fault_o),
+    .fsm_state_debug_o                  (sep_efuse_debug_o[15:10])
   );
 
   axi_cut #(

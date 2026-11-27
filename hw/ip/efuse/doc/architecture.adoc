@@ -56,11 +56,13 @@ verification operations
 access control
 
 |Interface SHIM CSR |Configuration registers for foundry-specific timing adaptation. Implemented by the adopter, but always accessed via the interface controller.
+
+|Supplementary Shadow Registers |SMC only, optional: the sensed supplementary fuse region, exported on `smc_supplementary_shadow_regs_o` (<<efuse-supplementary-fuses>>)
 |=====================================================================================
 
 === Shadow Register Subsystem
 
-The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with `access_length_words` set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.
+The shadow register subsystem accelerates OTP access by caching eFuse contents at boot time. On power-up, a dedicated FSM automatically issues a bulk read command (with `read_word_count` set to cover the full eFuse bank), copying all OTP data into the shadow registers. This ensures the shadow registers are fully populated and always synchronized with the OTP state at each boot.
 
 === Features
 
@@ -72,7 +74,7 @@ access features.
 .eFuse shadow-register features
 |=====================================================================================
 |Feature |Description
-|Capacity |Configurable (default: 8192 bits / 1KB, 256 × 32-bit words), set via the `SHADOW_REG_BITS` parameter
+|Capacity |Set by the `SHADOW_REG_BITS` parameter (default 8192): 2048 bits (64 × 32-bit words) in the SMC and 8192 bits (256 × 32-bit words) in the SEP. The SMC can add a second shadow register file of `SUPPLEMENTARY_FUSE_WORDS` words for the optional supplementary fuse region (<<efuse-supplementary-fuses>>)
 |Initialization |Automatic boot-time loading via Fuse Sense FSM
 |Access Control |Multi-tier hardware and software lock mechanisms
 |Data Consistency |Maintains synchronization with underlying OTP storage upon each power-on reset
@@ -89,12 +91,15 @@ support robust error handling and retry logic.
 
 The program interface FSM (efuse_program_interface.sv) enforces the
 write-once nature of OTP hardware, ensuring that programmed data cannot
-be altered once set. It supports write-and-verify procedures for
-reliability, integrating verification steps that check programmed values
-against intended data, and fully blocks any unauthorized overwrites to
-maintain data integrity.
+be altered once set. It issues a single `FUSE_COMMAND_PROGRAM` to the SHIM
+and fully blocks any unauthorized overwrites to maintain data integrity.
+Whether to verify the programmed bit is the adopter's decision: the SHIM
+implements the foundry-specific program flow, including any mandatory verify
+step, and reports the outcome in `status`. Data from a successful program
+response is stored in `EFUSE_PROGRAM_INTERFACE_READ_DATA`; after an error the
+register keeps its previous value, which is not valid.
 
-*Readback Capture Behavior:*
+*Read-data Capture Behavior:*
 
 When a read command completes successfully, the read interface captures data from
 the SHIM response into the read-data CSR during the ST_WAIT_RESP state. This data
@@ -107,7 +112,7 @@ The fuse command request/response structs exchanged between the
 controller and the SHIM are not declared with fixed types. Instead, they
 are generated from parameterized preprocessor macros defined in
 `efuse_typedef.svh`. This keeps the command interface technology-agnostic:
-each integration supplies its own address, data, access-length, and
+each integration supplies its own address, data, read word-count, and
 command types, while the macros guarantee a consistent struct layout and
 field ordering across all OTP variants.
 
@@ -124,17 +129,16 @@ purpose.
 |=====================================================================================
 
 The request macro is parameterized over the struct name plus four payload
-types (`addr_t`, `data_t`, `access_length_words_t`, `command_t`), allowing
-the controller to size the address space, transfer length, and command
+types (`addr_t`, `data_t`, `word_count_t`, `command_t`), allowing
+the controller to size the address space, read word count, and command
 encoding to match the target OTP technology:
 
 [source,sourceCode,systemverilog]
 ----
-`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)  \
+`define EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, word_count_t, command_t)  \
   typedef struct packed {                                       \
     addr_t                    address;             // Target address       \
-    logic                     program_data;        // Data to program (1'b1) \
-    access_length_words_t     access_length_words; // Transfer size        \
+    word_count_t              read_word_count;     // Words to read        \
     command_t                 command;             // Command type         \
     logic                     valid;               // Request valid        \
   } fuse_command_req_t;
@@ -158,7 +162,7 @@ types:
 
 [source,sourceCode,systemverilog]
 ----
-`EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, access_length_words_t, command_t)
+`EFUSE_COMMAND_REQ_T(fuse_command_req_t, addr_t, data_t, word_count_t, command_t)
 `EFUSE_COMMAND_RESP_T(fuse_command_resp_t, data_t)
 ----
 
@@ -186,14 +190,18 @@ the controller's generic commands into the signaling expected by a particular
 OTP macro; in this reference version the macro-side interface is APB, but a
 real integration would replace this with the foundry's native signals.
 
-The SHIM decodes three command types from the controller:
+The SHIM decodes two command types from the controller:
 
 * *Read* — fetch one or more words from the bank.
-* *Program* — burn new bits into the bank.
-* *Program/read-back* — program, then read back to verify success.
+* *Program* — burn new bits into the bank using the foundry's native program
+  sequence (including any mandatory verify step the foundry requires).
 
 It implements these with dedicated read and program FSMs that sequence the
 macro-side transactions and return a `fuse_command_resp_t` to the controller.
+The reference SHIM (`efuse_interface_shim.sv`) always reads back the programmed
+word after the write and returns it in `data`. It sets `status` when the write or
+the read-back answers PSLVERR, or when the bit did not stick. A real integration
+replaces the program FSM with the foundry's own sequence.
 Foundry-specific timing and configuration (for example, program pulse widths)
 are exposed through the SHIM Control CSRs, accessed over the
 `fuse_bank_ctrl` AXI4-Lite interface.
@@ -201,7 +209,7 @@ are exposed through the SHIM Control CSRs, accessed over the
 === eFuse Bank Model
 
 The eFuse bank model (`efuse_bank_model.sv`) is a reference, simulation-only
-stand-in for the real foundry OTP macro. It is a 3KB (768 x 32-bit word) store
+stand-in for the real foundry OTP macro. It is a 4 KB (1024 x 32-bit word) store
 fronted by a standard APB interface, and it emulates the set-once behavior of
 real OTP so the controller and SHIM can be exercised end-to-end without
 silicon. In a production integration it is replaced by the actual foundry
@@ -255,7 +263,8 @@ a command has been issued does not affect that command.
 |=====================================================================================
 |Property |Hardware Lock |Software Lock
 |Source |Permission bits fused into the eFuse array (the field map reflects
-the programmed values) |Runtime writes to the `LOCKS` CSR (write-1-to-set)
+the programmed values) |Runtime writes to the lock registers (write-1-to-set):
+`LOCKS` on SEP, `HARNESS_LOCKS` and `SUPPLEMENTARY_LOCKS` on SMC
 |Persistence |Permanent — backed by one-time-programmable bits and cannot
 be cleared once set |Volatile — retained only until the next system reset
 |Reversibility |Irreversible by any means |Cleared by reset, allowing the
@@ -315,8 +324,10 @@ For SMC, the internal security disable signal is directly driven by the
 
 === Lifecycle State (LC_STATE) Effects
 
-The eFuse interface controller enforces access restrictions based on the
-chip's lifecycle state.
+The subsystem eFuse wrapper, not the eFuse interface controller, enforces the
+JTAG access restrictions based on the chip's lifecycle state: `smc_efuse_wrapper`
+for SMC and `sep_efuse_wrapper` for SEP. The wrapper decodes the differentially
+encoded lifecycle state and treats a decode integrity error as a restricted state.
 
 *Lifecycle State Encoding:*
 
@@ -343,31 +354,35 @@ JTAG access policies differ between SMC and SEP variants. The table below descri
 the SMC variant policy, which restricts JTAG access in production and RMA states.
 SEP applies a different policy: in restricted states (PROD or RMA_SIP), JTAG
 accesses to the MMR (token register) space remain allowed for token programming;
-accesses outside the MMR space are blocked with an error response.
+accesses outside the MMR space are blocked with an SLVERR response.
 
 *SMC JTAG Policy:*
 
-When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
-to eFuse registers is restricted (<<efuse-lifecycle-based-jtag-permissions-table>>).
+When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG writes to eFuse
+registers are blocked and JTAG reads are blocked except for JTAG_PUBLIC_IDENTITY.
+When the lifecycle state fails its integrity check, every JTAG write and read is
+blocked, JTAG_PUBLIC_IDENTITY included
+(<<efuse-lifecycle-based-jtag-permissions-table>>).
 
 [[efuse-lifecycle-based-jtag-permissions-table]]
-[width="100%",cols="32%,43%,25%",options="header",]
+[width="100%",cols="28%,30%,24%,18%",options="header",]
 .eFuse JTAG permissions (SMC)
 |=====================================================================================
-|Access Type |PROD/RMA_SOP State |Other States
-|JTAG Write |*Blocked* (error response) |Allowed
-|JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |Allowed
-|JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |Allowed
+|Access Type |PROD/RMA_SOP State |LC_STATE Integrity Error |Other States
+|JTAG Write |*Blocked* (SLVERR response) |*Blocked* (SLVERR response) |Allowed
+|JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |*Blocked* |Allowed
+|JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |*Blocked* |Allowed
 |=====================================================================================
 
 The access control mechanism uses an AXI-Lite demux that routes blocked
 requests to an error slave. When a request is blocked, the error slave
-returns an error response with data value `0xbadcab1e`.
+returns an SLVERR response with data value `0xBADCAB1E`.
 
 *SMC exception for JTAG_PUBLIC_IDENTITY:*
 
 Even in PROD or RMA_SOP states, JTAG read access to the JTAG_PUBLIC_IDENTITY
-register is permitted. This allows identification of the chip for manufacturing
+register is permitted. The exception does not apply when the lifecycle state
+fails its integrity check. This allows identification of the chip for manufacturing
 and field returns without exposing sensitive eFuse contents.
 
 === Secure Test Mode (secure_tm_i)
@@ -405,3 +420,121 @@ preventing shadow register modifications.
 For SMC, `secure_tm_i` is tied to logic `0`, meaning Secure Test Mode is not
 active during normal SMC operation. This signal is primarily relevant for SEP
 where sensitive RMA tokens must be protected during manufacturing test flows.
+
+[[efuse-supplementary-fuses]]
+=== Supplementary Fuse Region
+
+The SMC eFuse controller can sense an optional supplementary fuse region of
+32-bit words that the adopter defines for logic elsewhere in its SoC, such as
+memory repair or sensor trim. The harness map is required and its layout is
+fixed by OCAH; the supplementary region is optional, and the adopter defines
+its size and contents. Its size is set by `WORDS`, up to the size of the
+`fuse` slot in `smc_external` (<<efuse-supplementary-size>>). The controller senses
+the region with the harness map, holds it in a second shadow register file,
+locks it with `SUPPLEMENTARY_LOCKS` and exports it without interpreting it. The
+SEP has no supplementary fuse region, and the harness spares stay reserved for
+the harness. <<efuse-supplementary-fuses-fig>> shows the region's path through
+the SMC controller.
+
+[[efuse-supplementary-fuses-fig]]
+.SMC supplementary fuse region
+image::efuse_supplementary_architecture.svg[alt="Inside the SMC eFuse controller, register access passes through access control and the guard to the harness shadow file, which holds HARNESS_LOCKS, SUPPLEMENTARY_LOCKS, named fuses and spares, and to the supplementary shadow file of up to 32 lock regions, whose locks come from SUPPLEMENTARY_LOCKS; the fuse sense FSM reads the harness map and the supplementary map in one command; on the adopter side, smc_supplementary_shadow_regs_o feeds the adopter logic, and fuse commands go through the Interface SHIM to fuse macros holding bits 0 to 2047 and bits from 2048",width=100%,pdfwidth=100%]
+
+==== Configuration
+
+`CFG.SMC_SUPPLEMENTARY_FUSE`, of type
+`smc_efuse_pkg::supplementary_fuse_cfg_t`, describes the region. The harness
+reads only these members, never adopter field names.
+
+[cols="1,4",options="header"]
+|===
+|Member |Meaning
+|`BASE` |Byte offset of the region's software window in `smc_external`, word
+aligned. The window must sit at or above `EFUSE_SHIM_SIZE` and end within
+`smc_external`; the reference wrappers place it in the `fuse` slot of the
+supplementary region. The fabric diverts the window to the eFuse controller
+instead of `smc_external_req_o`.
+|`WORDS` |Region size in 32-bit words, so the window is 4 × `WORDS` bytes. 0,
+the default, removes the region and its logic.
+|`LOCK_REGION_END` |32 word offsets that divide the region into lock regions
+(<<efuse-supplementary-locks>>).
+|===
+
+Static assertions in `smc_peripherals.sv` reject a configuration that breaks
+these rules. `hw/top/smc_supplementary_fuse_map.rdl` shows how an adopter can describe its
+payload for its own headers and documentation; the harness does not read it.
+The reference wrappers enable the example in `smc_supplementary_fuse_example_pkg`:
+128 words in three lock regions.
+
+[[efuse-supplementary-size]]
+==== Region Size
+
+The `fuse` slot in the `smc_external` map sets the largest region, and the
+controller sizes the fuse command's bit address and word count from it; `WORDS`
+may not exceed the slot's word count. The open map reserves a 16 KB slot, 4096
+words or 128 Kbit, at `smc_external` offset `0x7000`. An adopter that needs more
+enlarges the slot in its own `smc_external` map; the slot may sit anywhere in
+`smc_external` that does not overlap another block, and the window itself need
+not sit in the slot. `WORDS` may not exceed 65535, the range of a
+`LOCK_REGION_END` entry. Each word costs 32 shadow flops and lengthens the boot
+sense, so a large region trades area and boot time for fuses.
+
+==== Sensing and Export
+
+The supplementary fuses start at bit 2048, directly after the 2 Kbit harness map, so
+harness fuse addresses do not depend on the region size. At cold reset release
+the controller issues one READ of 64 + `WORDS` words from bit 0. The harness
+shadow file stores the first 64 words and the supplementary shadow file the rest.
+`fuse_sense_done` waits for both, so `smc_fuse_sense_done_o`, the
+`efuse_sense_done` status bit and the fuse-released SMC reset all include the
+supplementary region.
+
+`smc_supplementary_shadow_regs_o` carries the supplementary shadow file as `WORDS` 32-bit
+words, gated like `shadow_regs_o`. With no region it is one word, tied to
+zero.
+
+[[efuse-supplementary-locks]]
+==== Supplementary Locks
+
+The SMC harness map begins with two lock registers: `HARNESS_LOCKS` at `0x000`
+governs the harness fields and `SUPPLEMENTARY_LOCKS` at `0x008` the supplementary region.
+Both are lock meta-fields: they are not lock-checked themselves, their shadow
+copies are write-1-to-set, and they sit in Class 1 storage so scan cannot clear
+them. A burned bit is a permanent lock and a set shadow bit locks until reset
+(<<efuse-hardware-and-software-locks-table>>).
+
+Entry _n_ of `LOCK_REGION_END` is the word offset one past the end of lock
+region _n_. Region _n_ starts where region _n_-1 ends, so the regions tile the
+supplementary map without gaps. Entries after the last region are 0, and the last
+region ends at `WORDS`. `SUPPLEMENTARY_LOCKS` bit 2__n__ write-locks region _n_ and
+bit 2__n__+1 read-locks it; pairs past the last region are unused. The example
+configuration's entries are 64, 96 and 128, so pairs 0-2 lock words 0-63,
+64-95 and 96-127.
+
+The region has no static lock policy: every region is readable and writable in
+the shadow until its `SUPPLEMENTARY_LOCKS` bits are set. Because a lock pair keeps
+its meaning only while its region does, the region may grow only by appending
+regions once parts carry burned `SUPPLEMENTARY_LOCKS` bits.
+
+==== Access Path
+
+The supplementary window shares the harness shadow registers' path: the functional
+and OTP JTAG ports, one AXI-Lite to APB bridge and the APB demux. As a result:
+
+* The SMC JTAG lifecycle filter applies unchanged
+(<<efuse-lifecycle-based-jtag-permissions-table>>).
+* A write to `SUPPLEMENTARY_LOCKS` completes before any later access to the adopter
+window from either port.
+* Until fuse sense completes, accesses to the window receive an error response.
+* An access to a locked region completes with SLVERR and returns `0xBADCAB1E`,
+leaves the shadow word unchanged and raises `locked_field_access_interrupt_o`,
+as for a locked harness field.
+* `efuse_guard` checks firmware program and read commands at or above bit 2048
+against the `SUPPLEMENTARY_LOCKS` pair of the target's region. A refused command
+completes with its `done` and status bits set and latches `efuse_req_error` in
+`EFUSE_INTERFACE_CTRL_STATUS`.
+* Commands at or above bit 2048 + 32 × `WORDS` are out of bounds. They never
+reach the SHIM: they complete with their `done` and status bits set and latch
+`efuse_program_addr_error` or `efuse_read_addr_error` in
+`EFUSE_INTERFACE_CTRL_STATUS`. With no region, every address at or above bit
+2048 is out of bounds.

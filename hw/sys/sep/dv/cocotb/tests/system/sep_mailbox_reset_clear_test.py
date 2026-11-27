@@ -14,8 +14,12 @@ Reset"; ``hw/sys/sep/doc/mailbox.adoc``, "Mailboxes";
 SEP reset empties every FIFO, clears thresholds, error flags, interrupt status
 and enables, drops every mailbox line, and restores the ISS source ID of an
 inbound filter entry to its reset value 0. The mailbox works after the reset.
-The reset source of ``locked`` and ``entry_enabled`` is not stated: both are
-logged (``OBS-FILTER-RESET``), never graded.
+``rst_ni`` asserts ``sep_reset_n``, which resets the system peripherals
+(``hw/sys/sep/doc/clk_rst.adoc:57-58``, ``hw/sys/sep/doc/reset_controller.adoc:45-50``);
+the system CSRs hold the inbound filter entries (``hw/sys/sep/doc/fabric.adoc:146``)
+and sit inside the system peripherals
+(``hw/sys/sep/doc/assets/sep-system-peripherals.svg``, ``fabric.adoc:272-275``). So
+``locked`` and ``entry_enabled`` return to their ``FILTER_CONFIG`` reset values 0.
 
 Flow: thresholds and enables on all 16 ports; one locked ISS entry (``src_id``
 5) over the inbound half of the filter mailbox with one admitted external
@@ -42,10 +46,18 @@ the reuse mailbox.
 Checkers:
   CTRL-OP-INFLIGHT   request handshake before the ``rst_ni`` fall, no B or R
                     handshake after it; else ``CTRL-MISSING``.
+  CHK-PRE-LINES     before the reset, probe bits [7:0] equal the model inbound
+                    lines and the SMC port equals the model outbound mask: the
+                    outbound port of mailbox m drives bit m
+                    (``hw/sys/sep/doc/mailbox.adoc:31-35``).
   CHK-PRE-NONZERO   pre-state differs from the reset state (per mailbox).
   CHK-RESET-STATE   16 apertures read the reset values (VCS: no X bit).
   CHK-RESET-LINES   probe bits [7:0] and the SMC port read 0x00.
   CHK-RESET-FILTER  the ISS ``src_id`` reads 0 after the reset.
+  CHK-FILTER-RESET  ``locked`` and ``entry_enabled`` read their RDL reset values
+                    after the reset; both read 1 before it, else ``CTRL-MISSING``.
+                    ``allow_ns`` and the response of one external push are
+                    logged on the same line, not graded.
   CHK-REUSE         one push answers OKAY and the pop returns the word.
 """
 
@@ -97,6 +109,13 @@ RESET = {r: _M.reset32(r) for r in REGS_READ}
 SRC_ID_FIELD = SRC_ID_MASK << F_SRC_ID_LSB
 # RDL reset value of FILTER_CONFIG.src_id (the expected value after the reset).
 SRC_ID_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset32("FILTER_CONFIG") & SRC_ID_FIELD
+# FILTER_CONFIG.locked and .entry_enabled: field bits and RDL reset values.
+_FC = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0
+LOCK_EN_FIELDS = ("locked", "entry_enabled")
+LOCK_EN_MASK = sum(_FC.field_mask("FILTER_CONFIG", f) for f in LOCK_EN_FIELDS)
+LOCK_EN_RESET = sum(
+    _FC.field_reset("FILTER_CONFIG", f) << _FC.field_lsb("FILTER_CONFIG", f) for f in LOCK_EN_FIELDS
+)
 FILTER_ENTRY = 0
 
 
@@ -172,10 +191,12 @@ class sep_mailbox_reset_clear_test(sep_base_test):
     """Reset mid-operation: all apertures, lines and the ISS source ID clear; reuse works."""
 
     required_evidence = (
+        "CHK-PRE-LINES",
         "CHK-PRE-NONZERO",
         "CHK-RESET-STATE",
         "CHK-RESET-LINES",
         "CHK-RESET-FILTER",
+        "CHK-FILTER-RESET",
         "CHK-REUSE",
     )
 
@@ -275,10 +296,12 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         self.pre_cfg = (hi << 32) | lo
         self.pre_src = (lo >> F_SRC_ID_LSB) & SRC_ID_MASK
         self.pre_locked = (hi >> FILTER_LOCKED_HI_BIT) & 1
-        if self.pre_src != FILTER_SRC or self.pre_locked != 1:
+        self.pre_enabled = int(bool(lo & F_ENTRY_ENABLED))
+        if self.pre_src != FILTER_SRC or self.pre_locked != 1 or self.pre_enabled != 1:
             self._ctrl_missing(
                 f"FILTER_CONFIG before reset 0x{self.pre_cfg:016x} src_id={self.pre_src} "
-                f"locked={self.pre_locked} (expect src_id={FILTER_SRC} locked=1)"
+                f"locked={self.pre_locked} entry_enabled={self.pre_enabled} "
+                f"(expect src_id={FILTER_SRC} locked=1 entry_enabled=1)"
             )
         # Error injection 1: empty inbound read of the first error mailbox.
         resp, _ = await self._lsu(SepAxiOp.READ, self._addr(c.err1_m, "in", "READ_DATA"), size=3)
@@ -304,14 +327,11 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, QUIET)
         probe, smc = await self._lines()
         self.pre_probe, self.pre_smc = probe, smc
-        self.logger.info(
-            "INFO-PRE-LINES LOG seed=%d probe=0x%02x smc=0x%02x model_in=0x%02x model_out_count=%d",
-            c.seed,
-            probe,
-            smc,
-            self.model.in_lines(),
-            self.model.out_count(),
-        )
+        exp_probe, exp_smc = self.model.in_lines(), self.model.out_mask()
+        line = f"probe=0x{probe:02x} exp_probe=0x{exp_probe:02x} smc=0x{smc:02x} exp_smc=0x{exp_smc:02x}"
+        if probe != exp_probe or smc != exp_smc:
+            self._fail("CHK-PRE-LINES", line)
+        self._pass("CHK-PRE-LINES", line)
         for m in range(MAILBOX_COUNT):
             vals = {}
             for p in PORTS:
@@ -451,7 +471,7 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         offset = None if fall_n is None else fall_n - 1
         self.cell_offset = offset
         self.logger.info(
-            "OBS-OP-INFLIGHT LOG seed=%d op=%s resp_valid=%d valid_clocks_at_hs=%d result=%s "
+            "INFO-OP-INFLIGHT LOG seed=%d op=%s resp_valid=%d valid_clocks_at_hs=%d result=%s "
             "release_clks=%d",
             c.seed,
             c.op,
@@ -560,22 +580,24 @@ class sep_mailbox_reset_clear_test(sep_base_test):
         ext = SepMboxPortOps(self, c.filt_m, in_prot1=0, in_user=FILTER_SRC)
         ext_resp = await ext.push("in", c.filt_word)
         line = (
-            f"pre_cfg=0x{self.pre_cfg:016x} pre_src_id={self.pre_src} src_id=0x{src:x} "
+            f"pre_cfg=0x{self.pre_cfg:016x} pre_src_id={self.pre_src} "
+            f"pre_ext_write={resp_name(self.pre_ext_resp)} src_id=0x{src:x} "
             f"src_field[{fc.fields()}]"
         )
         if not fc.ok:
             self._fail("CHK-RESET-FILTER", line)
         self._pass("CHK-RESET-FILTER", line)
-        self.logger.info(
-            "OBS-FILTER-RESET LOG seed=%d cfg=0x%016x locked=%d entry_enabled=%d allow_ns=%d "
-            "ext_write=%s",
-            c.seed,
-            (hi << 32) | lo,
-            (hi >> FILTER_LOCKED_HI_BIT) & 1,
-            int(bool(lo & F_ENTRY_ENABLED)),
-            int(bool(lo & F_ALLOW_NS)),
-            resp_name(ext_resp),
+        cfg = (hi << 32) | lo
+        fc = field_compare(cfg, LOCK_EN_RESET, LOCK_EN_MASK)
+        line = (
+            f"cfg=0x{cfg:016x} pre_locked={self.pre_locked} pre_entry_enabled={self.pre_enabled} "
+            f"locked={(hi >> FILTER_LOCKED_HI_BIT) & 1} entry_enabled={int(bool(lo & F_ENTRY_ENABLED))} "
+            f"field[{fc.fields()}] logged: allow_ns={int(bool(lo & F_ALLOW_NS))} "
+            f"ext_write={resp_name(ext_resp)}"
         )
+        if not fc.ok:
+            self._fail("CHK-FILTER-RESET", line)
+        self._pass("CHK-FILTER-RESET", line)
 
         # Reuse.
         m = c.reuse_m

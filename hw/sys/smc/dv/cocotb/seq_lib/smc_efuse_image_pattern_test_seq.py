@@ -21,24 +21,26 @@ the DUT:
 * data words -- word ``n`` of the image backs ``SMC_EFUSE_MAP_BASE + 4*n``.
 * lock slots -- the region of each word and its ``*_WRITE_LOCK`` /
   ``*_READ_LOCK`` bit come from ``smc_addr.h`` and ``blocks/smc_efuse_map.h``.
-  LOCKS (at ``SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR``) is set-only and carries
-  no lock of its own. Every other region follows its LOCKS bits: the RDL LOCKS
+  The LOCKS words (HARNESS_LOCKS at ``SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR``
+  and SUPPLEMENTARY_LOCKS after it) are set-only and carry no lock of their own.
+  Every other region follows its HARNESS_LOCKS bits: the RDL LOCKS
   description says a write-locked field "is not programmable" and a read-locked
   shadow register "is not readable", and ``architecture.adoc`` (eFuse lock-field
-  encoding table) gives ``lock[0] = 1`` as read-locked. Neither states the
-  response code or the word a read-locked read returns, so a read-locked read
-  is held to non-disclosure only: its data must differ from both values the
-  word could hold, and its response
-  code is recorded, not asserted.
+  encoding table) gives ``lock[0] = 1`` as read-locked. The LOCKS description
+  fixes the response of a locked access, SLVERR, with ``0xBADCAB1E`` on a read:
+  a write to a write-locked word is held to SLVERR and no effect, and a
+  read-locked read to SLVERR, that word, and non-disclosure: its data must
+  differ from both values the word could hold.
 
-**Scenario.** Sense; read all 256 words. Write the complement of every non-LOCKS
-word, then read them all: a write-unlocked word holds the complement, a
-write-locked one still holds the image. Every image senses a non-zero LOCKS, so
+**Scenario.** Sense; read all 64 words. Write the complement of every non-LOCKS
+word, then read them all: a write-unlocked word accepts the write and holds the
+complement, a write-locked one refuses it with SLVERR and still holds the
+image. Every image senses a non-zero LOCKS, so
 a write of 0 is a real clear attempt: LOCKS must keep its sensed value, read
 all-ones after a write of all-ones, and keep all-ones across a second write of
-0. A sweep of all 256 words then reads LOCKS as all-ones and every other word
-without disclosing it. Cold
-reset, observe sense restart, and read all 256 words against the image once
+0. A sweep of all 64 words then reads the four LOCKS words as all-ones and every other
+word without disclosing it. Cold
+reset, observe sense restart, and read all 64 words against the image once
 more -- the shadow writes above are gone because the shadow file is reloaded
 from the bank.
 """
@@ -56,6 +58,7 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import (
+    EFUSE_BLOCKED_READ_DATA,
     EFUSE_MAP_BASE,
     EFUSE_MAP_SIZE,
     efuse_preload_words,
@@ -67,7 +70,7 @@ _SMC_EFUSE_MAP_H = (
 )
 _WORD_MASK = 0xFFFF_FFFF
 EFUSE_MAP_WORDS = EFUSE_MAP_SIZE // 4
-_LOCKS_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+_LOCKS_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR")
 #: Map words that hold LOCKS, low word first.
 LOCKS_WORDS = range(
     (_LOCKS_BASE - EFUSE_MAP_BASE) // 4,
@@ -75,6 +78,8 @@ LOCKS_WORDS = range(
 )
 #: Every map word outside LOCKS.
 DATA_WORDS = tuple(w for w in range(EFUSE_MAP_WORDS) if w not in LOCKS_WORDS)
+#: AXI response of a locked shadow access (smc_efuse_map.rdl, LOCKS).
+_RESP_SLVERR = 2
 
 
 @dataclass(frozen=True)
@@ -87,7 +92,7 @@ class _Region:
 
 
 def _lock(name: str, kind: str) -> int:
-    return _field_mask(_SMC_EFUSE_MAP_H, f"SMC_EFUSE_MAP__LOCKS__{name}_{kind}_LOCK_bm")
+    return _field_mask(_SMC_EFUSE_MAP_H, f"SMC_EFUSE_MAP__HARNESS_LOCKS__{name}_{kind}_LOCK_bm")
 
 
 def _regions() -> tuple[_Region, ...]:
@@ -103,16 +108,22 @@ def _regions() -> tuple[_Region, ...]:
     ]
     for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM")):
         starts.append((f"SPARE{k}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", k)))
+    # The three SPARE_TAIL entries share one lock pair.
+    for k in range(smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM")):
+        starts.append(
+            (f"SPARE_TAIL{k}", smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR", k))
+        )
     regions = []
     for idx, (name, addr) in enumerate(starts):
         end = starts[idx + 1][1] if idx + 1 < len(starts) else EFUSE_MAP_BASE + EFUSE_MAP_SIZE
+        lock_name = "SPARE_TAIL" if name.startswith("SPARE_TAIL") else name
         regions.append(
             _Region(
                 name,
                 (addr - EFUSE_MAP_BASE) // 4,
                 (end - EFUSE_MAP_BASE) // 4,
-                _lock(name, "WRITE"),
-                _lock(name, "READ"),
+                _lock(lock_name, "WRITE"),
+                _lock(lock_name, "READ"),
             )
         )
     return tuple(regions)
@@ -167,10 +178,13 @@ def check_schema_against_map() -> int:
     """Fail if the generator's schema disagrees with the generated register map.
 
     ``generate_efuse_preload.py`` lays the schema blocks out in file order and
-    gives the ``i``-th block after LOCKS the LOCKS bits ``2i`` / ``2i+1``. Each
-    block's bit offset and width, and each lock bit, is compared with the
-    generated ``smc_addr.h`` / ``blocks/smc_efuse_map.h`` symbols. Returns the
-    number of blocks checked.
+    gives the ``i``-th block after LOCKS the LOCKS bits ``2i`` / ``2i+1``. The
+    LOCKS block spans HARNESS_LOCKS and SUPPLEMENTARY_LOCKS; the SPARE block
+    spans SPARE[0..SPARE_NUM-1] and SPARE_TAIL[0..SPARE_TAIL_NUM-1], its lock flag
+    sets SPARE0's pair, and the pairs of the other SPARE entries and SPARE_TAIL
+    follow in map order, as the schema states. Each block's bit offset and width,
+    and each lock bit, is compared with the generated ``smc_addr.h`` /
+    ``blocks/smc_efuse_map.h`` symbols. Returns the number of blocks checked.
     """
     with _SCHEMA.open("rb") as handle:
         schema = tomllib.load(handle)
@@ -187,18 +201,26 @@ def check_schema_against_map() -> int:
 
     i2c = _array("I2C_I3C_ID")
     spare = _array("SPARE")
+    tail = _array("SPARE_TAIL")
     smc_config = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR")
+    supplementary = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SUPPLEMENTARY_LOCKS_BASE_ADDR")
     expected = {
-        "LOCKS": _single("LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")),
+        "LOCKS": _single(
+            "HARNESS_LOCKS", smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
+        ),
         "JTAG_PUBLIC_IDENTITY": _single("JTAG_PUBLIC_IDENTITY", i2c[0]),
         "I2C_I3C_ID": i2c,
         "SMC_CONFIG": _single(
             "SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR")
         ),
         "OCCP_TRANSPORT_TIMEOUT": _single("OCCP_TRANSPORT_TIMEOUT", spare[0]),
-        "SPARE": spare,
+        "SPARE": (spare[0], spare[1] + tail[1]),
     }
     assert smc_config == i2c[0] + i2c[1], "I2C_I3C_ID does not end at SMC_CONFIG"
+    assert tail[0] == spare[0] + spare[1], "SPARE_TAIL does not follow the last SPARE entry"
+    assert supplementary == expected["LOCKS"][0] + 8, (
+        "SUPPLEMENTARY_LOCKS is not the upper 64 bits of the LOCKS block"
+    )
     assert list(schema) == list(expected), (
         f"efuse_schema.toml blocks {list(schema)} are not the map's {list(expected)}"
     )
@@ -218,6 +240,18 @@ def check_schema_against_map() -> int:
                 f"generate_efuse_preload.py puts {block}'s {kind.lower()} lock at LOCKS bit "
                 f"{bit}; the map has mask 0x{_lock(lock_name, kind):x}"
             )
+    spare_slot = len(expected) - 2
+    tail_names = [f"SPARE{k}" for k in range(1, smc_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM"))]
+    tail_names.append("SPARE_TAIL")
+    for step, lock_name in enumerate(tail_names, start=1):
+        for kind, bit in (
+            ("WRITE", 2 * (spare_slot + step)),
+            ("READ", 2 * (spare_slot + step) + 1),
+        ):
+            assert _lock(lock_name, kind) == 1 << bit, (
+                f"{lock_name}'s {kind.lower()} lock is at LOCKS slot {spare_slot + step} in the "
+                f"schema; the map has mask 0x{_lock(lock_name, kind):x}"
+            )
     assert offset == EFUSE_MAP_SIZE * 8, f"schema totals {offset} bits, map is {EFUSE_MAP_SIZE * 8}"
     return len(expected)
 
@@ -226,7 +260,7 @@ def word_addr(word: int) -> int:
     return EFUSE_MAP_BASE + 4 * word
 
 
-#: SEP_IN AXI accesses one run issues: three 256-word read sweeps, a complement
+#: SEP_IN AXI accesses one run issues: three 64-word read sweeps, a complement
 #: write and a readback of every non-LOCKS word, and three write-then-readback
 #: rounds over the LOCKS words in the set-only leg.
 EXPECTED_ACCESSES = 3 * EFUSE_MAP_WORDS + 2 * len(DATA_WORDS) + 3 * 2 * len(LOCKS_WORDS)
@@ -258,18 +292,26 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
             await self.csr_read(f"{label}_W{word}", word_addr(word), expected=words[word])
 
     async def _read_locked(self, label: str, word: int) -> int:
-        """A read the lock may refuse: data returned, response code not asserted."""
+        """A read the lock refuses: SLVERR with 0xBADCAB1E, both asserted."""
         item = SmcSysAxiItem(f"rd_{label}")
         item.op = SmcSysAxiOp.READ
         item.addr = word_addr(word)
         item.length = 4
         item.allow_error = True
+        item.expect_error = True
+        item.expected_resp = _RESP_SLVERR
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        assert item.resp_code is not None, f"{label}: the read-locked read got no response"
+        assert item.resp_code == _RESP_SLVERR, (
+            f"{label}: a read-locked read must complete with SLVERR, got resp={item.resp_code}"
+        )
+        got = item.rdata & _WORD_MASK
+        assert got == EFUSE_BLOCKED_READ_DATA, (
+            f"{label}: a read-locked read returns 0x{EFUSE_BLOCKED_READ_DATA:08x}, got 0x{got:08x}"
+        )
         self.locked_read_resps.add(item.resp_code)
-        return item.rdata & _WORD_MASK
+        return got
 
     async def body(self) -> None:
         image = self.image
@@ -290,7 +332,13 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
         data_words = DATA_WORDS
         for word in data_words:
-            await self.csr_write(f"COMPL_W{word}", word_addr(word), ~image.words[word] & _WORD_MASK)
+            complement = ~image.words[word] & _WORD_MASK
+            if image.write_locked(word):
+                await self.csr_write_expect_error(
+                    f"COMPL_W{word}", word_addr(word), complement, resp=_RESP_SLVERR
+                )
+            else:
+                await self.csr_write(f"COMPL_W{word}", word_addr(word), complement)
         for word in data_words:
             if image.write_locked(word):
                 self.locked_words += 1
@@ -304,9 +352,9 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"{self.unlocked_words} write-unlocked words; it needs at least one of each"
         )
         cocotb.log.info(
-            "CHK-EFUSE-IMG-WRITE: %d write-unlocked words hold their complement and "
-            "%d write-locked words still hold the image after a complement write to "
-            "every non-LOCKS word",
+            "CHK-EFUSE-IMG-WRITE: %d write-unlocked words accepted the complement write "
+            "and hold the complement; %d write-locked words refused it with SLVERR and "
+            "still hold the image",
             self.unlocked_words,
             self.locked_words,
         )
@@ -346,7 +394,8 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "CHK-EFUSE-IMG-LOCKS-SET-ONLY: LOCKS kept its sensed 0x%016x across a write "
             "of 0, read all-ones after a write of all-ones and kept all-ones across a "
             "second write of 0; all %d other words, read-locked, then returned neither "
-            "their image word nor its complement (response codes seen: %s, not asserted)",
+            "their image word nor its complement, each with SLVERR and 0xBADCAB1E "
+            "(response codes seen: %s)",
             image.locks,
             self.nondisclosure_checks,
             sorted(self.locked_read_resps),

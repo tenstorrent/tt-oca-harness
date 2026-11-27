@@ -819,9 +819,7 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_generator.sv
       - hw/ip/entropy_source/rtl/entropy_generator_complex.sv
       - hw/ip/entropy_source/rtl/entropy_health_test.sv
-      - hw/ip/entropy_source/rtl/entropy_noise_source.sv
-      - hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
-      - hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
+      - hw/ip/entropy_source/rtl/entropy_noise_sampler.sv
       - hw/ip/entropy_source/rtl/entropy_ripple_divider.sv
       - hw/ip/entropy_source/rtl/entropy_rosc_tune_fsm.sv
       - hw/ip/entropy_source/rtl/entropy_sampler_clocks.sv
@@ -829,6 +827,15 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_source.sv
       - hw/ip/entropy_source/rtl/entropy_source_rec_thresh_lut.sv
       - hw/ip/entropy_source/rtl/gf_muladd.sv
+  # The ring oscillators, or with -t entropy_rosc_stub a loop-free stand-in of the same module
+  - target: all(any(sep, entropy_source), not(entropy_rosc_stub))
+    files:
+      - hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
+      - hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
+      - hw/ip/entropy_source/rtl/entropy_rosc_array.sv
+  - target: all(any(sep, entropy_source), entropy_rosc_stub)
+    files:
+      - hw/ip/entropy_source/rtl/stub/entropy_rosc_array.sv
   - target: smc
     files:
       - hw/ip/gpio/regs/gen/sv/gpio_intf_reg.sv
@@ -1631,6 +1638,7 @@ sources:
       - hw/top/sep_wrapper.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:
+      - hw/top/smc_supplementary_fuse_example_pkg.sv
       - hw/top/smc_ip_integration.sv
   - target: smc_wrapper
     files:

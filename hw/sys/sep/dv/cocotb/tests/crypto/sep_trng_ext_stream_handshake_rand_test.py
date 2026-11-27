@@ -39,7 +39,7 @@ a and b, the idle gap before the lock write (0 to 32 clocks), the initial pool f
 L (0 to 32 pairs) and the random pool operations (20 to 60).
 
 Checkers: CHK-SEL-RW, CHK-EXT-XFER, CHK-EXT-STRB, CHK-EXT-DROP, CHK-EXT-BP,
-CHK-EXT-IRQ, CHK-SEL-READY, CHK-SEL-HOLD, CHK-SEL-LOCK, CHK-SEL-LOCKFIRST,
+CHK-EXT-IRQ, CHK-EXT-IRQ-HOLD, CHK-SEL-READY, CHK-SEL-HOLD, CHK-SEL-LOCK, CHK-SEL-LOCKFIRST,
 CHK-SEL-GLOBAL, CHK-POOL-DATA, CHK-EDN-FIFO-DEPTH (contracts in the docstring of
 each leg), CHK-EXT-NOSRC-POP (below), and CHK-SEL-RESET: the first reads of the select and the lock return
 their RDL reset values (``EXT_TRNG_SRC_SEL.sel`` 0x7, ``EXT_TRNG_SRC_SEL_LOCK.lock``
@@ -63,11 +63,10 @@ external stream 0 input sees ``tready`` 1 on every clock it holds ``tvalid`` 1
 stream 0 held ``tvalid`` 1 on at least one clock of the leg. Graded only on the
 passes whose s has bit 0 clear, so it is not in ``required_evidence``.
 
-Logged only (no stated outcome): ``OBS-SEL-READY0`` when bit 0 is set (no text
-states when the Key Manager sink lowers ready); ``OBS-EXT-WITHDRAW`` when a source drops a beat it
-holds at the end of a leg: the held word, tready at the drop and the next word that
-completes at that port. ``OBS-EXT-NOSRC`` in the same step: the data of the pop (no
-text states the data of a SLVERR pop), with the levels of CHK-EXT-NOSRC-LEVEL.
+Logged only (no stated outcome): ``INFO-SEL-READY0`` when bit 0 is set (no text
+states when the Key Manager sink lowers ready). ``INFO-EXT-NOSRC`` in the same step:
+the data of the pop (no text states the data of a SLVERR pop), with the levels of
+CHK-EXT-NOSRC-LEVEL.
 
 Coverage gate: a FAIL closes the graded window and keeps it closed for the rest of
 the leaf. The sampler holds the cells of the external beats, the external stalls,
@@ -139,6 +138,11 @@ LONG_GAP = 200
 IRQ_BOUND = 64
 # Clocks that ext_trng_irq_i keeps each level after vector bit 16 follows it.
 IRQ_HOLD = 8
+# Clock edges from a drive written after a rising edge until vector bit 16 follows.
+# Vector bit 16 is the PIC input, ahead of the two-flop resynchronizer that
+# interrupts.adoc places in the PIC gateway, so the bound covers the bench force
+# (applied at the falling edge) with margin; it does not measure the resynchronizer.
+IRQ_FOLLOW = 3
 # Outer caps of a first measurement (design rule: 20 x the clean value of the logs).
 TRNG_RESET_CAP = 4_000
 SETTLE_CAP = 20_000
@@ -515,6 +519,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         "CHK-EXT-DROP",
         "CHK-EXT-BP",
         "CHK-EXT-IRQ",
+        "CHK-EXT-IRQ-HOLD",
         "CHK-SEL-READY",
         "CHK-SEL-HOLD",
         "CHK-SEL-LOCK",
@@ -578,7 +583,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             set_xhs_pass(0, self.logger)
             close_graded_window(self.logger)
             if self.sb is not None:
-                self.sb.stop()
+                await self.sb.stop()
         await self.ext.stop()
         await self.trace.stop()
         self.chk.finish()
@@ -652,7 +657,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         """
         dut = cocotb.top
         if self.sb is not None:
-            self.sb.stop()
+            await self.sb.stop()
             self.sb = None
         await self.swrst.park("trng")
         rise = await self._wait_probe(dut.trng_reset_active_probe_o, False, "trng reset rise")
@@ -670,37 +675,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _drop_source(self, *streams: int) -> None:
         """End of a leg: the source drops whatever it still holds or queues."""
-        dut = cocotb.top
         for i in streams:
             if self.ext.pending(i):
-                tvalid = _bit(_known(dut.ext_trng_tvalid_o), i)
-                tready = _bit(_known(dut.ext_trng_tready_o), i)
-                held = _word(_known(dut.ext_trng_tdata_o), i) if tvalid == 1 else None
                 await self.ext.source_reset(i)
-                if held is not None:
-                    cocotb.start_soon(self._withdraw_obs(i, held, tready))
-
-    async def _withdraw_obs(self, i: int, held: int, tready: int | None) -> None:
-        """The next word that completes at port ``i`` after a source drops a held beat."""
-        dut = cocotb.top
-        nxt = None
-        for _ in range(SETTLE_CAP):
-            await FallingEdge(dut.clk_i)
-            await ReadOnly()
-            if (
-                _bit(_known(dut.ext_trng_tvalid_o), i) == 1
-                and _bit(_known(dut.ext_trng_tready_o), i) == 1
-            ):
-                nxt = _word(_known(dut.ext_trng_tdata_o), i)
-                break
-        self.chk.obs(
-            "EXT-WITHDRAW",
-            stream=i,
-            held=f"0x{held:08x}",
-            tready_at_drop=tready if tready is not None else "x",
-            next="none" if nxt is None else f"0x{nxt:08x}",
-            next_eq_held=int(nxt == held),
-        )
 
     async def _settle_pairs(self, stream: int, target: int, bound: int) -> int | None:
         """Wait until ``target`` beats completed at port ``stream`` since the counter
@@ -803,7 +780,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self.trace.begin()
         if i == 1:
             await self.aes._wr(AES_TRIGGER, AES_TRIGGER_PRNG_RESEED)
-            self.chk.obs("EXT-AES-REQ", crypto_edn_req0=self.rd(dut.crypto_edn_req_o, 1))
+            self.chk.info("EXT-AES-REQ", crypto_edn_req0=self.rd(dut.crypto_edn_req_o, 1))
         bound = len(sp.xfer_words) * (RANDOM_GAP_MAX + LONG_GAP + 16) + SETTLE_CAP
         done = await self._feed(i, sp.xfer_words, sp.xfer_gaps, sp.gap_pattern, bound)
         await self._clocks(8)
@@ -1043,9 +1020,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             await self._release(XHS_PASS_STALL[1] | XHS_PASS_POOL_POP)
         close_graded_window(self.logger)
         await self._drop_source(2)
-        await self._no_source_obs()
+        await self._no_source_info()
 
-    async def _no_source_obs(self) -> None:
+    async def _no_source_info(self) -> None:
         """Pool STATUS and one DATA pop with stream 2 external and no beat offered."""
         old = await self.reg._rd(SEL_ADDR) & SEL_MASK
         sel = await self._sel(old | 1 << 2)
@@ -1093,7 +1070,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             settle_reads > 0 and level1 == level0 and xfers == 0 and acks == 0,
             **fields,
         )
-        self.chk.obs(
+        self.chk.info(
             "EXT-NOSRC",
             sel=f"0x{sel:x}",
             pending=self.ext.pending(2),
@@ -1101,6 +1078,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             level_before=level0,
             level_after=level1,
             rdata=f"0x{(seq.rdata or 0) & 0xFFFF_FFFF_FFFF_FFFF:016x}",
+            chk="CHK-EXT-NOSRC-LEVEL",
         )
 
     async def _ready_leg(self, sp: StreamPlan) -> None:
@@ -1133,7 +1111,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             "tready_low_clk": sum(1 for v in s0 if v == 0),
         }
         if got & 1:
-            self.chk.obs("SEL-READY0", **ready0)
+            self.chk.info("SEL-READY0", **ready0)
         else:
             self._ctrl("SEL-READY0", len(s0) >= 1, **ready0)
             self._grade("SEL-READY0", ready0["tready_low_clk"] == 0, **ready0)
@@ -1262,7 +1240,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         close_graded_window(self.logger)
         # The plan holds the select with the bit of the stream cleared after this leg.
         await self._sel(resel)
-        self.sb.stop()
+        await self.sb.stop()
         self.sb = None
 
     async def _drain(self, i: int) -> int:
@@ -1403,8 +1381,12 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     # --- legs after both streams -------------------------------------------------------
     async def _irq_leg(self) -> None:
-        """CHK-EXT-IRQ: ext_trng_irq_i = 1 gives vector bit 16 = 1, and 0 gives 0. Each level
-        is held for IRQ_HOLD clocks after bit 16 follows it (``OBS-EXT-IRQ-HOLD``)."""
+        """CHK-EXT-IRQ: ext_trng_irq_i = 1 gives vector bit 16 = 1, and 0 gives 0.
+        CHK-EXT-IRQ-HOLD: bit 16 follows each drive within IRQ_FOLLOW clock edges, and
+        then equals the input on each of the IRQ_HOLD clocks the input keeps the level.
+        The text states that SEP adds no edge detection or pulse stretching, and puts
+        the two-flop resynchronizer in the PIC gateway, after vector bit 16
+        (``hw/sys/sep/doc/interrupts.adoc``, source 17)."""
         dut = cocotb.top
         vec = dut.sep_internal_interrupts_probe_o
         mask = 1 << VEC_EXT_IRQ
@@ -1416,21 +1398,28 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self._ctrl("EXT-IRQ", before == 0, vec16_before=before)
         self._open()
         for level in (1, 0):
+            await RisingEdge(dut.clk_i)
             self.ext.set_irq(level)
             n = await self._until(lambda lv=level: bit16() == lv, IRQ_BOUND)
             fields = {"irq_i": level, "vec16": bit16(), "clk": n if n is not None else "na"}
             if n is None:
                 fields["reason"] = f"timeout:vec16 bound={IRQ_BOUND}"
             self._grade("EXT-IRQ", n is not None, **fields)
-            # The input keeps the level for IRQ_HOLD clocks after bit 16 follows it, so the
-            # sampled clock after the change sees the input and bit 16 at the same level.
-            # Whether bit 16 is a level is not stated, so the hold is logged only.
-            if n is not None:
-                held = 0
-                for _ in range(IRQ_HOLD):
-                    await RisingEdge(cocotb.top.clk_i)
-                    held += int(bit16() == level)
-                self.chk.obs("EXT-IRQ-HOLD", irq_i=level, vec16_at_level_clk=held, hold=IRQ_HOLD)
+            if n is None:
+                break
+            held = 0
+            for _ in range(IRQ_HOLD):
+                await RisingEdge(dut.clk_i)
+                held += int(bit16() == self.rd(dut.ext_trng_irq_drive_i, 1))
+            self._grade(
+                "EXT-IRQ-HOLD",
+                n <= IRQ_FOLLOW and held == IRQ_HOLD,
+                irq_i=level,
+                follow_clk=n,
+                follow_max=IRQ_FOLLOW,
+                vec16_eq_irq_i_clk=held,
+                hold=IRQ_HOLD,
+            )
         close_graded_window(self.logger)
 
     async def _lock(self, value: int) -> int:
@@ -1440,8 +1429,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
     async def _lock_leg(self) -> None:
         """CHK-SEL-LOCK: after the lock write of 1, a write of 0 leaves it at 1, a
         select write leaves the old value, and a TRNG reset leaves the lock at 1. The
-        select write under the lock must get a B response of any code; no text states
-        that code, so it is logged as OBS-SEL-LOCK-RESP.
+        select write under the lock must get a B response of any code; the code is
+        logged as INFO-SEL-LOCK-RESP and is not graded.
         Controls: the pre-lock write of a lands and a differs from the value held
         before it (the plan draws a away from that value); the TRNG reset probe rises
         and falls (clocks logged)."""
@@ -1461,7 +1450,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         write0_bresp = resp_name(self.reg.bresp)
         kept = await self._sel(plan.b, locked=True)
         sel_b = self.reg.bresp
-        self.chk.obs("SEL-LOCK-RESP", leg="lock", sel_write_bresp=resp_name(sel_b))
+        self.chk.info(
+            "SEL-LOCK-RESP", leg="lock", sel_write_bresp=resp_name(sel_b), chk="CHK-SEL-LOCK"
+        )
         rise, fall = await self._trng_reset()
         self._ctrl(
             "SEL-LOCK",
@@ -1509,14 +1500,19 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _lockfirst_leg(self) -> None:
         """CHK-SEL-LOCKFIRST: with the lock set before any select write, a select write
-        leaves the select at 0x7. That write must get a B response of any code; no
-        text states the code, so it is logged as OBS-SEL-LOCK-RESP.
+        leaves the select at 0x7. That write must get a B response of any code; the
+        code is logged as INFO-SEL-LOCK-RESP and is not graded.
         Control: after a rst_ni pulse a select write lands."""
         self._open()
         lock = await self._lock(LOCK_MASK)
         sel = await self._sel(0, locked=True)
         sel_b = self.reg.bresp
-        self.chk.obs("SEL-LOCK-RESP", leg="lockfirst", sel_write_bresp=resp_name(sel_b))
+        self.chk.info(
+            "SEL-LOCK-RESP",
+            leg="lockfirst",
+            sel_write_bresp=resp_name(sel_b),
+            chk="CHK-SEL-LOCKFIRST",
+        )
         close_graded_window(self.logger)
         await self._global_reset()
         lock_after = await self.reg._rd(LOCK_ADDR) & LOCK_MASK

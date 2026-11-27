@@ -50,8 +50,8 @@ create_reset -name KM_COLD_RESET_N [cdc_inst "u_sep_crypto/u_key_manager_s3c_sca
 create_reset -name KM_WARM_RESET_N [cdc_inst "u_sep_crypto/u_key_manager_s3c_scan/u_reset_conditioner/rst_warm_sync_no"] -both -type reset -value low -disable_assertions_db
 
 # Reference-counter reset syncs into SEPCLK and REFCLK domains
-create_reset -name SEP_RESET_N_REFCNT_SEP_CLK [cdc_inst "u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_wr_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
-create_reset -name SEP_RESET_N_REFCNT_REF_CLK [cdc_inst "u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_rd_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
+create_reset -name SEP_RESET_N_REFCNT_SEP_CLK [cdc_inst "u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_wr_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_o"] -both -type reset -value low -disable_assertions_db
+create_reset -name SEP_RESET_N_REFCNT_REF_CLK [cdc_inst "u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_prst_rd_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_o"] -both -type reset -value low -disable_assertions_db
 
 ##############################
 # RESET ASSERTION SEQUENCES
@@ -61,7 +61,10 @@ create_reset -name SEP_RESET_N_REFCNT_REF_CLK [cdc_inst "u_sep_system_peripheral
 # Port-reset and clock names map through cdc_rst / cdc_clk so these sequences survive at
 # the SMU top with the parent's names; SEP-internal reset names are level-independent.
 set_rdc_define_assertion_sequence -from_reset [cdc_rst {DBG_RSTB_I}] -to_reset [cdc_rst {RST_NI}]
-set_rdc_define_assertion_sequence -from_reset [cdc_rst {DBG_RSTB_I}] -to_clock [cdc_clk {SEPCLK REFCLK WDTCLK JTAG_TCK ck_feedthru ENTROPY_ROSC_CLK}]
+# ENTROPY_ROSC_CLK is created by the top that owns the entropy pad: sep_clocks.sdc at
+# the SEP top, smu.pad_boundary.tcl (after this file) at SMU, the integrator otherwise.
+set_rdc_define_assertion_sequence -from_reset [cdc_rst {DBG_RSTB_I}] \
+    -to_clock [get_object_name [get_clocks -quiet [cdc_clk {SEPCLK REFCLK WDTCLK JTAG_TCK ck_feedthru ENTROPY_ROSC_CLK}]]]
 set_rdc_define_assertion_sequence -from_reset [cdc_rst {RST_NI}] -to_reset {SEP_INTERMEDIATE_RESET_N}
 set_rdc_define_assertion_sequence -from_reset {SEP_INTERMEDIATE_RESET_N} -to_reset {SEP_RESET_N}
 set_rdc_define_assertion_sequence -from_reset [cdc_rst {SEP_RESET_N WDT_RST_NI}] -to_reset {SEP_CPU_RESET_N}

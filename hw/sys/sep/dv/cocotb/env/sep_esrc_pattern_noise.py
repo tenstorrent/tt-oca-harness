@@ -216,6 +216,7 @@ class SepEsrcPatternNoise:
         self.byte_mismatches: list[tuple[int, int, int, int]] = []
         self.life = MonitorLife("ESRC-PATTERN-NOISE", lambda: self.clk)
         self._task: Any = None
+        self._at_nts = False
 
     @staticmethod
     def _check_patterns(patterns: Sequence[LanePattern]) -> list[LanePattern]:
@@ -238,12 +239,21 @@ class SepEsrcPatternNoise:
         self._apply_now()
         self.log.info("INFO-ESRC-PATTERN-NOISE start %s", describe(self.patterns))
         if self._task is None:
+            self._at_nts = False
             self._task = self.life.start(self._run())
         return self
 
     async def stop(self) -> None:
-        """Stop the task; the lanes keep their last bits."""
+        """Stop the task; the lanes keep their last bits.
+
+        Cancelling a task that waits on ``NextTimeStep`` leaves the simulator
+        callback registered on Verilator, and the simulator later calls the freed
+        callback data. When the task waits on ``NextTimeStep``, ``stop`` first
+        waits for that time step, so the cancel finds the task on another trigger.
+        """
         self._task = None
+        if self._at_nts:
+            await NextTimeStep()
         await self.life.stop()
 
     def set_lanes(self, patterns: Sequence[LanePattern], *, immediate: bool = False) -> None:
@@ -365,5 +375,7 @@ class SepEsrcPatternNoise:
                 self._pending = None
             self._whole = True
             self._held = self._bits(self.word)
+            self._at_nts = True
             await NextTimeStep()
+            self._at_nts = False
             d.esrc_noise_ext_i.value = self._held

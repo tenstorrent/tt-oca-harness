@@ -5,19 +5,22 @@
 no_cpu, real fuse sense, LC_PROD. Stages write-lock and read-lock on two
 seed-selected SPARE fields plus an unlocked contrast in the same OTP image,
 then accesses the *shadow* aperture. Source 34 (vector bit [33]) is the eFuse
-locked-field access violation interrupt (hw/sys/sep/doc/interrupts.adoc:190-192;
-:23, bit i is PIC source i + 1). No specification sentence states its level
-after the access, its duration or how it clears, so the probe is watched on
-every clock of each access, and the level after a locked access is logged as
-OBS-LF-IRQ-DEASSERT and not graded. RAND-REP: every seed runs both the
-write-lock and the read-lock case.
+locked-field access violation interrupt (hw/sys/sep/doc/interrupts.adoc:199-204;
+:22-23, bit i is PIC source i + 1): a one-cycle pulse for each shadow read or
+write that a field lock blocks, also stated in
+hw/sys/sep/doc/otp_fuse_controller.adoc:112-115. The probe is sampled on every
+clock of each access. CHK-LF-IRQ-DEASSERT grades the pulse of each locked
+access: exactly one high clock edge from the edge before the access through the
+first edge after its response, low at the edge after that, and, after the
+locked write, no high clock edge during the read that follows.
+RAND-REP: every seed runs both the write-lock and the read-lock case.
 
 Every graded [33] value is taken while no earlier locked access can still
 drive the line: each locked access is the first one after a SEP reset
 (``resense``), and CTRL-IRQ-IDLE requires [33] low before it. The unlocked
 access and the write-lock pre-read run after the same reset, before the locked
-write. The read that follows a locked write grades only its data; its [33]
-level is logged. The reset restores every shadow from OTP, and the base test
+write. The read that follows a locked write runs with step tag 0; it grades
+its data and, through CHK-LF-IRQ-DEASSERT, that [33] stays low. The reset restores every shadow from OTP, and the base test
 compares the shadow with the staged image after each sense.
 
 Each access kind runs twice. Run 1 grades the unlocked, write-locked and
@@ -29,18 +32,22 @@ the leaf writes that tag as the pass label (``set_ef_hold_pass``) after every
 check of the step passed. A FAIL closes the window before it is raised, which
 drops the held samples. The read after the locked write runs with tag 0, so it
 samples nothing. A vector watch on the whole interrupt vector grades
-CHK-SRC34-EXCL at every rise of bit [33]: no other bit moves in that clock.
+CHK-SRC34-RISE for each locked access: bit [33] rises after the mark taken
+before the access. No specification sentence states that no other bit moves in
+the clock of that rise, so INFO-SRC34-COINCIDENT logs the other bits that moved,
+and ``cp_src_exclusive_other[s34]`` compares them in the sampler only.
 
-The specification (hw/sys/sep/doc/otp_fuse_controller.adoc, Shadow Register
-and JTAG Access Control) says only that a write-locked shadow is not writable
-and a read-locked shadow is not readable. It names no response code and no
-read data for the AXI shadow path. So the locked checks grade the observable
-effect: a write-locked field keeps its pre-write value, and a read-locked read
-does not return the stored field value. The response code and the returned data
-of a locked access are logged at info level and are not graded. The stored
+The specification (hw/sys/sep/doc/otp_fuse_controller.adoc:112-115, Shadow
+Register and JTAG Access Control) states that a shadow write or read that a
+lock blocks completes with SLVERR and read data ``0xBADCAB1E``, leaves the
+shadow unchanged, and pulses the locked-field access interrupt for one clock. So
+CHK-WRITE-LOCK grades that a write-locked field keeps its pre-write value,
+CHK-LOCK-WR-RESP grades the BRESP of the locked write as SLVERR, and
+CHK-READ-LOCK grades that a read-locked read completes with RRESP SLVERR and
+read data ``0xBADCAB1E``, and does not return the stored field value. The stored
 value is read from the sensed shadow (``efuse_shadow_probe_o``) before each
 locked read: the sensing FSM reads a read-locked fuse into its shadow
-(otp_fuse_controller.adoc:109-110), so CTRL-READ-STAGED requires that shadow
+(otp_fuse_controller.adoc:111-112), so CTRL-READ-STAGED requires that shadow
 word to equal the staged pattern, and CHK-READ-LOCK compares the read data
 with that probed word. The pattern is staged in the OTP image at time 0, and
 every sense of the leaf senses that image.
@@ -57,18 +64,23 @@ must land, and once with it high, where the value must not move: the bus
 readback equals the read before the write, and the sensed shadow word
 (``efuse_shadow_probe_o``) equals the word staged in the OTP image.
 CTRL-SECTM-LATCH logs ``secure_tm_o`` after each sense and requires 0 before
-the control half and 1 before the deny half. No
-specification sentence ties a SECURE_TM refusal to source 34
-(hw/sys/sep/doc/otp_fuse_controller.adoc:176-178 names no interrupt), so the [33]
-level during and after the refused write is logged as OBS-SECTM-IRQ and not
-graded. The [33] level during the contrast write that follows the refused
-writes is logged the same way: the level after a refused write is not stated.
+the control half and 1 before the deny half. A refused write is a write that a
+lock blocks: secure test mode adds a shadow write lock
+(hw/ip/efuse/doc/architecture.adoc:411-412) on the fields that
+otp_fuse_controller.adoc:181-183 lists. So otp_fuse_controller.adoc:112-115
+applies: CHK-LOCK-WR-RESP (``case=sectm``) grades its BRESP as SLVERR, and
+CHK-SECTM-IRQ grades the one-clock pulse of [33]: low at the clock edge before
+each refused write, high at exactly one clock edge of its watched window, and low at every
+clock edge of the readback that follows. CHK-SECTM-CONTRAST also requires [33]
+low on every clock of the contrast write: it is not blocked, and no earlier
+pulse lasts into it.
 The strap-low half is the positive control: without it a DUT whose
 shadow writes never work at all would pass the deny half. LOCKS and
 LOCKS_SPARE are one field-map entry, so LOCKS_SPARE carries their shared
 positive control, and LOCKS takes its own on the slot-31 write-lock bit.
-LC_STATE is written in bytes [31:8], which OR-merge as ordinary shadow bytes
-and leave the lifecycle nibble alone.
+LC_STATE is written in bytes [31:8], which leave the lifecycle nibble alone.
+The sensed LC_STATE[31:8] is 0, so CHK-SECTM-CONTROL shows that the payload
+landed there and grades no other rule for those bits.
 """
 
 from __future__ import annotations
@@ -78,9 +90,10 @@ from typing import NoReturn
 import cocotb
 import pyuvm
 from cocotb.triggers import Event, NextTimeStep, ReadOnly, RisingEdge
-from env.sep_bit_watch import SepVecWatch, VecMark, VecWatchNoRiseError, pic_vector_watch
+from env.sep_bit_watch import SepVecWatch, VecMark, pic_vector_watch
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_efuse_test_lib import shadow_word
+from env.sep_fabric_common import RESP_SLVERR, resp_name
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -89,6 +102,7 @@ from env.sep_fcov_gate import (
 )
 from env.sep_lcc_golden import LC_PROD
 from env.sep_locked_field_irq import (
+    DENY_DATA_MARKER,
     IRQ_LOCKED_FIELD,
     SECURE_TM_LOCK_FIELDS,
     SepLockedFieldIrqCfg,
@@ -107,8 +121,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
     """Write-lock and read-lock shadow accesses raise aggregator bit [33]."""
 
     async def _irq(self) -> int:
-        # The specification states no duration for source 34, so a high
-        # level of one clock must be seen: sample every posedge in ReadOnly.
+        # Source 34 is a one-cycle pulse, so sample every posedge in ReadOnly.
         # This helper only observes; a second edge to leave ReadOnly would
         # skip a cycle. Callers that drive AXI wait their own edge after this
         # returns.
@@ -139,14 +152,17 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         word_idx: int = 0,
         locked: bool = False,
     ):
-        seen_high = False
+        """One access; returns the sequence and the number of clock edges with [33] high.
+
+        The watched window runs from the clock edge before the access starts
+        through the first clock edge after its response returns."""
+        highs = 0
         stop = Event()
 
         async def _watch() -> None:
-            nonlocal seen_high
+            nonlocal highs
             while not stop.is_set():
-                if await self._irq() == 1:
-                    seen_high = True
+                highs += await self._irq()
 
         task = cocotb.start_soon(_watch())
         await RisingEdge(cocotb.top.clk_i)
@@ -156,7 +172,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         # The watcher ends in ReadOnly; leave it before the caller grades,
         # writes the gate or drives.
         await NextTimeStep()
-        return seq, seen_high
+        return seq, highs
 
     async def _sectm_write(self, drv, cfg, name: str, blocked: bool) -> None:
         """One payload write to ``name``; require it to land, or to be refused.
@@ -168,13 +184,21 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         the staged word is the stored value. The probe does not use the bus
         read path, so a read path that returns 0 at secure_tm=1 cannot hide a
         refused write that landed in the shadow.
+
+        CHK-SECTM-IRQ grades the one-clock pulse of [33] (interrupts.adoc:199-204;
+        otp_fuse_controller.adoc:112-115): low at the clock edge before the
+        refused write, high at exactly one clock edge of its watched window
+        (``_access_watching``), and low at every clock edge of the readback
+        window after it.
         """
         word, payload = cfg.sectm_payload[name]
         before = (await drv.access(name, word_idx=word)).rdata
+        low_before = await self._irq_low()
         wr, irq = await self._access_watching(
             drv, name, word_idx=word, write=True, wdata=payload, locked=blocked
         )
-        after = (await drv.access(name, word_idx=word)).rdata
+        rb, rb_irq = await self._access_watching(drv, name, word_idx=word)
+        after = rb.rdata
         if blocked:
             assert after == before, (
                 f"CHK-SECTM-BLOCK FAIL: {name}[{word}] moved 0x{before:08x} -> 0x{after:08x} "
@@ -188,7 +212,6 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
                 f"after the refused write, staged 0x{staged:08x} (payload 0x{payload:08x}, "
                 f"bus readback 0x{after:08x})"
             )
-            low_after = await self._irq_low()
             self.logger.info(
                 "CHK-SECTM-BLOCK PASS: %s[%d] stayed 0x%08x, shadow word %d = 0x%08x "
                 "(staged 0x%08x, payload 0x%08x)",
@@ -200,17 +223,28 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
                 staged,
                 payload,
             )
-            self.logger.info(
-                "OBS-LOCK-WR-RESP: case=sectm field=%s[%d] BRESP=%d", name, word, wr.resp_code
+            # otp_fuse_controller.adoc:112-115: a write that a lock blocks
+            # completes with SLVERR and pulses the locked-field access interrupt.
+            assert wr.resp_code == RESP_SLVERR, (
+                f"CHK-LOCK-WR-RESP FAIL: case=sectm {name}[{word}] "
+                f"BRESP={resp_name(wr.resp_code)}, expected SLVERR"
             )
-            # No specification sentence ties a SECURE_TM refusal to source 34,
-            # so the [33] level of the refused write is logged only.
             self.logger.info(
-                "OBS-SECTM-IRQ: %s[%d] refused write: [33] pulsed=%d low_after=%d",
+                "CHK-LOCK-WR-RESP PASS: case=sectm field=%s[%d] BRESP=%s",
                 name,
                 word,
-                int(irq),
-                int(low_after),
+                resp_name(wr.resp_code),
+            )
+            assert low_before and irq == 1 and rb_irq == 0, (
+                f"CHK-SECTM-IRQ FAIL: {name}[{word}] refused write: [33] "
+                f"low_before={int(low_before)} high_clks={irq} readback_high_clks={rb_irq}, "
+                "expected a one-clock pulse (low_before=1 high_clks=1 readback_high_clks=0)"
+            )
+            self.logger.info(
+                "CHK-SECTM-IRQ PASS: %s[%d] refused write: [33] low_before=1 high_clks=1 "
+                "readback_high_clks=0",
+                name,
+                word,
             )
         else:
             assert wr.resp_ok, f"{name}[{word}] write at secure_tm=0 resp={wr.resp_code}"
@@ -223,7 +257,10 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
                 f"test bug: {name}[{word}] payload 0x{payload:08x} sets no new bit over "
                 f"0x{before:08x}, so the deny half below would pass vacuously"
             )
-            assert not irq, f"[33] rose on a legal {name} write at secure_tm=0"
+            assert irq == 0 and rb_irq == 0, (
+                f"[33] high on {irq} + {rb_irq} clocks of a legal {name} write and its "
+                "readback at secure_tm=0"
+            )
             self.logger.info(
                 "CHK-SECTM-CONTROL PASS: %s[%d] 0x%08x | 0x%08x = 0x%08x at secure_tm=0",
                 name,
@@ -249,6 +286,13 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         self.logger.info("CTRL-SECTM-LATCH PASS: secure_tm_o=%d (%s)", got, when)
 
     async def _run_secure_tm_scenario(self, cfg) -> None:
+        self.required_evidence = (
+            "CHK-SECTM-CONTROL",
+            "CHK-SECTM-BLOCK",
+            "CHK-LOCK-WR-RESP",
+            "CHK-SECTM-IRQ",
+            "CHK-SECTM-CONTRAST",
+        )
         img = self.select_efuse_image(lc_raw=LC_PROD, fixed=cfg.image_fixed())
         self.write_efuse_image(img)
         self._sectm_img = img
@@ -281,20 +325,15 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
             drv, cfg.unlocked_field, write=True, wdata=cfg.unlocked_write
         )
         assert un_wr.resp_ok, f"contrast write resp={un_wr.resp_code}"
-        # The refused writes above may have raised source 34, and the level
-        # after such a write is not stated, so the level here is logged only.
-        self.logger.info(
-            "OBS-SECTM-IRQ: %s contrast write at secure_tm=1: [33] seen=%d",
-            cfg.unlocked_field,
-            int(un_irq),
-        )
         un_rd, _ = await self._access_watching(drv, cfg.unlocked_field)
-        assert un_rd.rdata == cfg.unlocked_write, (
+        assert un_rd.rdata == cfg.unlocked_write and un_irq == 0, (
             f"CHK-SECTM-CONTRAST FAIL: {cfg.unlocked_field} readback 0x{un_rd.rdata:08x}, "
-            f"expected 0x{cfg.unlocked_write:08x} -- the strap disabled more than the lock"
+            f"expected 0x{cfg.unlocked_write:08x} -- the strap disabled more than the lock; "
+            f"[33] high_clks={un_irq} during the write, expected 0"
         )
         self.logger.info(
-            "CHK-SECTM-CONTRAST PASS: %s still writable at secure_tm=1 (0x%08x)",
+            "CHK-SECTM-CONTRAST PASS: %s still writable at secure_tm=1 (0x%08x), "
+            "[33] high_clks=0 during the write",
             cfg.unlocked_field,
             un_rd.rdata,
         )
@@ -350,46 +389,63 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         return pic_vector_watch({"s34": IRQ_LOCKED_FIELD}).start()
 
-    def _check_excl(self, vec: SepVecWatch, mark: VecMark, run: int, access: str) -> None:
-        """CHK-SRC34-EXCL: at each rise of bit [33] every other bit keeps its value.
+    def _check_rise(self, vec: SepVecWatch, mark: VecMark, run: int, access: str) -> None:
+        """CHK-SRC34-RISE: bit [33] rises after ``mark``; INFO-SRC34-COINCIDENT logs the rest.
 
-        interrupts.adoc:23 states bit i of the vector is PIC source i + 1, and
-        :190-192 assigns source 34 (bit [33]) to the locked-field access alone,
-        so no other bit moves at its rise. The six bits with an unstated idle
-        level are not compared (pic_vector_watch). The locked access raises no
-        other source, so no bit is exempt for the same clock. Each locked
-        access is the first one after a reset, with [33] low before it
-        (CTRL-IRQ-IDLE), so a run with no rise after the mark fails.
+        interrupts.adoc:22-23 states bit i of the vector is PIC source i + 1, and
+        :199-204 assigns source 34 (bit [33]) to the locked-field access. Each
+        locked access is the first one after a reset, with [33] low before it
+        (CTRL-IRQ-IDLE), so a run with no rise after the mark fails. The other
+        bits that moved in the clock of a rise are logged, not graded. The six
+        bits with an unstated idle level are not compared (pic_vector_watch).
         """
         try:
             rises = vec.rises_since(mark, "s34")
-            smears = vec.smears_since(mark, "s34")
-        except VecWatchNoRiseError as exc:
-            self._fail("SRC34-EXCL", f"run={run} access={access} {exc}")
+        except AssertionError as exc:
+            self._fail("SRC34-RISE", f"run={run} access={access} {exc}")
+        line = f"run={run} access={access} rises={len(rises)} rise_clks={[r.clk for r in rises]}"
+        if not rises:
+            self._fail("SRC34-RISE", line)
         first = rises[0]
-        self._grade(
-            "SRC34-EXCL",
-            not smears,
-            f"run={run} access={access} rises={len(rises)} "
-            f"moved={[(c, hex(m)) for c, m in smears]} "
-            f"before=0x{first.before:011x} after=0x{first.after:011x}",
-        )
+        moved = vec.smears_since(mark, "s34")
         self.logger.info(
-            "CHK-SRC34-EXCL PASS: run=%d access=%s rises=%d rise_clk=%s "
-            "before=0x%011x after=0x%011x moved=0x0 (idle bits not compared)",
-            run,
-            access,
-            len(rises),
-            [r.clk for r in rises],
+            "INFO-SRC34-COINCIDENT: %s coincident=%d moved=%s before=0x%011x after=0x%011x",
+            line,
+            len(moved),
+            [(clk, hex(m)) for clk, m in moved],
             first.before,
             first.after,
         )
+        self.logger.info(
+            "CHK-SRC34-RISE PASS: %s before=0x%011x after=0x%011x", line, first.before, first.after
+        )
+
+    def _check_pulse(
+        self, run: int, access: str, highs: int, low_after: bool, next_read_highs: int = 0
+    ) -> None:
+        """CHK-LF-IRQ-DEASSERT: a blocked access pulses [33] for one clock.
+
+        interrupts.adoc:199-204 and otp_fuse_controller.adoc:112-115: one
+        high clock edge in the watched window of the access
+        (``_access_watching``), low at the clock edge after that window, and no
+        high clock edge in the window of the read that follows a locked write.
+        """
+        line = (
+            f"run={run} access={access} high_clks={highs} low_after={int(low_after)} "
+            f"next_read_high_clks={next_read_highs}"
+        )
+        self._grade(
+            "LF-IRQ-DEASSERT",
+            highs == 1 and low_after and next_read_highs == 0,
+            f"{line}, expected high_clks=1 low_after=1 next_read_high_clks=0",
+        )
+        self.logger.info("CHK-LF-IRQ-DEASSERT PASS: %s", line)
 
     def _read_staged(self, cfg: SepLockedFieldIrqCfg, run: int) -> int:
         """CTRL-READ-STAGED: the sensed shadow of the read-locked spare holds the pattern.
 
         The sensing FSM reads a read-locked fuse into its shadow
-        (otp_fuse_controller.adoc:109-110), and the pattern is in the OTP image
+        (otp_fuse_controller.adoc:111-112), and the pattern is in the OTP image
         before every sense of the leaf. A shadow word that differs means the
         read-lock check below would compare against a value the field never
         held, so the leaf fails here. Returns the probed word.
@@ -420,7 +476,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         The access is the first of its segment after a reset, so the field
         holds the staged ``unlocked_pattern`` and the line is low before it
         (CTRL-IRQ-IDLE). An unlocked access is no locked-field access
-        violation (interrupts.adoc:190-192), so [33] does not rise.
+        violation (interrupts.adoc:199-204), so [33] does not rise.
         """
         if cfg.unlocked_write == cfg.unlocked_pattern:
             raise AssertionError(
@@ -463,10 +519,11 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         """CHK-WRITE-LOCK: [33] during the locked write, and the field keeps its value.
 
         The pre-read runs before any locked access of the segment, so it must
-        raise no [33]. The read after the locked write grades only the data:
-        the [33] level after a locked access is not stated, so that read runs
-        with step tag 0 and its level is logged (OBS-LF-IRQ-DEASSERT). The
-        write response is logged, not graded.
+        raise no [33]. The read after the locked write runs with step tag 0.
+        CHK-LF-IRQ-DEASSERT grades the pulse of the locked write: one high
+        clock edge in its watched window, low at the edge after the window,
+        and no high clock edge during the read after it. CHK-LOCK-WR-RESP grades the BRESP of the locked
+        write as SLVERR (otp_fuse_controller.adoc:112-115).
         """
         tag = self._tag(run, 2)
         set_ef_hold_tag(tag, self.logger)
@@ -494,13 +551,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         wr_low = await self._irq_low()
         set_ef_hold_tag(0, self.logger)
         post, post_irq = await self._access_watching(drv, cfg.write_field)
-        self.logger.info(
-            "OBS-LF-IRQ-DEASSERT: run=%d access=write_lock [33] low_after=%d "
-            "following_read_irq=%d (not graded: the level after the access is not stated)",
-            run,
-            int(wr_low),
-            int(post_irq),
-        )
+        self._check_pulse(run, "write_lock", wr_irq, wr_low, post_irq)
         self._grade(
             "WRITE-LOCK",
             wr_irq and post.resp_ok and post.rdata == cfg.write_pattern,
@@ -513,22 +564,32 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
             run,
             post.rdata,
         )
-        self.logger.info(
-            "OBS-LOCK-WR-RESP: case=write_lock field=%s BRESP=%d", cfg.write_field, wr.resp_code
+        self._grade(
+            "LOCK-WR-RESP",
+            wr.resp_code == RESP_SLVERR,
+            f"case=write_lock run={run} {cfg.write_field} BRESP={resp_name(wr.resp_code)}, "
+            "expected SLVERR",
         )
-        self._check_excl(vec, mark, run, "write_lock")
+        self.logger.info(
+            "CHK-LOCK-WR-RESP PASS: case=write_lock run=%d field=%s BRESP=%s",
+            run,
+            cfg.write_field,
+            resp_name(wr.resp_code),
+        )
+        self._check_rise(vec, mark, run, "write_lock")
         await self._release(tag)
 
     async def _read_lock(
         self, drv: SepLockedFieldIrq, cfg: SepLockedFieldIrqCfg, vec: SepVecWatch, run: int
     ) -> None:
-        """CHK-READ-LOCK: [33] during the locked read, and the data is not the stored value.
+        """CHK-READ-LOCK: [33] during the locked read, RRESP SLVERR and data ``0xBADCAB1E``.
 
-        The stored value is the sensed shadow word of the read-locked spare
-        (CTRL-READ-STAGED). The staged pattern never equals the error-slave
-        marker (env/sep_locked_field_irq.py), so a marker readback still
-        differs. The read response code is logged, not graded; the [33] level
-        after the read is logged (OBS-LF-IRQ-DEASSERT).
+        otp_fuse_controller.adoc:112-115 states the response and the data. The
+        data also differs from the stored value, the sensed shadow word of the
+        read-locked spare (CTRL-READ-STAGED). The staged pattern never equals
+        ``DENY_DATA_MARKER`` (env/sep_locked_field_irq.py), so both data
+        compares can fail. CHK-LF-IRQ-DEASSERT grades the pulse of the read:
+        one high clock edge in its watched window and low at the edge after it.
         """
         stored = self._read_staged(cfg, run)
         tag = self._tag(run, 4)
@@ -537,27 +598,32 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         rd, rd_irq = await self._access_watching(drv, cfg.read_field, locked=True)
         rd_low = await self._irq_low()
         set_ef_hold_tag(0, self.logger)
-        self.logger.info(
-            "OBS-LF-IRQ-DEASSERT: run=%d access=read_lock [33] low_after=%d "
-            "(not graded: the level after the access is not stated)",
-            run,
-            int(rd_low),
-        )
+        self._check_pulse(run, "read_lock", rd_irq, rd_low)
+        if stored == DENY_DATA_MARKER:
+            raise AssertionError(
+                f"test bug: {cfg.read_field} stored word equals 0x{DENY_DATA_MARKER:08x}, "
+                "so CHK-READ-LOCK cannot tell the refused read from the stored value"
+            )
         self._grade(
             "READ-LOCK",
-            rd.rdata != stored and rd_irq,
-            f"run={run} {cfg.read_field} RDATA=0x{rd.rdata:08x} stored(shadow)=0x{stored:08x} "
-            f"irq={int(rd_irq)} (RRESP={rd.resp_code})",
+            rd.resp_code == RESP_SLVERR
+            and rd.rdata == DENY_DATA_MARKER
+            and rd.rdata != stored
+            and rd_irq,
+            f"run={run} {cfg.read_field} RRESP={resp_name(rd.resp_code)} expected SLVERR, "
+            f"RDATA=0x{rd.rdata:08x} expected 0x{DENY_DATA_MARKER:08x}, "
+            f"stored(shadow)=0x{stored:08x} irq={int(rd_irq)}",
         )
         self.logger.info(
-            "CHK-READ-LOCK PASS: run=%d [33] during read, RDATA=0x%08x != stored(shadow) "
-            "0x%08x (RRESP=%d, not graded)",
+            "CHK-READ-LOCK PASS: run=%d [33] during read, RRESP=%s, RDATA=0x%08x "
+            "(expected 0x%08x) != stored(shadow) 0x%08x",
             run,
+            resp_name(rd.resp_code),
             rd.rdata,
+            DENY_DATA_MARKER,
             stored,
-            rd.resp_code,
         )
-        self._check_excl(vec, mark, run, "read_lock")
+        self._check_rise(vec, mark, run, "read_lock")
         await self._release(tag)
 
     async def _graded_run(
@@ -599,8 +665,10 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         self.required_evidence = (
             "CHK-UNLOCKED",
             "CHK-WRITE-LOCK",
+            "CHK-LOCK-WR-RESP",
             "CHK-READ-LOCK",
-            "CHK-SRC34-EXCL",
+            "CHK-SRC34-RISE",
+            "CHK-LF-IRQ-DEASSERT",
         )
         img = self.select_efuse_image(lc_raw=LC_PROD, fixed=cfg.image_fixed())
         assert img.lc_raw() == LC_PROD, "test bug: image LC_STATE is not PROD"

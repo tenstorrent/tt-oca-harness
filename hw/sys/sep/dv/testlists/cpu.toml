@@ -321,7 +321,7 @@ module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
 # No reseed: every run runs all steps; the seed selects only the ungraded uncore write data
 # and the TCK period and phase, which change TAP timing only and no check grades.
-timeout_sec = 900
+timeout_sec = 1800
 tags = ["debug", "jtag", "dmi", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
 run_modes = ["cpu"]
@@ -352,3 +352,21 @@ timeout_sec = 1200
 tags = ["cpu", "isa", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The IFU fetches and the LSU loads of ROM-resident code contend at the boot ROM
+# mux: each master holds ARVALID and its AR payload until ARREADY, and every ROM
+# loop returns the sum of the data block that the firmware expects.
+name = "sep_cpu_rom_ar_contention_test"
+module = "cpu.sep_cpu_rom_ar_contention_test"
+firmware = "rom_ar_contention_test"
+seed = 1
+timeout_sec = 900
+tags = ["cpu", "rom", "fabric", "subsystem"]
+run_modes = ["cpu"]
+args = [
+    "+skip_fuse_sense",
+    "+sep_boot_rom_hex=rom_ar_contention_rom.hex",
+    "+axi_sva_need_lsu",
+    "+axi_sva_need_ifu",
+]

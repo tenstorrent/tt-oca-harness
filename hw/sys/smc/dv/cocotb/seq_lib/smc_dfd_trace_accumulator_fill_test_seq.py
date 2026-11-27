@@ -22,11 +22,10 @@ The contract this sequence drives, all of it from the RDL:
   at the uncompressed value its own RDL description names.
 * ``FUNNEL.Trfunnelcontrol`` and the ``DST_SINK`` window and enables, so the
   packetizer has somewhere to hand a filled bank.
-* ``CDbgNode0Eap0.Action0``, six bits, which the RDL describes only as
-  selecting an action. Which action code starts a trace is **not** published
-  by the RDL, the generated headers or the MMR specification, so this sequence
-  names no code: it drives the field over its whole range, one value at a
-  time, and lets the DUT report what happened.
+* ``CDbgNode0Eap0.Action0``, six bits. ``dfd.adoc`` Action Codes gives the
+  trace start, stop and pulse codes; this sequence holds the DUT to none of
+  them and names no code: it drives the field over its whole range, one value
+  at a time, and lets the DUT report what happened.
 
 Two hardware-driven, software-readable values carry the result, and both are
 read at their RDL reset first so what changes is attributable to the sweep:

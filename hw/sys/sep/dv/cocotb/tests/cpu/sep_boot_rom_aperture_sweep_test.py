@@ -15,9 +15,8 @@ drawn from the run seed and is part of the generated code and table.
 Checks:
   CHK-ROM-SWEEP    : every logged 1, 2 and 4-byte load equals the image bytes at
                      word index (addr - 0x1004_0000) >> 3 and byte offset
-                     addr & 7, little-endian; the ``ROM_CTL`` read is 0x0 on its
-                     RDL field bits (rom.adoc ROM Architecture;
-                     sep_efuse_map.adoc ``ROM_CTL``). Boundary words: word 0,
+                     addr & 7, little-endian (rom.adoc ROM Architecture).
+                     Boundary words: word 0,
                      the 13 walking-one words and the top word 8191, each at
                      every aligned offset of every size.
   CHK-ROM-PORT     : each load of steps 7 to 11 appears once on PR-LSU-ROM and
@@ -34,7 +33,7 @@ Checks:
                      beat with the strobe of the stored bytes and one B beat
                      per store (rom.adoc: stores receive a response and do not
                      modify the ROM). The B code is logged
-                     (OBS-ROM-STORE-RESP).
+                     (INFO-ROM-STORE-RESP).
                      Back-to-back pairs: at the first 8 store points, 4 pairs load the
                      word and then store to it (read_before_store) and 4 pairs
                      store and then load (store_before_read), with only a
@@ -62,6 +61,13 @@ Checks:
                      0x1004_FFFF). Control: the sweep loads of CHK-ROM-PORT
                      are on PR-LSU-ROM. The leg runs with the graded window
                      closed, after the bench sets its release flag.
+                     Store leg, after the loads: a 32-bit LSU store at the
+                     same two addresses each makes exactly one AW at its
+                     address on PR-LSU-XBAR; from the store to the next store
+                     (or the store leg end marker) PR-LSU-ROM carries no AW and
+                     PR-ROM and PR-ROM-MACRO carry no request. Control: the
+                     byte and halfword stores of CHK-ROM-STORE are AWs on
+                     PR-LSU-ROM.
   CHK-ROM-NOECC    : a 1-bit or 2-bit flip in a stored word reads back as the
                      whole flipped 64-bit word with no trap and no NMI; the
                      neighbour words read exact (rom.adoc:59-60, no ECC or
@@ -93,12 +99,15 @@ Checks:
                      same fetch of the calibration boot, whose beat carries
                      image word 1.
 
-Logged only (OBS-ROM-PAST-EXTENT-RESP): for each past-extent load, the
+Logged only (INFO-ROM-PAST-EXTENT-RESP): for each past-extent load, the
 PR-LSU-XBAR R response code, the loaded value, the NMI count between the load
-and the next one, and the NMI ``mcause`` and ``mdseac``. No TT text states the
-response of that range to the SEP CPU.
+and the next one, and the NMI ``mcause`` and ``mdseac``; for each past-extent
+store (``dir=store``), the PR-LSU-XBAR B response code and the same NMI
+fields. No TT text states the response of that range to the SEP CPU. A store
+bus error raises an imprecise NMI, so its record can follow the address record
+of the next store; the line logs the records as they fall and grades none.
 
-Logged only (OBS-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
+Logged only (INFO-ROM-WDT-OTF): after CHK-ROM-OTF, with the graded window
 closed, a set-up ``rst_ni`` pulse and the same anchor, ``wdt_rst_ni`` falls at
 the same offset o and is released after RST_HOLD cycles. The ``wdt_rst_ni``
 reset lowers the CPU reset and not the reset of the boot ROM interface
@@ -146,11 +155,9 @@ request, so in a back-to-back pair the load AR and the store AW are adjacent
 LSU address handshakes; the fence after a store waits for its response, so the
 load after it is a bus read.
 
-Fuse image: the run mode needs a staged image with ``ROM_CTL`` = 0. The default
-preload holds a non-zero ``ROM_CTL``, so the testlist entry stages the PROD
-configuration ``sep_efuse_lc_prod.toml`` (every field other than the life cycle
-state is 0) with real fuse sense; the leaf checks that the golden image holds
-``ROM_CTL`` = 0 before it boots.
+Fuse image: the testlist entry stages the PROD configuration
+``sep_efuse_lc_prod.toml`` (every field other than the life cycle state is 0)
+with real fuse sense.
 
 Every expected value comes from the test-owned image and the drawn plan; no
 expected value is read from the DUT. Bounds are environment choices and are
@@ -178,7 +185,6 @@ from env.sep_fcov_gate import (
     set_rom_flip_bits,
     set_rom_noecc_pass,
 )
-from env.sep_field_compare import field_compare
 from env.sep_mbx_words import SepMbxWords
 from env.sep_rom_image import ROM_WORDS, SepRomImage, rom_flip
 from env.sep_rv32_asm import (
@@ -210,7 +216,6 @@ from env.sep_rv32_asm import (
     ZERO,
     Asm,
     addi,
-    andi,
     csrr,
     csrw,
     jalr,
@@ -239,10 +244,7 @@ TOP_WORD = ROM_WORDS - 1
 WORD_BITS = (ROM_WORDS - 1).bit_length()  # 13 word-index bits
 
 _CPU_CTRL = RegBlock("SEP_CPU_CTRL")
-_EFUSE = RegBlock("SEP_EFUSE_MAP")
 _OUTF = RegBlock("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_")
-ROM_CTL_ADDR = _EFUSE.addr("ROM_CTL")
-ROM_CTL_MASK = _EFUSE.mask32("ROM_CTL")
 NMI_VEC_ADDR = _CPU_CTRL.addr("SEP_NMI_VEC")
 
 # Outbound mailbox (tb/sep_outbound_mbx.sv, the SMU_GLOBAL_BASE_ADDR reset value).
@@ -259,7 +261,6 @@ FILTER_CFG_OPEN = (
 
 # Mailbox record offsets. Each marker has its own 8-byte slot, so its store is
 # found by address on the LSU taps.
-OFF_ROMCTL = 0x10
 OFF_FAIL = 0x18
 OFF_CTL_B = 0x20
 OFF_CTL_V = 0x28
@@ -294,7 +295,10 @@ OFF_PX_B = 0x108
 OFF_PXA = 0x110  # past-extent load address
 OFF_PXV = 0x118  # past-extent loaded value
 OFF_PX_E = 0x120
-FAIL_ROMCTL, FAIL_FLAG = 1, 2
+OFF_PS_B = 0x128
+OFF_PSA = 0x130  # past-extent store address
+OFF_PS_E = 0x138
+FAIL_FLAG = 1
 
 # SRAM layout of the generated image.
 FW_BASE = SRAM_BASE
@@ -343,7 +347,7 @@ CSR_MRAC, MRAC_SEP = _crt0_mrac(CRT0)
 
 # Environment choices (logged).
 RST_HOLD = 20  # clk_i cycles of each rst_ni pulse
-ROMCTL_BOUND = 200_000  # clk_i cycles from the boot to the ROM_CTL record
+MRAC_BOUND = 200_000  # clk_i cycles from the boot to the mrac record
 SWEEP_BOUND = 2_000_000  # clk_i cycles for steps 6 to 11
 STORE_BOUND = 20_000  # clk_i cycles from one store completion marker to the next
 FLIP_POLL = 100_000  # firmware poll iterations for the release flag
@@ -460,9 +464,8 @@ def _fail(a: Asm, code: int) -> None:
     a.li(T0, code).op(sw(T0, GP, OFF_FAIL), FENCE).j("halt")
 
 
-def build_code(p: _Plan) -> Asm:
-    """The SRAM routine of steps 4 to 13."""
-    a = Asm(FW_BASE)
+def _preamble(a: Asm) -> None:
+    """mrac, the mailbox filter entry, the vectors and the mrac record."""
     a.li(T0, MRAC_SEP).op(csrw(CSR_MRAC, T0))
     a.li(GP, MBX)
     for reg, val in (
@@ -476,11 +479,27 @@ def build_code(p: _Plan) -> Asm:
     a.la(T0, "trap").op(csrw(CSR_MTVEC, T0), addi(S11, ZERO, 0), FENCE)
     # The mailbox store comes after the outbound filter entry that admits it.
     a.op(csrr(T0, CSR_MRAC), sw(T0, GP, OFF_MRAC), FENCE)
-    # Step 4: ROM_CTL; any field bit set stops the routine.
-    a.li(T0, ROM_CTL_ADDR).op(lw(A0, T0, 0), sw(A0, GP, OFF_ROMCTL), FENCE)
-    a.op(andi(A1, A0, ROM_CTL_MASK)).br("beq", A1, ZERO, "ctl_ok")
-    _fail(a, FAIL_ROMCTL)
-    a.label("ctl_ok")
+
+
+def _handlers(a: Asm) -> None:
+    """The halt loop, the trap handler and the NMI handler."""
+    a.label("halt").j("halt")
+    # Trap handler: log mcause, count, resume after the trapping instruction.
+    a.align(64).label("trap")
+    a.op(csrr(T6, CSR_MCAUSE), sw(T6, GP, OFF_TRAP), addi(S11, S11, 1))
+    a.op(csrr(T6, CSR_MEPC), addi(T6, T6, 4), csrw(CSR_MEPC, T6), FENCE, MRET)
+    # NMI handler: log mcause and the D-bus error address, unlock it, return.
+    a.align(64).label("nmi")
+    a.op(csrr(T6, CSR_MCAUSE), sw(T6, GP, OFF_NMI), csrr(T6, CSR_MDSEAC))
+    a.op(sw(T6, GP, OFF_NMI_ADDR), csrw(CSR_MDEAU, ZERO), FENCE, MRET)
+    if FW_BASE + a.nbytes > TABLE:
+        raise RuntimeError(f"the generated code ({a.nbytes} bytes) overlaps the probe table")
+
+
+def build_code(p: _Plan) -> Asm:
+    """The SRAM routine of steps 4 to 13."""
+    a = Asm(FW_BASE)
+    _preamble(a)
     # Step 6: SRAM control load.
     _mark(a, OFF_CTL_B)
     a.li(T0, p.sram_ctl).op(lw(A0, T0, 0), sw(A0, GP, OFF_CTL_V))
@@ -540,6 +559,10 @@ def build_code(p: _Plan) -> Asm:
         a.li(S0, addr).op(sw(S0, GP, OFF_PXA), FENCE, lw(A0, S0, 0), FENCE)
         a.op(sw(A0, GP, OFF_PXV), FENCE)
     _mark(a, OFF_PX_E)
+    _mark(a, OFF_PS_B)
+    for addr in p.past:
+        a.li(S0, addr).op(sw(S0, GP, OFF_PSA), FENCE, store(4, S0, S0, 0), FENCE)
+    _mark(a, OFF_PS_E)
     # Step 13: wait for the flips, one ecall, then read each flipped word and
     # its neighbours.
     a.op(sw(S11, GP, OFF_TCNT))
@@ -566,17 +589,7 @@ def build_code(p: _Plan) -> Asm:
         a.li(T3, w).op(sw(T3, GP, OFF_RA), sw(A0, GP, OFF_RV), sw(A1, GP, OFF_RV + 4), FENCE)
     a.op(FENCE, sw(S11, GP, OFF_TCNT2))
     _mark(a, OFF_DONE2)
-    a.label("halt").j("halt")
-    # Trap handler: log mcause, count, resume after the trapping instruction.
-    a.align(64).label("trap")
-    a.op(csrr(T6, CSR_MCAUSE), sw(T6, GP, OFF_TRAP), addi(S11, S11, 1))
-    a.op(csrr(T6, CSR_MEPC), addi(T6, T6, 4), csrw(CSR_MEPC, T6), FENCE, MRET)
-    # NMI handler: log mcause and the D-bus error address, unlock it, return.
-    a.align(64).label("nmi")
-    a.op(csrr(T6, CSR_MCAUSE), sw(T6, GP, OFF_NMI), csrr(T6, CSR_MDSEAC))
-    a.op(sw(T6, GP, OFF_NMI_ADDR), csrw(CSR_MDEAU, ZERO), FENCE, MRET)
-    if FW_BASE + a.nbytes > TABLE:
-        raise RuntimeError(f"the generated code ({a.nbytes} bytes) overlaps the probe table")
+    _handlers(a)
     return a
 
 
@@ -697,11 +710,11 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         self.logger.info("INFO-DRAW flips=%s", " ".join(f"{w}/0x{m:x}" for w, m in p.flips))
         self.logger.info("INFO-DRAW u_o=%d/65536", p.u)
         self.logger.info(
-            "INFO-ENV rst_hold=%d romctl_bound=%d sweep_bound=%d store_bound=%d flip_poll=%d "
+            "INFO-ENV rst_hold=%d mrac_bound=%d sweep_bound=%d store_bound=%d flip_poll=%d "
             "leg_bound=%d cpu_low_bound=%d release_bound=%d anchor_bound=%d "
             "first_req_bound=%d rsp_bound=%d",
             RST_HOLD,
-            ROMCTL_BOUND,
+            MRAC_BOUND,
             SWEEP_BOUND,
             STORE_BOUND,
             FLIP_POLL,
@@ -715,14 +728,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
 
     def _fuse_image(self) -> None:
         image = self.select_efuse_image()
-        rom_ctl = image.field_int("ROM_CTL")
-        if rom_ctl != 0:
-            raise AssertionError(
-                f"the staged fuse image holds ROM_CTL=0x{rom_ctl:x}; the run mode needs 0x0"
-            )
-        self.logger.info(
-            "INFO-CFG fuse image ROM_CTL=0x0 lc_raw=0x%x (real fuse sense)", image.lc_raw()
-        )
+        self.logger.info("INFO-CFG fuse image lc_raw=0x%x (real fuse sense)", image.lc_raw())
         self.write_efuse_image(image)
 
     async def _tap_default(self) -> None:
@@ -798,24 +804,24 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             raise AssertionError("; ".join(self.failures))
         self.result_pass(TEST, self.random_seed(), self.n_checks)
 
-    async def _legs(self) -> None:
-        p = self.plan
-        mbx = self.mbx
-        await self._calibrate()
-        mrac = await mbx.wait(OFF_MRAC, ROMCTL_BOUND, what="mrac record")
+    async def _check_mrac(self) -> None:
+        mrac = await self.mbx.wait(OFF_MRAC, MRAC_BOUND, what="mrac record")
         line = f"csr=0x{CSR_MRAC:03x} readback=0x{mrac.val:08x} crt0=0x{MRAC_SEP:08x}"
         if mrac.val != MRAC_SEP:
             self.logger.error("CTRL-ROM-MRAC FAIL: %s", line)
             raise AssertionError(f"CTRL-ROM-MRAC FAIL: {line}")
         self.logger.info("CTRL-ROM-MRAC: %s", line)
-        # Step 4.
-        ctl = await mbx.wait(OFF_ROMCTL, ROMCTL_BOUND, what="ROM_CTL record")
-        await self._check_fail()
+
+    async def _legs(self) -> None:
+        p = self.plan
+        mbx = self.mbx
+        await self._calibrate()
+        await self._check_mrac()
         # Steps 6 to 11.
         await mbx.wait(OFF_SWEEP_B, SWEEP_BOUND, what="sweep begin")
         self._open_window()
         await mbx.wait(OFF_SWEEP_E, SWEEP_BOUND, what="sweep end")
-        self._grade_sweep(ctl.val)
+        self._grade_sweep()
         self._grade_port()
         # Step 12.
         await mbx.wait(OFF_ST_B, LEG_BOUND, what="store begin")
@@ -837,6 +843,9 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         await mbx.wait(OFF_PX_E, LEG_BOUND, what="past-extent end")
         await self._check_fail()
         self._grade_past()
+        await mbx.wait(OFF_PS_E, LEG_BOUND, what="past-extent store end")
+        await self._check_fail()
+        self._grade_past_store()
         # Step 13: the flips are set-up outside the window.
         await mbx.wait(OFF_FLIP_READY, LEG_BOUND, what="FLIP_READY")
         for w, m in p.flips:
@@ -973,7 +982,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
     async def _check_fail(self) -> None:
         f = self.mbx.find(OFF_FAIL)
         if f is not None:
-            what = {FAIL_ROMCTL: "ROM_CTL not 0x0", FAIL_FLAG: "release flag timeout"}
+            what = {FAIL_FLAG: "release flag timeout"}
             raise AssertionError(f"routine fail marker: {what.get(f.val, hex(f.val))}")
 
     # ---------------------------------------------------------------- step 3
@@ -1022,11 +1031,10 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             out.append((ROM_BASE + (la.val & 0xFFFF), la.val >> 16, lv.val))
         return out
 
-    def _grade_sweep(self, rom_ctl: int) -> None:
+    def _grade_sweep(self) -> None:
         p = self.plan
         plan = p.sweep()
         got = self._sweep_records()
-        fc = field_compare(rom_ctl, 0, ROM_CTL_MASK)
         mismatches = []
         ok_cells: Counter = Counter()
         if len(got) != len(plan):
@@ -1047,14 +1055,14 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         boundary_ok = sum(1 for w in boundary if ok_cells[w] >= 14)
         drawn = {(a - ROM_BASE) >> 3 for a, _s, st in plan if st in ("seeded", "seq", "block")}
         by_size = [sum(1 for _a, s, _st in plan if s == z) for z in SIZES]
-        ok = fc.ok and not mismatches and boundary_ok == len(boundary)
+        ok = not mismatches and boundary_ok == len(boundary)
         self._grade(
             "CHK-ROM-SWEEP",
             ok,
-            f"rom_ctl=0x{rom_ctl & ROM_CTL_MASK:x} probes={len(got)} sizes=1,2,4 "
+            f"probes={len(got)} sizes=1,2,4 "
             f"probes_by_size={by_size[0]}/{by_size[1]}/{by_size[2]} "
             f"boundary_words={boundary_ok}/{len(boundary)} drawn_words={len(drawn)} "
-            f"mismatches={len(mismatches)} rom_ctl_{fc.fields().replace(' ', ' rom_ctl_')}"
+            f"mismatches={len(mismatches)}"
             + ("" if not mismatches else " first=" + "; ".join(m for m in mismatches if m)),
         )
 
@@ -1183,7 +1191,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                     f"exp_word={hex(addr >> 3)} strb={w.strb} exp_strb=0x{exp_strb:02x}"
                 )
         self.logger.info(
-            "OBS-ROM-STORE-RESP n_stores=%d bresp=%s",
+            "INFO-ROM-STORE-RESP n_stores=%d bresp=%s",
             N_STORES,
             ",".join("X" if b.resp is None else str(b.resp) for b in b_beats),
         )
@@ -1289,7 +1297,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             )
 
     def _grade_past(self) -> None:
-        """CHK-ROM-PAST-EXTENT per load, and OBS-ROM-PAST-EXTENT-RESP."""
+        """CHK-ROM-PAST-EXTENT per load, and INFO-ROM-PAST-EXTENT-RESP."""
         p = self.plan
         t_end = self._marker_t(OFF_PX_E)
         recs = self.mbx.records()
@@ -1353,11 +1361,77 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             nmi = [r.val for r in rl if r.off == OFF_NMI]
             mdseac = [r.val for r in rl if r.off == OFF_NMI_ADDR]
             self.logger.info(
-                "OBS-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
+                "INFO-ROM-PAST-EXTENT-RESP addr=0x%08x rresp=%s value=%s nmi=%d mcause=%s "
                 "mdseac=%s traps=%d",
                 addr,
                 "X" if rresp is None else str(rresp),
                 "X" if val is None else f"0x{val:08x}",
+                len(nmi),
+                ",".join(f"0x{v:08x}" for v in nmi) or "none",
+                ",".join(f"0x{v:08x}" for v in mdseac) or "none",
+                sum(1 for r in rl if r.off == OFF_TRAP),
+            )
+
+    def _grade_past_store(self) -> None:
+        """CHK-ROM-PAST-EXTENT per store, and INFO-ROM-PAST-EXTENT-RESP dir=store."""
+        p = self.plan
+        t_end = self._marker_t(OFF_PS_E)
+        recs = self.mbx.records()
+        seg = recs[self.mbx.find(OFF_PS_B).seq : self.mbx.find(OFF_PS_E).seq + 1]
+        psa_t = self._aw_times(OFF_PSA)
+        per_store: list[list] = []
+        for r in seg:
+            if r.off == OFF_PSA:
+                per_store.append([r])
+            elif per_store:
+                per_store[-1].append(r)
+        if not (len(psa_t) == len(per_store) == len(p.past)):
+            self._grade(
+                "CHK-ROM-PAST-EXTENT",
+                False,
+                f"dir=store records={len(per_store)} psa={len(psa_t)} expected={len(p.past)}",
+            )
+            return
+        ctl_aw = len(
+            self._in(self.lsu_rom.beats, self._marker_t(OFF_ST_B), self._marker_t(OFF_ST_E), "aw")
+        )
+        exp_xbar_aw, exp_lsu_rom_aw = 1, 0
+        for i, addr in enumerate(p.past):
+            lo = psa_t[i]
+            end = psa_t[i + 1] if i + 1 < len(p.past) else t_end
+            aw = [b for b in self._in(self.lsu_xbar.beats, lo, end, "aw") if b.addr == addr]
+            lsu_rom_aw = len(self._in(self.lsu_rom.beats, lo, end, "aw"))
+            rom_req = len(self._in(self.rom.beats, lo, end, "req"))
+            macro_req = len(self._in(self.macro.beats, lo, end, "req"))
+            self._grade(
+                "CHK-ROM-PAST-EXTENT",
+                len(aw) == exp_xbar_aw
+                and lsu_rom_aw == exp_lsu_rom_aw
+                and rom_req == 0
+                and macro_req == 0
+                and ctl_aw > 0,
+                f"dir=store addr=0x{addr:08x} lsu_xbar_aw={len(aw)} lsu_rom_aw={lsu_rom_aw} "
+                f"rom_req={rom_req} macro_req={macro_req} expect_lsu_xbar_aw={exp_xbar_aw} "
+                f"expect_lsu_rom_aw={exp_lsu_rom_aw} control_store_lsu_rom_aw={ctl_aw}",
+            )
+            bresp = None
+            if len(aw) == 1:
+                bresp = next(
+                    (
+                        b.resp
+                        for b in self._in(self.lsu_xbar.beats, aw[0].t_ps, end, "b")
+                        if b.id == aw[0].id
+                    ),
+                    None,
+                )
+            rl = per_store[i]
+            nmi = [r.val for r in rl if r.off == OFF_NMI]
+            mdseac = [r.val for r in rl if r.off == OFF_NMI_ADDR]
+            self.logger.info(
+                "INFO-ROM-PAST-EXTENT-RESP dir=store addr=0x%08x bresp=%s nmi=%d mcause=%s "
+                "mdseac=%s traps=%d",
+                addr,
+                "X" if bresp is None else str(bresp),
                 len(nmi),
                 ",".join(f"0x{v:08x}" for v in nmi) or "none",
                 ",".join(f"0x{v:08x}" for v in mdseac) or "none",
@@ -1727,7 +1801,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         )
         first_word = None if first is None or first.addr is None else first.addr >> 3
         self.logger.info(
-            "OBS-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
+            "INFO-ROM-WDT-OTF LOG offset=%d/%d fall_c=%d cpu_low_c=%d release_c=%d "
             "macro_after_fall=req%s/addr%s/memif_rst_n%s "
             "cpu_low_rom_req=%d[%s] cpu_low_rom_rsp=%d[%s] cpu_low_macro_req=%d[%s] "
             "anchor_rsp_c=%s anchor_rsp_is_word1=%s first_req_word=%s first_req_c=%s "
