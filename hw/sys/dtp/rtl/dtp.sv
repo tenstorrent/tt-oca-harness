@@ -94,8 +94,10 @@ module dtp
   input  logic pwr_on_rst_ni,                   // Power-on reset for JTAG logic, active-low.
 
   input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,  // Per-TAP debug/test disables from
-                                                                // SEP lifecycle; active-high,
-                                                                // synchronized to TCK inside.
+                                                                // SEP lifecycle; active-high. The
+                                                                // JTAG2AXI fields are synchronized
+                                                                // to clk_i inside, the others to
+                                                                // TCK.
 
   input  jtag_tap_ctrl_t  jtag_ptap_client_tap_ctrl_i,  // Primary JTAG TAP control.
   input  logic            jtag_ptap_client_tdi_i,  // Primary JTAG TAP TDI.

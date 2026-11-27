@@ -379,6 +379,9 @@ way.
 
 For a block write, also set `sbautoincrement` (bit 16) in `sbcs`. Each write of
 `sbdata0` then writes one element and advances the address by the access size.
+The address advances only after an access that completes without an error.
+After an access that sets `sberror` 2, the address is still the address of that
+access.
 
 For a block read, set `sbreadonaddr`, `sbreadondata` (bit 15) and
 `sbautoincrement` in `sbcs`, then write the address. Each read of `sbdata0`
@@ -392,9 +395,11 @@ Give each element enough Run-Test/Idle cycles for its AXI transfer, or read
 
 *Errors and recovery*
 
-* `sberror` 2: the AXI subordinate answered with an error, or the lifecycle
-  state disables the bridge. A disabled bridge answers every access with this
-  error and sends no request to its target; `sbcs` still reads the geometry.
+* `sberror` 2: the AXI subordinate answered with an error, or the bridge is
+  disabled. A disabled bridge answers every access with this error and sends no
+  request to its target; `sbcs` still reads the geometry. The lifecycle state
+  disables only the SMC fabric bridge. The two OTP bridges stay enabled in each
+  lifecycle state.
 * `sberror` 3: the address is not aligned to the access size. `sberror` 4: the
   access size is larger than the data width.
 * Clear `sberror` with a write of `sbcs` that has all three `sberror` bits set.
@@ -404,7 +409,10 @@ Give each element enough Run-Test/Idle cycles for its AXI transfer, or read
   complete the transfer, and only a system reset recovers the bridge.
 * A system reset clears `dmactive` and the SBA registers; do the bring-up again.
   TRST and Test-Logic-Reset do not reset the Debug Module. A write of 0 and
-  then 1 to `dmactive` resets its registers.
+  then 1 to `dmactive` resets its registers. While `dmactive` is 0, a write or
+  a read of an SBA register starts no AXI access. An access that is in progress
+  when `dmactive` goes to 0 completes first: read `sbcs` until `sbbusy` is 0
+  before the write of 1, or the registers do not reset.
 * Assert and release TRST only while TCK is stopped.
 
 *OpenOCD*

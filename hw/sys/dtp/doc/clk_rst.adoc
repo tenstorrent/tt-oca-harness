@@ -220,8 +220,10 @@ the SMU nets that drive them. Gate and flop symbols show where resets are combin
 and a reset ends on the bottom edge of the flop it resets.
 
 * `rst_n_i` (`rst_primary_smc_clk_no` in the SMU) resets the cross-trigger network
-  and the JTAG2AXI bridges. Each bridge synchronizes the release of `rst_n_i` into
-  `clk_i` for its AXI side and into TCK for its TCK side.
+  and the JTAG2AXI bridges. `tdr2axi` in each bridge synchronizes the release of
+  `rst_n_i` into `clk_i` for its AXI side and into TCK for its TCK side. The
+  debug-disable logic of a bridge and the register slice of the SMC fabric port
+  take `rst_n_i` directly.
 * `pwr_on_rst_ni` (`powergood_stable` in the SMU) sets the `dbg_disable_i`
   synchronizers to 1, disabling every debug path until the lifecycle value arrives.
   `u_trst_n_and` ANDs it with the TRST pin to form the combined TRST.
