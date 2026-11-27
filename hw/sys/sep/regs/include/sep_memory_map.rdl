@@ -70,7 +70,7 @@
     sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
     spi_controller->ocah_aperture_size = 0x1000;
     spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
-    spi_controller->ocah_past_extent_note = "Up to offset 0x3F the SPI controller answers with read data 0xFFFFFFFF.";
+    spi_controller->ocah_past_extent_note = "Up to offset 0x3F the SPI controller answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.spi, one of the bits behind PIC source 43.";
     spi_controller->desc = "External I/O SPI controller bridge.";
     sep_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
 `ifndef EXCLUDE_CORE_LOCAL_RESOURCES

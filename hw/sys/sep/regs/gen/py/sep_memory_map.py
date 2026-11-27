@@ -758,7 +758,7 @@ VIEWS = {
                 "hole_responses": (),
                 "hole_notes": (),
                 "past_response": {"rresp": "SLVERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "SLVERR, 0xBADCAB1E / SLVERR"},
-                "past_note": "Up to offset 0x3F the SPI controller answers with read data 0xFFFFFFFF.",
+                "past_note": "Up to offset 0x3F the SPI controller answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.spi, one of the bits behind PIC source 43.",
             },
             {
                 "key": "reserved_10B01000",

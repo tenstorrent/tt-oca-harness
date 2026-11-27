@@ -92,5 +92,5 @@
 [[sep-components-note-6]]^[6]^ Up to offset 0x7F the CSRNG answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.csrng, one of the bits behind PIC source 43. +
 [[sep-components-note-7]]^[7]^ With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR. +
 [[sep-components-note-8]]^[8]^ A 32-bit read of the upper word of a register also answers SLVERR, 0x0. +
-[[sep-components-note-9]]^[9]^ Up to offset 0x3F the SPI controller answers with read data 0xFFFFFFFF.
+[[sep-components-note-9]]^[9]^ Up to offset 0x3F the SPI controller answers with read data 0xFFFFFFFF and also latches PERIPH_BUS_ERR_STATUS.spi, one of the bits behind PIC source 43.
 // end::sep-components[]
