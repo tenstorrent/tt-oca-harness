@@ -264,7 +264,7 @@ localparam int unsigned DEBUG_MODULE_ROM_25__REG_ADDR                           
 
 
 localparam int unsigned SMC_RESET_UNIT_REG_MAP_BASE_ADDR                                                          = 32'hC0002000;
-localparam int unsigned SMC_RESET_UNIT_REG_MAP_SIZE                                                               = 32'h000000CC;
+localparam int unsigned SMC_RESET_UNIT_REG_MAP_SIZE                                                               = 32'h000000D0;
 
 
 localparam int unsigned SMC_RESET_UNIT_SS_CONFIG_REG_OFFSET                                                       = 32'h00000020;
@@ -305,6 +305,8 @@ localparam int unsigned SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_OFFSET 
 localparam int unsigned SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_ADDR                                     = 32'hC00020C4;
 localparam int unsigned SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_OFFSET                             = 32'h000000C8;
 localparam int unsigned SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_ADDR                               = 32'hC00020C8;
+localparam int unsigned SMC_RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_OFFSET                                         = 32'h000000CC;
+localparam int unsigned SMC_RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_ADDR                                           = 32'hC00020CC;
 
 
 //==============================================================================
@@ -10948,9 +10950,10 @@ localparam longint unsigned RESET_UNIT_ISOLATE_REQ_REG_REG_DEFAULT              
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_PINEN_REG_REG_DEFAULT                                          = 32'h00000000;
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_SMC_REG_REG_DEFAULT                                            = 32'h00000000;
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_SMCEN_REG_REG_DEFAULT                                          = 32'h00000000;
-localparam longint unsigned RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT                                                = 32'h00000111;
+localparam longint unsigned RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT                                                = 32'h00000001;
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_DEFAULT                                  = 32'h00000000;
 localparam longint unsigned RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_DEFAULT                            = 32'h00000000;
+localparam longint unsigned RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_DEFAULT                                        = 32'h00000000;
 localparam longint unsigned SCRATCH_SCRATCH_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned CHIP_CONFIG_VERSION_LO_REG_DEFAULT                                                    = 32'h000100A0;
 localparam longint unsigned CHIP_CONFIG_VERSION_HI_REG_DEFAULT                                                    = 32'h00000000;
@@ -11602,17 +11605,17 @@ localparam int unsigned RESET_UNIT_ISOLATE_REQ_SMCEN_REG_ISOLATE_REQ_SMCEN_REG_S
 localparam int unsigned RESET_UNIT_ISOLATE_REQ_VIS_ISOLATE_REQ_PIN_MASK                                           = 32'h1;
 localparam int unsigned RESET_UNIT_ISOLATE_REQ_VIS_ISOLATE_REQ_PIN_SHIFT                                          = 0;
 
-localparam int unsigned RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_N_I_MASK                                            = 32'h10;
-localparam int unsigned RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_N_I_SHIFT                                           = 4;
-
-localparam int unsigned RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_N_O_MASK                                            = 32'h100;
-localparam int unsigned RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_N_O_SHIFT                                           = 8;
+localparam int unsigned RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_CAUSE_MASK                                          = 32'h30;
+localparam int unsigned RESET_UNIT_ISOLATE_REQ_VIS_COOL_RESET_CAUSE_SHIFT                                         = 4;
 
 localparam int unsigned RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_ISOLATE_REQ_FLR_COUNTER_VALUE_MASK               = 32'hFFFFFFFF;
 localparam int unsigned RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_ISOLATE_REQ_FLR_COUNTER_VALUE_SHIFT              = 0;
 
 localparam int unsigned RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_MASK    = 32'hFFFFFFFF;
 localparam int unsigned RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_SHIFT    = 0;
+
+localparam int unsigned RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_ISOLATE_REQ_ACK_CAPTURE_MASK                           = 32'hFFFFFFFF;
+localparam int unsigned RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_ISOLATE_REQ_ACK_CAPTURE_SHIFT                          = 0;
 
 localparam int unsigned SCRATCH_SCRATCH_DATA_MASK                                                                 = 32'hFFFFFFFF;
 localparam int unsigned SCRATCH_SCRATCH_DATA_SHIFT                                                                = 0;
@@ -17592,9 +17595,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [0:0]   cool_reset_n_o ;
-    logic [2:0]   rsvd_1 ;
-    logic [0:0]   cool_reset_n_i ;
+    logic [1:0]   cool_reset_cause ;
     logic [2:0]   rsvd_0 ;
     logic [0:0]   isolate_req_pin ;
 } reset_unit_isolate_req_vis_reg_t;
@@ -17610,6 +17611,12 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0]   isolate_req_flr_reset_counter_value ;
 } reset_unit_isolate_req_flr_reset_counter_value_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   isolate_req_ack_capture ;
+} reset_unit_isolate_req_ack_capture_reg_t;
 
 
 

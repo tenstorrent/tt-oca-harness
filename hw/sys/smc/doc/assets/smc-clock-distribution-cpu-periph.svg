@@ -210,7 +210,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect x="863.667" y="311" width="113.333" height="38" rx="0" fill="#f6eacd"/>
 <rect class="outl" x="636" y="310" width="342" height="40" rx="4"/>
 <text class="s" x="644" y="326.5" text-anchor="start">u_smc_reset_unit</text>
-<text class="s" x="644" y="342.5" text-anchor="start">reset synchronisers, FLR counters</text>
+<text class="s" x="644" y="342.5" text-anchor="start">reset synchronisers, reset timeout counters</text>
 <rect x="636" y="358" width="342" height="56" rx="4" fill="#e2efe6"/>
 <rect class="outl" x="636" y="358" width="342" height="56" rx="4"/>
 <text class="s" x="644" y="382.5" text-anchor="start">u_smc_periph_axi_lite_xbar, u_system_timer_octs,</text>

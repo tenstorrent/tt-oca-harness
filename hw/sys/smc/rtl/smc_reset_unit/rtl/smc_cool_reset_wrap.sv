@@ -1,22 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Generate the FLR cool reset and the subsystem isolation requests.
+// Generate the isolation sequence cool reset and the subsystem isolation requests.
 //
-// On a rising edge of cfg_flr_pf_active_i, counts down ISOLATE_REQ_FLR_COUNTER_VALUE
+// On a rising edge of isolate_sequence_trigger_i, counts down ISOLATE_REQ_FLR_COUNTER_VALUE
 // reference clock cycles, then holds rst_cool_no low while counting down
 // ISOLATE_REQ_FLR_RESET_COUNTER_VALUE cycles; no sequence starts while the reset count is
-// zero. Implements the ISOLATE_REQ_* registers on the SMC clock, reset only by the cold
-// reset so they survive the cool reset.
+// zero, and an edge that arrives before the hold ends is ignored. The first count ends early once isolate_req_ack_i is high for every subsystem
+// enabled in ISOLATE_REQ_SMCEN_REG and at least one is enabled.
+// Records the cause of each cool reset and, for a sequence, the acknowledges it saw, in
+// ISOLATE_REQ_VIS and ISOLATE_REQ_ACK_CAPTURE. Those and the ISOLATE_REQ_* registers are
+// reset only by the cold reset, so they survive the cool reset.
 
 `include "ocah_registers.svh"
 
 module smc_cool_reset_wrap (
-  input  logic                                   clk_ref_i,  // Reference clock for the FLR counters
+  input  logic                                   clk_ref_i,  // Reference clock for the reset timeout counters
                                                              // and rst_cool_no.
   input  logic                                   rst_cold_ref_ni,  // Stable cold reset, active-low,
                                                                    // synchronized to clk_ref_i;
-                                                                   // resets the FLR counters and
+                                                                   // resets the reset timeout counters and
                                                                    // releases rst_cool_no.
 
   input  logic                                   clk_smc_i,  // SMC core clock for the ISOLATE_REQ_*
@@ -42,19 +45,26 @@ module smc_cool_reset_wrap (
                                                                      // ISOLATE_REQ_PINEN_REG and
                                                                      // preserves that register across
                                                                      // cold reset while high.
-  input  logic                                   cfg_flr_pf_active_i,  // PCIe function-level reset
-                                                                       // request, active-high; its
-                                                                       // synchronized rising edge sets
-                                                                       // ISOLATE_REQ_SMC and starts
-                                                                       // the FLR counters.
-  input  logic                                   rst_cool_ni,  // Incoming cool reset
-                                                               // request from primary
-                                                               // chiplet to place in
-                                                               // internal register for
-                                                               // visibility.
+  input  logic                                   isolate_sequence_trigger_i,  // Isolation sequence
+                                                                              // trigger, active-high; its
+                                                                              // synchronized rising edge
+                                                                              // sets ISOLATE_REQ_SMC and
+                                                                              // starts the reset timeout
+                                                                              // counters.
+  input  logic [31:0]                            isolate_req_ack_i,  // Isolation acknowledge, one bit
+                                                                     // per isolate_req_o bit, active-high,
+                                                                     // asynchronous: subsystem i has
+                                                                     // nothing in flight across its
+                                                                     // boundary. Must fall before
+                                                                     // isolate_req_o[i] does.
+  input  logic                                   rst_cool_pin_stable_ni,  // De-glitched cool reset
+                                                                          // pin, active-low, on
+                                                                          // clk_ref_i; a fall while
+                                                                          // rst_cool_no is high is
+                                                                          // recorded as a pin cool
+                                                                          // reset.
   output logic [31:0]                            isolate_req_o,  // Controls isolation of
-                                                                 // subsystems like PCIe
-                                                                 // and/or ETH during FLR:
+                                                                 // subsystems:
                                                                  // ISOLATE_REQ_REG, OR the
                                                                  // pin-enabled bits while the
                                                                  // pin is high, OR the
@@ -62,12 +72,11 @@ module smc_cool_reset_wrap (
                                                                  // ISOLATE_REQ_SMC is set.
   output logic                                   skip_mem_repair_o,  // Signal to skip
                                                                      // memory repair &
-                                                                     // MBIST during FLR; high
+                                                                     // MBIST during isolation; high
                                                                      // while the pin or
                                                                      // ISOLATE_REQ_SMC is set.
-  output logic                                   rst_cool_no  // FLR cool reset, active-low, on
-                                                              // clk_ref_i; also visible in
-                                                              // ISOLATE_REQ_VIS.
+  output logic                                   rst_cool_no  // Sequence cool reset, active-low, on
+                                                              // clk_ref_i.
 );
 
   /////////////////////////
@@ -76,11 +85,20 @@ module smc_cool_reset_wrap (
 
   // Register Interface Signals
   logic                        isolate_req_pin_sync_smc;
-  logic                        cfg_flr_pf_active_sync_smc;
-  logic                        cfg_flr_pf_active_sync_ref;
+  logic                        isolate_sequence_trigger_sync_smc;
+  logic                        isolate_sequence_trigger_sync_ref;
 
-  logic                        rst_cool_ni_sync_smc;
-  logic                        rst_cool_no_sync_smc;
+  logic [31:0]                 isolate_req_ack_sync_ref;
+  logic [31:0]                 isolate_req_smcen_ref_clk;
+
+  // Cool reset record, written on clk_ref_i and read on clk_smc_i.
+  typedef struct packed {
+    reset_unit_reg_pkg::reset_unit__cool_reset_cause_enum_e cause;
+    logic [31:0]                                            ack_capture;
+  } cool_reset_record_t;
+
+  cool_reset_record_t          cool_reset_record_ref;
+  cool_reset_record_t          cool_reset_record_smc;
 
   logic [31:0]                 isolate_req_reg_wr_data;
   logic [31:0]                 isolate_req_reg_wr_mask;
@@ -112,9 +130,9 @@ module smc_cool_reset_wrap (
   logic [31:0]                 flr_reset_set_cnt;
   logic [31:0]                 flr_reset_set_cnt_ref_clk;
 
-  // FLR Logic Signals
-  logic cfg_flr_pf_active_sync_ref_q, cfg_flr_pf_active_sync_ref_posedge;
-  logic cfg_flr_pf_active_sync_smc_q, cfg_flr_pf_active_sync_smc_posedge;
+  // Isolation Sequence Trigger Signals
+  logic isolate_sequence_trigger_sync_ref_q, isolate_sequence_trigger_sync_ref_posedge;
+  logic isolate_sequence_trigger_sync_smc_q, isolate_sequence_trigger_sync_smc_posedge;
 
   ////////////////////////
   // Register Interface //
@@ -125,8 +143,10 @@ module smc_cool_reset_wrap (
 
     // ISOLATE_REQ_VIS
     hwif_in_o.ISOLATE_REQ_VIS.isolate_req_pin.next                   = isolate_req_pin_sync_smc;
-    hwif_in_o.ISOLATE_REQ_VIS.cool_reset_n_i.next                    = rst_cool_ni_sync_smc;
-    hwif_in_o.ISOLATE_REQ_VIS.cool_reset_n_o.next                    = rst_cool_no_sync_smc;
+    hwif_in_o.ISOLATE_REQ_VIS.cool_reset_cause.next                  = cool_reset_record_smc.cause;
+
+    // ISOLATE_REQ_ACK_CAPTURE
+    hwif_in_o.ISOLATE_REQ_ACK_CAPTURE.isolate_req_ack_capture.next   = cool_reset_record_smc.ack_capture;
 
     // ISOLATE_REQ_REG
     hwif_in_o.ISOLATE_REQ_REG.rd_ack                                  = hwif_out_i.ISOLATE_REQ_REG.req && !hwif_out_i.ISOLATE_REQ_REG.req_is_wr;
@@ -201,34 +221,51 @@ module smc_cool_reset_wrap (
 
   prim_sync3 #(
     .WIDTH(1)
-  ) u_cfg_flr_pf_active_sync_smc (
+  ) u_isolate_sequence_trigger_sync_smc (
     .clk_i(clk_smc_i),
-    .d_i  (cfg_flr_pf_active_i),
-    .q_o  (cfg_flr_pf_active_sync_smc)
+    .d_i  (isolate_sequence_trigger_i),
+    .q_o  (isolate_sequence_trigger_sync_smc)
   );
 
   prim_sync3 #(
     .WIDTH(1)
-  ) u_cfg_flr_pf_active_sync_ref (
+  ) u_isolate_sequence_trigger_sync_ref (
     .clk_i(clk_ref_i),
-    .d_i  (cfg_flr_pf_active_i),
-    .q_o  (cfg_flr_pf_active_sync_ref)
+    .d_i  (isolate_sequence_trigger_i),
+    .q_o  (isolate_sequence_trigger_sync_ref)
   );
 
-  prim_sync3 #(
-    .WIDTH(1)
-  ) u_rst_cool_ni_sync_smc (
-    .clk_i(clk_smc_i),
-    .d_i  (rst_cool_ni),
-    .q_o  (rst_cool_ni_sync_smc)
+  prim_sync3r #(
+    .WIDTH(32)
+  ) u_isolate_req_ack_sync_ref (
+    .clk_i (clk_ref_i),
+    .d_i   (isolate_req_ack_i),
+    .rst_ni(rst_cold_ref_ni),
+    .q_o   (isolate_req_ack_sync_ref)
   );
 
-  prim_sync3 #(
-    .WIDTH(1)
-  ) u_rst_cool_no_sync_smc (
-    .clk_i(clk_smc_i),
-    .d_i  (rst_cool_no),
-    .q_o  (rst_cool_no_sync_smc)
+  prim_sync_data_autohs #(
+    .WIDTH(32),
+    .DEPTH(3)
+  ) u_isolate_req_smcen_sync (
+    .clk_src_i  (clk_smc_i),
+    .rst_src_ni (rst_cold_smc_ni),
+    .data_i     (isolate_req_smcen_reg),
+    .clk_dst_i  (clk_ref_i),
+    .rst_dst_ni (rst_cold_ref_ni),
+    .data_o     (isolate_req_smcen_ref_clk)
+  );
+
+  prim_sync_data_autohs #(
+    .WIDTH($bits(cool_reset_record_t)),
+    .DEPTH(3)
+  ) u_cool_reset_record_sync (
+    .clk_src_i  (clk_ref_i),
+    .rst_src_ni (rst_cold_ref_ni),
+    .data_i     (cool_reset_record_ref),
+    .clk_dst_i  (clk_smc_i),
+    .rst_dst_ni (rst_cold_smc_ni),
+    .data_o     (cool_reset_record_smc)
   );
 
   prim_sync_data_autohs #(
@@ -259,23 +296,23 @@ module smc_cool_reset_wrap (
   // Posedge Detection //
   ///////////////////////
 
-  // Detect rising edge of cfg_flr_pf_active_sync_ref
-  `OCAH_FF(cfg_flr_pf_active_sync_ref_q, cfg_flr_pf_active_sync_ref, 1'b0, clk_ref_i,
+  // Detect rising edge of isolate_sequence_trigger_sync_ref
+  `OCAH_FF(isolate_sequence_trigger_sync_ref_q, isolate_sequence_trigger_sync_ref, 1'b0, clk_ref_i,
            rst_cold_ref_ni)
 
-  assign cfg_flr_pf_active_sync_ref_posedge = cfg_flr_pf_active_sync_ref && !cfg_flr_pf_active_sync_ref_q;
+  assign isolate_sequence_trigger_sync_ref_posedge = isolate_sequence_trigger_sync_ref && !isolate_sequence_trigger_sync_ref_q;
 
-  // Detect rising edge of cfg_flr_pf_active_sync_smc
-  `OCAH_FF(cfg_flr_pf_active_sync_smc_q, cfg_flr_pf_active_sync_smc, 1'b0, clk_smc_i,
+  // Detect rising edge of isolate_sequence_trigger_sync_smc
+  `OCAH_FF(isolate_sequence_trigger_sync_smc_q, isolate_sequence_trigger_sync_smc, 1'b0, clk_smc_i,
            rst_cold_smc_ni)
 
-  assign cfg_flr_pf_active_sync_smc_posedge = cfg_flr_pf_active_sync_smc && !cfg_flr_pf_active_sync_smc_q;
+  assign isolate_sequence_trigger_sync_smc_posedge = isolate_sequence_trigger_sync_smc && !isolate_sequence_trigger_sync_smc_q;
 
-  /////////////////////////////////
-  // FLR Isolate request control //
-  /////////////////////////////////
+  ///////////////////////////////
+  // Isolate request control //
+  ///////////////////////////////
 
-  // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems like PCIe and/or ETH.
+  // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems.
   `OCAH_FFL(
       isolate_req_reg,
       (isolate_req_reg & ~isolate_req_reg_wr_mask) | (isolate_req_reg_wr_data & isolate_req_reg_wr_mask),
@@ -293,13 +330,12 @@ module smc_cool_reset_wrap (
     end
   end
 
-  // SMC implements isolate_req_smc_reg to assert isolate_req_o[] once cfg_flr_pf_active is asserted
   always_ff @(posedge clk_smc_i or negedge rst_cold_smc_ni) begin
     if (~rst_cold_smc_ni) begin
       isolate_req_smc_reg <= 1'b0;
     end else begin
-      if (cfg_flr_pf_active_sync_smc_posedge) begin
-        isolate_req_smc_reg <= 1'b1; // Asserts isolate_req_smc_reg once cfg_flr_pf_active is asserted
+      if (isolate_sequence_trigger_sync_smc_posedge) begin
+        isolate_req_smc_reg <= 1'b1;
       end else if (isolate_req_smc_reg_wr_en &&
                    hwif_out_i.ISOLATE_REQ_SMC_REG.wr_biten.isolate_req_smc_reg &&
                    hwif_out_i.ISOLATE_REQ_SMC_REG.wr_data.isolate_req_smc_reg) begin
@@ -308,27 +344,26 @@ module smc_cool_reset_wrap (
     end
   end
 
-  // SMC implements isolate_req_reg[] for SMC SW to assert isolation request to subsystems like PCIe and/or ETH.
   `OCAH_FFL(
       isolate_req_smcen_reg,
       (isolate_req_smcen_reg & ~isolate_req_smcen_reg_wr_mask) | (isolate_req_smcen_reg_wr_data & isolate_req_smcen_reg_wr_mask),
       isolate_req_smcen_wr_en, '0, clk_smc_i, rst_cold_smc_ni)
 
-  // Isolate request control logic (OR of SW request, pin request, and FLR request)
+  // Isolate request control logic (OR of SW request, pin request, and isolation sequence request)
   always_comb begin
     for (int i = 0; i < 32; i++) begin
       isolate_req_o[i] = isolate_req_reg[i] | (isolate_req_pinen_reg[i] & isolate_req_pin_sync_smc) | (isolate_req_smcen_reg[i] & isolate_req_smc_reg);
     end
   end
 
-  // Skip memory repair & MBIST during FLR if isolate request is asserted
+  // Skip memory repair & MBIST while the pin or the isolation sequence latch is set
   assign skip_mem_repair_o = isolate_req_pin_sync_smc | isolate_req_smc_reg;
 
-  //////////////////
-  // FLR Counters //
-  //////////////////
+  ////////////////////////////
+  // Reset Timeout Counters //
+  ////////////////////////////
 
-  // Reset condition for flr counters to retain value depsite cool reset
+  // Reset condition for the reset timeout counters to retain their value despite cool reset
   always_ff @(posedge clk_smc_i or negedge rst_cold_smc_ni) begin
     if (~rst_cold_smc_ni) begin
       flr_set_cnt       <= '0;
@@ -363,6 +398,14 @@ module smc_cool_reset_wrap (
 
   logic flr_set, flr_reset_set;
 
+  logic isolate_req_acks_done;
+
+  // Every subsystem enabled in ISOLATE_REQ_SMCEN_REG has acknowledged. With none enabled the
+  // sequence never ends early and waits for the full timeout.
+  assign isolate_req_acks_done =
+      (isolate_req_smcen_ref_clk != '0) &&
+      ((isolate_req_ack_sync_ref & isolate_req_smcen_ref_clk) == isolate_req_smcen_ref_clk);
+
   // Counter for delaying rst_cool_n assertion
   prim_updown_counter #(
     .WIDTH(32),
@@ -371,7 +414,7 @@ module smc_cool_reset_wrap (
     .clk_i              (clk_ref_i),
     .rst_ni             (rst_cold_ref_ni),        // top level cold reset
     .clear_i            (1'b0),
-    .set_i              (flr_set),                // Starts counting down once cfg_flr_pf_active is asserted
+    .set_i              (flr_set),
     .set_cnt_i          (flr_set_cnt_ref_clk),    // Set value for the counter (synchronized from SMCCLK).
     .incr_en_i          (1'b0),
     .decr_en_i          (1'b1),                   // Decrement always
@@ -387,8 +430,10 @@ module smc_cool_reset_wrap (
     case (flr_counter_state)
       IDLE: begin
 
-        // Do not start counting down if the reset assertion duration has not been set
-        if (cfg_flr_pf_active_sync_ref_posedge && (flr_reset_set_cnt_ref_clk != '0)) begin
+        // Do not start counting down if the reset assertion duration has not been set, or
+        // while a cool reset hold is still running: an edge during the hold is dropped.
+        if (isolate_sequence_trigger_sync_ref_posedge && (flr_reset_set_cnt_ref_clk != '0) &&
+            (flr_reset_counter_state == IDLE)) begin
 
           // Check if counter value is set to 0 already, go to EQUAL_ZERO
           if (flr_set_cnt_ref_clk == '0) begin
@@ -422,7 +467,7 @@ module smc_cool_reset_wrap (
         flr_commit                = 1'b1;
 
         // Counter reached one -> zero on next cycle
-        if (flr_count_value == 32'd1) begin
+        if ((flr_count_value == 32'd1) || isolate_req_acks_done) begin
           flr_counter_expire_nxt    = 1'b1;
           flr_counter_state_nxt     = EQUAL_ZERO;
         end else begin
@@ -540,5 +585,32 @@ module smc_cool_reset_wrap (
   end
 
   assign rst_cool_no = flr_reset_n_n0_scan;
+
+  ///////////////////////
+  // Cool Reset Record //
+  ///////////////////////
+
+  logic rst_cool_pin_stable_q;
+  logic rst_cool_pin_negedge;
+
+  // Resetting to 0 keeps a pin still low at cold-reset release from reading as a fall.
+  `OCAH_FF(rst_cool_pin_stable_q, rst_cool_pin_stable_ni, 1'b0, clk_ref_i, rst_cold_ref_ni)
+
+  // A pin fall while this chiplet's own sequence cool reset is asserted is that reset looping
+  // back through the board, not a separate pin reset, so it is not recorded.
+  assign rst_cool_pin_negedge = rst_cool_pin_stable_q && !rst_cool_pin_stable_ni && rst_cool_no;
+
+  always_ff @(posedge clk_ref_i or negedge rst_cold_ref_ni) begin
+    if (!rst_cold_ref_ni) begin
+      cool_reset_record_ref <= '0;
+    end else if (flr_counter_expire_nxt) begin
+      cool_reset_record_ref.cause       <= isolate_req_acks_done ?
+          reset_unit_reg_pkg::reset_unit__cool_reset_cause_enum__seq_ack :
+          reset_unit_reg_pkg::reset_unit__cool_reset_cause_enum__seq_timeout;
+      cool_reset_record_ref.ack_capture <= isolate_req_ack_sync_ref;
+    end else if (rst_cool_pin_negedge) begin
+      cool_reset_record_ref.cause       <= reset_unit_reg_pkg::reset_unit__cool_reset_cause_enum__pin;
+    end
+  end
 
 endmodule

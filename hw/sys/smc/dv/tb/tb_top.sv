@@ -1455,7 +1455,8 @@ module smc_uvm_top
         .smc_ndmreset_request_i     (tb_ndmreset_request),
         .smc_ndmreset_process_o     (tb_ndmreset_process),
         .smc_ext_mailbox_interrupts_o (),
-        .cfg_flr_pf_active_i        (tb_cfg_flr_pf_active),
+        .isolate_sequence_trigger_i        (tb_isolate_sequence_trigger),
+        .isolate_req_ack_i          (tb_isolate_req_ack),
         .isolate_req_o              (tb_isolate_req_o),
         .ss_reset_complete_i        (tb_ss_reset_complete),
         .ss_config_o                (ss_config),
@@ -2080,8 +2081,8 @@ module smc_uvm_top
     assign tb_isolate_req_reg       = `SMC_COOL.isolate_req_reg;
     assign tb_isolate_req_smcen_reg = `SMC_COOL.isolate_req_smcen_reg;
     assign tb_isolate_req_smc_reg   = `SMC_COOL.isolate_req_smc_reg;
-    assign tb_flr_sync_ref          = `SMC_COOL.cfg_flr_pf_active_sync_ref;
-    assign tb_flr_posedge_ref       = `SMC_COOL.cfg_flr_pf_active_sync_ref_posedge;
+    assign tb_flr_sync_ref          = `SMC_COOL.isolate_sequence_trigger_sync_ref;
+    assign tb_flr_posedge_ref       = `SMC_COOL.isolate_sequence_trigger_sync_ref_posedge;
     assign tb_flr_counter_state     = `SMC_COOL.flr_counter_state;
     `undef SMC_COOL
 
@@ -2178,7 +2179,7 @@ module smc_uvm_top
         .rst_cold_ni                 (rst_cold_ni),
         .rst_cool_ni                 (rst_cool_ni),
         .sep_wdt_reset_ni            (tb_sep_wdt_reset_n),
-        .cfg_flr_pf_active_i         (tb_cfg_flr_pf_active),
+        .isolate_sequence_trigger_i         (tb_isolate_sequence_trigger),
         .ndmreset_request_i          (tb_ndmreset_request),
         .powergood_stable_i          (powergood_stable_o),
         .rst_cold_stable_ref_clk_ni  (rst_cold_stable_ref_clk_no),
@@ -2420,7 +2421,7 @@ module smc_uvm_top
         .isolate_req_reg_i         (tb_isolate_req_reg),
         .isolate_req_smcen_reg_i   (tb_isolate_req_smcen_reg),
         .isolate_req_smc_reg_i     (tb_isolate_req_smc_reg),
-        .cfg_flr_pf_active_i       (tb_cfg_flr_pf_active),
+        .isolate_sequence_trigger_i       (tb_isolate_sequence_trigger),
         .flr_sync_ref_i            (tb_flr_sync_ref),
         .flr_posedge_ref_i         (tb_flr_posedge_ref),
         .flr_counter_state_i       (tb_flr_counter_state),
@@ -6219,7 +6220,8 @@ module smc_uvm_top
     assign tb_boot_stall_jtag_ovrd_i = 1'b0;
     assign tb_boot_stall_jtag_val_i  = 1'b0;
     assign tb_sep_wdt_reset_n        = 1'b1;
-    assign tb_cfg_flr_pf_active      = 1'b0;
+    assign tb_isolate_sequence_trigger      = 1'b0;
+    assign tb_isolate_req_ack        = '0;
     assign tb_ndmreset_request       = '0;
     assign tb_temp_interrupt_i       = 1'b0;
     assign tb_ext_interrupt_0_i      = 1'b0;
@@ -6439,7 +6441,8 @@ module smc_dual_inst
         .smc_ndmreset_request_i     ('0),
         .smc_ndmreset_process_o     (),
         .smc_ext_mailbox_interrupts_o (),
-        .cfg_flr_pf_active_i        (1'b0),
+        .isolate_sequence_trigger_i        (1'b0),
+        .isolate_req_ack_i          ('0),
         .isolate_req_o              (),
         .ss_reset_complete_i        ('1),
         .ss_config_o                (),

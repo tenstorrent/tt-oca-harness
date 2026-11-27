@@ -1705,7 +1705,8 @@ module smu_wrapper_uvm_top
     .smc_ndmreset_process_o (ndmreset_process_w),
     .smc_ext_mailbox_interrupts_o (ext_mailbox_interrupts),
 
-    .cfg_flr_pf_active_i (tb_cfg_flr_pf_active),
+    .isolate_sequence_trigger_i (tb_isolate_sequence_trigger),
+    .isolate_req_ack_i ('0),
     .isolate_req_o (isolate_req_w),
     .ss_reset_complete_i (~tb_ss_reset_incomplete),
     .ss_config_o (ss_config_w),
@@ -3633,7 +3634,7 @@ module smu_wrapper_uvm_top
   assign tb_smc_ext_interrupts   = '0;
   assign tb_sep_ext_interrupts   = '0;
   assign tb_smc_ndmreset_request = '0;
-  assign tb_cfg_flr_pf_active    = 1'b0;
+  assign tb_isolate_sequence_trigger    = 1'b0;
   assign tb_mem_repair_abort     = 1'b0;
   assign tb_mbist_abort          = 1'b0;
   assign tb_mem_repair_hold      = 1'b0;

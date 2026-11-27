@@ -8,7 +8,7 @@ package reset_unit_reg_pkg;
 
     localparam RESET_UNIT_REG_DATA_WIDTH = 32;
     localparam RESET_UNIT_REG_MIN_ADDR_WIDTH = 8;
-    localparam RESET_UNIT_REG_SIZE = 'hcc;
+    localparam RESET_UNIT_REG_SIZE = 'hd0;
 
     typedef struct packed {
         logic [31:0] ss_config;
@@ -84,17 +84,12 @@ package reset_unit_reg_pkg;
     } reset_unit__ISOLATE_REQ_VIS__isolate_req_pin__in_t;
 
     typedef struct {
-        logic next;
-    } reset_unit__ISOLATE_REQ_VIS__cool_reset_n_i__in_t;
-
-    typedef struct {
-        logic next;
-    } reset_unit__ISOLATE_REQ_VIS__cool_reset_n_o__in_t;
+        logic [1:0] next;
+    } reset_unit__ISOLATE_REQ_VIS__cool_reset_cause__in_t;
 
     typedef struct {
         reset_unit__ISOLATE_REQ_VIS__isolate_req_pin__in_t isolate_req_pin;
-        reset_unit__ISOLATE_REQ_VIS__cool_reset_n_i__in_t cool_reset_n_i;
-        reset_unit__ISOLATE_REQ_VIS__cool_reset_n_o__in_t cool_reset_n_o;
+        reset_unit__ISOLATE_REQ_VIS__cool_reset_cause__in_t cool_reset_cause;
     } reset_unit__ISOLATE_REQ_VIS__in_t;
 
     typedef struct packed {
@@ -118,6 +113,14 @@ package reset_unit_reg_pkg;
     } reset_unit__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__external__in_t;
 
     typedef struct {
+        logic [31:0] next;
+    } reset_unit__ISOLATE_REQ_ACK_CAPTURE__isolate_req_ack_capture__in_t;
+
+    typedef struct {
+        reset_unit__ISOLATE_REQ_ACK_CAPTURE__isolate_req_ack_capture__in_t isolate_req_ack_capture;
+    } reset_unit__ISOLATE_REQ_ACK_CAPTURE__in_t;
+
+    typedef struct {
         reset_unit__SS_CONFIG__external__in_t SS_CONFIG;
         reset_unit__SS_COLD_RESET_N__external__in_t SS_COLD_RESET_N;
         reset_unit__SS_RESET_COMPLETE__in_t SS_RESET_COMPLETE;
@@ -128,6 +131,7 @@ package reset_unit_reg_pkg;
         reset_unit__ISOLATE_REQ_VIS__in_t ISOLATE_REQ_VIS;
         reset_unit__ISOLATE_REQ_FLR_COUNTER_VALUE__external__in_t ISOLATE_REQ_FLR_COUNTER_VALUE;
         reset_unit__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__external__in_t ISOLATE_REQ_FLR_RESET_COUNTER_VALUE;
+        reset_unit__ISOLATE_REQ_ACK_CAPTURE__in_t ISOLATE_REQ_ACK_CAPTURE;
     } reset_unit__in_t;
 
     typedef struct packed {
@@ -310,4 +314,11 @@ package reset_unit_reg_pkg;
         reset_unit__ISOLATE_REQ_FLR_COUNTER_VALUE__external__out_t ISOLATE_REQ_FLR_COUNTER_VALUE;
         reset_unit__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__external__out_t ISOLATE_REQ_FLR_RESET_COUNTER_VALUE;
     } reset_unit__out_t;
+
+    typedef enum logic [1:0] {
+        reset_unit__cool_reset_cause_enum__none = 'h0,
+        reset_unit__cool_reset_cause_enum__pin = 'h1,
+        reset_unit__cool_reset_cause_enum__seq_ack = 'h2,
+        reset_unit__cool_reset_cause_enum__seq_timeout = 'h3
+    } reset_unit__cool_reset_cause_enum_e;
 endpackage

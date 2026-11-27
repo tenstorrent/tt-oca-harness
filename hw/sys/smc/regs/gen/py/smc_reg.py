@@ -280,7 +280,7 @@ DEBUG_MODULE_ROM_25__REG_OFFSET = 0x00000864
 DEBUG_MODULE_ROM_25__REG_ADDR = 0xC0001864
 DEBUG_MODULE_ROM_25__REG_TYPE = 'DEBUG_MODULE_ROM'
 SMC_RESET_UNIT_REG_MAP_BASE_ADDR = 0xC0002000
-SMC_RESET_UNIT_REG_MAP_SIZE = 0x000000CC
+SMC_RESET_UNIT_REG_MAP_SIZE = 0x000000D0
 SMC_RESET_UNIT_SS_CONFIG_REG_OFFSET = 0x00000020
 SMC_RESET_UNIT_SS_CONFIG_REG_ADDR = 0xC0002020
 SMC_RESET_UNIT_SS_CONFIG_REG_TYPE = 'RESET_UNIT_SS_CONFIG'
@@ -338,6 +338,9 @@ SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_TYPE = 'RESET_UNIT_ISOLATE_REQ_
 SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_OFFSET = 0x000000C8
 SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_ADDR = 0xC00020C8
 SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_TYPE = 'RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE'
+SMC_RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_OFFSET = 0x000000CC
+SMC_RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_ADDR = 0xC00020CC
+SMC_RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_TYPE = 'RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE'
 SMC_MISC_WRAP_REG_MAP_BASE_ADDR = 0xC0002800
 SMC_MISC_WRAP_REG_MAP_SIZE = 0x0000020C
 SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR = 0xC0002800
@@ -11892,30 +11895,26 @@ class RESET_UNIT_ISOLATE_REQ_SMCEN_REG_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT = 0x00000111
+RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT = 0x00000001
 RESET_UNIT_ISOLATE_REQ_VIS_REG_FIELD_ACCESS = (
     ('isolate_req_pin', 'r', '', '', False),
-    ('cool_reset_n_i', 'r', '', '', False),
-    ('cool_reset_n_o', 'r', '', '', False),
+    ('cool_reset_cause', 'r', '', '', False),
 )
 
 RESET_UNIT_ISOLATE_REQ_VIS_REG_WIDTH = 32
 RESET_UNIT_ISOLATE_REQ_VIS_REG_FIELDS = (
     ('isolate_req_pin', 0, 0, 'r', 'w', '', '', False, True, 1),
-    ('cool_reset_n_i', 4, 4, 'r', 'w', '', '', False, True, 1),
-    ('cool_reset_n_o', 8, 8, 'r', 'w', '', '', False, True, 1),
+    ('cool_reset_cause', 4, 5, 'r', 'w', '', '', False, True, 0),
 )
 
 class RESET_UNIT_ISOLATE_REQ_VIS_reg_t(Structure):
     _fields_ = [
-        ('isolate_req_pin', c_uint16, 1),
-        ('rsvd_0', c_uint16, 3),
-        ('cool_reset_n_i', c_uint16, 1),
-        ('rsvd_1', c_uint16, 3),
-        ('cool_reset_n_o', c_uint16, 1),
+        ('isolate_req_pin', c_uint8, 1),
+        ('rsvd_0', c_uint8, 3),
+        ('cool_reset_cause', c_uint8, 2),
     ]
 
-RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT = 0x00000111
+RESET_UNIT_ISOLATE_REQ_VIS_REG_DEFAULT = 0x00000001
 
 class RESET_UNIT_ISOLATE_REQ_VIS_reg_u(Union):
     _fields_ = [
@@ -12000,6 +11999,43 @@ class RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_reg_u, self).__init__(*args, **kwargs)
         self.val = RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_DEFAULT = 0x00000000
+RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_FIELD_ACCESS = (
+    ('isolate_req_ack_capture', 'r', '', '', False),
+)
+
+RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_WIDTH = 32
+RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_FIELDS = (
+    ('isolate_req_ack_capture', 0, 31, 'r', 'w', '', '', False, True, 0),
+)
+
+class RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_reg_t(Structure):
+    _fields_ = [
+        ('isolate_req_ack_capture', c_uint32, 32),
+    ]
+
+RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_DEFAULT = 0x00000000
+
+class RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_reg_u, self).__init__(*args, **kwargs)
+        self.val = RESET_UNIT_ISOLATE_REQ_ACK_CAPTURE_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

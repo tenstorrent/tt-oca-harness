@@ -17370,7 +17370,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* cfg_flr_pf_active_i cool reset.
+* isolate_sequence_trigger_i cool reset.
 * No Force; not rst_cool_ni.
 * BMC/primary-chiplet not claimed.
 * `skip_mem_repair_o` is a compared output, not a printed one. `clk_rst.adoc` ("Memory Test Bypass") activates it automatically when either FLR-triggered or pin-based isolation is asserted, so the isolate-request pad is driven low for the whole sequence and the output is required to read 0 with nothing isolating (`CHK-FLR-IDLE`), 1 within a bounded poll once the FLR-latched request drives every `isolate_req_o` bit through `ISOLATE_REQ_SMCEN_REG`, and 0 again within a bounded poll after software clears `ISOLATE_REQ_SMC_REG` (`CHK-FLR-SKIP-MEM-REPAIR`). Poll expiry fails.
@@ -17399,7 +17399,7 @@ Drive `smc_cool_reset_from_pcie_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-FLR-BASIC`, `CHK-FLR-COOL`, `CHK-FLR-IDLE`, `CHK-FLR-ISO`, `CHK-FLR-SKIP-MEM-REPAIR`, `CHK-FLR-WARM`, `CHK-FLR-ZERO-CNT` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 
 *Scope limit*: The BMC / primary-chiplet path, the Force path and the `rst_cool_ni` pin are not
-claimed; the stimulus is `cfg_flr_pf_active_i`.
+claimed; the stimulus is `isolate_sequence_trigger_i`.
 
 '''''
 
@@ -17424,7 +17424,7 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* cfg_flr_pf_active_i overlapped with rst_cold_ni; cold wins.
+* isolate_sequence_trigger_i overlapped with rst_cold_ni; cold wins.
 
 *Test Procedure*:
 
@@ -17530,7 +17530,7 @@ Drive `smc_flr_sanity_test_seq`. Each checker below is a named compare the DUT c
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-FLR-COOL-CSR-RECOVERY` |A `rst_cool_ni` pulse with `cfg_flr_pf_active_i` inactive drives the primary resets low and back within their bounds, `SCRATCH_COLD_WARM_0` then reads its reset value in place of the pre-cool pattern and takes a fresh write/read-back; an unobserved reset, a surviving pattern or a dead CSR path fails
+|`CHK-FLR-COOL-CSR-RECOVERY` |A `rst_cool_ni` pulse with `isolate_sequence_trigger_i` inactive drives the primary resets low and back within their bounds, `SCRATCH_COLD_WARM_0` then reads its reset value in place of the pre-cool pattern and takes a fresh write/read-back; an unobserved reset, a surviving pattern or a dead CSR path fails
 |===
 
 
@@ -18363,7 +18363,7 @@ reported as the precondition.
 
 *Source Module*: `smc_primary_reset_inflight_links_test`
 
-*BFM / Model*: ocah_axi_vip masters on SEP_IN, SYS_IN and JTAG_IN driven through the SMC AXI agents with `allow_reset_abort`, the `ej_axi` AXI-Lite master of the eFuse JTAG port, the SYS_OUT responder with `tb_output_axi_resp_hold`, the TB response holds `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`, the reset agent for the cool pin, `tb_jtag_reset_ctrl` and `tb_cfg_flr_pf_active` for the other two entries; a passive per-`clk_smc_i` sampler of the AR, R, AW, B, VALID and READY nets of SYS_IN, JTAG_IN, SEP_IN, SYS_OUT, the eFuse JTAG link, `tb_periph_axil_valid` / `_ready`, `tb_cpu_front_valid` / `_ready`, `tb_cpu_mmio_valid` / `_ready` and `tb_axil_dtp_csr_active`
+*BFM / Model*: ocah_axi_vip masters on SEP_IN, SYS_IN and JTAG_IN driven through the SMC AXI agents with `allow_reset_abort`, the `ej_axi` AXI-Lite master of the eFuse JTAG port, the SYS_OUT responder with `tb_output_axi_resp_hold`, the TB response holds `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`, the reset agent for the cool pin, `tb_jtag_reset_ctrl` and `tb_isolate_sequence_trigger` for the other two entries; a passive per-`clk_smc_i` sampler of the AR, R, AW, B, VALID and READY nets of SYS_IN, JTAG_IN, SEP_IN, SYS_OUT, the eFuse JTAG link, `tb_periph_axil_valid` / `_ready`, `tb_cpu_front_valid` / `_ready`, `tb_cpu_mmio_valid` / `_ready` and `tb_axil_dtp_csr_active`
 
 *Run mode*: one testlist entry in `testlists/reset.toml` with the `+axi_sva_need_*` plusargs of the seven graded links; group `all`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `reset`; seed 1; tool Verilator (cocotb), with one VCS run for the X-hygiene and data-known rules of the AXI checkers.
 
@@ -18373,7 +18373,7 @@ reported as the precondition.
 
 *Test Coverage*:
 
-* Contract `SMC_SEP_SCN_001` revision 6 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). Three entries: `rst_cool_ni` low for 40 `clk_ref_i` samples, `tb_jtag_reset_ctrl` cool override enable with value 0 written in one packed store, and `tb_cfg_flr_pf_active` raised with `ISOLATE_REQ_FLR_COUNTER_VALUE` 0x20 and `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` 0x40.
+* Contract `SMC_SEP_SCN_001` revision 6 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md`). Three entries: `rst_cool_ni` low for 40 `clk_ref_i` samples, `tb_jtag_reset_ctrl` cool override enable with value 0 written in one packed store, and `tb_isolate_sequence_trigger` raised with `ISOLATE_REQ_FLR_COUNTER_VALUE` 0x20 and `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` 0x40.
 * Pending set armed before every entry: two SEP_IN reads and a UART0 read held by `tb_sep_axi_r_hold`, a SEP_IN write whose W beat trails its AW, three SYS_IN reads held by `tb_sys_axi_r_hold`, two JTAG_IN reads and an eFuse JTAG read whose response is not accepted, a JTAG_IN read of 0xB000_0000 held at the SYS_OUT responder, and a SYS_IN read of the DTP CSR window that no responder answers. The leaf requires each response pending, the SEP_IN write's AW accepted with no W handshake, the SYS_OUT AR accepted and the DTP link active, before the source is driven.
 * SYS_IN and SEP_IN answer an address outside the SMC window with DECERR (`fabric.adoc`, input fabric), so the SYS_OUT leg is driven from JTAG_IN: the pending read of 0xB000_0000 and the fresh write and read of 0xB000_0008 go JTAG_IN to SYS_OUT, which is why JTAG_IN carries two planned pending items. The SYS_IN read of 0xB000_0000 is a pending SYS_IN item whose DECERR response is held at the SYS_IN response channel.
 * A 31-sample pulse on `rst_cool_ni`, one sample under the 32-sample de-glitcher, leaves `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no` and `rst_cold_n_o` at 1 on all 95 `clk_ref_i` edges from the fall to 64 edges after the rise.
@@ -18400,7 +18400,7 @@ reported as the precondition.
 |Checker |Description
 |`CHK-COOL-GLITCH-NO-ASSERT` |After a 31-sample low pulse the primary resets and `rst_cold_n_o` read 1 at all 95 sampled `clk_ref_i` edges, and `SCRATCH[0]` reads the reference value both before the pulse (the read-back of its write) and after it
 |`CHK-COOL-PIN-PRIMARY-EFFECTS` |After the 40-sample pin the primary reset is asserted with `rst_cold_n_o` at 1, the cores are held at every sample, `SCRATCH[0]` reads 0x0 (was 0xC001_0001) and the threshold reads 0x1000 (was 0x2345); the "was" values are the pre-reset read-backs, graded on the line
-|`CHK-JTAG-COOL-OVERRIDE-ENTRY` |With the pin and FLR idle the override value 0 asserts the primary reset with the same effects as the pin, the pre-reset read-backs graded on the line; `rst_cool_ni` 1 and `tb_cfg_flr_pf_active` 0 sampled at the assertion are graded and printed as `CTRL-JTAG-ENTRY-SOURCES-IDLE`
+|`CHK-JTAG-COOL-OVERRIDE-ENTRY` |With the pin and FLR idle the override value 0 asserts the primary reset with the same effects as the pin, the pre-reset read-backs graded on the line; `rst_cool_ni` 1 and `tb_isolate_sequence_trigger` 0 sampled at the assertion are graded and printed as `CTRL-JTAG-ENTRY-SOURCES-IDLE`
 |`CHK-FLR-ENTRY-PRIMARY` |The FLR edge drives `tb_rst_cool_from_flr` low then high with the primary reset asserted; `ISOLATE_REQ_SMC_REG` reads 0x1 after the edge and 0x0 after a written 1; because the FLR cool reset feeds the primary reset (`clk_rst.adoc`), `SCRATCH[0]` reads 0x0 (was 0xC001_0001) and the threshold reads 0x1000 (was 0x2345) after the release, as for the pin; the "was" values are the pre-reset read-backs, graded on the line
 |`CHK-FRESH-ACCESS-SYS-IN` |After each entry a fresh SYS_IN write completes OKAY and the read returns the word written on that entry, a different word per entry
 |`CHK-FRESH-ACCESS-JTAG-IN` |The same on JTAG_IN
@@ -18672,7 +18672,7 @@ Verilator (cocotb).
 * `smc_jtag_reset_ctrl_test` drives the cool override, the warm override released and the subsystem-0 warm override of `jtag_reset_ctrl_i`. The other 65 override muxes of the reset unit -- `ss_warm_reset_n[1..31]`, `ss_cold_reset_n[0..31]`, `fuse_reset_n` and `cold_reset_n` -- never see their select active there, and the warm mux never sees val=0. This leaf takes each one through ovrd=1/val=0, ovrd=1/val=1, ovrd=0/val=1 and idle with the overridden reset released by its source, and through ovrd=1/val=1 with the source asserting it where the bench can arrange that, so each mux input and the select exercise the mux in every combination the override can reach.
 * Per-subsystem legs are observed on `ss_reset_ctrl_o[i]` after the mux. The walked pin must move while the other 31 pins of the same vector hold their level, which fails on a wrong bit position in the DV-owned slice table, a swapped ovrd/val half or an override that reaches a neighbour. `SS_WARM_RESET_N` resets released, so the warm walk runs first against the reset value and then with the register asserting one subsystem at a time; `SS_COLD_RESET_N` resets asserted, so the cold walk runs first against the reset value and then with the register written all ones. Both registers are read unchanged across each walk, so the overrides do not write them, and both are restored.
 * The warm and fuse legs assert the warm reset alone: `tb_rst_warm_smc_clk_n` drops while `rst_primary_smc_clk_no`, `rst_cool_no` and the delayed `fuse_reset_n` from the eFuse controller stay released, so the override acts downstream of fuse sensing. `SCRATCH_COLD_WARM_0` clears and `SCRATCH_COLD_0` keeps its pattern after each.
-* The cold leg comes last because it resets the whole SMC: `rst_cold_stable_ref_clk_no`, the primary and the warm reset assert with `powergood_stable_o` held and every reset source idle (`rst_cold_ni`, `rst_cool_ni`, `powergood_i`, `cfg_flr_pf_active_i`, `sep_wdt_reset_n_i`). After the override releases, the eFuse controller re-senses and holds the warm reset; the fuse override at val=1 releases the warm reset while `tb_fuse_sense_done` and the delayed `fuse_reset_n` are still 0, and is dropped once the sense completes. `SS_COLD_RESET_N` returns to its reset value on the pins, and `SCRATCH_COLD_0` reads 0 and takes a pattern again.
+* The cold leg comes last because it resets the whole SMC: `rst_cold_stable_ref_clk_no`, the primary and the warm reset assert with `powergood_stable_o` held and every reset source idle (`rst_cold_ni`, `rst_cool_ni`, `powergood_i`, `isolate_sequence_trigger_i`, `sep_wdt_reset_n_i`). After the override releases, the eFuse controller re-senses and holds the warm reset; the fuse override at val=1 releases the warm reset while `tb_fuse_sense_done` and the delayed `fuse_reset_n` are still 0, and is dropped once the sense completes. `SS_COLD_RESET_N` returns to its reset value on the pins, and `SCRATCH_COLD_0` reads 0 and takes a pattern again.
 * The cold mux is not asked to release a cold reset the pin asserts: the bench models clocked from `rst_cold_ni` would reset while the SMC kept running. Not DTP `IC_RESET`, the boot-stall JTAG override or any reset the pins drive.
 
 *Test Procedure*:
@@ -19144,7 +19144,7 @@ latency claim; the sample count at which the pin changed is printed, not compare
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN programming and reading `ISOLATE_REQ_FLR_COUNTER_VALUE`,
 `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` and `ISOLATE_REQ_SMC_REG`; the pin `rst_cool_ni` driven on
-`clk_ref_i` edges; the FLR request `tb_cfg_flr_pf_active` (`cfg_flr_pf_active_i`); the
+`clk_ref_i` edges; the FLR request `tb_isolate_sequence_trigger` (`isolate_sequence_trigger_i`); the
 isolate-request pad held low through `tb_gpio_ext_drive_en` and `tb_gpio_ext_drive_value`; probes
 `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no`, `tb_rst_cool_from_flr` (the FLR cool-reset
 output) and `tb_rst_warm_smc_clk_n`, each sampled on every `clk_ref_i` edge or, for the warm reset,
@@ -19223,15 +19223,15 @@ inside the FLR hold do not shorten or extend it.
   with step 2 and require it to be at least 32.
 . Drive the pin low for the drawn long width, then high; wait for release; compare the release
   offset from the first high with step 2.
-. Pulse `cfg_flr_pf_active_i`, wait for the cool-reset output to fall and rise and both primary
+. Pulse `isolate_sequence_trigger_i`, wait for the cool-reset output to fall and rise and both primary
   resets to release, wait for the warm reset and clear the latched request; record the release
   offset from the cool-reset rise.
 . Error injection. Point: the `rst_cool_ni` pin inside the FLR hold. Kind: the drawn sub-32 lows
   separated by single high samples, driven the drawn number of cycles after the cool-reset output
   fell. Expected response: primary reset is asserted at every sample from the first assertion to the
   cool-reset rise and releases at the same offset from the rise as step 6. Pulse
-  `cfg_flr_pf_active_i` first to start the hold.
-. Pulse `cfg_flr_pf_active_i`; the drawn number of cycles after the cool-reset output fell drive the
+  `isolate_sequence_trigger_i` first to start the hold.
+. Pulse `isolate_sequence_trigger_i`; the drawn number of cycles after the cool-reset output fell drive the
   drawn low, high and low, then high; require no released sample from the first assertion until the
   later source ends (the drawn source, the hold or the de-glitched pin, which must have ended after
   the other on both outputs) and the release inside the bench bound.
@@ -19295,7 +19295,7 @@ orderings between them are compared.
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN programming and reading `ISOLATE_REQ_FLR_COUNTER_VALUE`,
 `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` and `ISOLATE_REQ_SMC_REG`; the pin `rst_cool_ni` driven on
-`clk_ref_i` edges; the FLR request `tb_cfg_flr_pf_active` (`cfg_flr_pf_active_i`); the
+`clk_ref_i` edges; the FLR request `tb_isolate_sequence_trigger` (`isolate_sequence_trigger_i`); the
 isolate-request pad held low through `tb_gpio_ext_drive_en` and `tb_gpio_ext_drive_value`; probes
 `rst_primary_smc_clk_no`, `rst_primary_ref_clk_no`, `tb_rst_cool_from_flr` (the FLR cool-reset
 output), `rst_cold_n_o`, `rst_cold_stable_ref_clk_no` and `tb_rst_warm_smc_clk_n`, each sampled on
@@ -19337,16 +19337,16 @@ early combines with the FLR hold without changing its duration.
 . Wait for fuse sense, hold the isolate-request pad low, write the pre-reset count 0x20 and hold
   0x60, read them back, allow 64 reference-clock cycles for the counts to cross into the reference
   domain, and require both primary resets and the cool-reset output released.
-. Pulse `cfg_flr_pf_active_i`, wait for the cool-reset output to fall and rise and both primary
+. Pulse `isolate_sequence_trigger_i`, wait for the cool-reset output to fall and rise and both primary
   resets to release, wait for the warm reset and clear the latched request; program 0x50 and 0xA0,
   read them back, wait 64 cycles and run the FLR sequence alone again.
 . Drive `rst_cool_ni` low for 48 reference-clock cycles, then high, and wait for primary reset to
   assert and release; sample every probe on every cycle.
-. Pulse `cfg_flr_pf_active_i`, drive the pin low 8 cycles later and high 4 cycles after the
+. Pulse `isolate_sequence_trigger_i`, drive the pin low 8 cycles later and high 4 cycles after the
   cool-reset fall; wait for the cool-reset rise, the primary release and the warm reset.
-. Pulse `cfg_flr_pf_active_i`, drive the pin low 4 cycles after the cool-reset fall and high 56
+. Pulse `isolate_sequence_trigger_i`, drive the pin low 4 cycles after the cool-reset fall and high 56
   cycles after the cool-reset rise; wait for the primary release and the warm reset.
-. Pulse `cfg_flr_pf_active_i`, drive the pin low 4 cycles after the cool-reset fall and high 40
+. Pulse `isolate_sequence_trigger_i`, drive the pin low 4 cycles after the cool-reset fall and high 40
   cycles later; wait for the cool-reset rise, the primary release and the warm reset.
 . Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the
   last step, and print the bounded waits.
@@ -19500,7 +19500,7 @@ length, above the pin de-glitch filter; the chapter states no minimum.
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 4-byte reads and writes); reset
 unit registers ISOLATE_REQ_PINEN_REG, ISOLATE_REQ_SMC_REG, ISOLATE_REQ_VIS,
 ISOLATE_REQ_FLR_COUNTER_VALUE and ISOLATE_REQ_FLR_RESET_COUNTER_VALUE; bench drives
-`tb_top.tb_cfg_flr_pf_active` (the FLR input) and the isolate-request pad through
+`tb_top.tb_isolate_sequence_trigger` (the FLR input) and the isolate-request pad through
 `tb_top.tb_gpio_ext_drive_value` and `tb_top.tb_gpio_ext_drive_en`; bench probes
 `tb_top.tb_rst_cool_from_flr` (`rst_cool_no`), `tb_top.tb_core2pad_en_o` and
 `tb_top.tb_core2pad_o` at the Cool Reset Out index of the integrator GPIO pad table,
@@ -19590,7 +19590,7 @@ read at their asserted level; the bounded read made during the 2000-cycle hold i
 `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, `I2C TIMING0` of instance 0, `CPU_CTRL.SCRATCH[0]` and
 `CPU_CTRL.RESET_VECTOR[0]` at the addresses of the generated address map (`smc_addr`,
 `reset_unit_u32`, `cpu_ctrl_u32`); the pin `rst_cool_ni` driven on `clk_ref_i` edges; the FLR
-request `tb_cfg_flr_pf_active` (`cfg_flr_pf_active_i`); the isolate-request pad held low through
+request `tb_isolate_sequence_trigger` (`isolate_sequence_trigger_i`); the isolate-request pad held low through
 `tb_gpio_ext_drive_en` and `tb_gpio_ext_drive_value`; probes `rst_primary_smc_clk_no`,
 `rst_primary_ref_clk_no`, `tb_rst_warm_smc_clk_n`, `rst_cold_n_o`, `rst_cold_stable_ref_clk_no`,
 `tb_rst_cool_from_flr` (the FLR cool-reset output) and `tb_isolate_req_o`, each sampled on every
@@ -19638,7 +19638,7 @@ and sets again with a zero hold count.
   read back `SS_CONFIG` (0xA5A5A5A5), `SS_COLD_RESET_N` (0x5A5A5A5A), `ISOLATE_REQ_SMCEN_REG`
   (0xFFFFFFFF), the I2C0 `TIMING0` THIGH field and `CPU_CTRL.SCRATCH[0]`, read both counters and
   `CPU_CTRL.RESET_VECTOR[0]`, and require the resets released.
-. Read `ISOLATE_REQ_SMC_REG`, pulse `cfg_flr_pf_active_i` and poll the latch until it reads 1 before
+. Read `ISOLATE_REQ_SMC_REG`, pulse `isolate_sequence_trigger_i` and poll the latch until it reads 1 before
   the cool reset starts; wait for the cool-reset output to fall, drive `rst_cool_ni` low 4 cycles
   later, wait for the cool-reset rise, drive the pin high 56 cycles after it, and sample every probe
   each cycle until both primary resets release and the warm reset releases.
@@ -19646,7 +19646,7 @@ and sets again with a zero hold count.
   `ISOLATE_REQ_SMC_REG`, the I2C0 `TIMING0`, `CPU_CTRL.SCRATCH[0]` and `CPU_CTRL.RESET_VECTOR[0]`.
 . Read the latch, write `ISOLATE_REQ_SMC_REG` with 0xFFFFFFFF and byte strobe 0x1, and read it back.
 . Write `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` = 0 and allow 64 cycles; read the latch, pulse
-  `cfg_flr_pf_active_i`, watch every reset output for 384 reference-clock cycles, read the latch,
+  `isolate_sequence_trigger_i`, watch every reset output for 384 reference-clock cycles, read the latch,
   clear it and restore the hold counter to 0x80.
 . Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the
   last step, and print the bounded waits.
@@ -19734,7 +19734,7 @@ to the reset's assertion, and the pending count of the L2-frontend isolate for t
 registers for the in-flight DMA chunk and zeroer job, with the TB SYS_OUT responder
 (`cfg.sys_out_mem`) as their target and `tb_dma_busy` and `tb_zeroer_busy` sampled at the assertion
 (for the FLR kind at the last `clk_ref_i` edge before the FLR cool reset falls); the pin
-`rst_cool_ni` driven on `clk_ref_i` edges, the FLR request `tb_cfg_flr_pf_active` with the FLR
+`rst_cool_ni` driven on `clk_ref_i` edges, the FLR request `tb_isolate_sequence_trigger` with the FLR
 cool-reset output `tb_rst_cool_from_flr`, the reset agent for the cold reset and the bench pin
 `tb_sep_wdt_reset_n`; the isolate-request pad held low through `tb_gpio_ext_drive_en` and
 `tb_gpio_ext_drive_value`; probes `rst_primary_smc_clk_no`, `tb_rst_warm_smc_clk_n` and
@@ -19824,7 +19824,7 @@ leave the bench answering OKAY once the resets release.
 
 [arabic]
 . Wait for `tb_fuse_sense_done` within 200000 `clk_smc_i` rises, hold the isolate pad low, leave
-`rst_cool_ni`, `tb_sep_wdt_reset_n` high and `tb_cfg_flr_pf_active` low; start the sampler of
+`rst_cool_ni`, `tb_sep_wdt_reset_n` high and `tb_isolate_sequence_trigger` low; start the sampler of
 `rst_primary_smc_clk_no`, `tb_rst_warm_smc_clk_n` and `rst_cold_stable_ref_clk_no` on every
 `clk_ref_i` edge; draw 6 passes covering every kind and print `RAND-SEED`.
 . Per pass, program the isolation and FLR counter registers, `SS_CONFIG`, `SS_COLD_RESET_N`,
@@ -19839,9 +19839,9 @@ domain, read all back (every compared register and `SCRATCH_COLD_WARM(0)` equal 
 `SS_CONFIG` printed), and start the drawn in-flight operation: the SPM burst issued on its own, or
 inbound and outbound filter entry 0 opened pass-all and the DMA copy launched with one `NEXT_ID_0`
 read or the zeroer job started.
-. Error injection. Point: the drawn reset source (`rst_cool_ni`, `tb_cfg_flr_pf_active`, the cold
+. Error injection. Point: the drawn reset source (`rst_cool_ni`, `tb_isolate_sequence_trigger`, the cold
 reset or `tb_sep_wdt_reset_n`) at the drawn cycle of the in-flight operation. Kind: assert for
-the drawn hold, then release (for the FLR kind `tb_cfg_flr_pf_active` rises, falls once the FLR
+the drawn hold, then release (for the FLR kind `tb_isolate_sequence_trigger` rises, falls once the FLR
 cool reset falls within the pre-reset count + 128 edges, and the cool reset rises within the hold
 count + 128 edges). Expected response: warm low at every sample at which primary is low, and for the
 watchdog reset warm low within 64 `clk_ref_i` edges of the pin fall and then low with primary high
@@ -26397,7 +26397,7 @@ data and strobes are not exported to the external port.
 unit registers ISOLATE_REQ_REG, ISOLATE_REQ_PINEN_REG, ISOLATE_REQ_SMCEN_REG and
 ISOLATE_REQ_SMC_REG (bit 3 used); bench probes `tb_top.tb_isolate_req_o` (bit 3),
 `tb_top.tb_skip_mem_repair_o`, `tb_top.tb_rst_cool_from_flr` (must stay 1),
-`tb_top.tb_flr_sync_ref` and `clk_smc_i`; bench drives `tb_top.tb_cfg_flr_pf_active` (the FLR
+`tb_top.tb_flr_sync_ref` and `clk_smc_i`; bench drives `tb_top.tb_isolate_sequence_trigger` (the FLR
 input) and the isolate-request pad pin through `tb_top.tb_gpio_ext_drive_value` and
 `tb_top.tb_gpio_ext_drive_en` (the pad bit is the Isolate Request index of the integrator GPIO
 pad table); `tb_top.tb_fuse_sense_done`.
@@ -47777,7 +47777,7 @@ Drive `smc_zeroer_unaligned_test_seq`. Each checker below is a named compare the
 
 *Source Module*: `smc_cool_reset_zero_delay_test`
 
-*BFM / Model*: ocah_axi_vip (AXI); `cfg_flr_pf_active_i` driven as a TB input
+*BFM / Model*: ocah_axi_vip (AXI); `isolate_sequence_trigger_i` driven as a TB input
 
 *Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `flr`; seed 1; tool Verilator (cocotb).
@@ -47793,7 +47793,7 @@ draws nothing from the seed.
 * Deny leg: with both counters at their reset 0 the FLR request has to latch in `ISOLATE_REQ_SMC_REG` and no cool may follow.
 * Allow leg: with the same pre-delay of 0 and a non-zero hold the cool has to assert inside the synchroniser allowance -- a reset unit that counted a programmed delay anyway runs past the bound -- and then release.
 * A warm-domain scratch register written before the cool reads 0 after it, which is the DUT-side evidence that a cool went through rather than a pin wiggle.
-* The isolate-request pad is held low throughout so the FLR path is the only isolation source, `cfg_flr_pf_active_i` is dropped before the recovery wait, the warm reset is waited for before any further CSR access, and the latched request and the hold counter are cleared at the end.
+* The isolate-request pad is held low throughout so the FLR path is the only isolation source, `isolate_sequence_trigger_i` is dropped before the recovery wait, the warm reset is waited for before any further CSR access, and the latched request and the hold counter are cleared at the end.
 
 *Test Procedure*:
 
@@ -55413,7 +55413,7 @@ the wrong reason.
 
 *BFM / Model*: the bench of entry 572 (<<sec-572-smc_flr_sequencer_single_pulse_test>>):
 ocah_axi_vip (AXI) on SEP_IN for the reset unit counters and ISOLATE_REQ_SMC_REG; bench drives
-`tb_top.tb_cfg_flr_pf_active`; bench probes `tb_top.tb_rst_cool_from_flr`,
+`tb_top.tb_isolate_sequence_trigger`; bench probes `tb_top.tb_rst_cool_from_flr`,
 `tb_top.tb_flr_posedge_ref`, `tb_top.tb_flr_counter_state` and `tb_top.tb_rst_warm_smc_clk_n`,
 sampled on `clk_ref_i`.
 
@@ -55681,14 +55681,14 @@ port behind the demux can hold more than the demux admits and its own stall is g
 
 *Source Module*: `smc_isolate_req_smc_lane_test`
 
-*BFM / Model*: `tb_cfg_flr_pf_active` raises the request; observation on `ISOLATE_REQ_SMC_REG`
+*BFM / Model*: `tb_isolate_sequence_trigger` raises the request; observation on `ISOLATE_REQ_SMC_REG`
 
 *Objective*: A write of 1 to `ISOLATE_REQ_SMC_REG` bit 0 clears the FLR-latched request; a write of 0, or one that does not strobe byte 0, leaves it set.
 
 *Test Coverage*:
 
-* `reset_unit.rdl` makes `isolate_req_smc_reg` a single `onwrite = woclr` field at bit 0, set by hardware when `cfg_flr_pf_active` rises and cleared by a software write of 1 to bit 0 with byte 0's strobe set. A write of 0, or a write whose byte strobes do not select byte 0, leaves it unchanged; `smc_cool_reset_wrap.sv` qualifies the clear with the field's own write enable and its written data.
-* Arm leg: with the FLR counters at their reset value of 0, raising `cfg_flr_pf_active` sets the request without starting the cool-reset sequence, and bit 0 must read 1.
+* `reset_unit.rdl` makes `isolate_req_smc_reg` a single `onwrite = woclr` field at bit 0, set by hardware when `isolate_sequence_trigger_i` rises and cleared by a software write of 1 to bit 0 with byte 0's strobe set. A write of 0, or a write whose byte strobes do not select byte 0, leaves it unchanged; `smc_cool_reset_wrap.sv` qualifies the clear with the field's own write enable and its written data.
+* Arm leg: with the FLR counters at their reset value of 0, raising `isolate_sequence_trigger_i` sets the request without starting the cool-reset sequence, and bit 0 must read 1.
 * Hold leg: a one-byte write of 0 at byte 1, a one-byte write of 0xFF at byte 1 and a word write of 0 must each leave the request reading 1.
 * Clear leg: a one-byte write of 1 to bit 0 must leave the request reading 0 within a bounded poll.
 
@@ -58467,7 +58467,7 @@ its crossings are `prim_sync3`. Under `smc_wrapper` the stand-ins replace:
 |`u_smc_base.u_ext_debug_bus_sync3` |`ext_debug_bus_i` |nothing: `tb_top` ties the input to `'0`
 |`smc_subsystem_resets.u_reset_complete_sync` |`ss_reset_complete_i` (32 bits) |`SS_RESET_COMPLETE` CSR
 |`smc_cool_reset_wrap.u_isolate_req_pin_sync`, `u_rst_cool_ni_sync_smc`, `u_rst_cool_no_sync_smc` |pin and reset visibility |`ISOLATE_REQ_VIS` CSR. The reset tree itself takes `rst_cool_ni` through the `clk_ref_i` de-glitch in `smc_reset_ctrl`, not through these.
-|`smc_cool_reset_wrap.u_cfg_flr_pf_active_sync_smc`, `u_cfg_flr_pf_active_sync_ref` |`cfg_flr_pf_active_i` into both domains; the FLR edge detect behind them drives `rst_cool_no`, `isolate_req_o` and skip-mem-repair |`tb_isolate_req_o`, `tb_rst_cool_from_flr`, reset observables
+|`smc_cool_reset_wrap.u_isolate_sequence_trigger_sync_smc`, `u_isolate_sequence_trigger_sync_ref` |`isolate_sequence_trigger_i` into both domains; the FLR edge detect behind them drives `rst_cool_no`, `isolate_req_o` and skip-mem-repair |`tb_isolate_req_o`, `tb_rst_cool_from_flr`, reset observables
 |`smc_peripherals.u_boot_stall_combined_sync` |pad-57 / JTAG boot stall into `clk_smc`, then `boot_stall_sticky` and the fuse-reset gate |`tb_boot_stall_combined_o` (`boot_stall_processed_o`); whether the CPU fetches
 |`smc_peripherals.u_rst_ext_wdt_irq_sync` |`sep_wdt_reset_n_i` as an interrupt, `peripheral_interrupts[26]` |IRQ aggregates only; the reset effect of the same pin enters the reset unit directly
 |`smc_peripherals_cdc.u_ndmreset_request_sync` |`ndmreset_request_i` into `clk_smc`; NDM handshake and `peripheral_interrupts[11]` |`tb_ndmreset_irq`, `tb_ndmreset_process`, `NDMRESET_*` CSRs
@@ -58505,14 +58505,14 @@ member defined in `combined.toml`.
 |`smc_mixed_boot_stall_test` |`u_boot_stall_combined_sync` |downstream: GPIO gate, JTAG release, no re-stall
 |`smc_reset_unit_sanity_test` |`u_isolate_req_pin_sync`, `u_rst_cool_ni_sync_smc`, `u_rst_cool_no_sync_smc`, `u_reset_complete_sync` |downstream and CSR side: `tb_isolate_req_o` after an `ISOLATE_REQ_REG` write, and the `SS_*` and scratch CSRs across the SEP WDT pulse; it reads neither `ISOLATE_REQ_VIS` nor `SS_RESET_COMPLETE`. The SEP WDT pulse it drives resets the unit through `rst_ext_wdt_ni` directly; only the interrupt copy crosses `u_rst_ext_wdt_irq_sync`.
 |`smc_ndm_reset_test` |`u_ndmreset_request_sync` |reads the crossing (`tb_ndmreset_irq` is the OR of its output) and downstream (`NDMRESET_PROCESS`, `tb_ndmreset_process`)
-|`smc_cpu_reset_source_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` on the negative leg |CSR side and downstream: `RESET_CTRL` and `RESET_TIMEOUT` across a software core reset, and core 0's bit of `tb_cpu_core_resets_n`; the card claims no `isolate_req_o` observation
-|`smc_cool_reset_from_pcie_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` |downstream: FLR edge to `rst_cool_no`, `isolate_req_o`, skip-mem-repair
+|`smc_cpu_reset_source_test` |`u_isolate_sequence_trigger_sync_smc` / `_ref` on the negative leg |CSR side and downstream: `RESET_CTRL` and `RESET_TIMEOUT` across a software core reset, and core 0's bit of `tb_cpu_core_resets_n`; the card claims no `isolate_req_o` observation
+|`smc_cool_reset_from_pcie_test` |`u_isolate_sequence_trigger_sync_smc` / `_ref` |downstream: FLR edge to `rst_cool_no`, `isolate_req_o`, skip-mem-repair
 |`smc_ss_reset_complete_test` |`u_reset_complete_sync` |reads the crossing: `SS_RESET_COMPLETE` bits 0 and 31 dropped from all-one, then every bit walked 0->1->0 alone
-|`smc_jtag_reset_ctrl_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref`, `u_rst_cool_ni_sync_smc`, `u_rst_cool_no_sync_smc` |downstream: pin-mux outcome on `tb_rst_cool_from_flr`; the card excludes the FLR and `rst_cool_ni` proxy claims
-|`smc_cool_reset_x_cold_reset_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` |downstream: FLR and cold-reset interaction on `isolate_req_o`, `rst_cool_no`
+|`smc_jtag_reset_ctrl_test` |`u_isolate_sequence_trigger_sync_smc` / `_ref`, `u_rst_cool_ni_sync_smc`, `u_rst_cool_no_sync_smc` |downstream: pin-mux outcome on `tb_rst_cool_from_flr`; the card excludes the FLR and `rst_cool_ni` proxy claims
+|`smc_cool_reset_x_cold_reset_test` |`u_isolate_sequence_trigger_sync_smc` / `_ref` |downstream: FLR and cold-reset interaction on `isolate_req_o`, `rst_cool_no`
 |`smc_reset_unit_lock_test` |none |CSR lock semantics
 |`smc_jtag_reset_proxy_test` |none |CSR health across a cool reset, CPU JTAG pins
-|`smc_flr_sanity_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` |downstream: post-FLR CSR health
+|`smc_flr_sanity_test` |`u_isolate_sequence_trigger_sync_smc` / `_ref` |downstream: post-FLR CSR health
 |`smc_multi_reset_csr_persistence_test` |none |CSR persistence across cool-reset pulses
 |===
 

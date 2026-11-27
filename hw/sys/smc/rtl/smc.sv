@@ -119,7 +119,7 @@ module smc #(
                                             // active-low, synchronized to the reference
                                             // clock.
 
-  output logic rst_primary_ref_clk_no,  // Primary reset (cold, cool and function-level reset
+  output logic rst_primary_ref_clk_no,  // Primary reset (cold, cool and isolation sequence reset
                                         // combined), active-low, synchronized to the
                                         // reference clock.
   output logic rst_primary_smc_clk_no,  // Primary reset, active-low, synchronized to the SMC
@@ -313,7 +313,7 @@ module smc #(
                                             // by 16 SMC clock pipeline stages; held low
                                             // while boot stall is asserted.
 
-  output logic skip_mem_repair_o,       // Asserted during a function-level reset to skip
+  output logic skip_mem_repair_o,       // Asserted during subsystem isolation to skip
                                         // memory repair and MBIST.
   input  logic ext_boot_seq_done_i,     // External boot sequence done, active-high; the
                                         // fuse-released reset stays low until it is set.
@@ -346,9 +346,11 @@ module smc #(
                                                                            // SMC mailboxes, one
                                                                            // per mailbox.
 
-  input  logic        cfg_flr_pf_active_i,  // PCIe function-level reset request, active-high;
-                                            // starts the reset unit's isolation and cool
-                                            // reset sequence.
+  input  logic        isolate_sequence_trigger_i,  // Isolation sequence trigger, active-high; its
+                                                   // rising edge starts the reset unit's isolation
+                                                   // and reset sequence.
+  input  logic [31:0] isolate_req_ack_i,  // Per-subsystem isolation acknowledges to the reset
+                                          // unit; end its isolation wait early.
   output logic [31:0] isolate_req_o,    // Per-subsystem isolation requests from the reset
                                         // unit.
 
@@ -906,7 +908,8 @@ module smc #(
     .rst_ext_wdt_ni                        (sep_wdt_reset_n_i),
     .smc_wdt_first_timeout_i               (smc_wdt_first_timeout),
     .smc_wdt_second_timeout_i              (smc_wdt_second_timeout),
-    .cfg_flr_pf_active_i                   (cfg_flr_pf_active_i),
+    .isolate_sequence_trigger_i                   (isolate_sequence_trigger_i),
+    .isolate_req_ack_i                     (isolate_req_ack_i),
     .isolate_req_o                         (isolate_req_o),
     .skip_mem_repair_o                     (skip_mem_repair_o),
     .ss_reset_complete_i                   (ss_reset_complete_i),

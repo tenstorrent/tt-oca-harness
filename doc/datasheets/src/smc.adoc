@@ -199,7 +199,7 @@ publishes the current verification and maturity status.
 The checked-in open-source cocotb/PyUVM environment runs against the SMC
 integration wrapper, which combines SMC RTL, adopter-facing IP shims, and CPU
 memories. Credited scenarios exercise reset and power-good behavior, CSRs,
-mailboxes, local fabric, function-level reset, I2C, iJTAG, CPU-to-SEP traffic,
+mailboxes, local fabric, the isolation sequence, I2C, iJTAG, CPU-to-SEP traffic,
 OTP observation, GPIO interrupts, AVSBus registers, UART/SPI/log-engine
 registers, DMA timeout, filter/remap paths, and multi-reset persistence.
 

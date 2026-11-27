@@ -413,7 +413,7 @@
 // SEP boundary input: one external interrupt lane per external PIC source.
 `SMU_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], tb_sep_ext_interrupts)
 `SMU_TB_IN(logic [3:0], tb_smc_ndmreset_request)
-`SMU_TB_IN(logic, tb_cfg_flr_pf_active)
+`SMU_TB_IN(logic, tb_isolate_sequence_trigger)
 `SMU_TB_IN(logic, tb_mem_repair_abort)
 `SMU_TB_IN(logic, tb_mbist_abort)
 // Active-high holds on the boundary straps the wrapper otherwise sees

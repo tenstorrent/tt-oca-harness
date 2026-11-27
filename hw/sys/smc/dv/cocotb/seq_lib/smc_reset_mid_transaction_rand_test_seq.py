@@ -608,7 +608,7 @@ class smc_reset_mid_transaction_rand_test_seq(SmcResetSeqBase, SmcCsrSeq):
             p.release_tick = self._tick()
         else:
             await RisingEdge(dut.clk_ref_i)
-            dut.tb_cfg_flr_pf_active.value = 1
+            dut.tb_isolate_sequence_trigger.value = 1
             p.assert_tick = self._tick()
             # The FLR cool reset falls a counted delay after the request: the engine's busy is
             # taken at the last clk_ref_i edge before the fall, not before the request.
@@ -626,7 +626,7 @@ class smc_reset_mid_transaction_rand_test_seq(SmcResetSeqBase, SmcCsrSeq):
             )
             busy_at_assert = last[0]
             self._burst_state(p)
-            dut.tb_cfg_flr_pf_active.value = 0
+            dut.tb_isolate_sequence_trigger.value = 0
             await self._ref_until(
                 f"P{p.index}_flr_cool_rise",
                 dut.tb_rst_cool_from_flr,
@@ -792,7 +792,7 @@ class smc_reset_mid_transaction_rand_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.waits.append(f"fuse_sense_done<={FUSE_SENSE_BOUND} clk_smc_i")
         for name in _RefSampler.PROBES + (
             "rst_cool_ni",
-            "tb_cfg_flr_pf_active",
+            "tb_isolate_sequence_trigger",
             "tb_sep_wdt_reset_n",
             "tb_rst_cool_from_flr",
             "tb_dma_busy",
@@ -802,7 +802,7 @@ class smc_reset_mid_transaction_rand_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "tb_fcov_gate",
         ):
             assert hasattr(dut, name), f"tb_top has no {name}"
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.tb_sep_wdt_reset_n.value = 1
         dut.rst_cool_ni.value = 1
         drive_isolate_pin(dut, 0)

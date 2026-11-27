@@ -51,12 +51,10 @@ SMC_BIT = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_b
 SS_CONFIG_RESET = reset_unit_u32("RESET_UNIT__SS_CONFIG__SS_CONFIG_reset")
 SS_COLD_RESET_N_RESET = reset_unit_u32("RESET_UNIT__SS_COLD_RESET_N__RESET_N_N0_SCAN_reset")
 VIS_PIN_BM = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bm")
-VIS_COOL_I_BM = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_bm")
-VIS_COOL_O_BM = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_bm")
-VIS_COOL_I_RESET = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_reset")
-VIS_COOL_O_RESET = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_reset")
-VIS_COOL_I_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_I_bp")
-VIS_COOL_O_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_N_O_bp")
+VIS_CAUSE_BM = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_CAUSE_bm")
+VIS_CAUSE_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__COOL_RESET_CAUSE_bp")
+# cool_reset_cause seq_timeout: the acknowledges stay low, so the FLR count expires.
+VIS_CAUSE_SEQ_TIMEOUT = 3
 VIS_PIN_BP = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_VIS__ISOLATE_REQ_PIN_bp")
 RESET_VECTOR_RESET = cpu_ctrl_u32("CPU_CTRL__RESET_VECTOR__VECTOR_reset")
 THIGH_BM = _i2c_u32("I2C__TIMING0__THIGH_bm")
@@ -164,7 +162,7 @@ class smc_cool_reset_recovery_test_seq(smc_cool_reset_pin_flr_overlap_test_seq):
         flr["fall"] = await self._until(
             f"{flr['label']}_COOL_FALL", _FALL_BOUND, lambda t: self._samples[t][2] == 0
         )
-        cocotb.top.tb_cfg_flr_pf_active.value = 0
+        cocotb.top.tb_isolate_sequence_trigger.value = 0
 
     async def _cool_rise(self, flr: dict) -> None:
         flr["rise"] = await self._until(
@@ -274,7 +272,7 @@ class smc_cool_reset_recovery_test_seq(smc_cool_reset_pin_flr_overlap_test_seq):
         s5 = {"before": await self._rd("S5_SMC_REG_BEFORE", SMC_REG, 0)}
         flr = self._flr_raise("S5")
         await self._ticks(_S5_WATCH)
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         self._waits.append(f"S5_WATCH={_S5_WATCH}ref last={self._last_state()}")
         s5["after"] = await self._rd("S5_SMC_REG_AFTER", SMC_REG)
         s5["window"] = (flr["set"], self._tick_no)
@@ -289,8 +287,8 @@ class smc_cool_reset_recovery_test_seq(smc_cool_reset_pin_flr_overlap_test_seq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert hasattr(dut, "tb_cfg_flr_pf_active"), "tb_cfg_flr_pf_active missing"
-        dut.tb_cfg_flr_pf_active.value = 0
+        assert hasattr(dut, "tb_isolate_sequence_trigger"), "tb_isolate_sequence_trigger missing"
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.rst_cool_ni.value = 1
         drive_isolate_pin(dut, 0)
         await await_skip_mem_repair(dut, 0, "isolate pin low, no FLR")
@@ -369,21 +367,18 @@ class smc_cool_reset_recovery_test_seq(smc_cool_reset_pin_flr_overlap_test_seq):
 
         # CHK-COOLRST-ISOLATE-VIS
         vis = post["vis"]
-        cool_i = (vis & VIS_COOL_I_BM) >> VIS_COOL_I_BP
-        cool_o = (vis & VIS_COOL_O_BM) >> VIS_COOL_O_BP
+        cause = (vis & VIS_CAUSE_BM) >> VIS_CAUSE_BP
         pin = (vis & VIS_PIN_BM) >> VIS_PIN_BP
         assert post["cool_ni"] == 1 and post["cool_from_flr"] == 1, (
             f"cool resets not released at the read: ni={post['cool_ni']} "
             f"from_flr={post['cool_from_flr']}"
         )
-        assert cool_i == VIS_COOL_I_RESET, f"cool_reset_n_i={cool_i}, vis=0x{vis:08x}"
-        assert cool_o == VIS_COOL_O_RESET, f"cool_reset_n_o={cool_o}, vis=0x{vis:08x}"
+        assert cause == VIS_CAUSE_SEQ_TIMEOUT, f"cool_reset_cause={cause}, vis=0x{vis:08x}"
         self._chk(
             "CHK-COOLRST-ISOLATE-VIS",
             f"ISOLATE_REQ_VIS=0x{vis:08x} after the cool reset with rst_cool_ni={post['cool_ni']} "
-            f"and rst_cool_no={post['cool_from_flr']}: cool_reset_n_i={cool_i} and "
-            f"cool_reset_n_o={cool_o} equal the RDL reset values {VIS_COOL_I_RESET} and "
-            f"{VIS_COOL_O_RESET}; isolate_req_pin={pin} measured, not compared",
+            f"and rst_cool_no={post['cool_from_flr']}: cool_reset_cause={cause} is "
+            f"seq_timeout ({VIS_CAUSE_SEQ_TIMEOUT}); isolate_req_pin={pin} measured, not compared",
         )
 
         # CHK-COOLRST-CSR-RECOVERY

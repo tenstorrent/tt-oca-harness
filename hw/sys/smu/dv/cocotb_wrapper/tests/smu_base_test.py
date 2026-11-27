@@ -331,7 +331,7 @@ class smu_base_test(uvm_test):
         "tb_smc_ext_interrupts",
         "tb_sep_ext_interrupts",
         "tb_smc_ndmreset_request",
-        "tb_cfg_flr_pf_active",
+        "tb_isolate_sequence_trigger",
         "tb_mem_repair_abort",
         "tb_mbist_abort",
         "tb_mem_repair_hold",

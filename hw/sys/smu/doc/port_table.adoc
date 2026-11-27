@@ -136,7 +136,8 @@
 
 |`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NumMailboxes-1:0]` |External mailbox interrupt outputs. |External targets |N/A
 
-|`cfg_flr_pf_active_i` |`logic` |Input |1 |Function Level Reset (FLR) PF active signal. |PCIe / system |Tie to '0 if unused
+|`isolate_sequence_trigger_i` |`logic` |Input |1 |Rising edge raises the isolate flag to the subsystems enabled in `ISOLATE_REQ_SMCEN_REG` and starts the isolation sequence. |System |Tie to '0 if unused
+|`isolate_req_ack_i` |`logic` |Input |`[31:0]` |Isolation acknowledge from 32 subsystems; bit i high ends the isolation sequence's wait for subsystem i. Lower it before `isolate_req_o[i]` falls. |Subsystems |Tie to '0 if unused
 |`isolate_req_o` |`logic` |Output |`[31:0]` |Isolation request output for 32 subsystems. |Subsystems |N/A
 |`ss_reset_complete_i` |`logic` |Input |`[31:0]` |Subsystem reset completion status. |Subsystems |32'hFFFFFFFF
 |`ss_config_o` |`logic` |Output |`[31:0]` |Subsystem configuration output. |Subsystems |N/A

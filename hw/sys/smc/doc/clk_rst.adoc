@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Clocks and Resets
-:description: SMC clock domains, reset distribution and FLR isolation sequencing.
+:description: SMC clock domains, reset distribution and subsystem isolation sequencing.
 
 [[clock-and-reset-management]]
 
@@ -93,7 +93,7 @@ stops the result on idle. The output, `avs_clock`, leaves through
 |Clock |Logic and boundary
 |`clk_smc_i` |CPU cluster, local fabric, remapping/filtering, register crossbar,
 OCTS, PWM, and telemetry decoding/message storage. Individual blocks may gate this clock.
-|`clk_ref_i` |Power-good/reset conditioning, FLR countdowns, DFD local time tick
+|`clk_ref_i` |Power-good/reset conditioning, reset timeout countdowns, DFD local time tick
 and peripheral reference-clock inputs.
 |`clk_periph_i` |AVSBus, I2C, UART/log-engine and I3C operation. Register accesses
 cross through per-port AXI-Lite CDC bridges after the SMC-domain crossbar.
@@ -214,8 +214,8 @@ clears the de-glitchers while low and holds the cold-reset extender. The
 cold reset, after its JTAG override, must stay low for 32 reference clock
 cycles to pass the de-glitcher, and its release is extended by 255 cycles.
 The cool-reset pin passes its own 32-cycle de-glitcher. The primary reset is
-the AND of the stable cold reset, the de-glitched cool-reset pin and the FLR
-cool reset. The watchdog reset asserts with `rst_ext_wdt_ni`, which comes
+the AND of the stable cold reset, the de-glitched cool-reset pin and the
+sequence cool reset. The watchdog reset asserts with `rst_ext_wdt_ni`, which comes
 from the SEP watchdog, or with the SMC watchdog second timeout, and is held
 for 32 reference clock cycles after both release;
 `smc_wdt_first_timeout_i` does not reach the reset logic. The warm reset is
@@ -225,17 +225,18 @@ ends. Debug-initiated resets are the JTAG overrides of the cold, cool,
 warm, fuse and per-subsystem resets.
 
 `u_smc_reset_sync` gives each output an asynchronous assertion and a
-deassertion synchronised to its clock. `u_smc_cool_reset_wrap` runs the FLR
-sequence and isolation logic described in <<smc-function-level-reset>>.
+deassertion synchronised to its clock. `u_smc_cool_reset_wrap` runs the
+isolation sequence and the isolation request logic described in <<smc-function-level-reset>>.
 Its gates act on each of the 32 bits; the inputs labelled SMCEN, REG and
 PINEN are the `ISOLATE_REQ_SMCEN_REG`, `ISOLATE_REQ_REG` and
 `ISOLATE_REQ_PINEN_REG` bits. `skip_mem_repair_o` is high while the
 synchronised isolation pin or `ISOLATE_REQ_SMC` is set.
 `u_reset_unit_reg` is reset by `rst_primary_smc_clk_no`, as are the
 `SS_CONFIG` and `SS_COLD_RESET_N` registers in `u_smc_subsystem_resets`;
-the isolation registers and FLR counters are reset only by the stable cold
-reset, so they survive a cool reset. The per-subsystem cold and warm resets
-leave `ss_reset_ctrl_o` unsynchronised, and each subsystem synchronises them.
+the isolation registers and reset timeout counters are reset only by the stable cold
+reset, so they survive a cool reset (see <<smc-cool-reset-scope>>). The
+per-subsystem cold and warm resets leave `ss_reset_ctrl_o` unsynchronised, and
+each subsystem synchronises them.
 In test mode, `scan_rst_ni` replaces the stretched powergood, the
 de-glitched cold reset, the stretched watchdog reset and every synchroniser
 output.
@@ -261,7 +262,7 @@ Functional cold reset alone does not reset that state.
 |Power-good low |Holds functional reset and resets the JTAG/TDR POR path.
 |`BP_RESETN` |Filtered and extended cold reset feeds primary reset.
 |Incoming cool reset |Filtered pin request feeds primary reset.
-|FLR cool reset |Reference-domain timed reset feeds primary reset; isolation
+|Sequence cool reset |Reference-domain timed reset feeds primary reset; isolation
 is controlled separately as described below.
 |External watchdog reset / second SMC watchdog timeout |Assert the watchdog
 reset term, which also asserts warm reset, for at least 32 reference clock
@@ -339,7 +340,7 @@ unsynchronized. The receiving subsystem must synchronize release at its boundary
 The separate telemetry input reset belongs to its integration domain.
 
 [[smc-function-level-reset]]
-== Function Level Reset and Isolation
+== Isolation Sequence and Cool Reset
 
 // Retain bookmarks for replaced tables and renamed sections.
 ifdef::backend-html5[]
@@ -355,11 +356,28 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-PCIe `cfg_flr_pf_active_i` crosses independently into the SMC and reference
+`isolate_sequence_trigger_i`, raised by whichever event must isolate the
+subsystems, for example a function-level reset, crosses independently into the SMC and reference
 clock domains. Its synchronized rising edge sets the SMC isolation latch and
 starts the reference-domain reset sequence when enabled by a nonzero hold count.
-The reset state machine has no isolation-complete input: its delay must be
-chosen to accommodate the system's isolation requirements.
+The sequence asserts the cool reset when every subsystem enabled in
+`ISOLATE_REQ_SMCEN_REG` raises `isolate_req_ack_i`, or when
+`ISOLATE_REQ_FLR_COUNTER_VALUE` expires, whichever is first. With no subsystem
+enabled, or the acknowledges tied low, the delay is the full count, so it must
+still cover the system's isolation requirements. These two counts, the
+isolation timeout in `ISOLATE_REQ_FLR_COUNTER_VALUE` and the cool-reset hold in
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, are the reset timeout counters.
+
+[[smc-cool-reset-scope]]
+A cool reset exists only inside the SMU. It is the SMC's primary reset with
+the `ISOLATE_REQ_*` registers and reset timeout counters left intact, so that isolation
+outlasts it. Nothing outside the SMU receives a cool reset: the primary reset
+clears `SS_COLD_RESET_N`, so each `ss_reset_ctrl_o[i].cold_reset_n` asserts
+exactly as on a chip cold reset. The SMC does not hold that reset off an
+isolated subsystem; each subsystem alone is responsible for surviving it. Gate
+the reset the subsystem receives with its `isolate_req_o` bit, so that the
+subsystem stays out of reset while the bit is high and the bit falls only after
+the reset has released.
 
 === Isolation Controls
 
@@ -378,14 +396,14 @@ OR (ISOLATE_REQ_PINEN_REG[i] AND synchronized isolate_req_pin_i)
 OR (ISOLATE_REQ_SMCEN_REG[i] AND ISOLATE_REQ_SMC_REG)
 ----
 
-The FLR edge sets `ISOLATE_REQ_SMC_REG`. After recovery, software clears the
+The trigger edge sets `ISOLATE_REQ_SMC_REG`. After recovery, software clears the
 latch by writing 1 to bit 0 with that byte's strobe set. A write of 0, or a
-write that does not strobe byte 0, leaves it set. An FLR edge in the same cycle
+write that does not strobe byte 0, leaves it set. A trigger edge in the same cycle
 takes priority. Ending the timed cool reset does not clear
 the latch or release isolation automatically. Clearing one source does not cancel
 an isolation request held by either of the others.
 
-The isolation registers and FLR count storage are cold-reset state, so they
+The isolation registers and reset timeout count storage are cold-reset state, so they
 survive cool reset. `ISOLATE_REQ_PINEN_REG` has a conditional synchronous clear:
 it clears on cold reset only while the synchronized isolation pin is low.
 Do not assume an uninitialized pin-enable mask becomes known while that pin is high.
@@ -399,31 +417,33 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-The FLR count values cross from SMC to the reference domain through handshaked
+The reset timeout count values cross from SMC to the reference domain through handshaked
 synchronizers; readback in the SMC domain does not acknowledge arrival in the
 reference domain. `ISOLATE_REQ_FLR_COUNTER_VALUE` selects the pre-reset
 countdown; zero allows assertion without that countdown.
 `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` selects the cool-reset hold count, and
 must be nonzero to start the timed flow.
 
-On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
+On a synchronized trigger edge, the sequencer counts in reference-clock cycles,
 asserts cool reset, then releases it after the hold countdown. Destination
 reset synchronizers add their release latency. The sequencer is not a queue of
-overlapping FLR requests. The
+overlapping trigger edges. The
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#smc-flr-isolation[FLR preparation and recovery sequence]
+xref:ocah-programmer-guide::index.adoc#smc-flr-isolation[isolation sequence preparation and recovery steps]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-flr-isolation[FLR preparation and recovery sequence]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-flr-isolation[isolation sequence preparation and recovery steps]
 endif::backend-pdf[]
 is in the Programmer's Guide.
 
 A zero hold count disables the timed reset sequence, but does not prevent the
-SMC-domain FLR edge from setting the isolation latch. `ISOLATE_REQ_VIS` reports
-synchronized pin and cool-reset levels; it is not an isolation-completion handshake.
+SMC-domain trigger edge from setting the isolation latch. `ISOLATE_REQ_VIS` reports
+the synchronized pin and the cause of the most recent cool reset, and
+`ISOLATE_REQ_ACK_CAPTURE` the acknowledges seen when the sequence asserted it;
+both are reset only by the cold reset.
 
-`skip_mem_repair_o` is the OR of the synchronized isolation pin and the FLR
-isolation latch. It does not depend on the per-subsystem masks, and a software-only
+`skip_mem_repair_o` is the OR of the synchronized isolation pin and the isolation
+sequence latch. It does not depend on the per-subsystem masks, and a software-only
 `ISOLATE_REQ_REG` request does not assert it. The receiving logic determines how
 this request bypasses memory repair/MBIST; it is not a general SRAM-retention guarantee.
 
@@ -435,23 +455,23 @@ and highlight the path that each kind of request activates, so they can
 be compared directly.
 
 [[smc-flr-isolation-diagram]]
-.SMC FLR isolation connections between chiplets
-image::smc-flr-isolation.svg[alt="Primary and secondary chiplet SMCs with their FLR counters, isolation OR gate, primary reset AND gate, BP_COOL_RESET_N_I pins and cool-reset pads, and the board connections between them",width=100%,pdfwidth=100%]
+.SMC isolation connections between chiplets
+image::smc-flr-isolation.svg[alt="Primary and secondary chiplet SMCs with their reset timeout counters, isolation OR gate, primary reset AND gate, BP_COOL_RESET_N_I pins and cool-reset pads, and the board connections between them",width=100%,pdfwidth=100%]
 
 Each chiplet's SMC takes its cold reset from the board `BP_RESET_N` and
 its cool reset from its `BP_COOL_RESET_N_I` input; the primary reset
-is the AND of these and the FLR cool reset. The FLR cool reset also
+is the AND of these and the sequence cool reset. The sequence cool reset also
 drives the open-drain `BP_COOL_RESET_N_O` pad, GPIO 64, which pulls the
 line low while the reset is asserted and leaves it undriven otherwise. The
 primary chiplet's `BP_COOL_RESET_N_O` connects to the secondary chiplet's
-`BP_COOL_RESET_N_I`, so an FLR on the primary chiplet cool-resets the
+`BP_COOL_RESET_N_I`, so an isolation sequence on the primary chiplet cool-resets the
 secondary. To the secondary chiplet, a cold reset on `BP_RESET_N` and a
 cool reset on `BP_COOL_RESET_N_I` are the same: both assert its primary
-reset. Only its FLR and isolation registers are reset by the cold reset
+reset. Only its reset timeout and isolation registers are reset by the cold reset
 alone, and the secondary chiplet does not use them. The primary chiplet's
 `BP_COOL_RESET_N_I` and the secondary chiplet's `BP_COOL_RESET_N_O` are not connected. The board drives
 `ISOLATE_REQ`, sampled on GPIO 53, into the primary chiplet only; the
-secondary chiplet ties its `ISOLATE_REQ` and `cfg_flr_pf_active_i` low and
+secondary chiplet ties its `ISOLATE_REQ` and `isolate_sequence_trigger_i` low and
 leaves its `isolate_req_o` unconnected. The labels REG, PINEN and SMCEN
 on the isolation OR's inputs name the registers that qualify each source.
 The drawing leaves out the de-glitchers and synchronisers shown in
@@ -459,24 +479,25 @@ The drawing leaves out the de-glitchers and synchronisers shown in
 
 <<smc-flr-software-diagram>> shows isolation propagation for an SMC software request.
 Software sets bits of `ISOLATE_REQ_REG`, which reach `isolate_req_o` directly.
-Software cannot start the FLR counters, so this request isolates tiles without
+Software cannot start the reset timeout counters, so this request isolates tiles without
 a cool reset.
 
 [[smc-flr-software-diagram]]
-.SMC-driven FLR isolation
-image::smc-flr-isolation-smc-driven.svg[alt="The FLR isolation drawing with the path from the primary SMC CPU through ISOLATE_REQ_REG and the isolation OR to the chiplet tiles highlighted",width=100%,pdfwidth=100%]
+.SMC-driven isolation
+image::smc-flr-isolation-smc-driven.svg[alt="The isolation drawing with the path from the primary SMC CPU through ISOLATE_REQ_REG and the isolation OR to the chiplet tiles highlighted",width=100%,pdfwidth=100%]
 
 <<smc-flr-tile-diagram>> shows isolation propagation for a tile request.
-A tile such as the PCIe controller raises `cfg_flr_pf_active_i`. Its
-synchronised rising edge sets `ISOLATE_REQ_SMC`, which isolates the
-subsystems enabled in `ISOLATE_REQ_SMCEN_REG`, and starts the FLR
-counters. When they expire, the FLR cool reset asserts the primary reset of
+A tile raises `isolate_sequence_trigger_i` when the subsystems must be
+isolated, for example on a PCIe function-level reset. Its synchronised rising
+edge sets `ISOLATE_REQ_SMC`, which isolates the
+subsystems enabled in `ISOLATE_REQ_SMCEN_REG`, and starts the reset
+timeout counters. When they expire, the sequence cool reset asserts the primary reset of
 the primary chiplet and, through `BP_COOL_RESET_N_O`, of the secondary
 chiplet.
 
 [[smc-flr-tile-diagram]]
-.Tile-request-driven FLR isolation
-image::smc-flr-isolation-tile-request.svg[alt="The FLR isolation drawing with the paths from the tile's cfg_flr_pf_active_i through the FLR counters to the primary chiplet's primary reset and, through BP_COOL_RESET_N_O and the secondary chiplet's BP_COOL_RESET_N_I pin, to the secondary chiplet's primary reset, and through the isolation OR to the chiplet tiles, highlighted",width=100%,pdfwidth=100%]
+.Tile-request-driven isolation
+image::smc-flr-isolation-tile-request.svg[alt="The isolation drawing with the paths from the tile's isolate_sequence_trigger_i through the reset timeout counters to the primary chiplet's primary reset and, through BP_COOL_RESET_N_O and the secondary chiplet's BP_COOL_RESET_N_I pin, to the secondary chiplet's primary reset, and through the isolation OR to the chiplet tiles, highlighted",width=100%,pdfwidth=100%]
 
 <<smc-flr-gpio-diagram>> shows isolation propagation for a GPIO request, in two
 numbered steps. First the board raises `ISOLATE_REQ`, which isolates the
@@ -485,8 +506,8 @@ which cold-resets both chiplets. `ISOLATE_REQ_PINEN_REG` is not reset by the
 cold reset while the pin is high, so the isolation holds across it.
 
 [[smc-flr-gpio-diagram]]
-.GPIO-driven FLR isolation
-image::smc-flr-isolation-gpio.svg[alt="The FLR isolation drawing with step 1, the board ISOLATE_REQ through GPIO 53 and the isolation OR to the chiplet tiles, and step 2, the board BP_RESET_N into both primary resets, highlighted",width=100%,pdfwidth=100%]
+.GPIO-driven isolation
+image::smc-flr-isolation-gpio.svg[alt="The isolation drawing with step 1, the board ISOLATE_REQ through GPIO 53 and the isolation OR to the chiplet tiles, and step 2, the board BP_RESET_N into both primary resets, highlighted",width=100%,pdfwidth=100%]
 
 [[smc-subsystem-controls]]
 == Subsystem Controls and Clock Gating
@@ -536,7 +557,7 @@ endif::backend-html5[]
 === Memory Map
 
 The following reset-unit map defines subsystem controls, isolation masks,
-visibility and FLR timing registers. Offsets are relative to the reset-unit base
+visibility and reset timeout registers. Offsets are relative to the reset-unit base
 in the subsystem memory map. External state in the cool-reset wrapper follows
 the cold-reset behavior described above rather than the primary reset of the
 register-interface logic.

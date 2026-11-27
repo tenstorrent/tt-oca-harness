@@ -10,7 +10,7 @@ The isolation registers and the FLR counters are cold-reset state: a cool
 (primary) reset keeps them and a stable cold reset clears them.
 ``ISOLATE_REQ_PINEN_REG`` clears on cold reset only while the synchronized
 isolation pin, GPIO 53, is low. ``ISOLATE_REQ_SMC_REG`` is set by an FLR edge on
-``cfg_flr_pf_active_i``. Both FLR counters stay at zero while an FLR edge is
+``isolate_sequence_trigger_i``. Both FLR counters stay at zero while an FLR edge is
 driven, so the timed FLR cool reset never starts.
 """
 
@@ -188,11 +188,11 @@ class smu_isolation_retention_test_seq:
         await self._wr32(ISOLATE_REQ_REG, REG_VALUE, "ISOLATE_REQ_REG")
         await self._wr32(ISOLATE_REQ_PINEN_REG, PINEN_VALUE, "ISOLATE_REQ_PINEN_REG")
         await self._wr32(ISOLATE_REQ_SMCEN_REG, SMCEN_VALUE, "ISOLATE_REQ_SMCEN_REG")
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
 
     async def _read_isolation(self) -> dict[str, int]:

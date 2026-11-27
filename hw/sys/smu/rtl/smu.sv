@@ -263,7 +263,8 @@ module smu #(
 
   output logic [smc_pkg::NumMailboxes-1:0]  smc_ext_mailbox_interrupts_o,  // Mailbox interrupts toward the SMC.
 
-  input  logic  cfg_flr_pf_active_i,            // Function-level reset / PF-active configuration.
+  input  logic  isolate_sequence_trigger_i,    // Starts the SMC isolation and reset sequence on its rising edge.
+  input  logic [31:0]  isolate_req_ack_i,       // Per-subsystem isolate acknowledges.
   output logic [31:0]  isolate_req_o,           // Per-subsystem isolate requests.
   input  logic [31:0]  ss_reset_complete_i,     // Per-subsystem reset-complete status.
   output logic [31:0]  ss_config_o,             // Per-subsystem reset-unit configuration.
@@ -795,7 +796,8 @@ module smu #(
     .smc_ndmreset_request_i              (smc_ndmreset_request_i),
     .smc_ndmreset_process_o              (smc_ndmreset_process_o),
     .smc_ext_mailbox_interrupts_o        (smc_ext_mailbox_interrupts_o),
-    .cfg_flr_pf_active_i                 (cfg_flr_pf_active_i),
+    .isolate_sequence_trigger_i                 (isolate_sequence_trigger_i),
+    .isolate_req_ack_i                   (isolate_req_ack_i),
     .isolate_req_o                       (isolate_req_o),
     .ss_reset_complete_i                 (ss_reset_complete_i),
     .ss_config_o                         (ss_config_o),

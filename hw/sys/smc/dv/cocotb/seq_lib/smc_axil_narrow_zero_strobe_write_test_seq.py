@@ -410,7 +410,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         fuse = dut.tb_fuse_sense_done.value
         assert fuse.is_resolvable and int(fuse) == 1, f"tb_fuse_sense_done is {fuse}"
         self._fuse_last = f"tb_fuse_sense_done={int(fuse)}"
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self.program_inbound_pass_all()
         await self.program_outbound_pass_all()
         self.writes += 6
@@ -1115,7 +1115,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         await self._wr("FLR_RESET_COUNT_ZERO", self.flr_reset_cnt.addr, 0, 4)
         idle = await self._rd("ISO_SMC_IDLE", sm, 4)
         assert idle & smc_bit == 0, f"ISOLATE_REQ_SMC_REG reads 0x{idle:x} before the FLR edge"
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         last = 0
         for _ in range(FLR_POLL_BOUND):
             last = await self._rd("ISO_SMC_FLR", sm, 4)
@@ -1124,7 +1124,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             await RisingEdge(clk)
         else:
             raise AssertionError(f"ISOLATE_REQ_SMC_REG=0x{last:x}, bit 0 never read 1")
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         self._bounded.append(("flr_latch", f"{FLR_POLL_BOUND} polls", f"read 0x{last:x}"))
         cool_idle("after the FLR edge")
         keeps = ((0x0, 0x01), (0x1, 0x02), (0x1, 0x04), (0x1, 0x08), (0x1, 0x00))

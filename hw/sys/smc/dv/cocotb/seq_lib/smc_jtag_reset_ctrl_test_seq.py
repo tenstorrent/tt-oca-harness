@@ -69,8 +69,8 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
         assert self._bit(dut.rst_cool_ni, "rst_cool_ni") == 1, (
             "rst_cool_ni dropped; JTAG cool ovrd would be aliased"
         )
-        assert self._bit(dut.tb_cfg_flr_pf_active, "tb_cfg_flr_pf_active") == 0, (
-            "cfg_flr_pf_active_i high; JTAG cool ovrd would be aliased"
+        assert self._bit(dut.tb_isolate_sequence_trigger, "tb_isolate_sequence_trigger") == 0, (
+            "isolate_sequence_trigger_i high; JTAG cool ovrd would be aliased"
         )
 
     async def body(self) -> None:
@@ -87,7 +87,7 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
         )
 
         dut.rst_cool_ni.value = 1
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         dut.tb_jtag_reset_ctrl.value = 0
         self._sources_idle(dut)
         await self._await_bit(

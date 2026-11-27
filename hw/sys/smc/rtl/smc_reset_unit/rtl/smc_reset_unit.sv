@@ -3,9 +3,9 @@
 
 // Generate SMC cold, warm, cool, and domain resets.
 //
-// Combines powergood, the external cold reset, the cool-reset pin, the FLR cool reset, the
+// Combines powergood, the external cold reset, the cool-reset pin, the sequence cool reset, the
 // watchdogs and the fuse reset into primary, warm and watchdog resets synchronized to the
-// SMC, reference and peripheral clocks. Exposes FLR isolation, memory-repair skip, and the
+// SMC, reference and peripheral clocks. Exposes subsystem isolation, memory-repair skip, and the
 // cool reset distributed to other chiplets.
 // Drives the per-subsystem reset controls and the sync IRQ from the reset-unit registers.
 // JTAG overrides the fuse, cold, cool, warm and per-subsystem resets; test_en_i
@@ -15,9 +15,9 @@ module smc_reset_unit (
 
   input  logic                                   clk_ref_i,  // Reference clock for the powergood
                                                              // stretcher, reset de-glitchers and
-                                                             // FLR counters.
+                                                             // reset timeout counters.
   input  logic                                   clk_smc_i,  // SMC core clock for the reset-unit
-                                                             // registers and FLR isolation logic.
+                                                             // registers and isolation logic.
   input  logic                                   clk_periph_i,  // Peripheral clock; only the
                                                                 // peripheral-clock primary reset
                                                                 // synchronizer uses it.
@@ -48,12 +48,12 @@ module smc_reset_unit (
                                                                               // reset, active-low, with
                                                                               // deassertion synchronized to the
                                                                               // reference clock; also resets the
-                                                                              // FLR counters.
+                                                                              // reset timeout counters.
   output logic                                   rst_cold_stable_smc_clk_no,  // De-glitched and extended cold
                                                                               // reset, active-low, with
                                                                               // deassertion synchronized to the
                                                                               // SMC core clock; also resets the
-                                                                              // FLR isolation registers.
+                                                                              // isolation registers.
 
   input  smc_pkg::jtag_smc_reset_ctrl_t          jtag_reset_ctrl_i,  // JTAG reset overrides in the TCK domain: an
                                                                      // override select and value for the fuse,
@@ -83,16 +83,24 @@ module smc_reset_unit (
                                                                      // bits enabled in
                                                                      // ISOLATE_REQ_PINEN_REG and
                                                                      // skip_mem_repair_o.
-  input  logic                                   cfg_flr_pf_active_i,  // PCIe function-level reset
-                                                                       // request, active-high; its
-                                                                       // rising edge sets ISOLATE_REQ_SMC
-                                                                       // and starts the FLR cool-reset
-                                                                       // counters.
+  input  logic                                   isolate_sequence_trigger_i,  // Isolation sequence
+                                                                              // trigger, active-high; its
+                                                                              // rising edge sets
+                                                                              // ISOLATE_REQ_SMC and starts
+                                                                              // the reset timeout counters.
   input  logic                                   rst_cool_ni,  // Cool reset from the pin,
                                                                // active-low; de-glitched over 32
                                                                // reference clock cycles into the
-                                                               // primary reset, and visible in
+                                                               // primary reset, and recorded as the
+                                                               // cool reset cause in
                                                                // ISOLATE_REQ_VIS.
+  input  logic [31:0]                            isolate_req_ack_i,  // Isolation acknowledge, one bit
+                                                                     // per isolate_req_o bit,
+                                                                     // active-high, asynchronous; ends
+                                                                     // the isolation wait early once
+                                                                     // every ISOLATE_REQ_SMCEN-enabled
+                                                                     // bit is high. Must fall before
+                                                                     // isolate_req_o[i] does.
   output logic [31:0]                            isolate_req_o,  // Per-subsystem isolation requests
                                                                  // on the SMC core clock:
                                                                  // ISOLATE_REQ_REG, OR the
@@ -103,8 +111,8 @@ module smc_reset_unit (
   output logic                                   skip_mem_repair_o,  // High while the isolate pin
                                                                      // or ISOLATE_REQ_SMC is set,
                                                                      // to skip memory repair and
-                                                                     // MBIST during FLR.
-  output logic                                   rst_cool_no,  // FLR cool reset after the JTAG
+                                                                     // MBIST during isolation.
+  output logic                                   rst_cool_no,  // Sequence cool reset after the JTAG
                                                                // override, active-low, on the
                                                                // reference clock; also asserts
                                                                // the primary reset and is sent
@@ -182,6 +190,7 @@ module smc_reset_unit (
 
   logic rst_cold_stable_n;
   logic rst_cold_ref_n, rst_cold_smc_n;
+  logic rst_cool_pin_stable_n;
 
   ///////////////////////////////////
   // Reset Unit Register Interface //
@@ -210,6 +219,7 @@ module smc_reset_unit (
     hwif_in.ISOLATE_REQ_SMCEN_REG               = hwif_in_cool.ISOLATE_REQ_SMCEN_REG;
     hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE       = hwif_in_cool.ISOLATE_REQ_FLR_COUNTER_VALUE;
     hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE = hwif_in_cool.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE;
+    hwif_in.ISOLATE_REQ_ACK_CAPTURE             = hwif_in_cool.ISOLATE_REQ_ACK_CAPTURE;
 
     // Fields driven by captured straps
   end
@@ -259,9 +269,9 @@ module smc_reset_unit (
     .ss_reset_ctrl_o                 (ss_reset_ctrl_intermediate)
   );
 
-  /////////////////////////////////////////////
-  // Cool Reset Wrap (Function Level Resets) //
-  /////////////////////////////////////////////
+  ///////////////////////////////////////////
+  // Cool Reset Wrap (Isolation Sequence) //
+  ///////////////////////////////////////////
 
   smc_cool_reset_wrap u_smc_cool_reset_wrap (
     .clk_ref_i              (clk_ref_i),
@@ -273,8 +283,9 @@ module smc_reset_unit (
     .hwif_out_i             (hwif_out),
 
     .isolate_req_pin_i      (isolate_req_pin_i),
-    .cfg_flr_pf_active_i    (cfg_flr_pf_active_i),
-    .rst_cool_ni            (rst_cool_ni),
+    .isolate_sequence_trigger_i    (isolate_sequence_trigger_i),
+    .isolate_req_ack_i      (isolate_req_ack_i),
+    .rst_cool_pin_stable_ni (rst_cool_pin_stable_n),
 
     .isolate_req_o          (isolate_req_o),
     .skip_mem_repair_o      (skip_mem_repair_o),
@@ -303,6 +314,7 @@ module smc_reset_unit (
 
     .powergood_stable_o         (powergood_stable_o),
     .stable_cold_rst_no         (rst_cold_stable_n),
+    .stable_cool_rst_no         (rst_cool_pin_stable_n),
     .rst_primary_no             (rst_primary_n),
     .rst_warm_no                (rst_warm_n),
     .rst_wdt_no                 (rst_wdt_n),

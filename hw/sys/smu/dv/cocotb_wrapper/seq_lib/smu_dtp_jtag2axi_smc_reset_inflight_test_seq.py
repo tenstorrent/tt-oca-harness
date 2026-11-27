@@ -5,7 +5,7 @@
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smu/dv/ai/dv_vplan_gen/SMU_SEP_SCN_VPLAN_DETAIL_RESET.md @ artifact_revision 3 ENV: cocotb
 """DTP JTAG2AXI accesses into the SMC fabric across SMC cool, FLR-timed cool and warm resets.
 
-No signal is forced. The resets come from ``rst_cool_n_from_pin_i``, ``cfg_flr_pf_active_i``
+No signal is forced. The resets come from ``rst_cool_n_from_pin_i``, ``isolate_sequence_trigger_i``
 and the CORE0 watchdog; ``obs_smc_rst_n_o`` and the read-only warm probe
 ``u_smc.rst_warm_smc_clk_n`` are sampled on every ``clk_smu_i`` edge.
 
@@ -509,10 +509,10 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
 
     async def _cool_flr(self) -> dict:
         dut = self.dut
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         await self._wr_ok(FLR_COUNTER, FLR_COUNTER_VALUE, "s3_flr_counter")
         await self._wr_ok(FLR_RESET_COUNTER, FLR_HOLD_REF, "s3_flr_reset_counter")
-        dut.tb_cfg_flr_pf_active.value = 1
+        dut.tb_isolate_sequence_trigger.value = 1
         t_edge = _now_ps()
         await self._wait_obs(0, ASSERT_BOUND_REF, "s3 flr assert")
         t_fall = self._first_level(0, t_edge)
@@ -531,7 +531,7 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
         )
         self._log_cool("flr", "w", wr)
         await self._wait_obs(1, FLR_HOLD_REF + RELEASE_BOUND_REF, "s3 flr release")
-        dut.tb_cfg_flr_pf_active.value = 0
+        dut.tb_isolate_sequence_trigger.value = 0
         t_rise = self._first_rise(t_fall)
         self.log.info(
             "OBSERVATION S3 flr fall@%d rise@%d ps (%d clk_ref low, hold count %d)",
@@ -752,7 +752,7 @@ class smu_dtp_jtag2axi_smc_reset_inflight_test_seq:
     async def run(self) -> None:
         await self.cfg.reset_done.wait()
         self.dut.tb_cool_reset_pin.value = 0
-        self.dut.tb_cfg_flr_pf_active.value = 0
+        self.dut.tb_isolate_sequence_trigger.value = 0
         await self._open_tap()
         monitor = cocotb.start_soon(self._monitor())
         await self._mark("SETUP", "TAP reset, IDCODE, JTAG2AXI gate open, CAPS; sampling on")

@@ -590,13 +590,13 @@ toggles = ["axil_req_i.ar.*", "axil_req_i.aw.*", "axil_resp_o.ar_ready", "axil_r
 class = "R9-PERIPHERAL-FIELDS"
 list = 1
 instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_cool_reset_wrap"
-toggles = ["clk_ref_i", "isolate_req_pin_i", "rst_cool_ni"]
+toggles = ["clk_ref_i", "isolate_req_pin_i"]
 
 [[object]]
 class = "A12-REGBLOCK-FIELDS-REVIEWED"
 list = 1
 instance = "smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg"
-toggles = ["hwif_in.SS_COLD_RESET_N.*", "hwif_in.SS_CONFIG.*", "hwif_in.SS_RESET_COMPLETE.*", "hwif_out.SS_COLD_RESET_LOCK.*", "hwif_out.SS_CONFIG_HOLD.*", "hwif_out.SS_CONFIG_LOCK.*", "hwif_out.SS_CRITICAL_HOLD.*", "hwif_out.SS_DEBUG_HOLD.*", "hwif_out.SS_FORCE_TO_REF_CLK.*", "hwif_out.SS_SRAM_HOLD.*", "hwif_out.SS_WARM_RESET_N.*", "hwif_in.ISOLATE_REQ_VIS.cool_reset_n_i.*", "hwif_in.ISOLATE_REQ_VIS.isolate_req_pin.*", "hwif_in.ISOLATE_REQ_SMC_REG.rd_ack", "hwif_in.ISOLATE_REQ_SMC_REG.rd_data._reserved_31_1", "hwif_out.SS_COLD_RESET_N.req", "hwif_out.SS_CONFIG.req", "s_axil_arready", "s_axil_bready", "s_axil_bresp", "s_axil_rready", "s_axil_rresp", "s_axil_wready"]
+toggles = ["hwif_in.SS_COLD_RESET_N.*", "hwif_in.SS_CONFIG.*", "hwif_in.SS_RESET_COMPLETE.*", "hwif_out.SS_COLD_RESET_LOCK.*", "hwif_out.SS_CONFIG_HOLD.*", "hwif_out.SS_CONFIG_LOCK.*", "hwif_out.SS_CRITICAL_HOLD.*", "hwif_out.SS_DEBUG_HOLD.*", "hwif_out.SS_FORCE_TO_REF_CLK.*", "hwif_out.SS_SRAM_HOLD.*", "hwif_out.SS_WARM_RESET_N.*", "hwif_in.ISOLATE_REQ_VIS.isolate_req_pin.*", "hwif_in.ISOLATE_REQ_SMC_REG.rd_ack", "hwif_in.ISOLATE_REQ_SMC_REG.rd_data._reserved_31_1", "hwif_out.SS_COLD_RESET_N.req", "hwif_out.SS_CONFIG.req", "s_axil_arready", "s_axil_bready", "s_axil_bresp", "s_axil_rready", "s_axil_rresp", "s_axil_wready"]
 toggle_selects = [["s_axil_araddr", "[1:0]", "both"], ["s_axil_arprot", "[2]", "both"], ["s_axil_arprot", "[0]", "both"], ["s_axil_awaddr", "[1:0]", "both"], ["s_axil_awprot", "[2]", "both"], ["s_axil_awprot", "[0]", "both"]]
 
 [[object]]
