@@ -929,12 +929,12 @@ PicoRV32 IRQ vector bit driven by the shared-key-valid event.
 | Bits | Field | Access | Reset | Description
 | 31:28 | `Reserved` | - | - a| Reserved
 | 27 | `program_enable` | RW | 0x0 a| When set, enables the program request
-| 26 | `program_status` | R | 0x0 a| 0: No Error.  1: Error
-| 25 | `program_done` | R | 0x0 a| When set, the program has completed, the status of which is in program_status
+| 26 | `program_status` | R | 0x0 a| 0: No Error.  1: Error. Set when efuse_program_go is refused, or the program request fails or times out.
+| 25 | `program_done` | R | 0x0 a| When set, the program has completed, the status of which is in program_status.  Cleared when the next efuse_program_go is accepted; a refused request leaves it set and updates program_status
 | 24 | `program_busy` | R | 0x0 a| When set, the program is in progress
 | 23:18 | `Reserved` | - | - a| Reserved
-| 17 | `efuse_program_go` | RW 1P | 0x0 a| When set, triggers a program to the eFuse.  This will be ignored if the lock bit is set
-| 16 | `efuse_data` | RW | 0x0 a| Data to program to eFuse.  If this bit is 0, the program request will be ignored
+| 17 | `efuse_program_go` | RW 1P | 0x0 a| When set, triggers a program to the eFuse.  A request made while program_enable is clear, efuse_data is 0, the address is out of bounds, or the bit is locked or blocked is refused: it issues no command and completes at once with program_done 1 and program_status 1
+| 16 | `efuse_data` | RW | 0x0 a| Data to program to eFuse.  If this bit is 0, a program request is refused: it issues no command and completes at once with program_done 1 and program_status 1
 | 15:0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -948,10 +948,10 @@ PicoRV32 IRQ vector bit driven by the shared-key-valid event.
 | 28 | `read_enable` | RW | 0x0 a| When set, enables the read request
 | 27 | `Reserved` | - | - a| Reserved
 | 26 | `read_status` | R | 0x0 a| 0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.
-| 25 | `read_done` | R | 0x0 a| When set, the read has completed, the status of which is in read_status
+| 25 | `read_done` | R | 0x0 a| When set, the read has completed, the status of which is in read_status.  Cleared when the next efuse_read_go is accepted; a refused request leaves it set and updates read_status
 | 24 | `read_busy` | R | 0x0 a| When set, the read is in progress
 | 23:17 | `Reserved` | - | - a| Reserved
-| 16 | `efuse_read_go` | RW 1P | 0x0 a| When set, triggers a read to efuse.
+| 16 | `efuse_read_go` | RW 1P | 0x0 a| When set, triggers a read to efuse.  A request made while read_enable is clear, the address is out of bounds, or the word is locked or blocked is refused: it issues no command and completes at once with read_done 1 and read_status 1
 | 15:0 | `Reserved` | - | - a| Reserved
 |===
 
