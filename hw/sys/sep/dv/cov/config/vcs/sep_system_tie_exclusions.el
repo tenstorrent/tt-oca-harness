@@ -39,7 +39,7 @@
 
 CHECKSUM: "3579852188 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:481) and :508 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-197) can move through the remap subtractor."
+ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:536) and :508 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-197) can move through the remap subtractor."
 Toggle ifu_demux_req[0].ar.size "logic ifu_demux_req[0].ar.size[2:0]"
 Toggle ifu_demux_req[0].ar.prot "logic ifu_demux_req[0].ar.prot[2:0]"
 Toggle ifu_demux_req[0].ar.cache "logic ifu_demux_req[0].ar.cache[3:0]"
@@ -135,7 +135,7 @@ Toggle ifu_demux_resp[2].aw_ready "logic ifu_demux_resp[2].aw_ready"
 
 CHECKSUM: "3579852188 1455020830"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu
-ANNOTATION: "SEP-CPU-TCM-RESP-USER-TIED: sep_cpu.sv:511-512 drive cpu_tcm_axi_resp_o B and R USER to the sep_pkg::SepSourceId constant (sep_pkg.sv:481). NOT waived: the B/R id, resp, data and last from the VeeR DMA port."
+ANNOTATION: "SEP-CPU-TCM-RESP-USER-TIED: sep_cpu.sv:511-512 drive cpu_tcm_axi_resp_o B and R USER to the sep_pkg::SepSourceId constant (sep_pkg.sv:536). NOT waived: the B/R id, resp, data and last from the VeeR DMA port."
 Toggle cpu_tcm_axi_resp_o.r.user "logic cpu_tcm_axi_resp_o.r.user[11:0]"
 Toggle cpu_tcm_axi_resp_o.b.user "logic cpu_tcm_axi_resp_o.b.user[11:0]"
 
@@ -181,7 +181,7 @@ Toggle target_base_i "logic target_base_i[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_ifu_local_alias_remap
-ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:481) and :508 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-197) can move through the remap subtractor."
+ANNOTATION: "SEP-CPU-IFU-TIED: only the VeeR IFU drives these nets. el2_ifu_mem_ctl.sv:1074-1082 tie AR size 3, prot 5, cache 4'hF, len 0, burst INCR, qos 0, lock 0 and rready 1; :1085-1101 hold the whole AW and W channels and bready at 0 (the IFU never writes); sep_cpu.sv:493-495 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:536) and :508 AWATOP to 0. axi_window_remap.sv passes every non-address field unchanged, and axi_demux_simple.sv:488,495,507 copy the AW, W and AR payload to every demux port, including the DECERR port [2]. NOT waived: AR addr, id, region and the post-remap AW addr, which SEP_LOCAL_BASE_ADDR (sw=rw, sep_cpu_ctrl.rdl:184-197) can move through the remap subtractor."
 Toggle slv_req_i.ar.size "logic slv_req_i.ar.size[2:0]"
 Toggle slv_req_i.ar.prot "logic slv_req_i.ar.prot[2:0]"
 Toggle slv_req_i.ar.cache "logic slv_req_i.ar.cache[3:0]"
@@ -240,7 +240,7 @@ Toggle slv_req_i.aw.addr "logic slv_req_i.aw.addr[31:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_lsu_local_alias_remap
-ANNOTATION: "SEP-CPU-LSU-TIED: slv_req_i is lsu_axi_req_raw (sep_cpu.sv:524), which only the VeeR LSU drives. el2_lsu_bus_buffer.sv:886-887 and :903-904 tie qos 0 and lock 0; sep_cpu.sv:497-499 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:481) and :509 AWATOP to 0. NOT waived: every mst_req_o field, because mst_req_o is lsu_axi_req (sep_cpu.sv:526), which the TB forces in a no_cpu leaf (hw/sys/sep/dv/tb/tb_top.sv:1081); and the slv_req_i prot, len, burst and wlast."
+ANNOTATION: "SEP-CPU-LSU-TIED: slv_req_i is lsu_axi_req_raw (sep_cpu.sv:524), which only the VeeR LSU drives. el2_lsu_bus_buffer.sv:886-887 and :903-904 tie qos 0 and lock 0; sep_cpu.sv:497-499 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:536) and :509 AWATOP to 0. NOT waived: every mst_req_o field, because mst_req_o is lsu_axi_req (sep_cpu.sv:526), which the TB forces in a no_cpu leaf (hw/sys/sep/dv/tb/tb_top.sv:1081); and the slv_req_i prot, len, burst and wlast."
 Toggle slv_req_i.aw.qos "logic slv_req_i.aw.qos[3:0]"
 Toggle slv_req_i.aw.lock "logic slv_req_i.aw.lock"
 Toggle slv_req_i.aw.user "logic slv_req_i.aw.user[11:0]"
@@ -252,7 +252,7 @@ Toggle slv_req_i.w.user "logic slv_req_i.w.user[11:0]"
 
 CHECKSUM: "2196427632 2116802384"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_dbg_local_alias_remap
-ANNOTATION: "SEP-CPU-DBG-TIED: only the VeeR debug system-bus master drives this remap. el2_dbg.sv:738-774 tie id 0, prot 3'b001, AW cache 4'hF, AR cache 0, len 0, burst INCR, qos 0, lock 0, wlast 1, bready 1 and rready 1; sep_cpu.sv:501-503 and :508 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:481) and AWATOP to 0; axi_window_remap.sv passes them unchanged. NOT waived: addr, size, region, valid, data and strobe, which a system-bus access moves."
+ANNOTATION: "SEP-CPU-DBG-TIED: only the VeeR debug system-bus master drives this remap. el2_dbg.sv:738-774 tie id 0, prot 3'b001, AW cache 4'hF, AR cache 0, len 0, burst INCR, qos 0, lock 0, wlast 1, bready 1 and rready 1; sep_cpu.sv:501-503 and :508 drive AxUSER/WUSER to sep_pkg::SepSourceId (sep_pkg.sv:536) and AWATOP to 0; axi_window_remap.sv passes them unchanged. NOT waived: addr, size, region, valid, data and strobe, which a system-bus access moves."
 Toggle slv_req_i.aw.id "logic slv_req_i.aw.id[2:0]"
 Toggle slv_req_i.aw.prot "logic slv_req_i.aw.prot[2:0]"
 Toggle slv_req_i.aw.cache "logic slv_req_i.aw.cache[3:0]"
