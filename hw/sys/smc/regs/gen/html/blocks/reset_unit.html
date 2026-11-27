@@ -97,23 +97,23 @@
 <h3 id="ISOLATE_REQ_REG">ISOLATE_REQ_REG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_reg</td><td>RW</td><td>0x0</td><td>Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any<br>reset with it; a subsystem that must survive a reset gates its own reset with<br>its isolate_req_o bit.</td></tr>
+<tr><td>31:0</td><td>isolate_req_reg</td><td>RW</td><td>0x0</td><td>Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any<br>reset with it; a subsystem that must survive a reset gates its own reset with<br>its isolate_req_o bit. Cleared only by the cold reset; survives the cool reset.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_PINEN_REG">ISOLATE_REQ_PINEN_REG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_pinen_reg</td><td>RW</td><td>0x0</td><td>Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests</td></tr>
+<tr><td>31:0</td><td>isolate_req_pinen_reg</td><td>RW</td><td>0x0</td><td>Isolate request pin enable. Bit i lets the isolate request pin raise isolate_req_o[i].<br>The cold reset clears it only while the pin is low; it keeps its value through a<br>cold reset with the pin high, and survives the cool reset.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_SMC_REG">ISOLATE_REQ_SMC_REG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>isolate_req_smc_reg</td><td>RW1C</td><td>0x0</td><td>Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1<br>to clear. A write of 0, or a write whose byte strobes do not select this field,<br>leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</td></tr>
+<tr><td>0</td><td>isolate_req_smc_reg</td><td>RW1C</td><td>0x0</td><td>Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1<br>to clear. A write of 0, or a write whose byte strobes do not select this field,<br>leaves it unchanged; a rising edge in the same cycle as a clearing write wins.<br>Cleared only by the cold reset; survives the cool reset.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_SMCEN_REG">ISOLATE_REQ_SMCEN_REG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_smcen_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc enable. Bit i raises isolate_req_o[i] while ISOLATE_REQ_SMC_REG<br>is set, and makes the isolation sequence wait for isolate_req_ack_i[i] before it<br>asserts the cool reset.</td></tr>
+<tr><td>31:0</td><td>isolate_req_smcen_reg</td><td>RW</td><td>0x0</td><td>Isolate request smc enable. Bit i raises isolate_req_o[i] while ISOLATE_REQ_SMC_REG<br>is set, and makes the isolation sequence wait for isolate_req_ack_i[i] before it<br>asserts the cool reset. Cleared only by the cold reset; survives the cool reset.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_VIS">ISOLATE_REQ_VIS</h3>
 <table>
@@ -126,12 +126,12 @@
 <h3 id="ISOLATE_REQ_FLR_COUNTER_VALUE">ISOLATE_REQ_FLR_COUNTER_VALUE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_flr_counter_value</td><td>RW</td><td>0x0</td><td>Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before<br>cool_reset_n is asserted. The sequence asserts it earlier once every subsystem<br>enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.</td></tr>
+<tr><td>31:0</td><td>isolate_req_flr_counter_value</td><td>RW</td><td>0x0</td><td>Isolation sequence timeout N, in reference clock cycles. cool_reset_n asserts N+1<br>cycles after the synchronized isolate_sequence_trigger_i rising edge, or earlier<br>once every subsystem enabled in ISOLATE_REQ_SMCEN_REG acknowledges on<br>isolate_req_ack_i. A trigger edge that arrives before the cool reset hold ends is<br>ignored. Cleared only by the cold reset; survives the cool reset.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_FLR_RESET_COUNTER_VALUE">ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>isolate_req_flr_reset_counter_value</td><td>RW</td><td>0x0</td><td>Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE&#x27;s value</td></tr>
+<tr><td>31:0</td><td>isolate_req_flr_reset_counter_value</td><td>RW</td><td>0x0</td><td>Isolation sequence hold M: the number of reference clock cycles cool_reset_n stays<br>asserted. A value of 0 prevents the sequence from starting, whatever<br>ISOLATE_REQ_FLR_COUNTER_VALUE holds. Cleared only by the cold reset; survives the<br>cool reset.</td></tr>
 </table>
 <h3 id="ISOLATE_REQ_ACK_CAPTURE">ISOLATE_REQ_ACK_CAPTURE</h3>
 <table>

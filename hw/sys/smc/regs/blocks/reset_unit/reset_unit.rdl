@@ -119,7 +119,7 @@ addrmap reset_unit {
             hw = r;
             desc = "Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any
                     reset with it; a subsystem that must survive a reset gates its own reset with
-                    its isolate_req_o bit.";
+                    its isolate_req_o bit. Cleared only by the cold reset; survives the cool reset.";
         } isolate_req_reg [31:0] = 0x0;
     };
 
@@ -127,7 +127,9 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests";
+            desc = "Isolate request pin enable. Bit i lets the isolate request pin raise isolate_req_o[i].
+                    The cold reset clears it only while the pin is low; it keeps its value through a
+                    cold reset with the pin high, and survives the cool reset.";
         } isolate_req_pinen_reg [31:0] = 0x0;
     };
 
@@ -138,7 +140,8 @@ addrmap reset_unit {
             onwrite = woclr;
             desc = "Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1
                     to clear. A write of 0, or a write whose byte strobes do not select this field,
-                    leaves it unchanged; a rising edge in the same cycle as a clearing write wins.";
+                    leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
+                    Cleared only by the cold reset; survives the cool reset.";
         } isolate_req_smc_reg [0:0] = 0x0;
     };
 
@@ -148,7 +151,7 @@ addrmap reset_unit {
             hw = r;
             desc = "Isolate request smc enable. Bit i raises isolate_req_o[i] while ISOLATE_REQ_SMC_REG
                     is set, and makes the isolation sequence wait for isolate_req_ack_i[i] before it
-                    asserts the cool reset.";
+                    asserts the cool reset. Cleared only by the cold reset; survives the cool reset.";
         } isolate_req_smcen_reg [31:0] = 0x0;
     };
 
@@ -192,9 +195,11 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before
-                    cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
-                    enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.";
+            desc = "Isolation sequence timeout N, in reference clock cycles. cool_reset_n asserts N+1
+                    cycles after the synchronized isolate_sequence_trigger_i rising edge, or earlier
+                    once every subsystem enabled in ISOLATE_REQ_SMCEN_REG acknowledges on
+                    isolate_req_ack_i. A trigger edge that arrives before the cool reset hold ends is
+                    ignored. Cleared only by the cold reset; survives the cool reset.";
         } isolate_req_flr_counter_value [31:0] = 0x0;
     };
 
@@ -202,7 +207,10 @@ addrmap reset_unit {
         field {
             sw = rw;
             hw = r;
-            desc = "Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE's value";
+            desc = "Isolation sequence hold M: the number of reference clock cycles cool_reset_n stays
+                    asserted. A value of 0 prevents the sequence from starting, whatever
+                    ISOLATE_REQ_FLR_COUNTER_VALUE holds. Cleared only by the cold reset; survives the
+                    cool reset.";
         } isolate_req_flr_reset_counter_value [31:0] = 0x0;
     };
 

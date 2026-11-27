@@ -199,7 +199,7 @@ typedef union {
 // reg - reset_unit::ISOLATE_REQ_REG
 // Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any
 // reset with it; a subsystem that must survive a reset gates its own reset with
-// its isolate_req_o bit.
+// its isolate_req_o bit. Cleared only by the cold reset; survives the cool reset.
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_REG__ISOLATE_REQ_REG_bw 32
@@ -208,21 +208,25 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Isolate request. Bit i raises isolate_req_o[i]. The reset unit does not gate any
         // reset with it; a subsystem that must survive a reset gates its own reset with
-        // its isolate_req_o bit.
+        // its isolate_req_o bit. Cleared only by the cold reset; survives the cool reset.
         uint32_t isolate_req_reg :32;
     } f;
     uint32_t w;
 } reset_unit__ISOLATE_REQ_REG_t;
 
 // reg - reset_unit::ISOLATE_REQ_PINEN_REG
-// Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests
+// Isolate request pin enable. Bit i lets the isolate request pin raise isolate_req_o[i].
+// The cold reset clears it only while the pin is low; it keeps its value through a
+// cold reset with the pin high, and survives the cool reset.
 #define RESET_UNIT__ISOLATE_REQ_PINEN_REG__ISOLATE_REQ_PINEN_REG_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_PINEN_REG__ISOLATE_REQ_PINEN_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_PINEN_REG__ISOLATE_REQ_PINEN_REG_bw 32
 #define RESET_UNIT__ISOLATE_REQ_PINEN_REG__ISOLATE_REQ_PINEN_REG_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests
+        // Isolate request pin enable. Bit i lets the isolate request pin raise isolate_req_o[i].
+        // The cold reset clears it only while the pin is low; it keeps its value through a
+        // cold reset with the pin high, and survives the cool reset.
         uint32_t isolate_req_pinen_reg :32;
     } f;
     uint32_t w;
@@ -232,6 +236,7 @@ typedef union {
 // Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1
 // to clear. A write of 0, or a write whose byte strobes do not select this field,
 // leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
+// Cleared only by the cold reset; survives the cool reset.
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm 0x1
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bw 1
@@ -241,6 +246,7 @@ typedef union {
         // Isolate request smc. Set by a rising edge of isolate_sequence_trigger_i; software writes 1
         // to clear. A write of 0, or a write whose byte strobes do not select this field,
         // leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
+        // Cleared only by the cold reset; survives the cool reset.
         uint32_t isolate_req_smc_reg :1;
         uint32_t :31;
     } f;
@@ -250,7 +256,7 @@ typedef union {
 // reg - reset_unit::ISOLATE_REQ_SMCEN_REG
 // Isolate request smc enable. Bit i raises isolate_req_o[i] while ISOLATE_REQ_SMC_REG
 // is set, and makes the isolation sequence wait for isolate_req_ack_i[i] before it
-// asserts the cool reset.
+// asserts the cool reset. Cleared only by the cold reset; survives the cool reset.
 #define RESET_UNIT__ISOLATE_REQ_SMCEN_REG__ISOLATE_REQ_SMCEN_REG_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_SMCEN_REG__ISOLATE_REQ_SMCEN_REG_bp 0
 #define RESET_UNIT__ISOLATE_REQ_SMCEN_REG__ISOLATE_REQ_SMCEN_REG_bw 32
@@ -259,7 +265,7 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         // Isolate request smc enable. Bit i raises isolate_req_o[i] while ISOLATE_REQ_SMC_REG
         // is set, and makes the isolation sequence wait for isolate_req_ack_i[i] before it
-        // asserts the cool reset.
+        // asserts the cool reset. Cleared only by the cold reset; survives the cool reset.
         uint32_t isolate_req_smcen_reg :32;
     } f;
     uint32_t w;
@@ -293,32 +299,42 @@ typedef union {
 } reset_unit__ISOLATE_REQ_VIS_t;
 
 // reg - reset_unit::ISOLATE_REQ_FLR_COUNTER_VALUE
-// Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before
-// cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
-// enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.
+// Isolation sequence timeout N, in reference clock cycles. cool_reset_n asserts N+1
+// cycles after the synchronized isolate_sequence_trigger_i rising edge, or earlier
+// once every subsystem enabled in ISOLATE_REQ_SMCEN_REG acknowledges on
+// isolate_req_ack_i. A trigger edge that arrives before the cool reset hold ends is
+// ignored. Cleared only by the cold reset; survives the cool reset.
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bp 0
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_bw 32
 #define RESET_UNIT__ISOLATE_REQ_FLR_COUNTER_VALUE__ISOLATE_REQ_FLR_COUNTER_VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Timeout, in reference clock cycles after the isolate_sequence_trigger_i rising edge, before
-        // cool_reset_n is asserted. The sequence asserts it earlier once every subsystem
-        // enabled in ISOLATE_REQ_SMCEN_REG acknowledges on isolate_req_ack_i.
+        // Isolation sequence timeout N, in reference clock cycles. cool_reset_n asserts N+1
+        // cycles after the synchronized isolate_sequence_trigger_i rising edge, or earlier
+        // once every subsystem enabled in ISOLATE_REQ_SMCEN_REG acknowledges on
+        // isolate_req_ack_i. A trigger edge that arrives before the cool reset hold ends is
+        // ignored. Cleared only by the cold reset; survives the cool reset.
         uint32_t isolate_req_flr_counter_value :32;
     } f;
     uint32_t w;
 } reset_unit__ISOLATE_REQ_FLR_COUNTER_VALUE_t;
 
 // reg - reset_unit::ISOLATE_REQ_FLR_RESET_COUNTER_VALUE
-// Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE's value
+// Isolation sequence hold M: the number of reference clock cycles cool_reset_n stays
+// asserted. A value of 0 prevents the sequence from starting, whatever
+// ISOLATE_REQ_FLR_COUNTER_VALUE holds. Cleared only by the cold reset; survives the
+// cool reset.
 #define RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_bm 0xffffffff
 #define RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_bp 0
 #define RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_bw 32
 #define RESET_UNIT__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE__ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Number of cycles cool_reset_n is asserted for. NOTE: The cool reset flow requires this value to be greater than 0; a value of 0 will prevent initiation, regardless of ISOLATE_REQ_FLR_COUNTER_VALUE's value
+        // Isolation sequence hold M: the number of reference clock cycles cool_reset_n stays
+        // asserted. A value of 0 prevents the sequence from starting, whatever
+        // ISOLATE_REQ_FLR_COUNTER_VALUE holds. Cleared only by the cold reset; survives the
+        // cool reset.
         uint32_t isolate_req_flr_reset_counter_value :32;
     } f;
     uint32_t w;
