@@ -49,6 +49,21 @@ interface smc_tb_if;
   // Count clock samples whose busy value is not known zero.
   logic zeroer_busy;
   logic [31:0] zeroer_busy_sample_count;
+  // Zeroer master-port samples and SYS_OUT stimulus controls for reset scenarios.
+  logic [2:0] zeroer_state;
+  logic zeroer_awvalid, zeroer_awready, zeroer_wvalid, zeroer_wready, zeroer_wlast;
+  logic zeroer_bvalid, zeroer_bready, zeroer_intp;
+  logic [7:0] zeroer_wstrb;
+  logic [31:0] zeroer_outstanding;
+  logic output_axi_resp_hold = 1'b0;
+
+  clocking zeroer_cb @(posedge clk_smc);
+    default input #1step;
+    input rst_primary_smc_clk_n, zeroer_state, zeroer_busy, zeroer_outstanding;
+    input zeroer_awvalid, zeroer_awready, zeroer_wvalid, zeroer_wready;
+    input zeroer_wlast, zeroer_wstrb, zeroer_bvalid, zeroer_bready, zeroer_intp;
+  endclocking
+
 
   // eFuse sense done and the warm-domain release it gates (driven by the
   // DUT top): warm-domain CSRs answer only after rst_warm_smc_clk_n rises.
