@@ -595,7 +595,7 @@ Toggle host_tl_h_i.d_opcode [2:1] "logic host_tl_h_i.d_opcode[2:0]"
 
 CHECKSUM: "2470472206 1152219882"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1205); tl_i is host_tl_h_o (hw/sys/sep/rtl/sep_dma_wrap.sv:265). NOT waived: address, data, mask, the integrity fields and every tl_o response field."
+ANNOTATION: "SEP-DMA-HOST-TL-TIED: host_tl_h_o comes from tlul_adapter_host in secure_dma. tlul_adapter_host.sv:108-118 drive a_param 0, a_size WordSize, a_address[1:0] 0, d_ready 1 and opcode GET/PUT_FULL/PUT_PARTIAL (a_opcode[1] 0); MAX_REQS = NUM_MAX_OUTSTANDING_REQS = 1 (secure_dma_pkg.sv:103) ties a_source to 0 (tlul_adapter_host.sv:69-70); instr_type is MuBi4False and rsvd is TL_USER_RSVD = '0 (sep.sv:1206); tl_i is host_tl_h_o (hw/sys/sep/rtl/sep_dma_wrap.sv:265). NOT waived: address, data, mask, the integrity fields and every tl_o response field."
 Toggle tl_i.a_user.instr_type "logic tl_i.a_user.instr_type[3:0]"
 Toggle tl_i.a_user.rsvd "logic tl_i.a_user.rsvd[9:0]"
 Toggle tl_i.a_address [1:0] "logic tl_i.a_address[31:0]"
@@ -767,33 +767,33 @@ Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1203), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1204), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 39 "915842203" "cmd_intg = {tlul_pkg::H2D_CMD_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 17421044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1203), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1204), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 42 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2097437693 2178003635"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_axi_lite_to_tlul_reg
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1203), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1204), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 3216173326"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1203), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1204), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 43 "993725118" "rsp_intg = {tlul_pkg::D2H_RSP_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2470472206 3216173326"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1203), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1204), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Block 46 "2397383519" "data_intg = {tlul_pkg::DATA_INTG_WIDTH {1'b1}};"
 
 CHECKSUM: "2470472206 1300994536"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap.u_tlul_to_axi_lite_dma
-ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1203), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
+ANNOTATION: "SEP-INTG-GEN-ON: ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN are 1 for this instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260 from ENABLE_DATA_INTG_GEN = 1, sep.sv:1204), so the else arms that drive the all-ones integrity placeholder are dead by parameter. NOT waived: the generate-on arms."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 

@@ -442,13 +442,13 @@ Branch 1 "844865755" "idx" (12) "idx default"
 
 CHECKSUM: "2097437693 2178003635"
 MODULE: axi_lite_to_tlul
-ANNOTATION: "AXI2TLUL-INTG-GEN-PARAM: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN default to 1 (hw/common/axi/axi_lite_to_tlul.sv:28-29); every SEP instance keeps the default or passes 1 (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from hw/sys/sep/rtl/sep.sv:1203 ENABLE_DATA_INTG_GEN=1), so the else arms at :247/:262 are elaboration-dead."
+ANNOTATION: "AXI2TLUL-INTG-GEN-PARAM: ENABLE_CMD_INTG_GEN and ENABLE_DATA_INTG_GEN default to 1 (hw/common/axi/axi_lite_to_tlul.sv:28-29); every SEP instance keeps the default or passes 1 (hw/sys/sep/rtl/sep_dma_wrap.sv:234-235 from hw/sys/sep/rtl/sep.sv:1204 ENABLE_DATA_INTG_GEN=1), so the else arms at :247/:262 are elaboration-dead."
 Branch 3 "1189517418" "ENABLE_CMD_INTG_GEN" (1) "ENABLE_CMD_INTG_GEN 0"
 Branch 4 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 
 CHECKSUM: "2470472206 1300994536"
 MODULE: tlul_to_axi_lite
-ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1203, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
+ANNOTATION: "TLUL2AXI-INTG-GEN-PARAM: the only SEP instance (hw/sys/sep/rtl/sep_dma_wrap.sv:259-260) passes ENABLE_DATA_INTG_GEN, set to 1 at hw/sys/sep/rtl/sep.sv:1204, to ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN, so the else arms at hw/common/axi/tlul_to_axi_lite.sv:281/:296 are elaboration-dead."
 Branch 4 "3993283767" "ENABLE_RSP_INTG_GEN" (1) "ENABLE_RSP_INTG_GEN 0"
 Branch 5 "2160096988" "ENABLE_DATA_INTG_GEN" (1) "ENABLE_DATA_INTG_GEN 0"
 

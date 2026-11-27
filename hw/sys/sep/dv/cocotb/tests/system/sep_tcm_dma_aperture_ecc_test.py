@@ -85,7 +85,7 @@ Checkers:
                  "is cleared by writing the RW1C STATUS.error register",
                  ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/
                  dma.hjson:671-672``; the faults are "cleared through
-                 ``DMA_BUS_ERR_CLEAR``", ``hw/sys/sep/doc/dma.adoc:68-70``), so
+                 ``DMA_BUS_ERR_CLEAR``", ``hw/sys/sep/doc/dma.adoc:69-71``), so
                  a stale code or flag cannot pass the check.
   CHK-TCM-DMA-T2T one multi-word DMA copy ICCM -> DCCM and one DCCM -> ICCM
                  (4 to 16 words, 4-byte width, one chunk, 8-byte aligned)
@@ -821,7 +821,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         pre_berr = await self._clear_bus_err()
         pre_ecode = await self.dma.rd(_D.addr("ERROR_CODE")) & EC_MASK
         pre = (
-            f"contract=dma.hjson:671-672,hw/sys/sep/doc/dma.adoc:68-70 src=0x{src:08x} "
+            f"contract=dma.hjson:671-672,hw/sys/sep/doc/dma.adoc:69-71 src=0x{src:08x} "
             f"dst=0x{dst:08x} bytes={nbytes} error_code=0x{pre_ecode:x} "
             f"dma_bus_err_status=0x{pre_berr:x} expect=0x0/0x0"
         )

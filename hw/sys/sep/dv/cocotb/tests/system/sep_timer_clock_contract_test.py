@@ -1831,6 +1831,10 @@ class sep_timer_clock_contract_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         alert_rises = alert.rises_since(ma)
         alert_high = alert.high_clocks_since(ma)
+        alert_edges = (
+            [c - ma.clk for c in alert.rise_clks_since(ma)],
+            [c - ma.clk for c in alert.fall_clks_since(ma)],
+        )
         await alert.stop()
         if alert_rises == 0:
             msg = (
@@ -1850,12 +1854,17 @@ class sep_timer_clock_contract_test(sep_base_test):
         # same clocks as the alert tap over the window.
         src_rises = src13.rises_since(m13)
         src_high = src13.high_clocks_since(m13)
+        src_edges = (
+            [c - m13.clk for c in src13.rise_clks_since(m13)],
+            [c - m13.clk for c in src13.fall_clks_since(m13)],
+        )
         await src13.stop()
         line = (
             f"seed={seed} src=13 rises={src_rises} high_clk={src_high} "
-            f"exp_rises={alert_rises} exp_high_clk={alert_high} window_clk={SRC13_WINDOW}"
+            f"rise_fall_clk={src_edges} exp_rises={alert_rises} exp_high_clk={alert_high} "
+            f"exp_rise_fall_clk={alert_edges} window_clk={SRC13_WINDOW}"
         )
-        if (src_rises, src_high) != (alert_rises, alert_high):
+        if (src_rises, src_high, src_edges) != (alert_rises, alert_high, alert_edges):
             raise AssertionError(f"CHK-WDT-ALERT-SRC13 FAIL: {line}")
         self.logger.info("CHK-WDT-ALERT-SRC13 PASS: %s", line)
 
