@@ -61,6 +61,8 @@ module efuse_guard #(
                                             // processing.
   input logic [5:0] rma_chiplet_token_match_i,  // RMA chiplet token-match status code from token
                                                 // processing.
+  input logic [1:0] sensed_rma_sip_diff_i,  // LC_STATE bit 1 as sensed, {diff_n, diff_p}; the chiplet
+                                            // token bit needs it set.
 
   output logic efuse_err_o,             // Sticky error set when a program or read start is refused
                                         // by a lock or, for a program, by a missing RMA token match;
@@ -79,8 +81,9 @@ module efuse_guard #(
 
   output logic is_read_locked_o,        // High when the read target address falls in a read-locked
                                         // field.
-  output logic is_program_locked_o,     // High when the program target address is write locked or
-                                        // is an RMA token bit without a token match.
+  output logic is_program_locked_o,     // High when the program target address is write locked, is
+                                        // an RMA token bit without a token match, or is the chiplet
+                                        // token bit without sensed LC_STATE bit 1.
   output logic secure_tm_blocked_o      // High while secure test mode blocks fuse command starts.
 );
 
@@ -115,6 +118,18 @@ module efuse_guard #(
   logic token_write_lock;
   logic field_write_lock;
   logic field_read_lock;
+  logic sensed_rma_sip_level, sensed_rma_sip_sigint, sensed_rma_sip;
+
+  prim_diff_decode_multi #(.WIDTH(1)) u_sensed_rma_sip_dec (
+    .clk_i,
+    .rst_ni,
+    .data_i  (sensed_rma_sip_diff_i),
+    .data_o  (sensed_rma_sip_level),
+    .sigint_o(sensed_rma_sip_sigint)
+  );
+
+  // A broken pair reads as clear.
+  assign sensed_rma_sip = sensed_rma_sip_level && !sensed_rma_sip_sigint;
 
   // If read or write is from programming interface or read interface
   always_comb begin
@@ -134,8 +149,9 @@ module efuse_guard #(
       if ((program_target_addr_i == SipTokenBitAddr) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) begin
         token_write_lock = 1'b1;
       end
-      // If we are trying to program the chiplet token bit but we don't have a token match, block it
-      else if ((program_target_addr_i == ChipletTokenBitAddr) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) begin
+      // The chiplet token bit also needs bit 1 in the fuses, not just in the shadow.
+      else if ((program_target_addr_i == ChipletTokenBitAddr) &&
+               ((rma_chiplet_token_match_i != TOKEN_MATCH_CODE) || !sensed_rma_sip)) begin
         token_write_lock = 1'b1;
       end
     end

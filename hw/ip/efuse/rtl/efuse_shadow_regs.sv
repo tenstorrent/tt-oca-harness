@@ -110,6 +110,8 @@ module efuse_shadow_regs
     output logic                                fuse_sense_done_o,  // Set once the sense read has returned a
                                                                     // response for every shadow word, errored or
                                                                     // not; held until reset.
+    output logic [1:0]                          sensed_rma_sip_diff_o,  // LC_STATE bit 1 as sensed, {diff_n, diff_p};
+                                                                        // no shadow write changes it.
     output efuse_map_t                          shadow_efuse_o,  // Shadow eFuse map, with the
                                                                  // secret words zeroed while secure
                                                                  // test mode is active.
@@ -204,6 +206,7 @@ module efuse_shadow_regs
 
   logic chiplet_state_change_completed_n0_scan;
   logic sip_state_change_completed_n0_scan;
+  logic [1:0] sensed_rma_sip_diff_n0_scan;
 
   logic [LcStateWidth-1:0] lc_state_raw_d;
   logic [2*LcStateWidth-1:0] lc_state_diff_d;
@@ -593,6 +596,7 @@ module efuse_shadow_regs
 
       chiplet_state_change_completed_n0_scan <= 1'b0;
       sip_state_change_completed_n0_scan <= 1'b0;
+      sensed_rma_sip_diff_n0_scan <= 2'b10;
 
     end else begin
       /////////////////////////////////////////
@@ -605,6 +609,7 @@ module efuse_shadow_regs
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES, i)] <=
                   {shadow_reg_preload[i][31:2*LcStateWidth], lc_state_diff_d};
+              sensed_rma_sip_diff_n0_scan <= {lc_state_diff_d[LcStateWidth+1], lc_state_diff_d[1]};
             end else begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES, i)] <= shadow_reg_preload[i];
@@ -627,6 +632,7 @@ module efuse_shadow_regs
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES, load_word_idx)] <=
                   {fuse_command_resp_i.data[31:2*LcStateWidth], lc_state_diff_d};
+              sensed_rma_sip_diff_n0_scan <= {lc_state_diff_d[LcStateWidth+1], lc_state_diff_d[1]};
             end else begin
               if (efuse_pkg::shadow_range_map_contains_word(
                   CLASS1_SHADOW_RANGES, load_word_idx)) begin
@@ -680,6 +686,7 @@ module efuse_shadow_regs
 
   assign shadow_efuse_o = shadow_efuse_masked;
   assign fuse_sense_done_o = fuse_sense_done;
+  assign sensed_rma_sip_diff_o = sensed_rma_sip_diff_n0_scan;
 
   // debug ports
   assign is_write_locked_o = write_blocked;

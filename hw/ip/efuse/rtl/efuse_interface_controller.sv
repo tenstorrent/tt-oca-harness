@@ -734,6 +734,7 @@ module efuse_interface_controller #(
   logic                       harness_sense_done;
   logic harness_write_locked, harness_read_locked, harness_locked_access;
   logic [ShadowLockBits-1:0] shadow_lock_vector;
+  logic [1:0]                 sensed_rma_sip_diff;
 
   efuse_shadow_regs #(
     .FUSE_MAP_REG_MAP_BASE_ADDR(EFUSE_MAP_REG_MAP_BASE_ADDR),
@@ -784,6 +785,7 @@ module efuse_interface_controller #(
     .apb_resp_o              (apb_endpoint_resps[efuse_pkg::SHADOW_REG_MAP]),
 
     .fuse_sense_done_o       (harness_sense_done),
+    .sensed_rma_sip_diff_o   (sensed_rma_sip_diff),
     .shadow_efuse_o          (shadow_regs),
 
     // RMA Token Match
@@ -874,6 +876,7 @@ module efuse_interface_controller #(
       .apb_resp_o           (apb_endpoint_resps[efuse_pkg::SUPPLEMENTARY_SHADOW_REG_MAP]),
 
       .fuse_sense_done_o    (supplementary_sense_done),
+      .sensed_rma_sip_diff_o(),
       .shadow_efuse_o       (supplementary_shadow_regs),
 
       .rma_chiplet_token_match_i ('0),
@@ -967,6 +970,7 @@ module efuse_interface_controller #(
 
     .rma_sip_token_match_i     (rma_sip_token_match),
     .rma_chiplet_token_match_i (rma_chiplet_token_match),
+    .sensed_rma_sip_diff_i     (sensed_rma_sip_diff),
 
     // A start has been refused - error signal from the guard to the efuse_interface_ctrl_reg
     .efuse_err_o               (efuse_req_err),
@@ -995,6 +999,10 @@ module efuse_interface_controller #(
   `OCAH_OT_ASSERT(
       FuseCommandReadWordCountValid_A,
       fuse_command_req_o.valid && fuse_command_req_o.command == efuse_pkg::FUSE_COMMAND_READ |-> fuse_command_req_o.read_word_count inside {efuse_word_counter_t'(1), efuse_word_counter_t'(SHADOW_REG_BITS / EFUSE_MACRO_WORD_WIDTH)},
+      clk_i, !rst_ni)
+  `OCAH_OT_ASSERT(
+      ChipletTokenProgramNeedsSensedSip_A,
+      HAS_LC_STATE && fuse_command_req_o.valid && fuse_command_req_o.command == efuse_pkg::FUSE_COMMAND_PROGRAM && fuse_command_req_o.address == efuse_addr_t'(LC_STATE_BIT_POSITION + 2) |-> sensed_rma_sip_diff == 2'b01,
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       FuseCommandProgramWordCountZero_A,
