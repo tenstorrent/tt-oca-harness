@@ -17,21 +17,6 @@
 #include "errors.h"
 #include "rom_virt_console.h"
 
-// Read-lock bits for secret fuse fields (all in low 32 bits of LOCKS register).
-//
-// All six are secrets. A UID is the per-device secret seed the Key Manager
-// derives keys from, so a UID that leaks compromises every key derived from it.
-// UIDs are not identifiers: the non-secret per-part identifiers are the ID
-// fuses (chiplet_id / sip_id / system_id), which are not locked here. All six fields
-// declare the same properties in sep_efuse_map.rdl -- sw=rw, onwrite=woset,
-// hw=r -- so they latch identically on the single SET_ONLY write below.
-#define FUSE_SECRET_READ_LOCK_MASK \
-    (SEP_EFUSE_MAP__LOCKS__CLASS_KEY_READ_LOCK_bm | \
-     SEP_EFUSE_MAP__LOCKS__RMA_SIP_TOKEN_DIGEST_READ_LOCK_bm | \
-     SEP_EFUSE_MAP__LOCKS__RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK_bm | \
-     SEP_EFUSE_MAP__LOCKS__CHIPLET_UID_READ_LOCK_bm | SEP_EFUSE_MAP__LOCKS__SIP_UID_READ_LOCK_bm | \
-     SEP_EFUSE_MAP__LOCKS__SYS_UID_READ_LOCK_bm)
-
 void lock_fuse_secrets(void) {
     // LOCKS register is SET_ONLY: writing 1 bits sets them, 0 bits are ignored.
     // No need to read-modify-write — just write the bits we want to set.

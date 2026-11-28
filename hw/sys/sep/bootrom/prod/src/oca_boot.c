@@ -34,6 +34,8 @@
 #include "bl0_state.h"
 #include "boot_flash.h"
 #include "errors.h"
+#include "gate_ledger.h"
+#include "harden.h"
 #include "oca_platform.h"
 #include "oca_validator.h"
 #include "oca_variant.h"
@@ -229,6 +231,28 @@ static uint16_t status_for_result(oca_result_t r) {
 }
 
 // ---------------------------------------------------------------------------
+// Gate-ledger stamp decisions
+// ---------------------------------------------------------------------------
+
+// Secure-boot crypto verified, or affirmatively not required (BOOT_GATE_CRYPTO).
+static bool crypto_verdict(oca_secure_bool_t determined, oca_secure_bool_t enabled,
+                           oca_secure_bool_t authenticated) {
+    return determined == OCA_SECURE_TRUE &&
+           ((enabled == OCA_SECURE_TRUE && authenticated == OCA_SECURE_TRUE) ||
+            enabled == OCA_SECURE_FALSE);
+}
+
+static bool crypto_gate_ok(const oca_validation_context_t *ctx) {
+    const bool first = crypto_verdict(harden_u32(ctx->secure_boot_determined),
+                                      harden_u32(ctx->secure_boot_enabled),
+                                      harden_u32(ctx->secure_boot_authenticated));
+    const bool second = crypto_verdict(harden_u32(ctx->secure_boot_determined),
+                                       harden_u32(ctx->secure_boot_enabled),
+                                       harden_u32(ctx->secure_boot_authenticated));
+    return first && second;
+}
+
+// ---------------------------------------------------------------------------
 // One slot attempt
 // ---------------------------------------------------------------------------
 
@@ -294,6 +318,9 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
         report_status(STATUS_TYPE_WARN, status_for_result(r));
         return OCA_BOOT_ERR_RESULT(r);
     }
+    if (gate_status_ok((uint32_t)r)) {
+        gate_stamp_manifest();
+    }
     // Record the determination for the rest of the ROM and for BL1. The library
     // keeps it in the validation context, which does not outlive this function,
     // so it has to be copied into bl0_state. This is the field's only writer,
@@ -304,6 +331,9 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     // also been verified, since oca_validate_manifest() would have refused
     // otherwise.
     get_bl0_state()->secure_boot = (vctx.secure_boot_enabled == OCA_SECURE_TRUE);
+    if (crypto_gate_ok(&vctx)) {
+        gate_stamp_crypto();
+    }
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_VALIDATED);
     simputs("MANIFEST_OK\n");
@@ -365,6 +395,9 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
         report_status(STATUS_TYPE_WARN, status_for_result(r));
         return OCA_BOOT_ERR_RESULT(r);
     }
+    if (gate_status_ok((uint32_t)r)) {
+        gate_stamp_hash();
+    }
     report_status(STATUS_TYPE_INFO, SEP_MSG_PAYLOAD_VALIDATED);
     // Console evidence that the payload was verified, not just staged: the DV
     // suite asserts on these strings rather than on the SEP_STATUS stream.
@@ -389,6 +422,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     }
 
     get_bl0_state()->sep_sram_manifest_addr = (uint32_t)(uintptr_t)body;
+    gate_ledger_record_manifest_len((uint32_t)pk.body_size);
     return 0u;
 }
 
@@ -477,6 +511,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         simputs(slot == 0u ? "MANIFEST_PRIMARY\n" : "MANIFEST_BACKUP\n");
         simputshex32("MANIFEST_SRC=", manifest_src);
 
+        gate_ledger_reset();
         uint32_t err = try_manifest_slot(manifest_src, from_spi, region_base, region_limit);
         if (err != 0u) {
             simputshex32("MANIFEST_ERR=", err);

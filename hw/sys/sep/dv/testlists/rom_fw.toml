@@ -4426,3 +4426,269 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
+
+[[tests]]
+# HOFF-040/-050: a normal boot stamps all four gates, and the self-check runs after the BL1 copy
+# and before EXEC_IMAGE, STARTING_BL1 and the PMP release.
+name = "sep_rom_gate_ledger_pass_test"
+module = "rom_fw.sep_rom_gate_ledger_pass_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-040: the MANIFEST stamp call is skipped after [S17]; the self-check halts with 0xF004.
+name = "sep_rom_gate_skip_manifest_test"
+module = "rom_fw.sep_rom_gate_skip_manifest_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-040: the CRYPTO stamp call is skipped on a PROD secure boot over SPI; 0xF004 halt.
+name = "sep_rom_gate_skip_crypto_secure_test"
+module = "rom_fw.sep_rom_gate_skip_crypto_secure_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "spi", "secure", "crypto", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# HOFF-040: the CRYPTO stamp call is skipped on a boot that does not enforce secure boot; 0xF004 halt.
+name = "sep_rom_gate_skip_crypto_nonsecure_test"
+module = "rom_fw.sep_rom_gate_skip_crypto_nonsecure_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-040: the HASH stamp call is skipped after [S17]; the self-check halts with 0xF004.
+name = "sep_rom_gate_skip_hash_test"
+module = "rom_fw.sep_rom_gate_skip_hash_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-040: the FUSELOCK stamp call is skipped after [S17]; the self-check halts with 0xF004.
+name = "sep_rom_gate_skip_fuselock_test"
+module = "rom_fw.sep_rom_gate_skip_fuselock_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-040: only the HASH gate_ok store is skipped while its gate_inv clear retires; 0xF004 halt.
+name = "sep_rom_gate_ok_withheld_test"
+module = "rom_fw.sep_rom_gate_ok_withheld_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-040: only the HASH gate_inv clear is skipped while its gate_ok set retires; 0xF004 halt.
+name = "sep_rom_gate_inv_withheld_test"
+module = "rom_fw.sep_rom_gate_inv_withheld_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-040/-050: the primary SPI slot stamps MANIFEST and fails its payload hash; the backup's
+# MANIFEST stamp is skipped and the ledger reset per attempt makes the self-check halt with 0xF004.
+name = "sep_rom_gate_failover_reset_test"
+module = "rom_fw.sep_rom_gate_failover_reset_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "spi", "failover", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
+# HOFF-050: an ECC-consistent DCCM flip after [S23] moves bl0_state.sep_sram_manifest_addr off the
+# SRAM base; the first locus evaluation halts with 0xF004.
+name = "sep_rom_selfcheck_locus_addr_test"
+module = "rom_fw.sep_rom_selfcheck_locus_addr_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "tcm", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-050: an ECC-consistent DCCM flip after [S23] pushes the validated manifest length past the
+# end of SEP SRAM; the first locus evaluation halts with 0xF004.
+name = "sep_rom_selfcheck_locus_len_test"
+module = "rom_fw.sep_rom_selfcheck_locus_len_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "tcm", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-050: the [S25] lock write and the [S26] branch are skipped, FUSELOCK still stamps; the first
+# lock evaluation halts with 0xF004.
+name = "sep_rom_selfcheck_locks_unset_test"
+module = "rom_fw.sep_rom_selfcheck_locks_unset_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "efuse", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-050: one iteration's evaluation and counter increment are skipped; its i+1 compare halts
+# with 0xF004 before the next evaluation and the tally.
+name = "sep_rom_selfcheck_iter_skip_test"
+module = "rom_fw.sep_rom_selfcheck_iter_skip_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-050: the check loop ends after its first iteration; the final tally halts with 0xF004.
+name = "sep_rom_selfcheck_early_exit_test"
+module = "rom_fw.sep_rom_selfcheck_early_exit_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-050: with the locks unset, the first lock evaluation is forced to pass; the second lock
+# evaluation halts with 0xF004.
+name = "sep_rom_selfcheck_first_eval_test"
+module = "rom_fw.sep_rom_selfcheck_first_eval_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "efuse", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-050: with the recorded manifest address off the SRAM base, the first locus evaluation is
+# forced to pass; the second locus evaluation halts with 0xF004.
+name = "sep_rom_selfcheck_locus_first_eval_test"
+module = "rom_fw.sep_rom_selfcheck_locus_first_eval_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "tcm", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# HOFF-040: a jump over the whole payload-hash acceptance block reaches BL1 on a ROM without the
+# gate ledger and halts from the self-check with 0xF004 on this ROM.
+name = "sep_rom_gate_hash_bypass_test"
+module = "rom_fw.sep_rom_gate_hash_bypass_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "handoff", "gate_ledger", "fault", "hash", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
