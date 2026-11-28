@@ -39,7 +39,7 @@ from smc_occp_dual_defs import (
 POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
-REQUIRED_EVIDENCE = ("CHK-OCCP-SANITY",)
+REQUIRED_EVIDENCE = ("CHK-OCCP-SANITY", "CHK-ROM-NO-ADOPTER-GPIO-CTRL")
 
 
 @dataclass(frozen=True)
@@ -239,9 +239,17 @@ async def run_occp_rom_only(
     await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM, preload=dut_preload)
     await harness.release_cpu(bfm_csr, "bfm", CPU_RESET_VECTOR_ROM, preload=bfm_preload)
 
-    return await await_occp_verdict(
+    result = await await_occp_verdict(
         harness, dut_csr, bfm_csr, case=case, consoles=(bfm_console, dut_console)
     )
+    assert int(dut.dut_external_gpio_ctrl_access_seen.value) == 0, (
+        f"{case}: the production ROM accessed the adopter-owned external GPIO control aperture"
+    )
+    cocotb.log.info(
+        "CHK-ROM-NO-ADOPTER-GPIO-CTRL: the production ROM made no request to the external "
+        "per-pad GPIO control aperture"
+    )
+    return result
 
 
 @dual_test(REQUIRED_EVIDENCE)

@@ -176,22 +176,6 @@ static inline uint64_t read_mailbox(uint8_t mailbox_num, uint8_t is_inbound, uin
     return *p_addr;
 }
 
-static inline void write_gpio_shim(uint8_t gpio_num, uint32_t offset, uint32_t value) {
-    volatile uint32_t *p_addr =
-        (volatile uint32_t *)(uintptr_t)(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(
-                                             gpio_num) +
-                                         offset);
-    *p_addr = value;
-}
-
-static inline uint32_t read_gpio_shim(uint8_t gpio_num, uint32_t offset) {
-    volatile uint32_t *p_addr =
-        (volatile uint32_t *)(uintptr_t)(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(
-                                             gpio_num) +
-                                         offset);
-    return *p_addr;
-}
-
 static inline void write_gpio(uint8_t gpio_num, uint32_t offset, uint32_t value) {
     volatile uint32_t *p_addr =
         (volatile uint32_t *)(uintptr_t)(SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(gpio_num) +

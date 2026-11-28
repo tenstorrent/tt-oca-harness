@@ -71,32 +71,10 @@
 #define SMC_STRAP_SPI_USE_FUSED_CONFIG_MASK (1U << SMC_STRAP_SPI_USE_FUSED_CONFIG_BIT)
 #define SMC_STRAP_ROTATE_UPDATE_MASK (1U << (SMC_STRAP_ROTATE_UPDATE_BIT - 32))
 
-/*
- * I3C/I2C Peripheral Controller to GPIO Assignments
- * These define which GPIOs are used for each I3C/I2C controller's SCL and SDA lines.
- * Updated to match contiguous GPIO layout reorganization.
- */
-#define SMC_I3C_0_SCL_GPIO 27
-#define SMC_I3C_0_SDA_GPIO 28
-#define SMC_I3C_1_SCL_GPIO 65 /* unbonded */
-#define SMC_I3C_1_SDA_GPIO 66 /* unbonded */
-#define SMC_I3C_2_SCL_GPIO 29
-#define SMC_I3C_2_SDA_GPIO 30
-#define SMC_I3C_3_SCL_GPIO 31
-#define SMC_I3C_3_SDA_GPIO 32
-#define SMC_I3C_4_SCL_GPIO 33
-#define SMC_I3C_4_SDA_GPIO 34
-#define SMC_I3C_5_SCL_GPIO 35
-#define SMC_I3C_5_SDA_GPIO 36
-
 #define SMC_I2C_0_SCL_GPIO 37
 #define SMC_I2C_0_SDA_GPIO 38
 #define SMC_I2C_1_SCL_GPIO 41
 #define SMC_I2C_1_SDA_GPIO 42
-
-/* Observation GPIOs routed via the GPIO 2nd HW function override in
- * smc_ip_integration (hw2_ovrd must be set for the function to reach the pad). */
-#define SMC_CAT_THERM_GPIO 52 /* thermal trip output (active low) */
 
 #define SMC_STATUS_GPIO \
     58 /* GPIO used for reset status reporting (pad 61 -> 58 after 68->65 shrink) */
