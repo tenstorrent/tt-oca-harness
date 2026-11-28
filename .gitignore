@@ -140,8 +140,8 @@ vendor/**/Bender.lock
 tools/a11y/node_mo#dules/
 tools/a11y/report/
 
-/.dv/artifacts/
-/.dv/lsf/
+# Local DV artifacts and task outputs.
+/.dv/
 
 # Rendered doc output (sep_book.html / sep_book.pdf)
 doc_render/

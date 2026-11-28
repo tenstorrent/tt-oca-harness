@@ -55,6 +55,7 @@ never the ROM itself.
 
 * *Controller firmware.* The rom-only tests check each OCCP response in the controller firmware: header, error code, CRC and body. The firmware reports the result through `TEST_PASS` or `TEST_FAIL` in scratch 0.
 * *Driver verdict.* `smc_occp_rom_only_test` polls scratch 0 of both instances. `TEST_FAIL` in either instance, or the end of the poll budget, fails the test.
+* *Adopter GPIO ownership.* The dual target records any production-ROM read or write request in the external per-pad GPIO control aperture. Every rom-only test requires that record to remain clear and logs `CHK-ROM-NO-ADOPTER-GPIO-CTRL` after the OCCP verdict.
 * *POST word.* Target scratch 1 carries the boot phase and error fields. The lifecycle and hand-off tests judge it.
 * *Scratch contract.* Scratch 8, 9 and 15 carry the manifest address, the ready flags and the DFT result.
 * *Evidence.* `dual_test` fails a test that does not log every `CHK-<ID>` in its `REQUIRED_EVIDENCE`. Each procedure group names those IDs.

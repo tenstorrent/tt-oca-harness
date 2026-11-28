@@ -8,8 +8,6 @@
 #include <stdint.h>
 #include <string.h>
 #include "chip_config.h"
-#include "gpio_ctrl.h"
-#include "gpio_ctrl_addr.h"
 #include "gpio_intf.h"
 #include "gpio_intf_addr.h"
 #include "i2c.h"
@@ -191,66 +189,6 @@ static Occp_ErrMsgID smc_occp_validate_body(uint8_t *buffer, size_t length, bool
 
 static int error_response_sent = 0;
 
-_Static_assert(GPIO_CTRL_SIZE <= SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_STRIDE,
-               "a GPIO_CTRL block must fit in its SMC external-window slot");
-
-static bool enable_gpio_hw_override(uint8_t gpio_num) {
-    gpio_ctrl__CONTROL_t gpio_ctrl;
-    gpio_ctrl.w = read_gpio_shim(gpio_num, GPIO_CTRL_CONTROL_BASE_ADDR);
-    gpio_ctrl.f.hw2_ovrd = 1;
-    write_gpio_shim(gpio_num, GPIO_CTRL_CONTROL_BASE_ADDR, gpio_ctrl.w);
-
-    gpio_ctrl.w = read_gpio_shim(gpio_num, GPIO_CTRL_CONTROL_BASE_ADDR);
-    if (gpio_ctrl.f.hw2_ovrd != 1) {
-        simputshex32("Failed to enable GPIO hw2_ovrd for gpio: ", gpio_num);
-        return false;
-    }
-    return true;
-}
-
-#ifndef SMC_OCCP_DISABLE_I3C_INIT
-static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
-    (void)controller_id;
-
-#ifdef I3C_USE_HCI_CORE
-    /* The OCA/HCI core reaches the I3C pads through the GPIO LSIO path. Enabling hw2_ovrd would
-     * select a path whose drive and input-enable signals are gated off when SwapI3cCore=1,
-     * disabling the pad input buffer. Leave hw2_ovrd at its reset value for these GPIOs.
-     */
-    return true;
-#else
-    /* Enable hw2_ovrd on all I3C-related GPIOs so the I3C hardware reaches the pads. */
-    bool ok = true;
-    enable_gpio_hw_override(SMC_I3C_0_SCL_GPIO); /* I3C0 SCL */
-    enable_gpio_hw_override(SMC_I3C_0_SDA_GPIO); /* I3C0 SDA */
-    enable_gpio_hw_override(SMC_I3C_1_SCL_GPIO); /* I3C1 SCL (unbonded) */
-    enable_gpio_hw_override(SMC_I3C_1_SDA_GPIO); /* I3C1 SDA (unbonded) */
-    enable_gpio_hw_override(SMC_I3C_2_SCL_GPIO); /* I3C2 SCL */
-    enable_gpio_hw_override(SMC_I3C_2_SDA_GPIO); /* I3C2 SDA */
-    enable_gpio_hw_override(SMC_I3C_3_SCL_GPIO); /* I3C3 SCL */
-    enable_gpio_hw_override(SMC_I3C_3_SDA_GPIO); /* I3C3 SDA */
-    enable_gpio_hw_override(SMC_I3C_4_SCL_GPIO); /* I3C4 SCL */
-    enable_gpio_hw_override(SMC_I3C_4_SDA_GPIO); /* I3C4 SDA */
-    enable_gpio_hw_override(SMC_I3C_5_SCL_GPIO); /* I3C5 SCL */
-    enable_gpio_hw_override(SMC_I3C_5_SDA_GPIO); /* I3C5 SDA */
-    return ok;
-#endif /* I3C_USE_HCI_CORE */
-}
-#endif
-
-/* Enable the GPIO 2nd HW function override for the always-on observation
- * functions. This is routed through the smc_ip_integration override path, so
- * hw2_ovrd must be set for it to reach its pad. CAT_THERM is a safety output
- * and must be active out of boot.
- *
- * PVT RO observation is deliberately absent: the pad shrink removed GPIO 57 and
- * moved that function to the dedicated PVT_CLK_OBS_PAD, so there is no GPIO
- * override left to program.
- */
-static void enable_observation_gpio_overrides(void) {
-    enable_gpio_hw_override(SMC_CAT_THERM_GPIO); /* thermal trip output */
-}
-
 /**
  * Set the GPIO status to the external host
  * @param status The occp status from smc_occp_init
@@ -419,8 +357,7 @@ int smc_occp_init(void) {
     uint64_t i3c_id = 0x0;
     uint8_t i2c_address = 0x55; // Default I2C address if efuse is invalid
 
-    smc_occp_init_transport_timeout();   // Initialize global TRANSPORT_TIMEOUT from efuse
-    enable_observation_gpio_overrides(); // Route thermal trip + PVT obs to their pads (hw2_ovrd)
+    smc_occp_init_transport_timeout(); // Initialize global TRANSPORT_TIMEOUT from efuse
     /* Determine I3C ID from efuses and straps */
     /*Efuse slot id[0:5] is for I3C pid [0:5], efuse slot id[6:8] id for I2C addr[0:2]*/
 #ifndef SMC_OCCP_DISABLE_I3C_INIT
@@ -1701,10 +1638,6 @@ static int smc_occp_init_i3c_channel(bool use_channel, uint8_t peripheral_contro
     simputshex16("initialize I3C channel: ", peripheral_controller_id);
 
     if (use_channel) {
-        /* Get efuse drive strength for I3C GPIO pins based on controller ID */
-
-        enable_i3c_gpio_overrides(peripheral_controller_id);
-
         I3C_Driver *drv = I3C_GetDriverInstance(peripheral_controller_id);
         if (drv->init(drv, peripheral_controller_id, i3c_id, SUBORDINATE) != I3C_OK ||
             drv->start(drv) != I3C_OK) {

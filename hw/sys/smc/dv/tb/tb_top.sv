@@ -299,6 +299,7 @@ module smc_uvm_top
     output logic [31:0] dut_rom_read_count /*verilator public_flat_rw*/,
     output logic [31:0] bfm_rom_read_count /*verilator public_flat_rw*/,
     output logic [31:0] dut_scratch_write_count /*verilator public_flat_rw*/,
+    output logic        dut_external_gpio_ctrl_access_seen /*verilator public_flat_rw*/,
     // Scratch RAM reads are the instruction-fetch signal for an SRAM-resident
     // image: it separates "the core never started" from "the core fetched and
     // then died", which the retired-PC value alone cannot.
@@ -5599,7 +5600,8 @@ module smc_uvm_top
         .smc_wdt_second_timeout_seen_o (dut_wdt_second_timeout_seen_o),
         .rom_read_count_o     (dut_rom_read_count),
         .scratch_write_count_o(dut_scratch_write_count),
-        .scratch_read_count_o (dut_scratch_read_count)
+        .scratch_read_count_o (dut_scratch_read_count),
+        .external_gpio_ctrl_access_seen_o(dut_external_gpio_ctrl_access_seen)
     );
 
     smc_dual_inst u_bfm (
@@ -5627,7 +5629,8 @@ module smc_uvm_top
         .smc_cluster_ded_seen_o        (bfm_cluster_ded_seen_o),
         .smc_wdt_first_timeout_seen_o  (bfm_wdt_first_timeout_seen_o),
         .smc_wdt_second_timeout_seen_o (bfm_wdt_second_timeout_seen_o),
-        .rom_read_count_o     (bfm_rom_read_count)
+        .rom_read_count_o     (bfm_rom_read_count),
+        .external_gpio_ctrl_access_seen_o()
     );
 
     assign clk_smc    = u_dut.u_smc_wrapper.clk_sys;
@@ -6313,7 +6316,8 @@ module smc_dual_inst
     output logic        smc_wdt_second_timeout_seen_o,
     output logic [31:0] rom_read_count_o,
     output logic [31:0] scratch_write_count_o,
-    output logic [31:0] scratch_read_count_o
+    output logic [31:0] scratch_read_count_o,
+    output logic        external_gpio_ctrl_access_seen_o
 );
 
     logic clk_smc;
@@ -6486,6 +6490,27 @@ module smc_dual_inst
     assign clk_smc    = u_smc_wrapper.clk_sys;
     assign clk_ref    = u_smc_wrapper.clk_ref;
     assign clk_periph = u_smc_wrapper.clk_periph;
+
+    localparam logic [smc_pkg::SmcLocalAddrWidth-1:0] ExternalGpioCtrlBase =
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(0);
+    localparam logic [smc_pkg::SmcLocalAddrWidth-1:0] ExternalGpioCtrlEnd =
+        ExternalGpioCtrlBase +
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_TOTAL_SIZE;
+
+    always_ff @(posedge clk_smc or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            external_gpio_ctrl_access_seen_o <= 1'b0;
+        end else if (
+            (u_smc_wrapper.u_smc.smc_external_req_o.aw_valid &&
+             u_smc_wrapper.u_smc.smc_external_req_o.aw.addr >= ExternalGpioCtrlBase &&
+             u_smc_wrapper.u_smc.smc_external_req_o.aw.addr < ExternalGpioCtrlEnd) ||
+            (u_smc_wrapper.u_smc.smc_external_req_o.ar_valid &&
+             u_smc_wrapper.u_smc.smc_external_req_o.ar.addr >= ExternalGpioCtrlBase &&
+             u_smc_wrapper.u_smc.smc_external_req_o.ar.addr < ExternalGpioCtrlEnd)
+        ) begin
+            external_gpio_ctrl_access_seen_o <= 1'b1;
+        end
+    end
 
     // The CPU memory macros sit inside smc_ip_integration, so the counters come
     // from the DV collateral bound into it rather than from wrapper ports.
