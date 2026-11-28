@@ -50,7 +50,7 @@ class smc_wdt_irq_source_ids_test_seq(SmcCsrSeq):
         self._waits: list[str] = []
 
     def _reg(self, reg: str) -> int:
-        return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{WDT_CORE}_WDT_{reg}_BASE_ADDR")
+        return smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{WDT_CORE}_WDT_{reg}_BASE_ADDR")
 
     def _stamp(self, step: str) -> None:
         self._stamps.append((step, int(get_sim_time("ps"))))

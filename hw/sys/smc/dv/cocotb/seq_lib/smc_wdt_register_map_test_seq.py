@@ -161,7 +161,7 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
         self.t_smc_ns = 0.0
 
     def _reg(self, core: int, reg: str) -> int:
-        return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_{reg}_BASE_ADDR")
+        return smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{core}_WDT_{reg}_BASE_ADDR")
 
     def _step(self, step_id: str) -> None:
         self.stamps.append((step_id, int(get_sim_time("ps"))))

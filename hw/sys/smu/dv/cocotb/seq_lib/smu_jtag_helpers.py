@@ -1007,7 +1007,7 @@ async def wdt_unlock(jtag: OcahJtagMasterDriver, magic: int = WDT_KEY_MAGIC) -> 
     """Write CORE0 WDT KEY once; lane packing follows the map address."""
     from seq_lib.smu_addr_map import smc_addr
 
-    key_addr = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR")
+    key_addr = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_BASE_ADDR")
     wstrb, data = axi64_pack32(key_addr, magic)
     st, _ = await jtag2axi_single_write(
         jtag,
@@ -1025,7 +1025,7 @@ async def wdt_key_read(jtag: OcahJtagMasterDriver) -> tuple[int, int]:
     """Read KEY from the 64b FEED/KEY lane (KEY sits at +0x4 of that beat)."""
     from seq_lib.smu_addr_map import smc_addr
 
-    key_addr = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR")
+    key_addr = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_BASE_ADDR")
     lane = key_addr & ~0x7
     st, rdata = await jtag2axi_single_read(
         jtag,

@@ -68,8 +68,18 @@ endif::backend-html5[]
 
 === Memory Map
 
-Register offsets are relative to the block base in the subsystem memory map.
-The detailed map below defines each register and its fields.
+The four watchdogs share one 4 KiB page, placed by the wrapper below. Register
+offsets are relative to each watchdog's base, and the detailed map below
+defines each register and its fields.
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/smc_cluster_wdt_wrap.html[]
+++++
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/smc_cluster_wdt_wrap.adoc[leveloffset=+2]
+endif::backend-pdf[]
 
 === Detailed Register Map
 

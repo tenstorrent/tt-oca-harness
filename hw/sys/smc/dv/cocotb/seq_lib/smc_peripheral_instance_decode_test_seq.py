@@ -155,11 +155,11 @@ _CLA_PATTERNS = (0x3C3C_C3C3, 0xC3C3_3C3C)
 
 # One word past the middle of each aperture, well beyond the unit's decoded
 # extent (smc_addr.h *_SIZE) and inside its aperture (smc.rdl ocah_aperture_size).
-WDT0_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
-WDT_DECODED_EXTENT = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE")
+WDT0_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR")
+WDT_DECODED_EXTENT = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SIZE")
 WDT0_PAST_EXTENT = WDT0_BASE + 0x200
 assert WDT_DECODED_EXTENT < 0x200 < 0x400
-WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
+WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_BASE_ADDR")
 CPU_CTRL_BASE = smc_addr("SMC_TOP_SMC_CPU_CTRL_BASE_ADDR")
 CPU_CTRL_DECODED_EXTENT = smc_addr("SMC_TOP_SMC_CPU_CTRL_SIZE")
 CPU_CTRL_PAST_EXTENT = CPU_CTRL_BASE + 0x800
@@ -269,18 +269,19 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         """One KEY write then one CMP write: the lock re-engages after every write."""
         await self.csr_write(
             f"WDT{core}_KEY_{label}",
-            smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_KEY_BASE_ADDR"),
+            smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{core}_WDT_KEY_BASE_ADDR"),
             WDT_KEY_MAGIC,
         )
         await self.csr_write(
             f"WDT{core}_CMP_{label}",
-            smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_CMP_BASE_ADDR"),
+            smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{core}_WDT_CMP_BASE_ADDR"),
             value,
         )
 
     async def _wdt_instances(self) -> None:
         cmp_addrs = [
-            smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_CMP_BASE_ADDR") for core in range(WDT_NUM)
+            smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{core}_WDT_CMP_BASE_ADDR")
+            for core in range(WDT_NUM)
         ]
         for core, addr in enumerate(cmp_addrs):
             await self.read_reset(f"WDT{core}_CMP", addr, WDT_CMP_REG_DEFAULT)

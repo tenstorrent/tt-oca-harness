@@ -201,7 +201,7 @@ GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 WDT = {
     core: {
-        reg: smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_{reg}_BASE_ADDR")
+        reg: smc_addr(f"SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{core}_WDT_{reg}_BASE_ADDR")
         for reg in ("CTRL", "COUNT", "KEY", "CMP")
     }
     for core in range(4)

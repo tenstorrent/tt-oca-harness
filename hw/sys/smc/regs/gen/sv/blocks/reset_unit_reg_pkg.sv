@@ -7,7 +7,7 @@
 package reset_unit_reg_pkg;
 
     localparam RESET_UNIT_REG_DATA_WIDTH = 32;
-    localparam RESET_UNIT_REG_MIN_ADDR_WIDTH = 8;
+    localparam RESET_UNIT_REG_MIN_ADDR_WIDTH = 12;
     localparam RESET_UNIT_REG_SIZE = 'hcc;
 
     typedef struct packed {

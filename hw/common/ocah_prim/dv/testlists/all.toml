@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# prim_axil_addr_demux IP-level scenarios.
+
+[[tests]]
+name = "addr_demux_smoke_test"
+module = { cocotb = "addr_demux_smoke_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "addr_demux_sweep_test"
+module = { cocotb = "addr_demux_sweep_test" }
+seed = 1
+reseed = 3
+timeout_sec = 900
+tags = ["ci"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["addr_demux_smoke_test"]
+
+[[groups]]
+name = "all"
+tests = ["addr_demux_smoke_test", "addr_demux_sweep_test"]

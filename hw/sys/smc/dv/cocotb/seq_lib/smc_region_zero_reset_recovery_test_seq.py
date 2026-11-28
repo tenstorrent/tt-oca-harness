@@ -37,7 +37,7 @@ _WORD = 8
 RESP_OKAY = 0
 RESP_DECERR = 3
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
-_SCRATCH_OFFSET = 0x2800
+_SCRATCH_OFFSET = 0xD000
 
 _GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 _LOCAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
@@ -123,10 +123,10 @@ _K_TERM_STEP = {
 # map. The harts-only units (Debug Module Hart Interface, cluster error device) and the
 # forwarded regions (dtp_ctrl_reg, mmode_region, xvisor_region) are not probed.
 _PROBE_UNITS = (
-    ("WDT0", "smc_cluster_core0_wdt", "smc_cluster_core0_wdt/CTRL"),
-    ("WDT1", "smc_cluster_core1_wdt", "smc_cluster_core1_wdt/CTRL"),
-    ("WDT2", "smc_cluster_core2_wdt", "smc_cluster_core2_wdt/CTRL"),
-    ("WDT3", "smc_cluster_core3_wdt", "smc_cluster_core3_wdt/CTRL"),
+    ("WDT0", "smc_cluster_wdt_wrap.core0_wdt", "smc_cluster_wdt_wrap/core0_wdt/CTRL"),
+    ("WDT1", "smc_cluster_wdt_wrap.core1_wdt", "smc_cluster_wdt_wrap/core1_wdt/CTRL"),
+    ("WDT2", "smc_cluster_wdt_wrap.core2_wdt", "smc_cluster_wdt_wrap/core2_wdt/CTRL"),
+    ("WDT3", "smc_cluster_wdt_wrap.core3_wdt", "smc_cluster_wdt_wrap/core3_wdt/CTRL"),
     ("RESET_UNIT", "smc_reset_unit", None),
     ("MISC_WRAP", "smc_misc_wrap", "smc_misc_wrap/scratch_cold/SCRATCH[0]"),
     ("GPIO", "gpio_intf_wrap", "gpio_intf_wrap/gpio_intf/DATA_CTRL"),
@@ -535,7 +535,7 @@ class smc_region_zero_reset_recovery_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"write_hit0={self._sig_bit('tb_inb_write_hit', 0)} (observed)",
         )
 
-        # S3: jtag at LOCAL_BASE+0x2800 and GLOBAL_BASE+0x2800 leaves through output_axi.
+        # S3: jtag at LOCAL_BASE+0xD000 and GLOBAL_BASE+0xD000 leaves through output_axi.
         scratch0_pre = _scratch(0)
         assert scratch0_pre == local_base + _SCRATCH_OFFSET
         seen = []

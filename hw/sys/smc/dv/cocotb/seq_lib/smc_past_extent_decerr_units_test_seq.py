@@ -28,7 +28,7 @@ FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
 _RESP_NAMES = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
-WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
+WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_BASE_ADDR")
 MAILBOX_ERROR_FLAGS = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_BASE_ADDR")
 DMA_DST_ADDRESS_LO = smc_addr("SMC_TOP_DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR")
 ZEROER_DEST_ADDR = smc_addr("SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR")
@@ -152,7 +152,9 @@ class smc_past_extent_decerr_units_test_seq(SmcCsrSeq):
         self.fuse_state = ",".join(states)
         self._mark_step("S1")
 
-        head, resps = await self._probe_unit("smc_cluster_core0_wdt", "WDT", [("CMP", WDT0_CMP)])
+        head, resps = await self._probe_unit(
+            "smc_cluster_wdt_wrap.core0_wdt", "WDT", [("CMP", WDT0_CMP)]
+        )
         self._mark_step("S2")
         self._log_chk("CHK-PAST-EXTENT-WDT", f"{head}; {'; '.join(resps)}")
 

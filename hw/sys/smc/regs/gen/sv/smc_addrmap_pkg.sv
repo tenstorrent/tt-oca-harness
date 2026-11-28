@@ -8,38 +8,26 @@ package smc_top_addrmap_pkg;
 localparam longint unsigned SMC_TOP_BASE_ADDR = 64'h0;
 localparam longint unsigned SMC_TOP_SIZE = 64'hC8015000;
 
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR = 64'hC0000000;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE = 64'h24;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_BASE_ADDR = 64'hC0000000;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_SIZE = 64'hC24;
 
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR = 64'hC0000400;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_SIZE = 64'h24;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR = 64'hC0000000;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SIZE = 64'h24;
 
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR = 64'hC0000800;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_SIZE = 64'h24;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_BASE_ADDR = 64'hC0000400;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_SIZE = 64'h24;
 
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR = 64'hC0000C00;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE = 64'h24;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_BASE_ADDR = 64'hC0000800;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_SIZE = 64'h24;
+
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_BASE_ADDR = 64'hC0000C00;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SIZE = 64'h24;
 
 localparam longint unsigned SMC_TOP_DEBUG_MODULE_BASE_ADDR = 64'hC0001000;
 localparam longint unsigned SMC_TOP_DEBUG_MODULE_SIZE = 64'h868;
 
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_BASE_ADDR = 64'hC0002000;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_SIZE = 64'hCC;
-
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_BASE_ADDR = 64'hC0002800;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SIZE = 64'h20C;
-
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR = 64'hC0002800;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE = 64'h20;
-
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR = 64'hC0002880;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE = 64'h20;
-
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR = 64'hC0002900;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE = 64'h10;
-
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR = 64'hC0002A00;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE = 64'hC;
 
 localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR = 64'hC0003000;
 localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_SIZE = 64'h430;
@@ -121,9 +109,6 @@ localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE = 64'h24;
 localparam longint unsigned SMC_TOP_DTP_CTRL_REG_BASE_ADDR = 64'hC000B000;
 localparam longint unsigned SMC_TOP_DTP_CTRL_REG_SIZE = 64'h800;
 
-localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC000B800;
-localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
-
 localparam longint unsigned SMC_TOP_SMC_PWM_BASE_ADDR = 64'hC000C000;
 localparam longint unsigned SMC_TOP_SMC_PWM_SIZE = 64'h804;
 
@@ -133,8 +118,26 @@ localparam longint unsigned SMC_TOP_SMC_PWM_PWM_SIZE = 64'h44;
 localparam longint unsigned SMC_TOP_SMC_PWM_PWM_CTRL_BASE_ADDR = 64'hC000C800;
 localparam longint unsigned SMC_TOP_SMC_PWM_PWM_CTRL_SIZE = 64'h4;
 
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_BASE_ADDR = 64'hC000D000;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SIZE = 64'h20C;
+
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR = 64'hC000D000;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE = 64'h20;
+
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR = 64'hC000D080;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE = 64'h20;
+
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR = 64'hC000D100;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE = 64'h10;
+
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR = 64'hC000D200;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE = 64'hC;
+
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_SIZE = 64'h4C;
+
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_BASE_ADDR = 64'hC0011000;
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE = 64'h18;
 
 localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR = 64'hC0012000;
 localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_SIZE = 64'h100;
@@ -208,6 +211,9 @@ localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NU
 localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE = 64'h18;
 localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE = 64'h20;
 localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE = 64'h200;
+
+localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC0017000;
+localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
 
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_BASE_ADDR = 64'hC0018000;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_SIZE = 64'h1F850;
@@ -407,9 +413,6 @@ localparam longint unsigned SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_31_SIZE = 64'h50
 localparam longint unsigned SMC_TOP_DMA_CTRL_BASE_ADDR = 64'hC0038000;
 localparam longint unsigned SMC_TOP_DMA_CTRL_SIZE = 64'h138;
 
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_BASE_ADDR = 64'hC0038200;
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE = 64'h18;
-
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_BASE_ADDR = 64'hC0039000;
 localparam longint unsigned SMC_TOP_SMC_CPU_CTRL_SIZE = 64'h2C0;
 
@@ -583,34 +586,34 @@ localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE = 64'h30;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_ERROR_DEVICE_BASE_ADDR = 64'hC8014000;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_ERROR_DEVICE_SIZE = 64'h1000;
 
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR = 64'hC0000000;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_COUNT_BASE_ADDR = 64'hC0000008;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_COUNT_HI_BASE_ADDR = 64'hC000000C;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000010;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_FEED_BASE_ADDR = 64'hC0000018;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_KEY_BASE_ADDR = 64'hC000001C;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR = 64'hC0000020;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_CTRL_BASE_ADDR = 64'hC0000400;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_COUNT_BASE_ADDR = 64'hC0000408;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_COUNT_HI_BASE_ADDR = 64'hC000040C;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000410;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_FEED_BASE_ADDR = 64'hC0000418;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_KEY_BASE_ADDR = 64'hC000041C;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE1_WDT_CMP_BASE_ADDR = 64'hC0000420;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_CTRL_BASE_ADDR = 64'hC0000800;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_COUNT_BASE_ADDR = 64'hC0000808;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_COUNT_HI_BASE_ADDR = 64'hC000080C;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000810;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_FEED_BASE_ADDR = 64'hC0000818;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_KEY_BASE_ADDR = 64'hC000081C;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_WDT_CMP_BASE_ADDR = 64'hC0000820;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_CTRL_BASE_ADDR = 64'hC0000C00;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_COUNT_BASE_ADDR = 64'hC0000C08;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_COUNT_HI_BASE_ADDR = 64'hC0000C0C;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000C10;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_FEED_BASE_ADDR = 64'hC0000C18;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_KEY_BASE_ADDR = 64'hC0000C1C;
-localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_WDT_CMP_BASE_ADDR = 64'hC0000C20;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CTRL_BASE_ADDR = 64'hC0000000;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_BASE_ADDR = 64'hC0000008;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_COUNT_HI_BASE_ADDR = 64'hC000000C;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000010;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_FEED_BASE_ADDR = 64'hC0000018;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_KEY_BASE_ADDR = 64'hC000001C;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_CMP_BASE_ADDR = 64'hC0000020;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_CTRL_BASE_ADDR = 64'hC0000400;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_COUNT_BASE_ADDR = 64'hC0000408;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_COUNT_HI_BASE_ADDR = 64'hC000040C;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000410;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_FEED_BASE_ADDR = 64'hC0000418;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_KEY_BASE_ADDR = 64'hC000041C;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_CMP_BASE_ADDR = 64'hC0000420;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_CTRL_BASE_ADDR = 64'hC0000800;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_COUNT_BASE_ADDR = 64'hC0000808;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_COUNT_HI_BASE_ADDR = 64'hC000080C;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000810;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_FEED_BASE_ADDR = 64'hC0000818;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_KEY_BASE_ADDR = 64'hC000081C;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_CMP_BASE_ADDR = 64'hC0000820;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CTRL_BASE_ADDR = 64'hC0000C00;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_COUNT_BASE_ADDR = 64'hC0000C08;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_COUNT_HI_BASE_ADDR = 64'hC0000C0C;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_SCALED_COUNT_BASE_ADDR = 64'hC0000C10;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_FEED_BASE_ADDR = 64'hC0000C18;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_KEY_BASE_ADDR = 64'hC0000C1C;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_CMP_BASE_ADDR = 64'hC0000C20;
 localparam longint unsigned SMC_TOP_DEBUG_MODULE_HALTED_BASE_ADDR = 64'hC0001100;
 localparam longint unsigned SMC_TOP_DEBUG_MODULE_GOING_BASE_ADDR = 64'hC0001104;
 localparam longint unsigned SMC_TOP_DEBUG_MODULE_RESUMING_BASE_ADDR = 64'hC0001108;
@@ -653,21 +656,6 @@ localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_AD
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_VIS_BASE_ADDR = 64'hC00020C0;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR = 64'hC00020C4;
 localparam longint unsigned SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR = 64'hC00020C8;
-function automatic longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(input int unsigned SCRATCH_idx);
-    return 64'hC0002800 + (SCRATCH_idx * 64'h4);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(input int unsigned SCRATCH_idx);
-    return 64'hC0002880 + (SCRATCH_idx * 64'h4);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR = 64'hC0002900;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR = 64'hC0002904;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR = 64'hC0002908;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR = 64'hC000290C;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR = 64'hC0002A00;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR = 64'hC0002A04;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR = 64'hC0002A08;
 function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
@@ -972,9 +960,6 @@ localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_AD
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR = 64'hC000A018;
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADDR = 64'hC000A01C;
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR = 64'hC000A020;
-localparam longint unsigned SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR = 64'hC000B800;
-localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR = 64'hC000B808;
-localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR = 64'hC000B810;
 localparam longint unsigned SMC_TOP_SMC_PWM_PWM_ALERT_TEST_BASE_ADDR = 64'hC000C000;
 localparam longint unsigned SMC_TOP_SMC_PWM_PWM_REGWEN_BASE_ADDR = 64'hC000C004;
 localparam longint unsigned SMC_TOP_SMC_PWM_PWM_CFG_BASE_ADDR = 64'hC000C008;
@@ -993,6 +978,21 @@ function automatic longint unsigned SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_BASE_ADDR(in
 endfunction
 localparam longint unsigned SMC_TOP_SMC_PWM_PWM_BLINK_PARAM_NUM = 64'h4;
 localparam longint unsigned SMC_TOP_SMC_PWM_PWM_CTRL_CTRL_BASE_ADDR = 64'hC000C800;
+function automatic longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(input int unsigned SCRATCH_idx);
+    return 64'hC000D000 + (SCRATCH_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_NUM = 64'h8;
+function automatic longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(input int unsigned SCRATCH_idx);
+    return 64'hC000D080 + (SCRATCH_idx * 64'h4);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR = 64'hC000D100;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR = 64'hC000D104;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR = 64'hC000D108;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR = 64'hC000D10C;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR = 64'hC000D200;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR = 64'hC000D204;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR = 64'hC000D208;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR = 64'hC0010008;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR = 64'hC0010010;
@@ -1003,6 +1003,9 @@ localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_A
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010038;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR = 64'hC0010040;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010048;
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR = 64'hC0011000;
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR = 64'hC0011008;
+localparam longint unsigned SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR = 64'hC0011010;
 function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(input int unsigned alias_remap_idx);
     return 64'hC0012000 + (alias_remap_idx * 64'h20);
 endfunction
@@ -1047,6 +1050,9 @@ function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER
     return 64'hC0016010 + (filter_ctrl_idx * 64'h20);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_NUM = 64'h10;
+localparam longint unsigned SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR = 64'hC0017000;
+localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR = 64'hC0017008;
+localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR = 64'hC0017010;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR = 64'hC0018000;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR = 64'hC0018008;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR = 64'hC0018010;
@@ -1748,9 +1754,6 @@ localparam longint unsigned SMC_TOP_DMA_CTRL_SRC_STRIDE_LO_BASE_ADDR = 64'hC0038
 localparam longint unsigned SMC_TOP_DMA_CTRL_SRC_STRIDE_HI_BASE_ADDR = 64'hC003812C;
 localparam longint unsigned SMC_TOP_DMA_CTRL_NUM_REPETITIONS_LO_BASE_ADDR = 64'hC0038130;
 localparam longint unsigned SMC_TOP_DMA_CTRL_NUM_REPETITIONS_HI_BASE_ADDR = 64'hC0038134;
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR = 64'hC0038200;
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR = 64'hC0038208;
-localparam longint unsigned SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR = 64'hC0038210;
 function automatic longint unsigned SMC_TOP_SMC_CPU_CTRL_RESET_VECTOR_BASE_ADDR(input int unsigned RESET_VECTOR_idx);
     return 64'hC0039000 + (RESET_VECTOR_idx * 64'h8);
 endfunction

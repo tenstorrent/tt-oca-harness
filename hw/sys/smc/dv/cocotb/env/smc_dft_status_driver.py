@@ -27,7 +27,7 @@ import logging
 from cocotb.triggers import ClockCycles
 
 # The register the ROM's early checks read (DFX_CTRL_STATUS_SMU_REG_ADDR in smc_rom_defs.h).
-DFX_CTRL_STATUS_SMU = 0xC000_B800
+DFX_CTRL_STATUS_SMU = 0xC001_7000
 # dfx_ctrl_status.rdl fields of that register.
 DFX_FIELDS = {
     "mem_repair_done": 0,

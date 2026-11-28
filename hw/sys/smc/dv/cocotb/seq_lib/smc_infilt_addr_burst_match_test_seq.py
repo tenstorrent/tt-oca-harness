@@ -291,7 +291,7 @@ class smc_infilt_addr_burst_match_test_seq(SmcCsrSeq):
         )
 
         # S4: the global alias of an SMC register and a 56-bit range.
-        await self._program(2, _PERMIT_B1, 0x4000_2000, 0x4000_2FFF)
+        await self._program(2, _PERMIT_B1, 0x4000_D000, 0x4000_DFFF)
         ver = await self._read(
             "C4_VERSION",
             _VERSION_ALIAS,

@@ -4781,7 +4781,7 @@ not state a spacing.
 *Source Module*: `smc_wdt_count_feed_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 0 and core 1 watchdog blocks
-`SMC_TOP_SMC_CLUSTER_CORE0_WDT_*` and `SMC_TOP_SMC_CLUSTER_CORE1_WDT_*`: `CTRL`, `COUNT`,
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*` and `SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE1_WDT_*`: `CTRL`, `COUNT`,
 `COUNT_HI`, `FEED`, `KEY`); the CPU control registers `RESET_CTRL` and `RESET_TIMEOUT` (8-byte
 accesses) for the core 1 level reset; `tb_top.tb_cpu_core_resets_n` bit 1 sampled on `clk_smc_i`; a
 bounded SEP_IN read through the driver's tolerated-timeout path for the access made while core 1 is
@@ -4911,7 +4911,7 @@ condition is not stated by the specification.
 
 *Source Module*: `smc_wdt_ip0_clear_test`
 
-*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; core 0 watchdog block `SMC_TOP_SMC_CLUSTER_CORE0_WDT_*`
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; core 0 watchdog block `SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*`
 registers `KEY`, `CTRL`, `CMP`, `COUNT` and `FEED`; `CTRL` bit 28 (`wdogip0`) read back
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -5020,7 +5020,7 @@ zero init also reads 0.
 *Source Module*: `smc_wdt_irq_source_ids_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 2 watchdog block
-`SMC_TOP_SMC_CLUSTER_CORE2_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`); bench pin `tb_sep_wdt_reset_n`
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE2_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`); bench pin `tb_sep_wdt_reset_n`
 (driven low and high); observation points `tb_cpu_interrupts` (raw vector, 328 bits, bit 282
 sampled), `tb_sep_wdt_irq_sync`, `tb_plic_pending_331` (PLIC source ID 331, core 2 watchdog) and
 `tb_rst_warm_smc_clk_n`, all sampled on `clk_smc_i`; `tb_fuse_sense_done`
@@ -5114,7 +5114,7 @@ specification does not state whether the PLIC pending bit is level or latch.
 *Source Module*: `smc_wdt_key_relock_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 0 watchdog block
-`SMC_TOP_SMC_CLUSTER_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
 `CMP`; 4-byte accesses and one 8-byte write at `FEED`)
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -5238,8 +5238,8 @@ write is not stated by the specification.
 
 *Source Module*: `smc_wdt_register_map_test`
 
-*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (watchdog blocks `SMC_TOP_SMC_CLUSTER_CORE0_WDT_*` to
-`SMC_TOP_SMC_CLUSTER_CORE3_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (watchdog blocks `SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*` to
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE3_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
 `CMP`; 4-byte accesses)
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -5422,7 +5422,7 @@ read of 0 is bench-limited: a 2-state zero init also reads 0.
 *Source Module*: `smc_wdt_scale_zerocmp_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 0 watchdog block
-`SMC_TOP_SMC_CLUSTER_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `SCALED_COUNT`, `CMP`; 4-byte accesses);
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `SCALED_COUNT`, `CMP`; 4-byte accesses);
 `CTRL` bit 28 (`wdogip0`) read back
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
@@ -5529,7 +5529,7 @@ printed, because the count value at the `wdogzerocmp` clear is not stated by the
 *Source Module*: `smc_wdt_write_width_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (core 0 watchdog block
-`SMC_TOP_SMC_CLUSTER_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_*`: `KEY`, `CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`,
 `CMP`; 4-byte reads, 4-byte writes and writes with explicit byte-enable masks through the strobed
 write item)
 
@@ -7845,7 +7845,7 @@ and the chunk lengths. This entry is the hosted, seed-drawn counterpart of the f
 *Source Module*: `smc_wdt_warm_reset_rand_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (the watchdog block of the drawn core
-`SMC_TOP_SMC_CLUSTER_CORE<n>_WDT_*`: `KEY`, `CMP`, `COUNT`, `CTRL`; and `CPU_CTRL.WDT_TIMEOUT`); the
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE<n>_WDT_*`: `KEY`, `CMP`, `COUNT`, `CTRL`; and `CPU_CTRL.WDT_TIMEOUT`); the
 `tb_top.sv` timeout taps `tb_wdt_first_timeout` and `tb_wdt_second_timeout` with the sticky latches
 `tb_wdt_first_timeout_seen` and `tb_wdt_second_timeout_seen`; observation points
 `tb_rst_warm_smc_clk_n`, `tb_fuse_reset_n`, `rst_primary_smc_clk_no` (a `tb_top` output of the
@@ -8114,7 +8114,7 @@ The hold is a level reset through `RESET_CTRL`; a core pulse and a debug hart re
 *Source Module*: `smc_wdt_plic_source_ids_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (the four watchdog blocks
-`SMC_TOP_SMC_CLUSTER_CORE{0..3}_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`; PLIC `PRIORITY[329..332]`,
+`SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE{0..3}_WDT_*`: `KEY`, `CMP`, `CTRL`, `COUNT`; PLIC `PRIORITY[329..332]`,
 `CORE0_MEIP_ENABLE[10]`, `CORE0_MEIP_THRESHOLD`, `CORE0_MEIP_CLAIM_COMPLETE`; `REGION_SIZE` widened
 to `0x1000_0000`); bench probes `tb_top.tb_plic_pending_329`, `tb_plic_pending_330`,
 `tb_plic_pending_331` and `tb_plic_pending_332` (PLIC pending bits of sources 329 to 332),
@@ -9991,7 +9991,7 @@ X/Z on this two-state bench; `FILTER_CONFIG` 0x3000 and `END_ADDR` 0x7 carry the
 `sys_axi_arvalid` and `sys_axi_awvalid` with the inbound filter probes `tb_inb_read_hit`,
 `tb_inb_write_hit`, `tb_inb_isolate_read` and `tb_inb_isolate_write`, sampled at every `clk_smc_i`
 rise (bit i of a hit vector is inbound entry i); the scratchpad memory (SPM) at its base plus
-0x4_0000 (P0) as the probe target and `CHIP_CONFIG.VERSION_LO` through its global alias 0x4000_2900;
+0x4_0000 (P0) as the probe target and `CHIP_CONFIG.VERSION_LO` through its global alias 0x4000_D100;
 the output AXI monitor's DECERR and SLVERR allowances for the 56-bit leg; `tb_fuse_sense_done`,
 `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` after the fuse-sense wait
 
@@ -10016,8 +10016,8 @@ P0+0x3040..P0+0x3047 admits P0+0x3040 and refuses P0+0x3038 and P0+0x3048 the sa
 * `index.adoc` (`entry_enabled`): the same range with `entry_enabled` clear answers DECERR with a
 zero hit vector, although the range and permissions would admit the read.
 * `fabric.adoc` (Filtering and Protection, input fabric): the system AXI input is filtered and the
-SMC window is reached at the local or the global base. An entry over 0x4000_2000..0x4000_2FFF admits
-a 4-byte read of `CHIP_CONFIG.VERSION_LO` at 0x4000_2900 returning its reset 0x000100A0
+SMC window is reached at the local or the global base. An entry over 0x4000_D000..0x4000_DFFF admits
+a 4-byte read of `CHIP_CONFIG.VERSION_LO` at 0x4000_D100 returning its reset 0x000100A0
 (`chip_config.rdl`) with hit bit 2. An entry over 0x00AB_C006_5000..0x00AB_C006_5FFF has hit bit 2
 at 0x00AB_C006_5800 and a zero hit vector with DECERR at 0x0000_C006_5800, whose address bits
 [55:32] differ; the downstream response of the first read is printed, not compared.
@@ -10055,7 +10055,7 @@ response: DECERR with a zero hit vector.
 . Error injection. Point: inbound entry 2, programmed over 0x00AB_C006_5000..0x00AB_C006_5FFF.
 Kind: a SYS_IN read at 0x0000_C006_5800, whose address bits [55:32] differ from the programmed
 range. Expected response: DECERR with a zero hit vector. Before it, program entry 2 over
-0x4000_2000..0x4000_2FFF and read `VERSION_LO` at 0x4000_2900, then program it over the 56-bit range
+0x4000_D000..0x4000_DFFF and read `VERSION_LO` at 0x4000_D100, then program it over the 56-bit range
 and read 0x00AB_C006_5800 with the output monitor allowing DECERR and SLVERR.
 . Error injection. Point: inbound entry 2, programmed over P0+0x8000..P0+0xAFFF. Kind: SYS_IN
 reads at P0+0x7FF8 and P0+0xB000, outside the three-granule span. Expected response: DECERR with a
@@ -10082,7 +10082,7 @@ seeded word and hit bit 2, the reads one granule below and above are DECERR with
 and the same holds for the 8-byte granule with `allow_burst` 0
 |`CHK-INB-DISABLED-NO-MATCH` |With `entry_enabled` clear the read at P0+0x1800 is answered DECERR
 with a zero hit vector
-|`CHK-INB-ADDR-HIGH-BITS-GLOBAL` |`VERSION_LO` through the global alias 0x4000_2900 returns
+|`CHK-INB-ADDR-HIGH-BITS-GLOBAL` |`VERSION_LO` through the global alias 0x4000_D100 returns
 0x000100A0 with hit bit 2, the 56-bit entry has hit bit 2 at 0x00AB_C006_5800 (response printed, not
 compared), and the read with differing bits [55:32] is DECERR with a zero hit vector
 |`CHK-INB-SPAN-WHOLE` |The three reads inside the three-granule span are OKAY with the seeded words
@@ -14117,7 +14117,7 @@ during an access all leave every port answering correctly.
   write of 0xC0DE_0A01 presented behind it: all three answer, the reads with 0xC0DE_0A00 and
   0xC0DE_0A01 and the write OKAY, while the first read's R channel is observed stalled and
   requests are observed presented during that wait.
-* A local-address read on SEP_IN and a read of the same register at its global address 0x4000_2800
+* A local-address read on SEP_IN and a read of the same register at its global address 0x4000_D000
   on SYS_IN, released together for four rounds, both complete; the local read returns 0xC0DE_0A00
   OKAY, and the global read also answers OKAY with 0xC0DE_0A00
   (`memmap.adoc`, Memory Map: the fabric routes `LOCAL_BASE` and `GLOBAL_BASE` accesses
@@ -14146,8 +14146,8 @@ with 0xC0DE_0A00 and zero ARVALID skew; print `CHK-CONT-THREE-PORTS`.
 `SCRATCH_COLD(1)` and a write of 0xC0DE_0A01 to `SCRATCH_COLD(1)`; require 0xC0DE_0A00,
 0xC0DE_0A01 and OKAY, and require the watch to have seen R stalled and requests presented while
 the first read was pending; print `CHK-CONT-PENDING-NEW`.
-. Add 0x4000_2800 to the monitor's expected-DECERR addresses; in four rounds release a SEP_IN read
-of `SCRATCH_COLD(0)` and a SYS_IN read of 0x4000_2800 together; require the local read OKAY with
+. Add 0x4000_D000 to the monitor's expected-DECERR addresses; in four rounds release a SEP_IN read
+of `SCRATCH_COLD(0)` and a SYS_IN read of 0x4000_D000 together; require the local read OKAY with
 0xC0DE_0A00, both reads completed, the global read OKAY with 0xC0DE_0A00, and zero ARVALID skew;
 print both responses as `CHK-CONT-LOCAL-GLOBAL`.
 . Error injection. Point: the reset agent (`COOL_RST_LO`, `COOL_RST_HI`), for each port in SEP_IN,
@@ -28528,7 +28528,7 @@ compares OKAY, 0x0 (`memory_map.adoc`); `CHK-NONVAC` and
 *Source Module*: `smc_dfx_debug_bus_mux_storage_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 8-byte writes and reads of `DEBUG_BUS_MUX`
-(`dfx_ctrl` at 0xC000_B810; fields `Dbmmode` 1:0, `Dbmid` 7:2, `Rsvd158` 15:8 and `Muxselseg0` to
+(`dfx_ctrl` at 0xC001_7010; fields `Dbmmode` 1:0, `Dbmid` 7:2, `Rsvd158` 15:8 and `Muxselseg0` to
 `Muxselseg7` at 21:16, 27:22, 33:28, 39:34, 45:40, 51:46, 57:52 and 63:58); bench signal
 `tb_fuse_sense_done`
 
@@ -28620,8 +28620,8 @@ on expiry with the last observed access
 *Source Module*: `smc_dfx_debug_ctrl_noeffect_gate_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 4-byte accesses to `DEBUG_CTRL` (`dfx_ctrl` at
-0xC000_B808), an 8-byte `STATUS_SMU` read (0xC000_B800) and an 8-byte `DEBUG_BUS_MUX` read
-(0xC000_B810) issued with a `DEBUG_CTRL` write as one outstanding group; SMC reset agent driving
+0xC001_7008), an 8-byte `STATUS_SMU` read (0xC001_7000) and an 8-byte `DEBUG_BUS_MUX` read
+(0xC001_7010) issued with a `DEBUG_CTRL` write as one outstanding group; SMC reset agent driving
 `rst_cold_ni` (cold reset, observed on the powergood, cold, primary and fuse-sense signals);
 bench probes `tb_cla_clock_stop` and `tb_cla_halt_clock_global` sampled on `clk_smc_i`; SEP_IN
 handshake signals `s_axi_arvalid`, `s_axi_arready`, `s_axi_awvalid`, `s_axi_awready`,
@@ -28734,7 +28734,7 @@ The documents state no value for register bit 31; the leaf requires 0.
 *Source Module*: `smc_dfx_debug_ctrl_storage_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 4-byte and 8-byte writes and reads of `DEBUG_CTRL`
-(`dfx_ctrl` at 0xC000_B808; fields `chiplet_enable` 1:0, `gpio_en` 2, `cg_en` 3, `force_clk_en` 4,
+(`dfx_ctrl` at 0xC001_7008; fields `chiplet_enable` 1:0, `gpio_en` 2, `cg_en` 3, `force_clk_en` 4,
 `dtb_ns_en` 5, `dtb_ew_en` 6, `xtrig_clk_halt_mask` 22:7, `debug_marker` 30:23, bit 31 not in
 any field); bench signal `tb_fuse_sense_done`
 
@@ -28825,7 +28825,7 @@ compared. Only the storage of `cg_en` and `force_clk_en` is checked, not any clo
 *Source Module*: `smc_dfx_status_smu_pulse_reset_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 8-byte reads and writes of `STATUS_SMU` (`dfx_ctrl` at
-0xC000_B800; `mem_repair_abort` bit 2, `mbist_abort` bit 12; the idle word is bits 0, 1, 4 and 8,
+0xC001_7000; `mem_repair_abort` bit 2, `mbist_abort` bit 12; the idle word is bits 0, 1, 4 and 8,
 set because the bench drives the done and pass inputs high), writes with
 byte strobes 0x01 and 0x10, 4-byte accesses to `SS_WARM_RESET_N` (`smc_reset_unit`) bit 0; bench
 abort inputs `tb_mem_repair_abort` and `tb_mbist_abort`; SMC reset agent driving `rst_cold_ni` and

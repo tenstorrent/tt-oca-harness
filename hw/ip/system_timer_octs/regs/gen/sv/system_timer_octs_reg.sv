@@ -10,7 +10,7 @@ module system_timer_octs_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [5:0] s_axil_awaddr,
+        input wire [11:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module system_timer_octs_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [5:0] s_axil_araddr,
+        input wire [11:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -37,7 +37,7 @@ module system_timer_octs_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [5:0] cpuif_addr;
+    logic [11:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +54,10 @@ module system_timer_octs_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [5:0] axil_araddr;
+    logic [11:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [5:0] axil_awaddr;
+    logic [11:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -135,17 +135,17 @@ module system_timer_octs_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[5:2], 2'b0};
+                cpuif_addr = {axil_araddr[11:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[5:2], 2'b0};
+                cpuif_addr = {axil_awaddr[11:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[5:2], 2'b0};
+                cpuif_addr = {axil_araddr[11:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -244,7 +244,7 @@ module system_timer_octs_reg (
     logic decoded_err;
     logic decoded_req_is_external;
 
-    logic [5:0] decoded_addr;
+    logic [11:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -257,26 +257,26 @@ module system_timer_octs_reg (
         is_external = '0;
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.TIMER_START = cpuif_req_masked & (cpuif_addr == 6'h0);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h0);
-        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 6'h4);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h4);
-        decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 6'h8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h8);
-        decoded_reg_strb.TIMER_PRESET_LO = cpuif_req_masked & (cpuif_addr == 6'hc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'hc);
-        decoded_reg_strb.TIMER_PRESET_HI = cpuif_req_masked & (cpuif_addr == 6'h10);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h10);
-        decoded_reg_strb.TIMER_COUNT_LO = cpuif_req_masked & (cpuif_addr == 6'h14) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h14);
-        decoded_reg_strb.TIMER_COUNT_HI = cpuif_req_masked & (cpuif_addr == 6'h18) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h18);
-        decoded_reg_strb.CREDIT_EXPIRED = cpuif_req_masked & (cpuif_addr == 6'h1c);
-        is_external |= cpuif_req_masked & (cpuif_addr == 6'h1c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h1c);
-        decoded_reg_strb.TIMER_GPIO_ENABLE = cpuif_req_masked & (cpuif_addr == 6'h20);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h20);
-        is_valid_addr = cpuif_addr < 6'h24;
+        decoded_reg_strb.TIMER_START = cpuif_req_masked & (cpuif_addr == 12'h0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h0);
+        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 12'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h4);
+        decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 12'h8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h8);
+        decoded_reg_strb.TIMER_PRESET_LO = cpuif_req_masked & (cpuif_addr == 12'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'hc);
+        decoded_reg_strb.TIMER_PRESET_HI = cpuif_req_masked & (cpuif_addr == 12'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h10);
+        decoded_reg_strb.TIMER_COUNT_LO = cpuif_req_masked & (cpuif_addr == 12'h14) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h14);
+        decoded_reg_strb.TIMER_COUNT_HI = cpuif_req_masked & (cpuif_addr == 12'h18) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h18);
+        decoded_reg_strb.CREDIT_EXPIRED = cpuif_req_masked & (cpuif_addr == 12'h1c);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h1c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h1c);
+        decoded_reg_strb.TIMER_GPIO_ENABLE = cpuif_req_masked & (cpuif_addr == 12'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h20);
+        is_valid_addr = cpuif_addr < 12'h24;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -582,8 +582,8 @@ module system_timer_octs_reg (
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
 
-    logic [5:0] rd_mux_addr;
-    logic [5:0] pending_rd_addr;
+    logic [11:0] rd_mux_addr;
+    logic [11:0] pending_rd_addr;
     // Hold read mux address to guarantee it is stable throughout any external accesses
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
@@ -600,34 +600,34 @@ module system_timer_octs_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 6'h0) begin
+        if(rd_mux_addr == 12'h0) begin
             readback_data_var[0] = field_storage.TIMER_START.START.value;
         end
-        if(rd_mux_addr == 6'h4) begin
+        if(rd_mux_addr == 12'h4) begin
             readback_data_var[7:0] = field_storage.CTRL.CREDIT_VAL.value;
             readback_data_var[15:8] = field_storage.CTRL.PULSE_WIDTH.value;
             readback_data_var[23:16] = field_storage.CTRL.STEP.value;
         end
-        if(rd_mux_addr == 6'h8) begin
+        if(rd_mux_addr == 12'h8) begin
             readback_data_var[0] = hwif_in.STATUS.MODE.next;
             readback_data_var[4] = hwif_in.STATUS.RUNNING.next;
         end
-        if(rd_mux_addr == 6'hc) begin
+        if(rd_mux_addr == 12'hc) begin
             readback_data_var[31:0] = field_storage.TIMER_PRESET_LO.PRESET_LO.value;
         end
-        if(rd_mux_addr == 6'h10) begin
+        if(rd_mux_addr == 12'h10) begin
             readback_data_var[31:0] = field_storage.TIMER_PRESET_HI.PRESET_HI.value;
         end
-        if(rd_mux_addr == 6'h14) begin
+        if(rd_mux_addr == 12'h14) begin
             readback_data_var[31:0] = hwif_in.TIMER_COUNT_LO.COUNT_LO.next;
         end
-        if(rd_mux_addr == 6'h18) begin
+        if(rd_mux_addr == 12'h18) begin
             readback_data_var[31:0] = hwif_in.TIMER_COUNT_HI.COUNT_HI.next;
         end
-        if(rd_mux_addr == 6'h1c) begin
+        if(rd_mux_addr == 12'h1c) begin
             readback_data_var = hwif_in.CREDIT_EXPIRED.rd_data;
         end
-        if(rd_mux_addr == 6'h20) begin
+        if(rd_mux_addr == 12'h20) begin
             readback_data_var[0] = field_storage.TIMER_GPIO_ENABLE.GPIO_ENABLE.value;
         end
         readback_data = readback_data_var;

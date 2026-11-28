@@ -38,6 +38,14 @@ package smc_pkg;
   // however much of it the smc_external map allocates.
   localparam int unsigned SmcExternalWindowSize = 32'h40_0000;
 
+  // An AXI burst never crosses one of these pages, so a crossbar rule that starts and ends on
+  // them keeps a burst on one target.
+  localparam longint unsigned RegPageSize = 64'h1000;
+
+  function automatic longint unsigned reg_page_end(longint unsigned base, longint unsigned size);
+    return (base + size + RegPageSize - 1) & ~(RegPageSize - 1);
+  endfunction
+
   localparam int unsigned AxiDataWidth = 64;
   localparam int unsigned AxiStrbWidth = AxiDataWidth / 8;
   localparam int unsigned AxiUserWidth = 12;
@@ -281,11 +289,8 @@ package smc_pkg;
   localparam int unsigned OutputRemapIdxStart = 20;
 
   localparam int unsigned NumMmodeOutputRemapRegions = 8;
-  localparam int unsigned MmodeRemapSelW = $clog2(NumMmodeOutputRemapRegions);
   localparam int unsigned NumXvisorOutputRemapRegions = 8;
-  localparam int unsigned XvisorRemapSelW = $clog2(NumXvisorOutputRemapRegions);
   localparam int unsigned NumAliasRemapRegions = 8;
-  localparam int unsigned AliasRemapSelW = $clog2(NumAliasRemapRegions);
   localparam int unsigned AliasRemapIdxStart = 12;
   localparam int unsigned AliasRemapOffsetWidth = AxiAddrWidth - AliasRemapIdxStart;
 
@@ -316,7 +321,7 @@ package smc_pkg;
   // The remap starts are offsets into the SMC register window, since the fabric adds them to a
   // runtime window base. SMC_TOP_BASE_ADDR is the addrmap root (0), not the window base, so the
   // window base is taken from the lowest-addressed block in the window instead.
-  localparam smc_axi_addr_t RegWindowBase      = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR);
+  localparam smc_axi_addr_t RegWindowBase      = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_WDT_WRAP_CORE0_WDT_BASE_ADDR);
   localparam smc_axi_addr_t MmodeRemapStart    = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR) - RegWindowBase;
   localparam smc_axi_addr_t MmodeRemapSize     = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_SIZE);
   localparam smc_axi_addr_t XvisorRemapStart   = smc_axi_addr_t'(smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR) - RegWindowBase;
@@ -353,15 +358,6 @@ package smc_pkg;
   localparam int unsigned DmaCtrlAddrW = 9;
   typedef logic [DmaCtrlAddrW-1:0] smc_dma_ctrl_addr_t;
   `AXI_TYPEDEF_ALL(smc_dma_ctrl_9_64_8_12_axi, smc_dma_ctrl_addr_t,
-                   smc_local_fabric_xbar_master_id_t, smc_axi_data_t, smc_axi_strb_t,
-                   smc_axi_user_t)
-
-  // Zeroer control interface (5-bit addr matches zeroer_ctrl_reg_pkg::ZEROER_CTRL_REG_MIN_ADDR_WIDTH)
-  localparam int unsigned ZeroerCtrlAddrW = 5;
-  typedef logic [ZeroerCtrlAddrW-1:0] smc_zeroer_ctrl_addr_t;
-  `AXI_LITE_TYPEDEF_ALL(smc_zeroer_ctrl_axil_5_64, smc_zeroer_ctrl_addr_t, smc_axi_data_t,
-                        smc_axi_strb_t)
-  `AXI_TYPEDEF_ALL(smc_zeroer_ctrl_5_64_8_12_axi, smc_zeroer_ctrl_addr_t,
                    smc_local_fabric_xbar_master_id_t, smc_axi_data_t, smc_axi_strb_t,
                    smc_axi_user_t)
 

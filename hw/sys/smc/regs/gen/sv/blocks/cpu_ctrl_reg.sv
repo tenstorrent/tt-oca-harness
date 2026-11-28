@@ -10,7 +10,7 @@ module cpu_ctrl_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [9:0] s_axil_awaddr,
+        input wire [11:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module cpu_ctrl_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [9:0] s_axil_araddr,
+        input wire [11:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -37,7 +37,7 @@ module cpu_ctrl_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [9:0] cpuif_addr;
+    logic [11:0] cpuif_addr;
     logic [63:0] cpuif_wr_data;
     logic [63:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +54,10 @@ module cpu_ctrl_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [9:0] axil_araddr;
+    logic [11:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [9:0] axil_awaddr;
+    logic [11:0] axil_awaddr;
     logic axil_wvalid;
     logic [63:0] axil_wdata;
     logic [7:0] axil_wstrb;
@@ -135,17 +135,17 @@ module cpu_ctrl_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[9:3], 3'b0};
+                cpuif_addr = {axil_araddr[11:3], 3'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[9:3], 3'b0};
+                cpuif_addr = {axil_awaddr[11:3], 3'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[9:3], 3'b0};
+                cpuif_addr = {axil_araddr[11:3], 3'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -256,7 +256,7 @@ module cpu_ctrl_reg (
     logic decoded_err;
     logic decoded_req_is_external;
 
-    logic [9:0] decoded_addr;
+    logic [11:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [63:0] decoded_wr_data;
@@ -270,68 +270,68 @@ module cpu_ctrl_reg (
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         for(int i0=0; i0<4; i0++) begin
-            decoded_reg_strb.RESET_VECTOR[i0] = cpuif_req_masked & (cpuif_addr == 10'h0 + (10)'(i0) * 10'h8);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h0 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.RESET_VECTOR[i0] = cpuif_req_masked & (cpuif_addr == 12'h0 + (12)'(i0) * 12'h8);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h0 + (12)'(i0) * 12'h8);
         end
-        decoded_reg_strb.RESET_CTRL = cpuif_req_masked & (cpuif_addr == 10'h20);
-        is_external |= cpuif_req_masked & (cpuif_addr == 10'h20);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h20);
-        decoded_reg_strb.CORE_RESET_PULSE_COUNT = cpuif_req_masked & (cpuif_addr == 10'h28);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h28);
-        decoded_reg_strb.RESET_TIMEOUT = cpuif_req_masked & (cpuif_addr == 10'h30);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h30);
-        decoded_reg_strb.REFERENCE_COUNTER = cpuif_req_masked & (cpuif_addr == 10'h40);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h40);
-        decoded_reg_strb.WDT_TIMEOUT = cpuif_req_masked & (cpuif_addr == 10'h50);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h50);
-        decoded_reg_strb.WDT_TIMEOUT_RESET = cpuif_req_masked & (cpuif_addr == 10'h58);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h58);
-        decoded_reg_strb.TEST_CTRL = cpuif_req_masked & (cpuif_addr == 10'h60) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h60);
+        decoded_reg_strb.RESET_CTRL = cpuif_req_masked & (cpuif_addr == 12'h20);
+        is_external |= cpuif_req_masked & (cpuif_addr == 12'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h20);
+        decoded_reg_strb.CORE_RESET_PULSE_COUNT = cpuif_req_masked & (cpuif_addr == 12'h28);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h28);
+        decoded_reg_strb.RESET_TIMEOUT = cpuif_req_masked & (cpuif_addr == 12'h30);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h30);
+        decoded_reg_strb.REFERENCE_COUNTER = cpuif_req_masked & (cpuif_addr == 12'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h40);
+        decoded_reg_strb.WDT_TIMEOUT = cpuif_req_masked & (cpuif_addr == 12'h50);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h50);
+        decoded_reg_strb.WDT_TIMEOUT_RESET = cpuif_req_masked & (cpuif_addr == 12'h58);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h58);
+        decoded_reg_strb.TEST_CTRL = cpuif_req_masked & (cpuif_addr == 12'h60) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h60);
         for(int i0=0; i0<16; i0++) begin
-            decoded_reg_strb.SCRATCH[i0] = cpuif_req_masked & (cpuif_addr == 10'h80 + (10)'(i0) * 10'h8);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h80 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.SCRATCH[i0] = cpuif_req_masked & (cpuif_addr == 12'h80 + (12)'(i0) * 12'h8);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h80 + (12)'(i0) * 12'h8);
         end
         for(int i0=0; i0<8; i0++) begin
-            decoded_reg_strb.WB_PC_CORE0[i0] = cpuif_req_masked & (cpuif_addr == 10'h100 + (10)'(i0) * 10'h8) & !cpuif_req_is_wr;
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h100 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.WB_PC_CORE0[i0] = cpuif_req_masked & (cpuif_addr == 12'h100 + (12)'(i0) * 12'h8) & !cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h100 + (12)'(i0) * 12'h8);
         end
         for(int i0=0; i0<8; i0++) begin
-            decoded_reg_strb.WB_PC_CORE1[i0] = cpuif_req_masked & (cpuif_addr == 10'h140 + (10)'(i0) * 10'h8) & !cpuif_req_is_wr;
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h140 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.WB_PC_CORE1[i0] = cpuif_req_masked & (cpuif_addr == 12'h140 + (12)'(i0) * 12'h8) & !cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h140 + (12)'(i0) * 12'h8);
         end
         for(int i0=0; i0<8; i0++) begin
-            decoded_reg_strb.WB_PC_CORE2[i0] = cpuif_req_masked & (cpuif_addr == 10'h180 + (10)'(i0) * 10'h8) & !cpuif_req_is_wr;
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h180 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.WB_PC_CORE2[i0] = cpuif_req_masked & (cpuif_addr == 12'h180 + (12)'(i0) * 12'h8) & !cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h180 + (12)'(i0) * 12'h8);
         end
         for(int i0=0; i0<8; i0++) begin
-            decoded_reg_strb.WB_PC_CORE3[i0] = cpuif_req_masked & (cpuif_addr == 10'h1c0 + (10)'(i0) * 10'h8) & !cpuif_req_is_wr;
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h1c0 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.WB_PC_CORE3[i0] = cpuif_req_masked & (cpuif_addr == 12'h1c0 + (12)'(i0) * 12'h8) & !cpuif_req_is_wr;
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h1c0 + (12)'(i0) * 12'h8);
         end
-        decoded_reg_strb.SMC_ATTRIBUTES = cpuif_req_masked & (cpuif_addr == 10'h200) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h200);
+        decoded_reg_strb.SMC_ATTRIBUTES = cpuif_req_masked & (cpuif_addr == 12'h200) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h200);
         for(int i0=0; i0<4; i0++) begin
-            decoded_reg_strb.MUTEX[i0] = cpuif_req_masked & (cpuif_addr == 10'h240 + (10)'(i0) * 10'h8);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h240 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.MUTEX[i0] = cpuif_req_masked & (cpuif_addr == 12'h240 + (12)'(i0) * 12'h8);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h240 + (12)'(i0) * 12'h8);
         end
         for(int i0=0; i0<4; i0++) begin
-            decoded_reg_strb.SEMA[i0] = cpuif_req_masked & (cpuif_addr == 10'h260 + (10)'(i0) * 10'h8);
-            is_external |= cpuif_req_masked & (cpuif_addr == 10'h260 + (10)'(i0) * 10'h8);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h260 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.SEMA[i0] = cpuif_req_masked & (cpuif_addr == 12'h260 + (12)'(i0) * 12'h8);
+            is_external |= cpuif_req_masked & (cpuif_addr == 12'h260 + (12)'(i0) * 12'h8);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h260 + (12)'(i0) * 12'h8);
         end
-        decoded_reg_strb.DUMMY_ROM_0 = cpuif_req_masked & (cpuif_addr == 10'h280);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h280);
-        decoded_reg_strb.DUMMY_ROM_1 = cpuif_req_masked & (cpuif_addr == 10'h288);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h288);
-        decoded_reg_strb.DUMMY_ROM_2 = cpuif_req_masked & (cpuif_addr == 10'h290);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h290);
-        decoded_reg_strb.DUMMY_ROM_3 = cpuif_req_masked & (cpuif_addr == 10'h298);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h298);
+        decoded_reg_strb.DUMMY_ROM_0 = cpuif_req_masked & (cpuif_addr == 12'h280);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h280);
+        decoded_reg_strb.DUMMY_ROM_1 = cpuif_req_masked & (cpuif_addr == 12'h288);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h288);
+        decoded_reg_strb.DUMMY_ROM_2 = cpuif_req_masked & (cpuif_addr == 12'h290);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h290);
+        decoded_reg_strb.DUMMY_ROM_3 = cpuif_req_masked & (cpuif_addr == 12'h298);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h298);
         for(int i0=0; i0<4; i0++) begin
-            decoded_reg_strb.DUMMY_ROM_NULL[i0] = cpuif_req_masked & (cpuif_addr == 10'h2a0 + (10)'(i0) * 10'h8);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2a0 + (10)'(i0) * 10'h8);
+            decoded_reg_strb.DUMMY_ROM_NULL[i0] = cpuif_req_masked & (cpuif_addr == 12'h2a0 + (12)'(i0) * 12'h8);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr == 12'h2a0 + (12)'(i0) * 12'h8);
         end
-        is_valid_addr = cpuif_addr < 10'h2c0;
+        is_valid_addr = cpuif_addr < 12'h2c0;
         decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
@@ -1037,8 +1037,8 @@ module cpu_ctrl_reg (
 
     assign readback_external_rd_ack = readback_external_rd_ack_c;
 
-    logic [9:0] rd_mux_addr;
-    logic [9:0] pending_rd_addr;
+    logic [11:0] rd_mux_addr;
+    logic [11:0] pending_rd_addr;
     // Hold read mux address to guarantee it is stable throughout any external accesses
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
@@ -1056,65 +1056,65 @@ module cpu_ctrl_reg (
         automatic logic [63:0] readback_data_var;
         readback_data_var = '0;
         for(int i0=0; i0<4; i0++) begin
-            if(rd_mux_addr == 10'h0 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h0 + (12)'(i0) * 12'h8) begin
                 readback_data_var[55:0] = field_storage.RESET_VECTOR[i0].vector.value;
             end
         end
-        if(rd_mux_addr == 10'h20) begin
+        if(rd_mux_addr == 12'h20) begin
             readback_data_var = hwif_in.RESET_CTRL.rd_data;
         end
-        if(rd_mux_addr == 10'h28) begin
+        if(rd_mux_addr == 12'h28) begin
             readback_data_var[15:0] = field_storage.CORE_RESET_PULSE_COUNT.pre_reset_count.value;
             readback_data_var[31:16] = field_storage.CORE_RESET_PULSE_COUNT.post_reset_count.value;
             readback_data_var[35:32] = hwif_in.CORE_RESET_PULSE_COUNT.core_resets_done.next;
         end
-        if(rd_mux_addr == 10'h30) begin
+        if(rd_mux_addr == 12'h30) begin
             readback_data_var[15:0] = field_storage.RESET_TIMEOUT.timeout_value.value;
             readback_data_var[16] = field_storage.RESET_TIMEOUT.timeout_mode.value;
             readback_data_var[32] = hwif_in.RESET_TIMEOUT.reset_applied.next;
             readback_data_var[36] = hwif_in.RESET_TIMEOUT.reset_timeout.next;
         end
-        if(rd_mux_addr == 10'h40) begin
+        if(rd_mux_addr == 12'h40) begin
             readback_data_var[63:0] = field_storage.REFERENCE_COUNTER.rc.value;
         end
-        if(rd_mux_addr == 10'h50) begin
+        if(rd_mux_addr == 12'h50) begin
             readback_data_var[31:0] = field_storage.WDT_TIMEOUT.data.value;
         end
-        if(rd_mux_addr == 10'h58) begin
+        if(rd_mux_addr == 12'h58) begin
             readback_data_var[0] = field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value;
             readback_data_var[1] = field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value;
             readback_data_var[2] = field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value;
             readback_data_var[3] = field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value;
         end
-        if(rd_mux_addr == 10'h60) begin
+        if(rd_mux_addr == 12'h60) begin
             readback_data_var[31:0] = hwif_in.TEST_CTRL.data.next;
         end
         for(int i0=0; i0<16; i0++) begin
-            if(rd_mux_addr == 10'h80 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h80 + (12)'(i0) * 12'h8) begin
                 readback_data_var[31:0] = field_storage.SCRATCH[i0].data.value;
             end
         end
         for(int i0=0; i0<8; i0++) begin
-            if(rd_mux_addr == 10'h100 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h100 + (12)'(i0) * 12'h8) begin
                 readback_data_var[57:0] = hwif_in.WB_PC_CORE0[i0].pc.next;
             end
         end
         for(int i0=0; i0<8; i0++) begin
-            if(rd_mux_addr == 10'h140 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h140 + (12)'(i0) * 12'h8) begin
                 readback_data_var[57:0] = hwif_in.WB_PC_CORE1[i0].pc.next;
             end
         end
         for(int i0=0; i0<8; i0++) begin
-            if(rd_mux_addr == 10'h180 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h180 + (12)'(i0) * 12'h8) begin
                 readback_data_var[57:0] = hwif_in.WB_PC_CORE2[i0].pc.next;
             end
         end
         for(int i0=0; i0<8; i0++) begin
-            if(rd_mux_addr == 10'h1c0 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h1c0 + (12)'(i0) * 12'h8) begin
                 readback_data_var[57:0] = hwif_in.WB_PC_CORE3[i0].pc.next;
             end
         end
-        if(rd_mux_addr == 10'h200) begin
+        if(rd_mux_addr == 12'h200) begin
             readback_data_var[0] = hwif_in.SMC_ATTRIBUTES.chiplet_is_primary.next;
             readback_data_var[16:8] = hwif_in.SMC_ATTRIBUTES.num_ext_interrupts.next;
             readback_data_var[25:17] = hwif_in.SMC_ATTRIBUTES.num_cpu_interrupts.next;
@@ -1125,29 +1125,29 @@ module cpu_ctrl_reg (
             readback_data_var[45:40] = hwif_in.SMC_ATTRIBUTES.num_mailboxes.next;
         end
         for(int i0=0; i0<4; i0++) begin
-            if(rd_mux_addr == 10'h240 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h240 + (12)'(i0) * 12'h8) begin
                 readback_data_var[0] = field_storage.MUTEX[i0].mutex.value;
             end
         end
         for(int i0=0; i0<4; i0++) begin
-            if(rd_mux_addr == 10'h260 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h260 + (12)'(i0) * 12'h8) begin
                 readback_data_var = hwif_in.SEMA[i0].rd_data;
             end
         end
-        if(rd_mux_addr == 10'h280) begin
+        if(rd_mux_addr == 12'h280) begin
             readback_data_var[63:0] = field_storage.DUMMY_ROM_0.dummy_rom_word_0.value;
         end
-        if(rd_mux_addr == 10'h288) begin
+        if(rd_mux_addr == 12'h288) begin
             readback_data_var[63:0] = field_storage.DUMMY_ROM_1.dummy_rom_word_1.value;
         end
-        if(rd_mux_addr == 10'h290) begin
+        if(rd_mux_addr == 12'h290) begin
             readback_data_var[63:0] = field_storage.DUMMY_ROM_2.dummy_rom_word_2.value;
         end
-        if(rd_mux_addr == 10'h298) begin
+        if(rd_mux_addr == 12'h298) begin
             readback_data_var[63:0] = field_storage.DUMMY_ROM_3.dummy_rom_word_3.value;
         end
         for(int i0=0; i0<4; i0++) begin
-            if(rd_mux_addr == 10'h2a0 + (10)'(i0) * 10'h8) begin
+            if(rd_mux_addr == 12'h2a0 + (12)'(i0) * 12'h8) begin
                 readback_data_var[63:0] = field_storage.DUMMY_ROM_NULL[i0].dummy_rom_null.value;
             end
         end
