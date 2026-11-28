@@ -22,7 +22,7 @@ Output FIFO):
     (``hw/ip/entropy_source/regs/entropy_source.rdl``:168-210): with every enable bit 0,
     PIC source 16 (bit 15 of ``sep_internal_interrupts``, ``hw/sys/sep/doc/interrupts.adoc``
     :22-24, :109-111) stays 0 while a FIFO overflow or underflow is live, and reads 1
-    when only the enable bit of that live cause is set (:183, :188).
+    when only the enable bit of that live cause is set (:191, :196).
   * ``FIFO_ERROR`` is a ``level intr`` field (entropy_source.rdl:117-123): while a
     pointer-copy mismatch holds and FIFO_ERROR has set before any pop or push, a
     write-one clear does not leave it at 0.
@@ -104,13 +104,13 @@ Checkers:
                          between stream words of the fill, and LEVEL reads 64 after it
                          (``hw/ip/entropy_source/regs/entropy_source.rdl``:269 "Words
                          offered to the FIFO are also the DRBG seed stream";
-                         ``hw/ip/entropy_source/doc/architecture.adoc``:177-178 "The same
+                         ``hw/ip/entropy_source/doc/architecture.adoc``:178-179 "The same
                          words leave on ``entropy_stream_data_o`` whatever the FIFO does.");
                          control: CTRL-FIFO-STREAM-FULL, the fill offered at least two words.
   CHK-FIFO-TRNG-RESET    a TRNG reset taken with ENABLE = 1, LEVEL >= H and the producer
                          live gives LEVEL = 0, WPTR = 0, RPTR = 0 (the RDL reset values)
                          at the first FIFO_STATUS read after release
-                         (``hw/ip/entropy_source/doc/architecture.adoc``:220-221, :224-227
+                         (``hw/ip/entropy_source/doc/architecture.adoc``:221-222, :225-228
                          "This is a full-IP reset"; entropy_source.rdl FIFO_STATUS);
                          one FIFO_RDATA pop before the reset moves RPTR off 0;
                          control: CTRL-FIFO-TRNG-RESET, ENABLE reads 1 and

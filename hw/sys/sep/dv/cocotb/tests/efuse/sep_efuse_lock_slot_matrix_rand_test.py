@@ -104,7 +104,7 @@ Checkers:
                     (``otp_fuse_controller.adoc:112-114``).
   CHK-LOCK-JTAG-WR  lock leg, two lines (``part=shadow_write``, ``part=program``),
                     TEST_DEV JTAG writes after CHK-LOCK-JTAG-RD
-                    (``otp_fuse_controller.adoc:110-114``, ``:121-125``, ``:135-137``;
+                    (``otp_fuse_controller.adoc:110-114``, ``:122-126``, ``:136-138``;
                     ``lifecycle_controller.adoc:714-719``: in TEST_DEV the JTAG path
                     reaches the shadow map and the program controls, enforcement is
                     per-field ``LOCKS``). Shadow write: a JTAG write of the shadow word
@@ -397,7 +397,7 @@ _PIN = {
     "uid_rdlock": (2, "lock_leg", {}),
 }
 # LC_STATE bits a program may set from TEST_DEV and the raw state each one reaches
-# (otp_fuse_controller.adoc:219-220; lifecycle_controller.adoc:118, :126-131).
+# (otp_fuse_controller.adoc:225-226; lifecycle_controller.adoc:118, :126-131).
 _EXEMPT_PROG_RAW = {0: LC_PROD, 3: LC_PROD_END}
 
 
@@ -1352,7 +1352,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
     async def _jtag_wlock(self) -> None:
         """JTAG shadow write and JTAG program of a write-locked field, each with a twin
         on a field without a write-lock (``otp_fuse_controller.adoc:110-114``,
-        ``:135-137``; ``lifecycle_controller.adoc:714-719``).
+        ``:136-138``; ``lifecycle_controller.adoc:714-719``).
 
         A layout with no write-locked shadow-write word that has a used 0 bit
         (``no_wlocked_field``) or no twin word that has one (``no_twin_bit``) logs the

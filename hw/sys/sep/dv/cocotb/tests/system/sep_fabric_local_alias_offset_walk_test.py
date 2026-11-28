@@ -46,7 +46,7 @@ unbacked word of the Reserved row 0x108020C0-0x10802FFF; every address below
 whose ``SEP_LOCAL`` initiator uses the same decode as inbound traffic
 (``fabric.adoc:138-143``). The memory map gives that row DECERR, 0xBADCAB1E
 (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:47``; the column is the inbound
-answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``). The expected row and cell come
+answer, ``hw/sys/sep/doc/memory_map.adoc:68-71``). The expected row and cell come
 from the generated memory map (``env/sep_decode_resp.py``).
 
 no_cpu, +skip_fuse_sense.

@@ -8,7 +8,7 @@ LSU conflict). Firmware proves the ISR claim id, the SEC_DISABLE sticky
 bit, and that masking meie[40] stops re-entry. TOKEN_MATCH_FAULT is sw=r;
 there is no W1C. With meie[40] enabled again and the handler not masking,
 the handler enters at least twice in a fixed window
-(doc/programmer/src/sep-programming.adoc:235-237 "an unmasked handler
+(doc/programmer/src/sep-programming.adoc:241-243 "an unmasked handler
 re-enters"); the firmware storm cap stops it after five entries.
 
 Real fuse sense on a blank OTP image, staged with write_efuse_image before

@@ -3,11 +3,11 @@
 """ESRC read-only registers, the TRNG-reset restore, the MODULE_ENABLE lock and INTR_STATUS.
 
 Contract (``hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc``, golden lines cited
-per check; ``hw/ip/entropy_source/doc/architecture.adoc:220-223``, Reset):
+per check; ``hw/ip/entropy_source/doc/architecture.adoc:225-228``, Reset):
   * A write of the complement of the value read to a read-only ESRC register leaves its
     field bits unchanged (access R, for example ``COMPONENT_ID``, :91-95) and answers
     OKAY or SLVERR; a DECERR means the write reached no block
-    (``hw/sys/sep/doc/crypto.adoc:174-176``).
+    (``hw/sys/sep/doc/crypto.adoc:177-179``).
   * A TRNG reset is a full-IP reset: every unlocked read-write field outside ``CTRL``
     reads its RDL reset value after it (architecture.adoc:220-223).
   * The same reset returns the read-write status and alert latches to their RDL reset
@@ -582,7 +582,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         )
         # The register text states no response code for the write, so OKAY and SLVERR
         # both pass. DECERR is the crypto demux answer for an access that reaches no
-        # block (hw/sys/sep/doc/crypto.adoc:174-176), and an unchanged readback after
+        # block (hw/sys/sep/doc/crypto.adoc:177-179), and an unchanged readback after
         # it proves nothing; any code other than OKAY or SLVERR fails.
         for r in rows:
             resp_ok = r["resp"] in RESP_ACCEPTED

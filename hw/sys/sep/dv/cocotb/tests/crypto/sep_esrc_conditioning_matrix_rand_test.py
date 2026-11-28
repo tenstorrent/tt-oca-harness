@@ -1908,7 +1908,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
     async def _set_div(self, div: int) -> None:
         """Lanes off, SAMPLE_CLK_DIV = ``div``, lanes on; raises if the lanes do not stop.
 
-        The order of ``doc/programmer/src/sep-programming.adoc:409-411,427``.
+        The order of ``doc/programmer/src/sep-programming.adoc:417-419,435``.
         """
         if await self._lanes_off() is None:
             raise AssertionError(f"esrc_ro_enable_o not 0 bound={RO_OFF_CLKS}")
@@ -2028,7 +2028,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         times until its ``held`` has no 0. The enable of a lane is
         RING_OSC_ENABLE.ENABLE (entropy_source.adoc:357); each value is written with
         every lane disabled and then the lanes are enabled, the order of
-        ``doc/programmer/src/sep-programming.adoc:409-411,427``. Anchor:
+        ``doc/programmer/src/sep-programming.adoc:417-419,435``. Anchor:
         ``esrc_ro_enable_o`` and ``esrc_decor_valid_o``.
         """
         plan = self.plan

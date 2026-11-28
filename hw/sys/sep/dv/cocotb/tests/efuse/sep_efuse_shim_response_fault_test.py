@@ -210,12 +210,12 @@ _RD_DATA_ADDR = _IC.addr("EFUSE_READ_INTERFACE_READ_DATA")
 # One shadow word per 32-bit register of the MAP window.
 _N_WORDS = sym("SEP_EFUSE_MAP_REG_MAP_SIZE") // 4
 # READ commands of one sense: ST_READ issues a single READ command for all shadow
-# words (hw/sys/sep/doc/otp_fuse_controller.adoc:96).
+# words (hw/sys/sep/doc/otp_fuse_controller.adoc:97).
 _SENSE_READ_CMDS = 1
 # Sense-done latency at the sensing FSM ports, in clk_i cycles from the cycle of the
 # last response strobe: the last word arrives in cycle n+1, the FSM is in
 # ST_FINISHED from cycle n+2 and fuse_sense_done_o is high from cycle n+3
-# (hw/sys/sep/doc/otp_fuse_controller.adoc:101-102 and its sensing timing diagram).
+# (hw/sys/sep/doc/otp_fuse_controller.adoc:102-103 and its sensing timing diagram).
 _SENSE_DONE_LAT = 2
 
 # Test parameters (the contract leaves them to the test).

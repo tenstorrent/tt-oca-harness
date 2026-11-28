@@ -106,7 +106,7 @@ lock is sticky until reset, so this cell runs last on entry 15.
 CHK-FILT-RSVD-READ: through an entry whose window runs from the last SRAM
 granule to the Reserved row base 0x10050000, an external read of that base
 answers DECERR with 0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``;
-the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``).
+the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:68-71``).
 CTRL-FILT-RSVD-ALLOW reads a staged SRAM word through the same entry first and
 needs that word back, so the DECERR is not a filter denial.
 
@@ -953,7 +953,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
 
         The memory map gives the Reserved row 0x10050000-0x107FFFFF the cell
         "DECERR, 0xBADCAB1E / DECERR" (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``),
-        the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:66-69``).
+        the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:68-71``).
         A filter denial gives the same code and data, so CTRL-FILT-RSVD-ALLOW
         first reads the last SRAM word through the same entry, whose window
         runs from that word to the Reserved base: the staged value shows the entry

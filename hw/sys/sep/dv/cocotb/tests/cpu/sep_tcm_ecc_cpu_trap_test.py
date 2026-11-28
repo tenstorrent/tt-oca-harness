@@ -39,10 +39,10 @@ records, the trace events, the pulse counts and the field record:
                   ``docs/source/error-protection.md:311`` and ``:365``, ``:369``:
                   the count rises for each correctable error detected on a fetch
                   or on a retired load; ``:247``: every fetch error is counted,
-                  independent of execution; ``hw/sys/sep/doc/interrupts.adoc:413-415``:
+                  independent of execution; ``hw/sys/sep/doc/interrupts.adoc:426-428``:
                   bit 367 pulses once per ICCM single-bit error). Each load of
                   the straight-line DCCM leg retires. A correctable store is not
-                  driven, so the store clause of ``:369`` is not graded.
+                  driven, so the store clause of ``:382`` is not graded.
 * CHK-TCM-SILENT  with mstatus.MIE set and mie clear (every enable, mie[30] and
                   mie.MEIE included) the errors count with no trap and no trace
                   interrupt event, also at a count at or above 2^t. Every silent
@@ -69,7 +69,7 @@ records, the trace events, the pulse counts and the field record:
 * CHK-TCM-DBG366  inside the ``iccm_ue`` window (the fetch of the ICCM word
                   with the double-bit flip) bit 366 pulses at least once and
                   every bit-366 pulse there is one clock wide
-                  (``hw/sys/sep/doc/interrupts.adoc:413-415``: bit 366 is the
+                  (``hw/sys/sep/doc/interrupts.adoc:426-428``: bit 366 is the
                   ICCM double-bit lane, driven as single-cycle pulses). Control:
                   ``sep_ras_o.iccm_ecc_ue`` rises in the same window.
 * CHK-TCM-NO-PIC  the meip words equal their baseline and MICECT reads 0 after
@@ -1063,7 +1063,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             raise AssertionError(msg)
         widths = [p.width for p in self._pulses_in(win)[BIT_I_DB]]
         body = (
-            f"contract=hw/sys/sep/doc/interrupts.adoc:413-415 window=iccm_ue "
+            f"contract=hw/sys/sep/doc/interrupts.adoc:426-428 window=iccm_ue "
             f"pulses={len(widths)} widths={widths[:8]} expect_width=1 ras_ue_rises={len(rises)}"
         )
         if not widths or any(w != 1 for w in widths):

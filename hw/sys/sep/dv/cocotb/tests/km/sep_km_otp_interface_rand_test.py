@@ -133,7 +133,7 @@ _PG_BUSY = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_busy")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 
 # Fuse fields that are not part of the Key Manager OTP interface, by class
-# (hw/sys/sep/doc/otp_fuse_controller.adoc:443-445: "BL1_VERSION, BL2_VERSION,
+# (hw/sys/sep/doc/otp_fuse_controller.adoc:447-449: "BL1_VERSION, BL2_VERSION,
 # RMA token digests and public-key hashes are not part of that Key Manager
 # interface"). The second item is the class value of
 # sep_km_otp_readout_cg.cp_otp_notkm_class.

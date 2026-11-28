@@ -169,7 +169,7 @@ Toggle hwif_in.SEP_IRQ_STATUS.outbound_underflow.next "logic hwif_in.SEP_IRQ_STA
 Toggle hwif_in.SEP_IRQ_STATUS.flushed_by_km.next "logic hwif_in.SEP_IRQ_STATUS.flushed_by_km.next"
 
 CHECKSUM: "2772866781 740540854"
-ANNOTATION: "SEP-MBOX-DEPTH-PAD: the depth fields are {(8-FIFO_DEPTH_W) zeros, depth} with FIFO_DEPTH_W=$clog2(MAILBOX_DEPTH+1)=$clog2(17)=5, so bits 7:5 hold 0. hw/ip/key_manager/rtl/km_mailbox.sv:33,78,413-414; MAILBOX_DEPTH=16 is set at hw/sys/sep/rtl/sep_crypto.sv:1026 and passed to km_mailbox at hw/ip/key_manager/rtl/key_manager.sv:479"
+ANNOTATION: "SEP-MBOX-DEPTH-PAD: the depth fields are {(8-FIFO_DEPTH_W) zeros, depth} with FIFO_DEPTH_W=$clog2(MAILBOX_DEPTH+1)=$clog2(17)=5, so bits 7:5 hold 0. hw/ip/key_manager/rtl/km_mailbox.sv:33,78,413-414; MAILBOX_DEPTH=16 is set at hw/sys/sep/rtl/sep_crypto.sv:1046 and passed to km_mailbox at hw/ip/key_manager/rtl/key_manager.sv:479"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan.u_mailbox.u_sep_regs
 Toggle hwif_in.SEP_STATUS.inbound_depth.next [7:5] "logic hwif_in.SEP_STATUS.inbound_depth.next[7:0]"
 Toggle hwif_in.SEP_STATUS.outbound_depth.next [7:5] "logic hwif_in.SEP_STATUS.outbound_depth.next[7:0]"
@@ -181,7 +181,7 @@ Toggle s_axil_bresp [0] "logic s_axil_bresp[1:0]"
 Toggle s_axil_rresp [0] "logic s_axil_rresp[1:0]"
 
 CHECKSUM: "3854019001 2705449490"
-ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
+ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:292-307; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
 Toggle alert_rx_i[0].ping_p "logic alert_rx_i[0].ping_p"
 Toggle alert_rx_i[0].ping_n "logic alert_rx_i[0].ping_n"
@@ -276,7 +276,7 @@ Toggle axi_lite_rsp_o.r.resp [0] "logic axi_lite_rsp_o.r.resp[1:0]"
 Toggle axi_lite_rsp_o.b.resp [0] "logic axi_lite_rsp_o.b.resp[1:0]"
 
 CHECKSUM: "2550488390 2486335419"
-ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
+ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:292-307; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng
 Toggle csrng_alert_rx_i[0].ping_p "logic csrng_alert_rx_i[0].ping_p"
 Toggle csrng_alert_rx_i[0].ping_n "logic csrng_alert_rx_i[0].ping_n"
@@ -288,7 +288,7 @@ Toggle edn_alert_rx_i[1].ping_p "logic edn_alert_rx_i[1].ping_p"
 Toggle edn_alert_rx_i[1].ping_n "logic edn_alert_rx_i[1].ping_n"
 
 CHECKSUM: "2550488390 2486335419"
-ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:453"
+ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:156, hw/sys/sep/rtl/sep_crypto.sv:464"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng
 Toggle drbg_axis_req_o[0].tstrb "logic drbg_axis_req_o[0].tstrb[3:0]"
 Toggle drbg_axis_req_o[1].tstrb "logic drbg_axis_req_o[1].tstrb[3:0]"
@@ -303,13 +303,13 @@ Toggle edn_axil_resp_o.r.resp [0] "logic edn_axil_resp_o.r.resp[1:0]"
 Toggle edn_axil_resp_o.b.resp [0] "logic edn_axil_resp_o.b.resp[1:0]"
 
 CHECKSUM: "2550488390 2486335419"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
+ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:756,766; hw/sys/sep/rtl/sep_trng.sv:129,137"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng
 Toggle esrc_axil_resp_o.r.resp "logic esrc_axil_resp_o.r.resp[1:0]"
 Toggle esrc_axil_resp_o.b.resp "logic esrc_axil_resp_o.b.resp[1:0]"
 
 CHECKSUM: "251540385 1629975084"
-ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
+ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:292-307; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
 Toggle csrng_alert_rx_i[0].ping_p "logic csrng_alert_rx_i[0].ping_p"
 Toggle csrng_alert_rx_i[0].ping_n "logic csrng_alert_rx_i[0].ping_n"
@@ -321,14 +321,14 @@ Toggle edn_alert_rx_i[1].ping_p "logic edn_alert_rx_i[1].ping_p"
 Toggle edn_alert_rx_i[1].ping_n "logic edn_alert_rx_i[1].ping_n"
 
 CHECKSUM: "251540385 1629975084"
-ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:453"
+ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:156, hw/sys/sep/rtl/sep_crypto.sv:464"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
 Toggle edn_axis_o[0].tstrb "logic edn_axis_o[0].tstrb[3:0]"
 Toggle edn_axis_o[1].tstrb "logic edn_axis_o[1].tstrb[3:0]"
 Toggle edn_axis_o[2].tstrb "logic edn_axis_o[2].tstrb[3:0]"
 
 CHECKSUM: "251540385 1629975084"
-ANNOTATION: "SEP-DRBG-INPUT-TIE: sep_trng ties edn_native_req_i=EDN_REQ_DEFAULT ('0), otp_en_csrng_sw_app_read_i=MuBi8True and lc_hw_debug_en_i=Off; with EDN_NATIVE_ENDPOINT_COUNT=0 drbg drives edn_native_rsp_o[0]=EDN_RSP_DEFAULT, and every CSRNG HW app above index 0 is CSRNG_REQ_DEFAULT ('0). hw/sys/sep/rtl/sep_trng.sv:126-128,136,142-143; hw/ip/drbg/rtl/drbg.sv:206-213,289-295; vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_pkg.sv:26-27, vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_pkg.sv:74"
+ANNOTATION: "SEP-DRBG-INPUT-TIE: sep_trng ties edn_native_req_i=EDN_REQ_DEFAULT ('0), otp_en_csrng_sw_app_read_i=MuBi8True and lc_hw_debug_en_i=Off; with EDN_NATIVE_ENDPOINT_COUNT=0 drbg drives edn_native_rsp_o[0]=EDN_RSP_DEFAULT, and every CSRNG HW app above index 0 is CSRNG_REQ_DEFAULT ('0). hw/sys/sep/rtl/sep_trng.sv:148-150,158,164-165; hw/ip/drbg/rtl/drbg.sv:206-213,289-295; vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_pkg.sv:26-27, vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_pkg.sv:74"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
 Toggle edn_native_req_i[0].edn_req "logic edn_native_req_i[0].edn_req"
 Toggle edn_native_rsp_o[0].edn_bus "logic edn_native_rsp_o[0].edn_bus[31:0]"
@@ -389,20 +389,20 @@ Toggle resp_code_q [0] "logic resp_code_q[1:0]"
 Toggle resp_code_d [0] "logic resp_code_d[1:0]"
 
 CHECKSUM: "3888234644 481058055"
-ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:453"
+ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:156, hw/sys/sep/rtl/sep_crypto.sv:464"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan.u_edn_axis_adapter
 Toggle edn_axis_o[0].tstrb "logic edn_axis_o[0].tstrb[3:0]"
 Toggle edn_axis_o[1].tstrb "logic edn_axis_o[1].tstrb[3:0]"
 Toggle edn_axis_o[2].tstrb "logic edn_axis_o[2].tstrb[3:0]"
 
 CHECKSUM: "3295933835 1628216908"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
+ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:756,766; hw/sys/sep/rtl/sep_trng.sv:129,137"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan
 Toggle s_axil_bresp_o "logic s_axil_bresp_o[1:0]"
 Toggle s_axil_rresp_o "logic s_axil_rresp_o[1:0]"
 
 CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:287-302; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
+ANNOTATION: "SEP-ALERT-PING-TIE: every sep_crypto alert receiver has ping_req_i=1'b0, so ping_rise and ping_pending stay 0, send_ping never fires and the ping diff pair keeps its reset value 2'b10 (ping_p=0, ping_n=1). hw/sys/sep/rtl/sep_crypto.sv:292-307; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:108-111,130-140,147,153-154,169,226"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
 Toggle crypto_alert_rx[0].ping_p "logic crypto_alert_rx[0].ping_p"
 Toggle crypto_alert_rx[0].ping_n "logic crypto_alert_rx[0].ping_n"
@@ -428,7 +428,7 @@ Toggle crypto_alert_rx[10].ping_p "logic crypto_alert_rx[10].ping_p"
 Toggle crypto_alert_rx[10].ping_n "logic crypto_alert_rx[10].ping_n"
 
 CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:134, hw/sys/sep/rtl/sep_crypto.sv:453"
+ANNOTATION: "SEP-DRBG-TSTRB-TIE: drbg_edn_axis_adapter drives every endpoint tstrb to 4'hF, and drbg/sep_trng pass it through unchanged. hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv:69, hw/ip/drbg/rtl/drbg.sv:185-193, hw/sys/sep/rtl/sep_trng.sv:156, hw/sys/sep/rtl/sep_crypto.sv:464"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
 Toggle drbg_int_axis_req[0].tstrb "logic drbg_int_axis_req[0].tstrb[3:0]"
 Toggle drbg_int_axis_req[1].tstrb "logic drbg_int_axis_req[1].tstrb[3:0]"
@@ -451,7 +451,7 @@ Toggle abr_mem_req_o.mem_inst1_masked.waddr [10:6] "logic abr_mem_req_o.mem_inst
 Toggle abr_mem_req_o.mem_inst1_masked.raddr [10:6] "logic abr_mem_req_o.mem_inst1_masked.raddr[10:0]"
 
 CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:737,747; hw/sys/sep/rtl/sep_trng.sv:110,118"
+ANNOTATION: "SEP-ESRC-NOERR-RESP: entropy_source_reg decodes no error (is_valid_addr/is_valid_rw='1, decoded_err='0, cpuif_wr_err='0, readback_err='0) so its buffered error stays 0 and BRESP/RRESP hold 2'b00; entropy_source and sep_trng pass them through. hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv:168,173,200-205,309-310,383,3220,3511,3517; hw/ip/entropy_source/rtl/entropy_source.sv:756,766; hw/sys/sep/rtl/sep_trng.sv:129,137"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
 Toggle esrc_axil_isolated_resp.r.resp "logic esrc_axil_isolated_resp.r.resp[1:0]"
 Toggle esrc_axil_isolated_resp.b.resp "logic esrc_axil_isolated_resp.b.resp[1:0]"
@@ -471,7 +471,7 @@ Toggle otbn_axil_isolated_resp.r.resp [0] "logic otbn_axil_isolated_resp.r.resp[
 Toggle otbn_axil_isolated_resp.b.resp [0] "logic otbn_axil_isolated_resp.b.resp[1:0]"
 
 CHECKSUM: "3536466054 1976754700"
-ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:227,239 and hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv:128,138, into hw/sys/sep/rtl/sep_crypto.sv:618 (abr_key) and :508 (otbn_key)"
+ANNOTATION: "SEP-REGBLOCK-RESP-BIT0: the PeakRDL AXI4-Lite cpuif assigns s_axil_bresp/s_axil_rresp only 2'b10 or 2'b00, so bit 0 holds 0 (bit 1 is the reachable SLVERR of this error-decoding block and is not listed). hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv:209-215, otbn_wrapper_key_reg.sv:208-214, km_mailbox_sep_reg.sv:209-215; wired out at hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:227,239 and hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv:128,138, into hw/sys/sep/rtl/sep_crypto.sv:636 (abr_key) and :523 (otbn_key)"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto
 Toggle otbn_key_axil_isolated_resp.r.resp [0] "logic otbn_key_axil_isolated_resp.r.resp[1:0]"
 Toggle otbn_key_axil_isolated_resp.b.resp [0] "logic otbn_key_axil_isolated_resp.b.resp[1:0]"
@@ -681,7 +681,7 @@ Toggle abr_axi_req_cache_forced.ar.cache [1] "logic abr_axi_req_cache_forced.ar.
 
 CHECKSUM: "3682768782 1232921383"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_aes_wrapper_s3c_scan
-ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:296,490,514,538,562; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
+ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:301,505,530,555,580; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
 Toggle alert_rx_i[0].ping_p "logic alert_rx_i[0].ping_p"
 Toggle alert_rx_i[0].ping_n "logic alert_rx_i[0].ping_n"
 Toggle alert_rx_i[1].ping_p "logic alert_rx_i[1].ping_p"
@@ -689,7 +689,7 @@ Toggle alert_rx_i[1].ping_n "logic alert_rx_i[1].ping_n"
 
 CHECKSUM: "641139231 197321661"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_kmac_wrapper_s3c_scan
-ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:296,490,514,538,562; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
+ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:301,505,530,555,580; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
 Toggle alert_rx_i[0].ping_p "logic alert_rx_i[0].ping_p"
 Toggle alert_rx_i[0].ping_n "logic alert_rx_i[0].ping_n"
 Toggle alert_rx_i[1].ping_p "logic alert_rx_i[1].ping_p"
@@ -697,7 +697,7 @@ Toggle alert_rx_i[1].ping_n "logic alert_rx_i[1].ping_n"
 
 CHECKSUM: "2867756884 1126145373"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_hmac_wrapper_s3c_scan
-ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:296,490,514,538,562; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
+ANNOTATION: "SEP-ALERT-PING-TIE: sep_crypto ties ping_req_i of each alert receiver to 1'b0, so the receiver holds ping_tog at its reset value and alert_rx ping_p/ping_n never change. hw/sys/sep/rtl/sep_crypto.sv:301,505,530,555,580; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv:109-111,147. NOT waived: alert_rx ack_p/ack_n, which answer the sender."
 Toggle alert_rx_i[0].ping_p "logic alert_rx_i[0].ping_p"
 Toggle alert_rx_i[0].ping_n "logic alert_rx_i[0].ping_n"
 
@@ -737,18 +737,18 @@ Toggle p0 "logic p0[7:0]"
 
 CHECKSUM: "3661006289 2996815061"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_biw_obs_fifo
-ANNOTATION: "SEP-ESRC-FIFO-INPUT-TIE: entropy_source ties clr_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:460) and entropy_churn_enable_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:462) on this entropy_fifo instance, so both input ports hold 0. NOT waived: the push, pop, full, empty and counter-error signals, and churn_addr/churn_entry/churn_data."
+ANNOTATION: "SEP-ESRC-FIFO-INPUT-TIE: entropy_source ties clr_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:486) and entropy_churn_enable_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:488) on this entropy_fifo instance, so both input ports hold 0. NOT waived: the push, pop, full, empty and counter-error signals, and churn_addr/churn_entry/churn_data."
 Toggle clr_i "logic clr_i"
 Toggle entropy_churn_enable_i "logic entropy_churn_enable_i"
 
 CHECKSUM: "3661006289 2996815061"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_noise_obs_fifo
-ANNOTATION: "SEP-ESRC-FIFO-INPUT-TIE: entropy_source ties entropy_churn_enable_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:589) on this entropy_fifo instance, so this input port holds 0. NOT waived: clr_i, which follows noise_obs_flush; the push, pop, full, empty and counter-error signals, and churn_addr/churn_entry/churn_data."
+ANNOTATION: "SEP-ESRC-FIFO-INPUT-TIE: entropy_source ties entropy_churn_enable_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:617) on this entropy_fifo instance, so this input port holds 0. NOT waived: clr_i, which follows noise_obs_flush; the push, pop, full, empty and counter-error signals, and churn_addr/churn_entry/churn_data."
 Toggle entropy_churn_enable_i "logic entropy_churn_enable_i"
 
 CHECKSUM: "3661006289 2996815061"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_entropy_fifo
-ANNOTATION: "SEP-ESRC-FIFO-INPUT-TIE: entropy_source ties clr_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:414) on this entropy_fifo instance, so this input port holds 0. NOT waived: entropy_churn_enable_i, which follows the FIFO_CTRL CSR; the push, pop, full, empty and counter-error signals, and churn_addr/churn_entry/churn_data."
+ANNOTATION: "SEP-ESRC-FIFO-INPUT-TIE: entropy_source ties clr_i to 1'b0 (hw/ip/entropy_source/rtl/entropy_source.sv:440) on this entropy_fifo instance, so this input port holds 0. NOT waived: entropy_churn_enable_i, which follows the FIFO_CTRL CSR; the push, pop, full, empty and counter-error signals, and churn_addr/churn_entry/churn_data."
 Toggle clr_i "logic clr_i"
 
 CHECKSUM: "3264199385 4205087039"
@@ -759,19 +759,19 @@ Toggle RRESP "logic RRESP[1:0]"
 
 CHECKSUM: "1095994296 3660477044"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_sha256_whitener
-ANNOTATION: "SEP-ESRC-WHITENER-READY-TIE: entropy_source ties whitened_ready_i of the SHA-256 whitener to 1'b1. hw/ip/entropy_source/rtl/entropy_source.sv:400. NOT waived: whitened_valid_o and the whitened data."
+ANNOTATION: "SEP-ESRC-WHITENER-READY-TIE: entropy_source ties whitened_ready_i of the SHA-256 whitener to 1'b1. hw/ip/entropy_source/rtl/entropy_source.sv:426. NOT waived: whitened_valid_o and the whitened data."
 Toggle whitened_ready_i "logic whitened_ready_i"
 
 CHECKSUM: "3497888529 918953084"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-ANNOTATION: "SEP-DRBG-FIFO-NONSECURE: no drbg_axis_edn_adapter instance sets Secure, and with the default Secure=0 prim_fifo_sync drives err_o to 0 at every depth, so ep_err, unused_stage_err and their OR unused_ep_err hold 0. hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:81-85,190-194,238; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv:20,62,111; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv:142. NOT waived: the ack state-machine error and the FIFO depth, full and valid signals."
+ANNOTATION: "SEP-DRBG-FIFO-NONSECURE: no drbg_axis_edn_adapter instance sets Secure, and with the default Secure=0 prim_fifo_sync drives err_o to 0 at every depth, so ep_err, unused_stage_err and their OR unused_ep_err hold 0. hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:91-95,196-200,249; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv:20,62,111; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv:142. NOT waived: the ack state-machine error and the FIFO depth, full and valid signals."
 Toggle ep_err "logic ep_err[3:0]"
 Toggle unused_stage_err "logic unused_stage_err"
 Toggle unused_ep_err "logic unused_ep_err"
 
 CHECKSUM: "3497888529 1638301416"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_pool_s3c_scan
-ANNOTATION: "SEP-DRBG-FIFO-NONSECURE: no drbg_axis_edn_adapter instance sets Secure, and with the default Secure=0 prim_fifo_sync drives err_o to 0 at every depth, so ep_err, unused_stage_err and their OR unused_ep_err hold 0. hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:81-85,190-194,238; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv:20,62,111; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv:142. NOT waived: the ack state-machine error and the FIFO depth, full and valid signals."
+ANNOTATION: "SEP-DRBG-FIFO-NONSECURE: no drbg_axis_edn_adapter instance sets Secure, and with the default Secure=0 prim_fifo_sync drives err_o to 0 at every depth, so ep_err, unused_stage_err and their OR unused_ep_err hold 0. hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:91-95,196-200,249; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv:20,62,111; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv:142. NOT waived: the ack state-machine error and the FIFO depth, full and valid signals."
 Toggle ep_err "logic ep_err[0:0]"
 Toggle unused_stage_err "logic unused_stage_err"
 Toggle unused_ep_err "logic unused_ep_err"
@@ -788,22 +788,22 @@ Toggle endpoint_fifo_err "logic endpoint_fifo_err[2:0]"
 
 CHECKSUM: "3497888529 918953084"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_crypto_s3c_scan
-ANNOTATION: "SEP-DRBG-ARB-NODATA: the adapter instantiates prim_arbiter_ppc with EnDataPort=0 and ties data_i to 0, so the arbiter data_o is a constant. hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:123,133; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_ppc.sv:63,111. NOT waived: the arbiter grant, valid and index outputs."
+ANNOTATION: "SEP-DRBG-ARB-NODATA: the adapter instantiates prim_arbiter_ppc with EnDataPort=0 and ties data_i to 0, so the arbiter data_o is a constant. hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:133,143; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_ppc.sv:63,111. NOT waived: the arbiter grant, valid and index outputs."
 Toggle unused_arb_data_o "logic unused_arb_data_o[0:0]"
 
 CHECKSUM: "3497888529 1638301416"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_pool_s3c_scan
-ANNOTATION: "SEP-DRBG-ARB-NODATA: the adapter instantiates prim_arbiter_ppc with EnDataPort=0 and ties data_i to 0, so the arbiter data_o is a constant. hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:123,133; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_ppc.sv:63,111. NOT waived: the arbiter grant, valid and index outputs."
+ANNOTATION: "SEP-DRBG-ARB-NODATA: the adapter instantiates prim_arbiter_ppc with EnDataPort=0 and ties data_i to 0, so the arbiter data_o is a constant. hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:133,143; vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_ppc.sv:63,111. NOT waived: the arbiter grant, valid and index outputs."
 Toggle unused_arb_data_o "logic unused_arb_data_o[0:0]"
 
 CHECKSUM: "3497888529 1638301416"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_axis_edn_pool_s3c_scan
-ANNOTATION: "SEP-EDN-POOL-CANCEL-TIE: sep_crypto ties endpoint_cancel_i of the pool EDN adapter to '0, so this input port holds 0. hw/sys/sep/rtl/sep_crypto.sv:1005; hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:166. NOT waived: clear_i, and the crypto EDN adapter cancel input, which is live (hw/sys/sep/rtl/sep_crypto.sv:981)."
+ANNOTATION: "SEP-EDN-POOL-CANCEL-TIE: sep_crypto ties endpoint_cancel_i of the pool EDN adapter to '0, so this input port holds 0. hw/sys/sep/rtl/sep_crypto.sv:1024; hw/ip/drbg/rtl/drbg_axis_edn_adapter.sv:178. NOT waived: clear_i, and the crypto EDN adapter cancel input, which is live (hw/sys/sep/rtl/sep_crypto.sv:999)."
 Toggle endpoint_cancel_i "net endpoint_cancel_i[0:0]"
 
 CHECKSUM: "3937190293 4128385299"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:410 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:774, :965) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
 Toggle efuse_field_map_i[0].end_addr "logic efuse_field_map_i[0].end_addr[31:0]"
 Toggle efuse_field_map_i[0].start_addr "logic efuse_field_map_i[0].start_addr[31:0]"
 Toggle efuse_field_map_i[0].lock "logic efuse_field_map_i[0].lock[3:0]"
@@ -975,7 +975,7 @@ Toggle efuse_field_map_i[41].idx "logic efuse_field_map_i[41].idx[5:0]"
 
 CHECKSUM: "486751003 4222255782"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_guard
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:410 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:774, :965) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
 Toggle efuse_field_map_i[0].end_addr "logic efuse_field_map_i[0].end_addr[31:0]"
 Toggle efuse_field_map_i[0].start_addr "logic efuse_field_map_i[0].start_addr[31:0]"
 Toggle efuse_field_map_i[0].lock "logic efuse_field_map_i[0].lock[3:0]"
@@ -1147,7 +1147,7 @@ Toggle efuse_field_map_i[41].idx "logic efuse_field_map_i[41].idx[5:0]"
 
 CHECKSUM: "171941408 2841630040"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:410 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:774, :965) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
 Toggle efuse_field_map_i[0].end_addr "logic efuse_field_map_i[0].end_addr[31:0]"
 Toggle efuse_field_map_i[0].start_addr "logic efuse_field_map_i[0].start_addr[31:0]"
 Toggle efuse_field_map_i[0].lock "logic efuse_field_map_i[0].lock[3:0]"
@@ -1319,7 +1319,7 @@ Toggle efuse_field_map_i[41].idx "logic efuse_field_map_i[41].idx[5:0]"
 
 CHECKSUM: "3595078827 4037587957"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:410 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:774, :965) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). NOT waived: the field lookup results and lock outputs that the live APB address selects."
 Toggle efuse_field_map_i[0].end_addr "logic efuse_field_map_i[0].end_addr[31:0]"
 Toggle efuse_field_map_i[0].start_addr "logic efuse_field_map_i[0].start_addr[31:0]"
 Toggle efuse_field_map_i[0].lock "logic efuse_field_map_i[0].lock[3:0]"
@@ -1491,17 +1491,12 @@ Toggle efuse_field_map_i[41].idx "logic efuse_field_map_i[41].idx[5:0]"
 
 CHECKSUM: "3595078827 3812065443"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:400 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:750, :831) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). No entry of the constant map has an out-of-range idx, so the statement at hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:111 never executes. NOT waived: the other statements of field_map_idx_in_range at :107-114."
+ANNOTATION: "SEP-EFUSE-FIELD-MAP-CONST: hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:410 ties efuse_field_map_i to the localparam sep_efuse_pkg::EfuseFieldMap (hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:525), and plain port connections carry it to efuse_shadow_regs and efuse_guard (hw/ip/efuse/rtl/efuse_interface_controller.sv:774, :965) and to efuse_shadow_reg_access_control (hw/ip/efuse/rtl/efuse_shadow_regs.sv:297). No entry of the constant map has an out-of-range idx, so the statement at hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:74 never executes. NOT waived: the other statements of field_map_idx_in_range at :70-77."
 Block 3 "301284989" "in_range = 1'b0;"
-
-CHECKSUM: "3595078827 4037587957"
-INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SEP-EFUSE-AC-PADDR-ZEXT: hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:185, :215 zero-extend apb_req_paddr_i, which is EFUSE_ADDR_WIDTH = $clog2(SEP_TOP_SEP_EFUSE_MAP_SIZE=0x400) = 10 bits wide (hw/ip/efuse/rtl/efuse_interface_controller.sv:55), so paddr[31:10] is always 0. NOT waived: apb_req_from_ac_o.paddr[9:0] and the other APB request fields."
-Toggle apb_req_from_ac_o.paddr [31:10] "logic apb_req_from_ac_o.paddr[31:0]"
 
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
-ANNOTATION: "SEP-KM-EFUSE-ADDR-BASE: hw/ip/key_manager/rtl/key_manager.sv:393-396 force addr[31:12] to OTP_EFUSE_REMAP_BASE & ~OtpPageMask (hw/sys/sep/rtl/sep_crypto.sv:1028 = 0x1093_0000; hw/ip/key_manager/rtl/km_intf_pkg.sv:171-174), and axi_lite_isolate u_km_efuse_isolate (hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:736-752) passes the address or drives 0 (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:298, :307, :363, :372). The bits where the base is 0 are always 0. NOT waived: addr bits 28, 23, 20, 17, 16 and [11:0]."
+ANNOTATION: "SEP-KM-EFUSE-ADDR-BASE: hw/ip/key_manager/rtl/key_manager.sv:393-396 force addr[31:12] to OTP_EFUSE_REMAP_BASE & ~OtpPageMask (hw/sys/sep/rtl/sep_crypto.sv:1048 = 0x1093_0000; hw/ip/key_manager/rtl/km_intf_pkg.sv:171-174), and axi_lite_isolate u_km_efuse_isolate (hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:736-752) passes the address or drives 0 (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:298, :307, :363, :372). The bits where the base is 0 are always 0. NOT waived: addr bits 28, 23, 20, 17, 16 and [11:0]."
 Toggle km_efuse_axil_req_i.aw.addr [31:29] "logic km_efuse_axil_req_i.aw.addr[31:0]"
 Toggle km_efuse_axil_req_i.aw.addr [27:24] "logic km_efuse_axil_req_i.aw.addr[31:0]"
 Toggle km_efuse_axil_req_i.aw.addr [22:21] "logic km_efuse_axil_req_i.aw.addr[31:0]"
@@ -1515,35 +1510,35 @@ Toggle km_efuse_axil_req_i.ar.addr [15:12] "logic km_efuse_axil_req_i.ar.addr[31
 
 CHECKSUM: "3745466316 3980218801"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_read_interface
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:67, hw/ip/efuse/rtl/efuse_program_interface.sv:73, hw/ip/efuse/rtl/efuse_shadow_regs.sv:149, hw/ip/efuse/rtl/efuse_interface_controller.sv:208), efuse_word_counter_t'(1) (efuse_read_interface.sv:143), NumShadowWords=256 (efuse_shadow_regs.sv:74, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:297, :303), the sense address '0 (efuse_shadow_regs.sv:523) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:201; efuse_read_interface.sv:141, efuse_shadow_regs.sv:527). The program interface never assigns read_word_count (efuse_program_interface.sv:146-148). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_o.read_word_count [8:1] "logic fuse_command_req_o.read_word_count[8:0]"
 Toggle fuse_command_req_o.command "logic fuse_command_req_o.command[0:0]"
 
 CHECKSUM: "3430079472 3537418050"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_program_interface
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:67, hw/ip/efuse/rtl/efuse_program_interface.sv:73, hw/ip/efuse/rtl/efuse_shadow_regs.sv:149, hw/ip/efuse/rtl/efuse_interface_controller.sv:208), efuse_word_counter_t'(1) (efuse_read_interface.sv:143), NumShadowWords=256 (efuse_shadow_regs.sv:74, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:297, :303), the sense address '0 (efuse_shadow_regs.sv:523) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:201; efuse_read_interface.sv:141, efuse_shadow_regs.sv:527). The program interface never assigns read_word_count (efuse_program_interface.sv:146-148). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_o.read_word_count "logic fuse_command_req_o.read_word_count[8:0]"
 
 CHECKSUM: "1114570247 1982245252"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:67, hw/ip/efuse/rtl/efuse_program_interface.sv:73, hw/ip/efuse/rtl/efuse_shadow_regs.sv:149, hw/ip/efuse/rtl/efuse_interface_controller.sv:208), efuse_word_counter_t'(1) (efuse_read_interface.sv:143), NumShadowWords=256 (efuse_shadow_regs.sv:74, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:297, :303), the sense address '0 (efuse_shadow_regs.sv:523) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:201; efuse_read_interface.sv:141, efuse_shadow_regs.sv:527). The program interface never assigns read_word_count (efuse_program_interface.sv:146-148). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_o.read_word_count [7:0] "logic fuse_command_req_o.read_word_count[8:0]"
 Toggle fuse_command_req_o.command "logic fuse_command_req_o.command[0:0]"
 Toggle fuse_command_req_o.address "logic fuse_command_req_o.address[12:0]"
 
 CHECKSUM: "4190772824 3761755012"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:67, hw/ip/efuse/rtl/efuse_program_interface.sv:73, hw/ip/efuse/rtl/efuse_shadow_regs.sv:149, hw/ip/efuse/rtl/efuse_interface_controller.sv:208), efuse_word_counter_t'(1) (efuse_read_interface.sv:143), NumShadowWords=256 (efuse_shadow_regs.sv:74, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:297, :303), the sense address '0 (efuse_shadow_regs.sv:523) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:201; efuse_read_interface.sv:141, efuse_shadow_regs.sv:527). The program interface never assigns read_word_count (efuse_program_interface.sv:146-148). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_o.read_word_count [7:1] "logic fuse_command_req_o.read_word_count[8:0]"
 
 CHECKSUM: "4174874567 1684014548"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:67, hw/ip/efuse/rtl/efuse_program_interface.sv:73, hw/ip/efuse/rtl/efuse_shadow_regs.sv:149, hw/ip/efuse/rtl/efuse_interface_controller.sv:208), efuse_word_counter_t'(1) (efuse_read_interface.sv:143), NumShadowWords=256 (efuse_shadow_regs.sv:74, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:297, :303), the sense address '0 (efuse_shadow_regs.sv:523) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:201; efuse_read_interface.sv:141, efuse_shadow_regs.sv:527). The program interface never assigns read_word_count (efuse_program_interface.sv:146-148). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle efuse_shim_command_req_o.read_word_count [7:1] "logic efuse_shim_command_req_o.read_word_count[8:0]"
 
 CHECKSUM: "3716421305 1669649961"
 INSTANCE: sep_uvm_top.u_dut.u_sep_ip_integration.u_efuse_interface_shim
-ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:66, hw/ip/efuse/rtl/efuse_program_interface.sv:72, hw/ip/efuse/rtl/efuse_shadow_regs.sv:122, hw/ip/efuse/rtl/efuse_interface_controller.sv:180), efuse_word_counter_t'(1) (efuse_read_interface.sv:140), NumShadowWords=256 (efuse_shadow_regs.sv:56, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:301, :307), the sense address '0 (efuse_shadow_regs.sv:482) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:191; efuse_read_interface.sv:138, efuse_shadow_regs.sv:486). The program interface never assigns read_word_count (efuse_program_interface.sv:143-145). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
+ANNOTATION: "SEP-EFUSE-CMD-LITERALS: the only drivers of these command fields are literals: the 0 default (hw/ip/efuse/rtl/efuse_read_interface.sv:67, hw/ip/efuse/rtl/efuse_program_interface.sv:73, hw/ip/efuse/rtl/efuse_shadow_regs.sv:149, hw/ip/efuse/rtl/efuse_interface_controller.sv:208), efuse_word_counter_t'(1) (efuse_read_interface.sv:143), NumShadowWords=256 (efuse_shadow_regs.sv:74, :483-484, 9-bit type at hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:297, :303), the sense address '0 (efuse_shadow_regs.sv:523) and READ=1'b0 (hw/ip/efuse/rtl/efuse_pkg.sv:201; efuse_read_interface.sv:141, efuse_shadow_regs.sv:527). The program interface never assigns read_word_count (efuse_program_interface.sv:146-148). NOT waived: read_word_count[0] where the read interface drives it, read_word_count[8] where the sense drives it, the read and program addresses, the program command bit and the valid strobes."
 Toggle fuse_command_req_i.read_word_count [7:1] "logic fuse_command_req_i.read_word_count[8:0]"
 
 CHECKSUM: "605737996 1433459033"
@@ -1574,19 +1569,19 @@ Toggle dbg_disable_o.sep_otp_jtag2axi "logic dbg_disable_o.sep_otp_jtag2axi"
 
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
-ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:169-187, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
+ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:171-189, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:760-777). NOT waived: the B/R id, resp, data, last and valid fields."
 Toggle sep_efuse_axi_resp_o.b.user "logic sep_efuse_axi_resp_o.b.user[11:0]"
 Toggle sep_efuse_axi_resp_o.r.user "logic sep_efuse_axi_resp_o.r.user[11:0]"
 
 CHECKSUM: "2359978137 4237387935"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_lifecycle_ctrl
-ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:169-187, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
+ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:171-189, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:760-777). NOT waived: the B/R id, resp, data, last and valid fields."
 Toggle lifecycle_axi_resp_o.b.user "logic lifecycle_axi_resp_o.b.user[11:0]"
 Toggle lifecycle_axi_resp_o.r.user "logic lifecycle_axi_resp_o.r.user[11:0]"
 
 CHECKSUM: "1196780505 2936465847"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_efuse_shim_id_conv
-ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:169-187, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:740-757). NOT waived: the B/R id, resp, data, last and valid fields."
+ANNOTATION: "SEP-AXI2LITE-RESP-USER-ZERO: every response source in the axi_to_axi_lite converters drives user as a literal 0: the id-reflect default (vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:154-172), the atop-filter inject (vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv:220, :287) and the burst-splitter error slave (vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:143, :194). axi_dw_downsizer.sv:594, :737 only forward it, and axi_id_remap passes the response through (hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:171-189, hw/sys/sep/rtl/sep_lifecycle_ctrl.sv:168-196, hw/sys/sep/rtl/sep_crypto.sv:760-777). NOT waived: the B/R id, resp, data, last and valid fields."
 Toggle axi_out_resp_i.b.user "logic axi_out_resp_i.b.user[11:0]"
 Toggle axi_out_resp_i.r.user "logic axi_out_resp_i.r.user[11:0]"
 Toggle axi_in_resp_o.b.user "logic axi_in_resp_o.b.user[11:0]"
@@ -1594,13 +1589,13 @@ Toggle axi_in_resp_o.r.user "logic axi_in_resp_o.r.user[11:0]"
 
 CHECKSUM: "1196780505 2936465847"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_efuse_shim_id_conv
-ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:747), and hw/sys/sep/rtl/sep_crypto.sv:755, :785 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
+ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:767), and hw/sys/sep/rtl/sep_crypto.sv:775, :805 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
 Toggle axi_out_req_o.aw.id [5:4] "logic axi_out_req_o.aw.id[5:0]"
 Toggle axi_out_req_o.ar.id [5:4] "logic axi_out_req_o.ar.id[5:0]"
 
 CHECKSUM: "2345007664 1400203680"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper
-ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:747), and hw/sys/sep/rtl/sep_crypto.sv:755, :785 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
+ANNOTATION: "SEP-EFUSE-ID-REMAP-PAD: vendor/pulp-platform/axi/upstream/src/axi_id_remap.sv:131, :198-200 zero-pad the remap-table index to the output ID width. IdxWidth = idx_width(MAX_INFLIGHT_IDS=16) = 4 (hw/sys/sep/rtl/sep_crypto.sv:767), and hw/sys/sep/rtl/sep_crypto.sv:775, :805 wire the request to the eFuse wrapper, so AW/AR id[5:4] is always 0. NOT waived: AW/AR id[3:0] and the response IDs."
 Toggle sep_efuse_axi_req_i.aw.id [5:4] "logic sep_efuse_axi_req_i.aw.id[5:0]"
 Toggle sep_efuse_axi_req_i.ar.id [5:4] "logic sep_efuse_axi_req_i.ar.id[5:0]"
 
@@ -1838,7 +1833,7 @@ Toggle s_axil_rdata [31:26] "logic s_axil_rdata[31:0]"
 
 CHECKSUM: "2671987447 2027082395"
 INSTANCE: sep_uvm_top.u_dut.u_sep.u_sep_crypto.u_key_manager_s3c_scan
-ANNOTATION: "SEP-KM-EFUSE-REMAP-BASE: efuse_req_o address bits [31:12] come from OTP_EFUSE_REMAP_BASE (hw/ip/key_manager/rtl/key_manager.sv:393-396, OtpPageMask at hw/ip/key_manager/rtl/km_intf_pkg.sv:172-174), bound to a package constant at hw/sys/sep/rtl/sep_crypto.sv:1028. NOT waived: page-offset bits [11:2]."
+ANNOTATION: "SEP-KM-EFUSE-REMAP-BASE: efuse_req_o address bits [31:12] come from OTP_EFUSE_REMAP_BASE (hw/ip/key_manager/rtl/key_manager.sv:393-396, OtpPageMask at hw/ip/key_manager/rtl/km_intf_pkg.sv:172-174), bound to a package constant at hw/sys/sep/rtl/sep_crypto.sv:1048. NOT waived: page-offset bits [11:2]."
 Toggle efuse_req_o.aw.addr [31:12] "logic efuse_req_o.aw.addr[31:0]"
 Toggle efuse_req_o.ar.addr [31:12] "logic efuse_req_o.ar.addr[31:0]"
 

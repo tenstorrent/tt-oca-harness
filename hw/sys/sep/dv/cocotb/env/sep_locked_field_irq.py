@@ -215,7 +215,7 @@ class SepLockedFieldIrqCfg:
 def _selftest() -> None:
     # otp_fuse_controller.adoc: nine spares, slots 32-40.
     assert SPARE_COUNT == 9, f"SPARE_COUNT={SPARE_COUNT}, spec gives SPARE0..SPARE8"
-    # otp_fuse_controller.adoc:214-215: spare k (slot 32 + k) has its write lock at
+    # otp_fuse_controller.adoc:215-216: spare k (slot 32 + k) has its write lock at
     # LOCKS_SPARE bit 2k and its read lock at bit 2k + 1, above the 64 LOCKS bits.
     for k in range(SPARE_COUNT):
         assert spare_write_lock_bit(k) == 64 + 2 * k, f"spare {k} write lock"

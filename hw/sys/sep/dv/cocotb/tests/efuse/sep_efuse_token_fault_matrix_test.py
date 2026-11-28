@@ -35,7 +35,7 @@ no latch layout. No result code is graded under the freeze.
 
 Source 40 rise (each fault cell): vector bit 39 (PIC source 40) rises exactly
 once after the inject (CHK-SRC40-RISE; ``hw/sys/sep/doc/interrupts.adoc:22-23``
-bit ``i`` is PIC source ``i + 1``; ``:219-223`` source 40 is the OR of the three
+bit ``i`` is PIC source ``i + 1``; ``:231-235`` source 40 is the OR of the three
 sticky ``TOKEN_MATCH_FAULT`` bits and stays asserted;
 ``hw/sys/sep/doc/token_processing.adoc:138-141`` the fault flags remain set until
 reset). The level before the inject is 0 (graded by CHK-FAULT-CELL) and no reset
@@ -149,7 +149,7 @@ _RESET_WORDS_CONTRACT = (
     "sep/doc/token_processing.adoc:12-13(Token_Processing),124-125(Token_Submission)"
 )
 # Vector bit of PIC source 40, Token match fault (hw/sys/sep/doc/interrupts.adoc:22-23,
-# :219-220).
+# :231-232).
 _PIC40 = agg_from_pic("Token match fault")
 # Clocks a step tag stays on the pass label.
 _PASS_HOLD = 2

@@ -8,9 +8,9 @@ LSU local-alias remapping.
 The test boots VeeR EL2 with the cpu_alias_remap firmware. The firmware programs the CPU-side
 alias window base (SEP_LOCAL_BASE_ADDR = 0xD000_0000, its reset value) and checks the LSU and
 IFU remap in hw/sys/sep/rtl/sep_cpu.sv (axi_window_remap): 0xD000_xxxx maps to SEP SRAM at
-0x1000_xxxx and accesses outside the window pass through. The window is a fixed 768 MiB
-(memory_map.adoc, SEP Local Alias) positioned by the base CSR only; REGION_SIZE does not size
-it. The IFU check fetches and executes an instruction through the alias.
+0x1000_xxxx and accesses outside the window pass through. At its reset base the window spans
+768 MiB and ends at 0xFFFF_FFFF (memory_map.adoc, SEP Local Alias); it is positioned by the base
+CSR only, and REGION_SIZE does not size it. The IFU check fetches and executes an instruction through the alias.
 
 This must be a CPU-firmware test: the no_cpu AXI splice is after the remap, so a no_cpu driver
 bypasses the remapper. Firmware-self-checking (fw/startup/crt0.s PASS/FAIL magic); no fuse data
@@ -36,7 +36,7 @@ ecall; it prints one ``UMODE-LEG`` console record.
   two aw beats at its address: the machine-mode preset store and readback load
   are one beat each, so the other beat on each channel is the U-mode access.
 * CHK-LSU-UMODE-AXPROT: every PR-CPU-LSU read and write over the run, the U-mode
-  beats included, carries AxPROT ``0b001`` (hw/sys/sep/doc/cpu.adoc:59-61, table
+  beats included, carries AxPROT ``0b001`` (hw/sys/sep/doc/cpu.adoc:76-78, table
   sep-cpu-axprot-table: the value does not follow the privilege mode), at
   least one beat per channel.
 

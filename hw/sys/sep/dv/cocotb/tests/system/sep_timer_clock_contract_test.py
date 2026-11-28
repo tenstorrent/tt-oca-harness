@@ -14,7 +14,7 @@ this order, over the CPU-LSU master on ``s_axi``:
   ``hw/sys/sep/doc/clk_rst.adoc``, Clock Distribution). Of two writes with no
   poll between them, separated by 8 and by a drawn 9 to 12 ``clk_ref_i`` periods,
   the second one holds (CHK-REFCNT-SPACED;
-  ``doc/programmer/src/sep-smc-common.adoc:516-518``).
+  ``doc/programmer/src/sep-smc-common.adoc:519-521``).
 * Leg T. The bark status and then the bite request follow the count reads that
   reach the bark and bite thresholds, neither earlier than threshold - A nor
   later than threshold + A + D_pass in count (D_pass: the most the count
@@ -33,7 +33,10 @@ this order, over the CPU-LSU master on ``s_axi``:
   otherwise), and the watchdog alert (tap ``wdt_alert_probe_o``) reads 0 before
   the write and rises within ``SRC13_WINDOW`` ``clk_i`` cycles after it
   (CTRL-WDT-ALERT-REACH, CTRL-MISSING otherwise), so a refused write fails the
-  leaf. INFO-WDT-ALERT-RESP logs the response code, not graded: no
+  leaf. Over the same window PIC source 13 (vector bit 12 of the aggregator
+  probe) has the rises and high clocks of the watchdog alert tap: the alert
+  pulses "are ORed into ``wdt_alert_o``, which drives PIC source 13"
+  (``hw/sys/sep/doc/watchdog.adoc:23``; CHK-WDT-ALERT-SRC13). INFO-WDT-ALERT-RESP logs the response code, not graded: no
   specification states the response code of a legal register write. With
   ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, the count advance over
   ``WDT_WAIT`` ``clk_wdt_i`` periods matches the ``clk_wdt_i`` edges between
@@ -228,7 +231,7 @@ edges in (t0, t1].
   ``clk_i`` edge of the fall is logged as INFO-BITE-CLEAR-EDGE and not graded.
   The request stays 0 because ``WDOG_CTRL.enable``
   resets to 0 ("When set to 1, the watchdog timer will count.",
-  ``<aon_rdl>:73-74``) and a bite needs an enabled timer (``<aon>/README.md:56``).
+  ``<aon_rdl>:80-81``) and a bite needs an enabled timer (``<aon>/README.md:56``).
   Controls of the same pulse: ``sep_cpu_reset_n_o`` reads 0 (the pulse reaches
   the SEP, ``clk_rst.adoc:60``), and the SEP reset tap ``dbg_sep_reset_n_o``
   stays 1 ("A watchdog reset restarts the CPU without asserting the
@@ -318,8 +321,8 @@ Leg H grades the count and the bite request. The timer core runs on
 watchdog timer."; ``hw/sys/sep/doc/watchdog.adoc:23``, the timer domain reset is
 synchronized to ``clk_wdt_i``) and the count "increments on every tick of the
 AON clock" (``<aon>/README.md:52``), so the count advances while ``clk_i`` is
-stopped. ``wdt_timer_rst_req_o`` is "the bite reset request that fires when the
-second timeout stage expires" (``watchdog.adoc:27``), the bite occurs "on every
+stopped. ``wdt_timer_rst_req_o`` is "the bite reset request" (``watchdog.adoc:27``),
+the bite occurs "on every
 AON clock tick when the count is at least ``WDOG_BITE_THOLD``"
 (``<aon>/README.md:56``), and the request is "driven on the AON domain"
 (``<aon>/doc/theory_of_operation.md:9``), so it rises while ``clk_i`` is
@@ -372,7 +375,7 @@ CHK-BITE-HOLD, CHK-WDT-RATE, CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-S
 CHK-WDT-PET-HOLD, CHK-WDT-PET-BITE, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
 CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ, CHK-WDT-CLKSTOP-COUNT,
 CHK-WDT-CLKSTOP-BITE, CHK-WDT-BARK-REARM, CHK-WDT-INTRTEST-COUNT, CHK-WDT-NO-SPURIOUS,
-CHK-WDT-BITE-FIRST, CHK-WDT-FIRE-NOT-EARLY, CHK-WDT-PAUSE-RUN.
+CHK-WDT-BITE-FIRST, CHK-WDT-FIRE-NOT-EARLY, CHK-WDT-PAUSE-RUN, CHK-WDT-ALERT-SRC13.
 Controls (not counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
 CTRL-WKUP-SMALL, CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
 CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
@@ -531,7 +534,7 @@ CLKSTOP_RUN = 8  # clk_i cycles after the leg H restart before the first read
 # both miss the bound of 1 of CHK-WDT-CLKSTOP-COUNT.
 CLKSTOP_MIN_E = 4
 # Spaced reload pair of leg R. SPACED_MIN_REF: "separate consecutive writes by at least
-# eight reference-clock periods" (doc/programmer/src/sep-smc-common.adoc:516-518).
+# eight reference-clock periods" (doc/programmer/src/sep-smc-common.adoc:519-521).
 SPACED_MIN_REF = 8
 SPACED_MAX_REF = 12  # largest drawn spacing (environment choice)
 # clk_ref_i period of the pairs, in clk_i periods: longer than the issue-to-AW time of a
@@ -745,6 +748,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-WDT-BITE-FIRST",
         "CHK-WDT-FIRE-NOT-EARLY",
         "CHK-WDT-PAUSE-RUN",
+        "CHK-WDT-ALERT-SRC13",
     )
 
     # -- primitives -----------------------------------------------------------
@@ -1118,9 +1122,9 @@ class sep_timer_clock_contract_test(sep_base_test):
         """CHK-REFCNT-SPACED: of two writes d clk_ref_i edges apart, the second one holds.
 
         Spec: "separate consecutive writes by at least eight reference-clock
-        periods" (doc/programmer/src/sep-smc-common.adoc:516-518), and the readback
+        periods" (doc/programmer/src/sep-smc-common.adoc:519-521), and the readback
         is "at or just above the written value"
-        (hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:101-104). V1 is written,
+        (hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:103-106). V1 is written,
         then V2 with no read between, d edges after the B handshake of V1 (counted
         to the AW handshake of V2, which is at least the separation of any other
         reading of the rule). The bounded poll must read a value in
@@ -1491,9 +1495,9 @@ class sep_timer_clock_contract_test(sep_base_test):
             f"at pass {bite_pass} (bx=0x{bx:x} dx=0x{dx:x})"
         )
         # The bark interrupt line (tap wdt_bark_probe_o), sampled at the AR of each
-        # status read: "the watchdog bark interrupt that fires when the first timeout
-        # stage expires" (hw/sys/sep/doc/watchdog.adoc:27). A status read of 0 means
-        # the stage had not expired at its AR, so the line reads 0 there; after the
+        # status read: "``intr_wdog_timer_bark_o``, the watchdog bark interrupt"
+        # (hw/sys/sep/doc/watchdog.adoc:27). A status read of 0 means the bark had
+        # not fired at its AR, so the line reads 0 there; after the
         # first status read of 1 (sticky until a write of 1) the line reads 1 at every
         # later AR. bark_pass < bite_pass gives at least one later pass.
         early = [i for i, p in enumerate(passes) if not p["bark"] and p["line"]]
@@ -1792,7 +1796,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         src13 = SepBitWatch(
             cocotb.top.sep_internal_interrupts_probe_o, {"src13": 12}, name="src13"
         ).start()
-        m13 = src13.mark()
         seed = self.tcfg.seed
         alert = SepBitWatch(cocotb.top.wdt_alert_probe_o, name="wdt_alert").start()
         await RisingEdge(cocotb.top.clk_i)
@@ -1806,6 +1809,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             self.logger.error(msg)
             raise AssertionError(msg)
         ma = alert.mark()
+        m13 = src13.mark()
         # CHK-WDT-NO-SPURIOUS does not grade the alert from here to the end of leg T.
         self.nospur_alert_test = self.nospur_alert.mark()
         seq = SepAxiAccessSeq(
@@ -1824,9 +1828,13 @@ class sep_timer_clock_contract_test(sep_base_test):
             raise AssertionError(msg)
         self.logger.info("CTRL-WDT-ALERT-RESP seen: seed=%d write response received", seed)
         self.logger.info("INFO-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
-        # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         alert_rises = alert.rises_since(ma)
+        alert_high = alert.high_clocks_since(ma)
+        alert_edges = (
+            [c - ma.clk for c in alert.rise_clks_since(ma)],
+            [c - ma.clk for c in alert.fall_clks_since(ma)],
+        )
         await alert.stop()
         if alert_rises == 0:
             msg = (
@@ -1841,13 +1849,24 @@ class sep_timer_clock_contract_test(sep_base_test):
             alert_rises,
             SRC13_WINDOW,
         )
-        self.logger.info(
-            "OBS-SRC-SHAPE src=13 kind=wdt_alert_test rises=%d high_clk=%d window_clk=%d",
-            src13.rises_since(m13),
-            src13.high_clocks_since(m13),
-            SRC13_WINDOW,
+        # The alert pulses "are ORed into wdt_alert_o, which drives PIC source 13"
+        # (hw/sys/sep/doc/watchdog.adoc:23). Both taps read that net, so the compare
+        # grades that vector bit 12 carries the watchdog alert.
+        src_rises = src13.rises_since(m13)
+        src_high = src13.high_clocks_since(m13)
+        src_edges = (
+            [c - m13.clk for c in src13.rise_clks_since(m13)],
+            [c - m13.clk for c in src13.fall_clks_since(m13)],
         )
         await src13.stop()
+        line = (
+            f"seed={seed} src=13 rises={src_rises} high_clk={src_high} "
+            f"rise_fall_clk={src_edges} exp_rises={alert_rises} exp_high_clk={alert_high} "
+            f"exp_rise_fall_clk={alert_edges} window_clk={SRC13_WINDOW}"
+        )
+        if (src_rises, src_high, src_edges) != (alert_rises, alert_high, alert_edges):
+            raise AssertionError(f"CHK-WDT-ALERT-SRC13 FAIL: {line}")
+        self.logger.info("CHK-WDT-ALERT-SRC13 PASS: %s", line)
 
     def _rst_req_quiet(self, watch, samples: dict, chk: str, where: str) -> None:
         """Fail ``chk`` when the ``wdt_timer_rst_req_o`` watcher of leg T ended or read a 1."""
