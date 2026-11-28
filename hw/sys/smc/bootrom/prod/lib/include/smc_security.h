@@ -23,8 +23,8 @@
 #define SMC_LC_STATE_INVALID 0xF           /* 4'b1111 - Invalid / encoding error */
 #define SMC_LC_STATE_RMA_SOP_MASK 0xE      /* 4'b001X - RMA SoP mask (bits 3:1) */
 #define SMC_LC_STATE_RMA_SOP_VALUE 0x2     /* 4'b0010/0011 - RMA SoP pattern */
-#define SMC_LC_STATE_RMA_CHIPLET_MASK 0xC  /* 4'b01XX - RMA Chiplet mask (bits 3:2) */
-#define SMC_LC_STATE_RMA_CHIPLET_VALUE 0x4 /* 4'b0100-0111 - RMA Chiplet pattern */
+#define SMC_LC_STATE_RMA_CHIPLET_MASK 0xE  /* 4'b011X - RMA Chiplet mask (bits 3:1) */
+#define SMC_LC_STATE_RMA_CHIPLET_VALUE 0x6 /* 4'b0110/0111 - RMA Chiplet pattern */
 
 /*
  * SEP sends LC_STATE differentially encoded as an 8-bit value:
@@ -53,11 +53,8 @@
 /*
  * Security mode determination for SMC ROM:
  * - SECURE: Only PROD and PROD_END restrict memory access and prohibit JUMP
- * - UNSECURE: All other valid states (TEST_DEV, PROD_DBG, RMA_SoP, RMA_CHIPLET)
+ * - UNSECURE: All other valid states (TEST_DEV, RMA_SoP, RMA_CHIPLET)
  *   allow unrestricted access and all OCCP commands
- *
- * Note: PROD_DBG uses same encoding as PROD (0x1) but is treated as unsecure
- * by SMC ROM to allow debug access. Upper layers distinguish PROD vs PROD_DBG.
  */
 #define SMC_LC_STATE_IS_SECURE(lc_state) \
     (SMC_LC_STATE_IS_PROD(lc_state) || SMC_LC_STATE_IS_PROD_END(lc_state))
@@ -71,7 +68,6 @@ uint8_t smc_security_get_lc_state(void);
 
 /**
  * Check if the device is in secure mode (PROD or PROD_END)
- * Note: PROD_DBG uses same encoding as PROD but is treated as unsecure
  * @return 1 if in secure mode, 0 otherwise
  */
 uint8_t smc_security_is_secure_mode(void);

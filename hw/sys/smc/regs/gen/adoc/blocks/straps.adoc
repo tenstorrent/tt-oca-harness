@@ -32,7 +32,7 @@ Strap assignments in this range:
 * bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap
 * bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
 * bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel
-* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted
+* bit 20: BL0_PLLCLK - Use the PLL generated clock in BL0 when this strap is asserted; BL0 runs on the reference clock when it is clear
 * bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
 * bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
 * bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
