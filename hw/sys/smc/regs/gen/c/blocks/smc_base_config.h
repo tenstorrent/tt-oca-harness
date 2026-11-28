@@ -104,27 +104,27 @@ typedef union {
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ZEROER_CG_EN_bp 8
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ZEROER_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__ZEROER_CG_EN_reset 0x0
-// Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.
+// Clock gate enable for I3C. While set, every new access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E, and the I3C peripheral clock stops once every access already handed to the peripheral has completed.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_bm 0x200
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_bp 9
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_reset 0x0
-// Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.
+// Clock gate enable for AVSBus. While set, every new access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E, and the AVSBus controller clocks stop once every access already handed to the peripheral has completed.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bm 0x400
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bp 10
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_reset 0x0
-// Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.
+// Clock gate enable for I2C. While set, every new access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E, and the I2C peripheral clock stops once every access already handed to the peripheral has completed.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I2C_CG_EN_bm 0x800
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I2C_CG_EN_bp 11
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I2C_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I2C_CG_EN_reset 0x0
-// Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.
+// Clock gate enable for UART. While set, every new access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E, and the UART peripheral clock stops once every access already handed to the peripheral has completed.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__UART_CG_EN_bm 0x1000
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__UART_CG_EN_bp 12
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__UART_CG_EN_bw 1
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__UART_CG_EN_reset 0x0
-// Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.
+// Clock gate enable for telemetry. While set, every new access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E, and the telemetry receiver clocks stop once every access already handed to the peripheral has completed.
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bm 0x2000
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bp 13
 #define SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bw 1
@@ -154,15 +154,15 @@ typedef union {
         uint64_t output_fabric_cg_en :1;
         // Clock gate enable for axi zeroer
         uint64_t zeroer_cg_en :1;
-        // Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.
+        // Clock gate enable for I3C. While set, every new access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E, and the I3C peripheral clock stops once every access already handed to the peripheral has completed.
         uint64_t i3c_cg_en :1;
-        // Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.
+        // Clock gate enable for AVSBus. While set, every new access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E, and the AVSBus controller clocks stop once every access already handed to the peripheral has completed.
         uint64_t avs_cg_en :1;
-        // Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.
+        // Clock gate enable for I2C. While set, every new access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E, and the I2C peripheral clock stops once every access already handed to the peripheral has completed.
         uint64_t i2c_cg_en :1;
-        // Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.
+        // Clock gate enable for UART. While set, every new access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E, and the UART peripheral clock stops once every access already handed to the peripheral has completed.
         uint64_t uart_cg_en :1;
-        // Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.
+        // Clock gate enable for telemetry. While set, every new access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E, and the telemetry receiver clocks stop once every access already handed to the peripheral has completed.
         uint64_t telemetry_cg_en :1;
         uint64_t :10;
         // Clockgate cg_hysteresis

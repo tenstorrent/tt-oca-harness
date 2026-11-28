@@ -114,23 +114,6 @@ expect_fail_match = "CHK-FLR-NO-REQUEUE FAIL: .*a second fall [0-9]+ edges after
 args = ["+smc_flr_requeue_assertoff"]
 
 [[tests]]
-# The I2C register block runs on the gated peripheral clock while the
-# peripheral side of the AXI-Lite CDC runs on the ungated one, so a response
-# handed over as the gate closes is taken more than once and a response no
-# read asked for stays queued; every later read of the leg receives the
-# previous read's word. clk_rst.adoc states that an access the peripheral
-# has accepted finishes there. The arm leg proves the open and closed gate
-# answer once each before the sweep.
-name = "smc_clock_gate_inflight_completes_test"
-module = "smc_clock_gate_inflight_completes_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "a response handed over as the I2C clock gate closes is duplicated and later reads of the leg receive the previous read's word"
-expect_fail_match = "CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE FAIL: .*timed_out=False .*a completed read left r_valid still presented"
-
-[[tests]]
 # Observation leaf: the FLR pre-delay is N+1 clk_ref_i cycles, the
 # hold is M, and an edge during a running sequence is ignored; reset_unit.rdl
 # names neither the clock nor the offset. The OBS-FLR lines record each
@@ -359,13 +342,12 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 6
+expected_count = 5
 tests = [
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_clock_halt_release_test",
     "smc_spm_write_cut_by_warm_reset_test",
     "smc_flr_hold_edge_requeue_test",
-    "smc_clock_gate_inflight_completes_test",
     "smc_fabric_demux_bucket_limits_test",
 ]
 

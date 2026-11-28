@@ -1445,7 +1445,7 @@ clk_periph_i = 10 / 1.25 / 5 ns).
 |`smc_clk_ratio_rand_test` |3 |Seeded `clk_smc_i`, `clk_ref_i` and `clk_periph_i` periods
 inside the stated bounds leave the register traffic of the clock-cell family completing with its
 generated reset words and written patterns, with each measured period equal to the drawn one.
-|`smc_clock_gate_inflight_completes_test` |3, held out |A read the I2C peripheral accepted before `I2C_CG_EN` is set must complete once with its own word; a response handed over as the gate closes is duplicated and later reads receive the previous word (#3602).
+|`smc_clock_gate_inflight_completes_test` |3 |A read handed to the I2C peripheral before `I2C_CG_EN` is set completes once with its own word, and the leg is idle after it.
 |===
 
 ==== CPU
@@ -24257,6 +24257,86 @@ the 100 MHz `clk_periph_i` floor being the only specification value among them. 
 a stimulus-integrity check. Periods outside the drawn ranges, the fixed-cell modules' pinned corners
 and the register cells of the directed leaves are not repeated. The fixed-cell `smc_clk_*` modules
 stay as the walked corners.
+
+'''''
+
+[[sec-574-smc_clock_gate_inflight_completes_test]]
+===== 574 `smc_clock_gate_inflight_completes_test`
+
+*Phase*: 3
+
+*Area*: CLOCK
+
+*Source Module*: `smc_clock_gate_inflight_completes_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`) for `CLOCK_GATE_CONTROL`, the
+I2C_CTRL window polls and the I2C0 `STATUS` read, and on JTAG AXI (`env.jtag_axi_agent`) for the
+I2C_CTRL read of each trial; bench probes `tb_top.tb_periph_cdc_arvalid`,
+`tb_top.tb_periph_cdc_arready` and `tb_top.tb_periph_cdc_rvalid` (the I2C leg on the peripheral
+side of the AXI-Lite CDC) and `tb_top.tb_i2c_cg_en`, sampled on `clk_periph_i`; `clk_smc_i` for
+the launch offsets.
+
+*Run mode*: one testlist entry in `testlists/clock.toml`; groups `all`, `hosted`, `clock`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `clock`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
+draws nothing from the seed.
+
+*Objective*: An I2C register read accepted by the peripheral before its clock-gate enable is set
+completes once with its own word; a read not accepted there answers SLVERR with 0xBADCAB1E.
+
+*Test Coverage*:
+
+* The leg is redirected as soon as the `CLOCK_GATE_CONTROL` write completes; an access already
+  handed to the peripheral finishes there, and the peripheral's clocks stop only once none is
+  outstanding (`clk_rst.adoc` "Subsystem Controls and Clock Gating"): the JTAG read
+  launch is swept from 64 cycles before to 64 cycles after the SEP_IN enable write in steps of 4
+  `clk_smc_i` cycles; a read with an AR handshake at the peripheral must answer OKAY with the reset
+  word, a read without one must answer SLVERR with 0xBADCAB1E, no read may time out, and after
+  every read the peripheral side of the leg must idle for 16 `clk_periph_i` rises within 512.
+* Arm leg: with the gate open one read handshakes one AR at the peripheral, shows `rvalid` there,
+  answers OKAY and leaves the leg idle; with the gate closed one read handshakes nothing and shows
+  no `rvalid` there, answers SLVERR and leaves the leg idle.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done`; read `CLOCK_GATE_CONTROL`, clear `I2C_CG_EN` if set, read
+  I2C_CTRL expecting its reset word.
+. Arm: JTAG read of I2C_CTRL with the gate open, then set `I2C_CG_EN`, poll the window to SLVERR,
+  JTAG read with the gate closed, clear the enable and poll the window to its reset word.
+. For each offset from -64 to +64 in steps of 4: start the JTAG read and the SEP_IN
+  `CLOCK_GATE_CONTROL` write so the read launches that many `clk_smc_i` cycles after the write
+  (before it for negative offsets); wait for the read (bound 20000 ns); wait for the leg to idle;
+  if it does not, clear the enable, read I2C0 `STATUS` and fail with the levels seen and the
+  `STATUS` word; otherwise poll the window to SLVERR (bound 400 cycles), clear the enable and poll
+  it to its reset word.
+. Restore `CLOCK_GATE_CONTROL`; require every trial to meet its rule and both outcomes to occur.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CG-INFLIGHT-ARM` |With the gate open the JTAG read must answer OKAY with the reset word after
+  exactly one AR handshake and at least one `rvalid` rise at the peripheral and the leg must idle;
+  with the gate closed it must answer SLVERR with 0xBADCAB1E after no AR handshake and no `rvalid`
+  there and the leg must idle.
+|`CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE` |Every trial read must answer OKAY with the reset word
+  when the peripheral handshook its AR and SLVERR with 0xBADCAB1E when it did not, none may time
+  out, the leg must idle after each, and both outcomes must occur in the sweep; the first trial
+  after which the leg stays busy fails the run naming whether a completed read left `r_valid`
+  presented or a request is still pending, with the levels seen and the I2C0 `STATUS` word read
+  once the enable is cleared.
+|===
+
+*Pass Criteria*: `CHK-CG-INFLIGHT-ARM` and `CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE` hold: every
+read the peripheral handshook answers OKAY with its reset word, every other read answers SLVERR with
+0xBADCAB1E, none times out, the leg idles after each, and both outcomes occur in the sweep.
+Enrolled in: `all`, `hosted`, `clock`.
+
+*Scope limit*: The I2C leg only: it is the one with peripheral-side CDC probes. The UART, AVSBus,
+telemetry and I3C legs share the gating structure and are not swept.
 
 '''''
 
@@ -55379,7 +55459,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
 |#3601 |`smc_flr_hold_edge_requeue_test` |`rtl_issue` |An FLR edge met while the cool-reset hold counter runs restarts the pre-reset count, and when that count outlasts the hold `rst_cool_no` pulses a second time, where `clk_rst.adoc` states the sequencer is not a queue of overlapping requests; the leaf arms with one request and asserts one pulse of that width for edges inside the count and inside the hold
-|#3602 |`smc_clock_gate_inflight_completes_test` |`rtl_issue` |The I2C register block runs on the gated peripheral clock and the peripheral side of its AXI-Lite CDC on the ungated one, so a response handed over as `I2C_CG_EN` closes the gate is taken more than once and every later read of the leg receives the previous read's word, where `clk_rst.adoc` states an accepted access finishes there; the leaf arms with an open and a closed read and asserts every swept read completes once with the leg idle after it
 |#3619 |`smc_fabric_demux_bucket_limits_test` |`rtl_issue` |The vendored `axi_demux` sizes its per-ID-bucket in-flight counter to `clog2(MaxTrans)` bits and reports the bucket full when it is all ones, so the fabric demultiplexers admit 31 same-ID reads per ID bucket and the local crossbar's demux 7 per manager, where the module's parameter contract and `fabric.adoc` give `FabricMaxTrans` 32 and `MaxMstTrans` 8; the leaf holds RREADY, probes at the counters' own handshake points, requires the port behind each demux to withhold nothing, and asserts the chapter's numbers
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
 |===
@@ -55477,94 +55556,6 @@ first release. The row grades the FAIL line; an observed PASS is the signal to m
 
 *Scope limit*: One counter pair; the coincidence of the restarted pre-reset expiry with the hold
 expiry is not swept.
-
-'''''
-
-[[sec-574-smc_clock_gate_inflight_completes_test]]
-===== 574 `smc_clock_gate_inflight_completes_test`
-
-*Phase*: 3
-
-*Area*: CLOCK
-
-*Status*: held out (`rtl_issue`, expected to fail)
-
-*Source Module*: `smc_clock_gate_inflight_completes_test`
-
-*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`) for `CLOCK_GATE_CONTROL`, the
-I2C_CTRL window polls and the I2C0 `STATUS` read, and on JTAG AXI (`env.jtag_axi_agent`) for the
-I2C_CTRL read of each trial; bench probes `tb_top.tb_periph_cdc_arvalid`,
-`tb_top.tb_periph_cdc_arready` and `tb_top.tb_periph_cdc_rvalid` (the I2C leg on the peripheral
-side of the AXI-Lite CDC) and `tb_top.tb_i2c_cg_en`, sampled on `clk_periph_i`; `clk_smc_i` for
-the launch offsets.
-
-*Run mode*: one testlist entry in `testlists/holdout.toml`; group `rtl_issue` (the weekly tier's
-own `regress.yml` row), not in `all`, `hosted` or `smoke`; `run_modes` `smoke`; `timeout_sec`
-1800; tag `rtl_issue`, no `ci`; seed 1; `expect_fail` "a response handed over as the I2C clock
-gate closes is duplicated and later reads of the leg receive the previous read's word" and
-`expect_fail_match`
-`CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE FAIL: .*timed_out=False .*a completed read left r_valid still presented`;
-tool Verilator (cocotb).
-
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed.
-
-*Objective*: An I2C register read accepted by the peripheral before its clock-gate enable is set
-completes once with its own word; a read not accepted there answers SLVERR with 0xBADCAB1E.
-
-*Test Coverage*:
-
-* The leg is redirected as soon as the `CLOCK_GATE_CONTROL` write completes; an access the
-  peripheral has already accepted finishes there, since its clock stops only after the enable has
-  crossed into its domain (`clk_rst.adoc` "Subsystem Controls and Clock Gating"): the JTAG read
-  launch is swept from 64 cycles before to 64 cycles after the SEP_IN enable write in steps of 4
-  `clk_smc_i` cycles; a read with an AR handshake at the peripheral must answer OKAY with the reset
-  word, a read without one must answer SLVERR with 0xBADCAB1E, no read may time out, and after
-  every read the peripheral side of the leg must idle for 16 `clk_periph_i` rises within 512.
-* Arm leg: with the gate open one read handshakes one AR at the peripheral, shows `rvalid` there,
-  answers OKAY and leaves the leg idle; with the gate closed one read handshakes nothing and shows
-  no `rvalid` there, answers SLVERR and leaves the leg idle.
-
-*Test Procedure*:
-
-[arabic]
-. Wait for `tb_fuse_sense_done`; read `CLOCK_GATE_CONTROL`, clear `I2C_CG_EN` if set, read
-  I2C_CTRL expecting its reset word.
-. Arm: JTAG read of I2C_CTRL with the gate open, then set `I2C_CG_EN`, poll the window to SLVERR,
-  JTAG read with the gate closed, clear the enable and poll the window to its reset word.
-. For each offset from -64 to +64 in steps of 4: start the JTAG read and the SEP_IN
-  `CLOCK_GATE_CONTROL` write so the read launches that many `clk_smc_i` cycles after the write
-  (before it for negative offsets); wait for the read (bound 20000 ns); wait for the leg to idle;
-  if it does not, clear the enable, read I2C0 `STATUS` and fail with the levels seen and the
-  `STATUS` word; otherwise poll the window to SLVERR (bound 400 cycles), clear the enable and poll
-  it to its reset word.
-. Restore `CLOCK_GATE_CONTROL`; require every trial to meet its rule and both outcomes to occur.
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|`CHK-CG-INFLIGHT-ARM` |With the gate open the JTAG read must answer OKAY with the reset word after
-  exactly one AR handshake and at least one `rvalid` rise at the peripheral and the leg must idle;
-  with the gate closed it must answer SLVERR with 0xBADCAB1E after no AR handshake and no `rvalid`
-  there and the leg must idle.
-|`CHK-ACCEPTED-ACCESS-COMPLETES-ACROSS-GATE` |Every trial read must answer OKAY with the reset word
-  when the peripheral handshook its AR and SLVERR with 0xBADCAB1E when it did not, none may time
-  out, the leg must idle after each, and both outcomes must occur in the sweep; the first trial
-  after which the leg stays busy fails the run naming whether a completed read left `r_valid`
-  presented or a request is still pending, with the levels seen and the I2C0 `STATUS` word read
-  once the enable is cleared.
-|===
-
-*Pass Criteria*: Recorded as an expected failure: a read accepted at the peripheral as the gate
-closes answers OKAY, after which `r_valid` on the peripheral side of the I2C CDC stays high with
-the gate closed and, with the enable cleared, I2C0 `STATUS` reads the previous read's word instead
-of its reset value. The row grades the FAIL line; an observed PASS is the signal to move the leaf
-to `clock.toml`.
-
-*Scope limit*: The I2C leg only: it is the one with peripheral-side CDC probes. The UART, AVSBus,
-telemetry and I3C legs share the gating structure and are not swept.
 
 '''''
 
@@ -58659,8 +58650,8 @@ and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_warm_domain_access_during_reset_test` (#3408),
 `smc_dfd_cla_clock_halt_release_test` (#3390),
-`smc_spm_write_cut_by_warm_reset_test` (#3510),
-`smc_flr_hold_edge_requeue_test` (#3601) and `smc_clock_gate_inflight_completes_test` (#3602).
+`smc_spm_write_cut_by_warm_reset_test` (#3510) and
+`smc_flr_hold_edge_requeue_test` (#3601).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in

@@ -10,6 +10,10 @@
 // there even if block_i rises afterwards. Responses return in request order.
 // clk_i must keep running while block_i is high: the gate sits in front of a subordinate
 // whose own clock may be stopped.
+//
+// pass_idle_o is high while the subordinate port has no request presented and none awaiting
+// its response. A subordinate clock that stops on block_i & pass_idle_o therefore stops with
+// no access in flight, since while block_i is high no new access reaches that port.
 
 module prim_axil_access_gate #(
   parameter int unsigned           ADDR_WIDTH = 32,  // AXI-Lite address width.
@@ -41,7 +45,9 @@ module prim_axil_access_gate #(
   output axil_resp_t axil_resp_o,  // Response toward the manager.
 
   output axil_req_t  axil_req_o,  // Request toward the subordinate.
-  input  axil_resp_t axil_resp_i  // Response from the subordinate.
+  input  axil_resp_t axil_resp_i,  // Response from the subordinate.
+
+  output logic pass_idle_o  // No access routed to the subordinate is awaiting its response.
 );
 
   localparam logic PassPort = 1'b0;
@@ -99,5 +105,30 @@ module prim_axil_access_gate #(
 
   assign axil_req_o            = axil_reqs[PassPort];
   assign axil_resps[PassPort]  = axil_resp_i;
+
+  logic pass_active;
+
+  prim_axi_snoop #(
+    .OUTSTANDING_TX(MAX_TRANS)
+  ) u_pass_snoop (
+    .clk_i            (clk_i),
+    .rst_ni           (rst_ni),
+    .snoop_aw_valid_i (axil_req_o.aw_valid),
+    .snoop_aw_ready_i (axil_resp_i.aw_ready),
+    .snoop_w_valid_i  (axil_req_o.w_valid),
+    .snoop_b_valid_i  (axil_resp_i.b_valid),
+    .snoop_b_ready_i  (axil_req_o.b_ready),
+    .snoop_ar_valid_i (axil_req_o.ar_valid),
+    .snoop_ar_ready_i (axil_resp_i.ar_ready),
+    .snoop_r_valid_i  (axil_resp_i.r_valid),
+    .snoop_r_ready_i  (axil_req_o.r_ready),
+    .snoop_r_last_i   (1'b1),
+    .bus_active_o     (pass_active),
+    .complete_aw_o    (),
+    .complete_ar_o    (),
+    .req_count_q_o    ()
+  );
+
+  assign pass_idle_o = ~pass_active;
 
 endmodule
