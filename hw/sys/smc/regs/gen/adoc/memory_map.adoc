@@ -41,7 +41,7 @@
 |BASE + 0x6000 – BASE + 0x6FFF |4 KiB |4 KiB |UART Wrapper Address Map |1 instance |- |UART controller. |OKAY, 0x0 / OKAY; between sub-blocks: DECERR, 0xBADCAB1E / DECERR |-
 |BASE + 0x7000 – BASE + 0x7FFF |4 KiB |256 B |Efuse address map of physical efuse macro |1 instance |- |Address map for efuse shadow registers providing access to various chip configuration and ID fields |- |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x8000 – BASE + 0x8FFF |4 KiB |36 B |eFuse Interface Control Address Map |1 instance |- |eFuse command and status registers. |- |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x9000 – BASE + 0x9FFF |4 KiB |768 B |Telemetry Receiver Wrapper Address Map |1 instance |- |Telemetry data receiver. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|BASE + 0x9000 – BASE + 0x9FFF |4 KiB |768 B |Telemetry Receiver Wrapper Address Map |1 instance |- |Telemetry data receiver. |DECERR, 0xBADCAB1E / DECERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0xA000 – BASE + 0xAFFF |4 KiB |36 B |OCTS System Timer Address Map |1 instance |- |Open Chiplet Time Synchronization (OCTS) System Timer Registers |- |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0xB000 – BASE + 0xB7FF |2 KiB |2 KiB |dtp_ctrl_reg |1 instance |- |512-entry DTP control block. |Forwarded |-
 |BASE + 0xB800 – BASE + 0xBFFF |2 KiB |24 B |DFX Control and Status Address Map |1 instance |- |DFT status exposed to boot firmware. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR

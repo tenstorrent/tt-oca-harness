@@ -250,10 +250,10 @@ module telemetry_receiver_wrap_reg (
         is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         for(int i0=0; i0<3; i0++) begin
-            decoded_reg_strb.telemetry_receiver[i0] = cpuif_req_masked & (cpuif_addr >= 10'h0 + (10)'(i0) * 10'h100) & (cpuif_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'hff);
-            is_external |= cpuif_req_masked & (cpuif_addr >= 10'h0 + (10)'(i0) * 10'h100) & (cpuif_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'hff);
-            is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 10'h0 + (10)'(i0) * 10'h100) & (cpuif_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'hff);
-            is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 10'h0 + (10)'(i0) * 10'h100) & (cpuif_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'hff);
+            decoded_reg_strb.telemetry_receiver[i0] = cpuif_req_masked & (cpuif_addr >= 10'h0 + (10)'(i0) * 10'h100) & (cpuif_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'h17);
+            is_external |= cpuif_req_masked & (cpuif_addr >= 10'h0 + (10)'(i0) * 10'h100) & (cpuif_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'h17);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 10'h0 + (10)'(i0) * 10'h100) & (cpuif_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'h17);
+            is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 10'h0 + (10)'(i0) * 10'h100) & (cpuif_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'h17);
         end
         is_valid_addr = cpuif_addr < 10'h300;
         decoded_err = ~is_valid_addr & decoded_req;
@@ -293,7 +293,7 @@ module telemetry_receiver_wrap_reg (
     for(genvar i0=0; i0<3; i0++) begin
         // External region: telemetry_receiver_wrap.telemetry_receiver[]
         assign hwif_out.telemetry_receiver[i0].req = decoded_reg_strb.telemetry_receiver[i0];
-        assign hwif_out.telemetry_receiver[i0].addr = decoded_addr[7:0];
+        assign hwif_out.telemetry_receiver[i0].addr = decoded_addr[4:0];
         assign hwif_out.telemetry_receiver[i0].req_is_wr = decoded_req_is_wr;
         assign hwif_out.telemetry_receiver[i0].wr_data = decoded_wr_data;
         assign hwif_out.telemetry_receiver[i0].wr_biten = decoded_wr_biten;
@@ -350,7 +350,7 @@ module telemetry_receiver_wrap_reg (
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
         for(int i0=0; i0<3; i0++) begin
-            if((rd_mux_addr >= 10'h0 + (10)'(i0) * 10'h100) && (rd_mux_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'hff)) begin
+            if((rd_mux_addr >= 10'h0 + (10)'(i0) * 10'h100) && (rd_mux_addr <= 10'h0 + (10)'(i0) * 10'h100 + 10'h17)) begin
                 readback_data_var = hwif_in.telemetry_receiver[i0].rd_data;
             end
         end

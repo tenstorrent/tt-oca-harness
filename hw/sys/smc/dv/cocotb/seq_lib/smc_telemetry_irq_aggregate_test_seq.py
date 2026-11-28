@@ -5,9 +5,10 @@
 Spec sources: hw/sys/smc/doc/interrupts.adoc, hw/ip/telemetry_receiver/doc/architecture.adoc,
 regs/telemetry_receiver.rdl.
 
-ATB framing from telemetry_receiver/doc/index.adoc (Telemetry packet fields) and
-architecture.adoc (Assembly and Decode): eight beats LSB first, bit 63 last packet, probe ID
-[60:56] of the first packet, block i at bits [9i+8:9i] with its valid bit at 9i+8.
+Each receiver has one interrupt source, ``BUFFER_THRESHOLD``, raised either by more beats in
+the FIFO than ``CTRL.BUFFER_THRESHOLD`` or by ``INTR_TEST.BUFFER_THRESHOLD``. A
+``TELEMETRY_DATA`` read that brings the count back down releases the first, and writing
+``INTR_TEST`` to 0 releases the second.
 """
 
 from __future__ import annotations
@@ -16,56 +17,31 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import (
-    _REPO,
-    TELEMETRY_CG_EN,
-    _field_mask,
-    smc_addr,
-    smc_indexed_addr,
-)
+from .smc_addr_map import TELEMETRY_CG_EN, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-
-_TELEMETRY_H = (
-    _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
+from .smc_telemetry_atb_capture_test_seq import (
+    BUFFER_EMPTY_BM,
+    ENABLE_THRESHOLD_BM,
+    RX_FLUSH_BM,
+    _HeldSource,
+    _rx_addr,
+    _tel,
+    _word,
 )
-
-
-def _tel(symbol: str) -> int:
-    return _field_mask(_TELEMETRY_H, symbol)
-
-
-def _addr(register: str, rx: int) -> int:
-    return smc_indexed_addr(
-        f"SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{register}_BASE_ADDR", rx
-    )
-
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 RECEIVERS = (0, 1, 2)
 
-RX_FLUSH_BM = _tel("TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm")
-BUFFER_EMPTY_BM = _tel("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
-MISSING_LAST_BM = _tel("TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_bm")
 THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_bm")
-ENABLE_MISSING_LAST_BM = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__MISSING_LAST_bm")
-ENABLE_THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_bm")
 TEST_THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__INTR_TEST__BUFFER_THRESHOLD_bm")
 
-BEAT_BITS = 8
-PACKET_BITS = 64
-BEATS_PER_PACKET = PACKET_BITS // BEAT_BITS
-BLOCK_BITS = 9
-PROBE_ID_BITS = 5
-PROBE_ID_LSB = 56
-LAST_PACKET_BIT = 63
-NEXT_BLOCK_LSB = 54
-ATID = {0: 0x00, 1: 0x11, 2: 0x22}
+#: With `CTRL.BUFFER_THRESHOLD` at its reset of 0, one beat raises the source.
+COUNT_BEAT = (0x11, 0x5C)
+MASKED_BEAT = (0x12, 0x7E)
 
 FUSE_SENSE_BOUND = 200_000
-ATB_ACCEPT_BOUND = 64
 IRQ_POLL_BOUND = 64
 STATUS_POLL_BOUND = 200
-MAX_PACKETS = 16
 QUIET_CYCLES = 64
 
 STEP_ORDER = ("S1", "S2", "S3", "S4", "S5")
@@ -85,14 +61,6 @@ CHK_STEP = (
 )
 
 
-def _mid_packet() -> int:
-    """A packet without the last-packet flag."""
-    packet = 0x0A << PROBE_ID_LSB
-    for lsb in range(0, NEXT_BLOCK_LSB, BLOCK_BITS):
-        packet |= ((1 << BLOCK_BITS) - 1) << lsb
-    return packet
-
-
 def _level(signal, name: str) -> int:
     raw = signal.value
     assert raw.is_resolvable, f"{name} is X/Z: {raw}"
@@ -108,7 +76,6 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
         self._chk_marks: list[tuple[str, int]] = []
         self._waits: list[tuple[str, str, str]] = []
         self._last = "none"
-        self.packets_to_missing_last = 0
 
     def _note_wait(self, name: str, bound: str) -> None:
         if all(known != name for known, _, _ in self._waits):
@@ -132,11 +99,11 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
 
     async def _read(self, label: str, reg: str, rx: int) -> int:
         self._last = f"read {label} {reg}[{rx}]"
-        return await self.csr_read(f"{label}_{reg}_{rx}", _addr(reg, rx))
+        return await self.csr_read(f"{label}_{reg}_{rx}", _rx_addr(reg, rx))
 
     async def _write(self, label: str, reg: str, rx: int, data: int) -> None:
         self._last = f"write {label} {reg}[{rx}]=0x{data:08x}"
-        await self.csr_write(f"{label}_{reg}_{rx}", _addr(reg, rx), data)
+        await self.csr_write(f"{label}_{reg}_{rx}", _rx_addr(reg, rx), data)
 
     async def _await_vector(self, label: str, want_vec: int, want_any: int) -> int:
         """Poll the irq vector and aggregate until both match; returns the cycles taken."""
@@ -168,44 +135,20 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
             f"(last STATUS=0x{status:08x})"
         )
 
-    async def _beat(self, rx: int, value: int, beat: int) -> None:
-        dut = cocotb.top
-        getattr(dut, f"tb_telemetry{rx}_atdata").value = value & 0xFF
-        getattr(dut, f"tb_telemetry{rx}_atid").value = ATID[rx] & 0x7F
-        atvalid = getattr(dut, f"tb_telemetry{rx}_atvalid")
-        atready = getattr(dut, f"tb_telemetry{rx}_atready")
-        atvalid.value = 1
-        await RisingEdge(dut.clk_smc_i)
-        accepted = False
-        for _ in range(ATB_ACCEPT_BOUND):
-            if _level(atready, f"tb_telemetry{rx}_atready"):
-                accepted = True
-                break
-            await RisingEdge(dut.clk_smc_i)
-        atvalid.value = 0
-        self._note_wait("atb_beat_accept", f"{ATB_ACCEPT_BOUND}_clk_smc_i_cycles")
-        state = f"rx{rx}_beat{beat}_{'accepted' if accepted else 'atready_low'}"
-        self._end_wait("atb_beat_accept", state)
-        if not accepted:
-            raise AssertionError(
-                f"ATB beat {beat} into receiver {rx} never accepted over {ATB_ACCEPT_BOUND} "
-                f"clk_smc_i cycles"
-            )
-
-    async def _send_packet(self, rx: int, packet: int) -> None:
-        for beat in range(BEATS_PER_PACKET):
-            await self._beat(rx, (packet >> (beat * BEAT_BITS)) & 0xFF, beat)
-
-    async def _raise_missing_last(self, label: str, rx: int) -> int:
-        """Send unflagged packets until INTR_STATUS.MISSING_LAST sets; returns the count."""
-        for packets in range(1, MAX_PACKETS + 1):
-            await self._send_packet(rx, _mid_packet())
-            intr = await self._read(f"{label}_{packets}", "INTR_STATUS", rx)
-            if intr & MISSING_LAST_BM:
-                return packets
+    async def _raise_by_count(self, label: str, rx: int, beat: tuple[int, int]) -> int:
+        """Send one beat with `CTRL.BUFFER_THRESHOLD` at 0; returns the polls to the source."""
+        self._note_wait("threshold_poll", f"{STATUS_POLL_BOUND}_polls")
+        await _HeldSource(cocotb.top, [beat], rx=rx).task
+        intr = 0
+        for polls in range(1, STATUS_POLL_BOUND + 1):
+            intr = await self._read(f"{label}_{polls}", "INTR_STATUS", rx)
+            if intr & THRESHOLD_BM:
+                self._end_wait("threshold_poll", f"rx{rx}_INTR_STATUS=0x{intr:08x}")
+                return polls
+        self._end_wait("threshold_poll", f"rx{rx}_INTR_STATUS=0x{intr:08x}_expired")
         raise AssertionError(
-            f"{label}: INTR_STATUS.MISSING_LAST of receiver {rx} never set over {MAX_PACKETS} "
-            f"packets without the last-packet flag"
+            f"{label}: INTR_STATUS.BUFFER_THRESHOLD of receiver {rx} never set over "
+            f"{STATUS_POLL_BOUND} polls with one beat against a threshold of 0"
         )
 
     async def _release_test(self, label: str, rx: int) -> None:
@@ -222,7 +165,7 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
             await self._write("SETUP_FLUSH", "CTRL", rx, RX_FLUSH_BM)
             await self._wait_flushed("SETUP_FLUSHED", rx)
             await self._write("SETUP_ENABLE", "INTR_ENABLE", rx, 0)
-            await self._write("SETUP_CLR", "INTR_STATUS", rx, MISSING_LAST_BM)
+            await self._write("SETUP_TEST", "INTR_TEST", rx, 0)
         vec, any_ = self._vector()
         assert (vec, any_) == (0, 0), f"setup left irq=0b{vec:03b} any={any_}"
         self._stamp("S1")
@@ -274,13 +217,16 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
 
     async def _each_source(self) -> None:
         rx = 1
-        await self._write("EACH_ML_ENABLE", "INTR_ENABLE", rx, ENABLE_MISSING_LAST_BM)
-        packets = await self._raise_missing_last("EACH_ML", rx)
-        self.packets_to_missing_last = packets
-        ml_rise = await self._await_vector("each_ml_rise", 0b010, 1)
-        await self._write("EACH_ML_CLR", "INTR_STATUS", rx, MISSING_LAST_BM)
-        ml_fall = await self._await_vector("each_ml_fall", 0, 0)
-        await self._write("EACH_ML_DISABLE", "INTR_ENABLE", rx, 0)
+        await self._write("EACH_COUNT_ENABLE", "INTR_ENABLE", rx, ENABLE_THRESHOLD_BM)
+        polls = await self._raise_by_count("EACH_COUNT", rx, COUNT_BEAT)
+        count_rise = await self._await_vector("each_count_rise", 0b010, 1)
+        data = await self._read("EACH_COUNT_POP", "TELEMETRY_DATA", rx)
+        assert data == _word(COUNT_BEAT), (
+            f"EACH_COUNT: receiver {rx} TELEMETRY_DATA read 0x{data:08x}, expected the beat sent "
+            f"0x{_word(COUNT_BEAT):08x}"
+        )
+        count_fall = await self._await_vector("each_count_fall", 0, 0)
+        await self._write("EACH_COUNT_DISABLE", "INTR_ENABLE", rx, 0)
         await self._write("EACH_BT_ENABLE", "INTR_ENABLE", rx, ENABLE_THRESHOLD_BM)
         await self._write("EACH_BT_TEST", "INTR_TEST", rx, TEST_THRESHOLD_BM)
         bt_rise = await self._await_vector("each_bt_rise", 0b010, 1)
@@ -290,28 +236,27 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
         self._stamp("S4")
         self._chk(
             "CHK-TELEMETRY-IRQ-EACH-SOURCE",
-            "on receiver 1 MISSING_LAST alone (set after %d unflagged packets, measured) drove "
-            "tb_telemetry_irq=0b010 and the aggregate after %d cycle(s) and released after %d "
-            "on a written one; BUFFER_THRESHOLD alone drove 0b010 and the aggregate after %d "
-            "and released after %d on INTR_TEST=0",
-            packets,
-            ml_rise,
-            ml_fall,
+            "on receiver 1 a beat over CTRL.BUFFER_THRESHOLD=0 alone (INTR_STATUS set after %d "
+            "poll(s)) drove tb_telemetry_irq=0b010 and the aggregate after %d cycle(s) and the "
+            "TELEMETRY_DATA read that returned it released both after %d; INTR_TEST alone drove "
+            "0b010 and the aggregate after %d and released after %d on INTR_TEST=0",
+            polls,
+            count_rise,
+            count_fall,
             bt_rise,
             bt_fall,
         )
 
     async def _masked_quiet(self) -> None:
+        polls = await self._raise_by_count("MASK_COUNT", 1, MASKED_BEAT)
         for rx in RECEIVERS:
             await self._write("MASK_TEST", "INTR_TEST", rx, TEST_THRESHOLD_BM)
-        packets = await self._raise_missing_last("MASK_ML", 1)
         statuses = {}
         for rx in RECEIVERS:
             statuses[rx] = await self._read("MASK_STATUS", "INTR_STATUS", rx)
-            want = THRESHOLD_BM | (MISSING_LAST_BM if rx == 1 else 0)
-            assert statuses[rx] & want == want, (
+            assert statuses[rx] & THRESHOLD_BM, (
                 f"masked state is vacuous: receiver {rx} INTR_STATUS=0x{statuses[rx]:08x}, "
-                f"sources 0x{want:08x} not all set"
+                f"BUFFER_THRESHOLD not set"
             )
         dut = cocotb.top
         for cyc in range(QUIET_CYCLES):
@@ -323,21 +268,25 @@ class smc_telemetry_irq_aggregate_test_seq(SmcCsrSeq):
             )
         for rx in RECEIVERS:
             await self._release_test(f"MASK_REL_{rx}", rx)
-            await self._write("MASK_CLR", "INTR_STATUS", rx, MISSING_LAST_BM | THRESHOLD_BM)
+        await self._write("MASK_FLUSH", "CTRL", 1, RX_FLUSH_BM)
         await self._wait_flushed("MASK_END", 1)
+        for rx in RECEIVERS:
+            await self.csr_read(f"MASK_RELEASED_{rx}", _rx_addr("INTR_STATUS", rx), expected=0)
         vec, any_ = self._vector()
-        assert (vec, any_) == (0, 0), f"after the clears irq=0b{vec:03b} any={any_}"
+        assert (vec, any_) == (0, 0), f"after the releases irq=0b{vec:03b} any={any_}"
         self._stamp("S5")
         self._chk(
             "CHK-TELEMETRY-IRQ-MASKED-QUIET",
             "with every INTR_ENABLE 0, tb_telemetry_irq=0b000 and tb_telemetry_irq_any=0 for %d "
             "cycles while INTR_STATUS read 0x%08x / 0x%08x / 0x%08x on receivers 0 / 1 / 2 "
-            "(receiver 1 MISSING_LAST set after %d unflagged packets, measured)",
+            "(INTR_TEST on all three, and on receiver 1 also a beat over the threshold, set "
+            "after %d poll(s)); releasing INTR_TEST and flushing receiver 1 returned all three "
+            "to 0",
             QUIET_CYCLES,
             statuses[0],
             statuses[1],
             statuses[2],
-            packets,
+            polls,
         )
 
     async def body(self) -> None:

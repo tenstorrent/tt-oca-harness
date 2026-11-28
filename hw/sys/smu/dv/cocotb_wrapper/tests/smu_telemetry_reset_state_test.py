@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_telemetry_reset_state_test(smu_base_test):
-    """CTRL, STATUS, INTR_* and message registers of the three receivers at reset."""
+    """CTRL, STATUS, INTR_* and TELEMETRY_DATA of the three receivers at reset."""
 
     use_shared_env = True
 

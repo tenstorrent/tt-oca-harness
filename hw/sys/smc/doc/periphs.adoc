@@ -63,7 +63,7 @@ with dual-mode operation and comprehensive interrupt system (63 bonded + 4 unbon
 |AXI4-Lite |67
 
 |xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
-|Hardware component for decoding and processing telemetry data from
+|Hardware component for capturing raw ATB telemetry beats from
 multi-chiplet systems. |AXI4-Lite |3
 
 |Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
@@ -111,7 +111,7 @@ with dual-mode operation and comprehensive interrupt system (63 bonded + 4 unbon
 |AXI4-Lite |67
 
 |Telemetry Receiver
-|Hardware component for decoding and processing telemetry data from
+|Hardware component for capturing raw ATB telemetry beats from
 multi-chiplet systems. |AXI4-Lite |3
 
 |Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),

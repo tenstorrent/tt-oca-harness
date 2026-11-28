@@ -16,19 +16,18 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_telemetry_rx_flush_test(smc_base_test):
-    """Receiver flush of the queue, the assembly pointer and the interrupt state."""
+    """Receiver flush of the beat FIFO and the interrupt state."""
 
     required_evidence = (
         "CHK-NONVAC",
         "CHK-TELEMETRY-RX-FLUSH-BEATS-AROUND",
         "CHK-TELEMETRY-RX-FLUSH-EMPTIES",
-        "CHK-TELEMETRY-RX-FLUSH-KEEPS-MISSING-LAST",
-        "CHK-TELEMETRY-RX-FLUSH-MID-MESSAGE",
+        "CHK-TELEMETRY-RX-FLUSH-KEEPS-TEST-FORCE",
         "CHK-TELEMETRY-RX-FLUSH-ONE-SHOT",
         "CHK-TELEMETRY-RX-FLUSH-RESTART",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 8
+    min_evidence = 7
 
     auto_protocol_vip = False
 
@@ -41,5 +40,5 @@ class smc_telemetry_rx_flush_test(smc_base_test):
             min_csr_accesses=40,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="Telemetry receiver 0 flush of queue, assembly pointer and interrupt state",
+            details="Telemetry receiver 0 flush of the beat FIFO and interrupt state",
         )

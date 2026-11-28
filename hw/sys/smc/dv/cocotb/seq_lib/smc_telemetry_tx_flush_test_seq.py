@@ -4,10 +4,6 @@
 
 Sources: hw/ip/telemetry_receiver/doc/architecture.adoc (Reset and Flush), doc/interface.adoc,
 hw/ip/telemetry_receiver/regs/telemetry_receiver.rdl, doc/programmer/src/smc-programming.adoc.
-
-ATB framing from telemetry_receiver/doc/index.adoc (Telemetry packet fields) and
-architecture.adoc (Assembly and Decode): eight beats LSB first, bit 63 last packet, probe ID
-[60:56] of the first packet, block i at bits [9i+8:9i] with its valid bit at 9i+8.
 """
 
 from __future__ import annotations
@@ -16,73 +12,39 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import (
-    _REPO,
-    TELEMETRY_CG_EN,
-    _field_mask,
-    smc_addr,
-    smc_indexed_addr,
-)
+from .smc_addr_map import TELEMETRY_CG_EN, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-
-_TELEMETRY_H = (
-    _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
+from .smc_telemetry_atb_capture_test_seq import (
+    BUFFER_EMPTY_BM,
+    CTRL,
+    INTR_STATUS,
+    INTR_THRESHOLD_BM,
+    RX_FLUSH_BM,
+    STATUS,
+    TELEMETRY_DATA,
+    THRESHOLD_BP,
+    TX_FLUSH_BM,
+    _HeldSource,
+    _word,
 )
 
-
-def _tel(symbol: str) -> int:
-    return _field_mask(_TELEMETRY_H, symbol)
-
-
-def _rx_addr(register: str) -> int:
-    return smc_indexed_addr(
-        f"SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{register}_BASE_ADDR", 0
-    )
-
-
-CTRL = _rx_addr("CTRL")
-STATUS = _rx_addr("STATUS")
-PROBE_ID = _rx_addr("TELEMETRY_PROBE_ID")
-INTR_STATUS = _rx_addr("INTR_STATUS")
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
-
-BUFFER_POP_BM = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm")
-RX_FLUSH_BM = _tel("TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm")
-TX_FLUSH_BM = _tel("TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bm")
-THRESHOLD_BP = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp")
-BUFFER_EMPTY_BM = _tel("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
-INTR_THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_bm")
-PROBE_ID_BM = _tel("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm")
 
 THRESHOLD = 3
 CTRL_THRESHOLD_ONLY = THRESHOLD << THRESHOLD_BP
-# BUFFER_THRESHOLD 1 raises INTR_STATUS.BUFFER_THRESHOLD once more than one message is queued
-# (telemetry_receiver.rdl), which is how the path-separation leg knows both messages are in.
+# BUFFER_THRESHOLD 1 raises INTR_STATUS.BUFFER_THRESHOLD once more than one beat is queued
+# (telemetry_receiver.rdl), which is how the path-separation leg knows both beats are in.
 CTRL_THRESHOLD_ONE = 1 << THRESHOLD_BP
-# Idle beats between two messages, as the other telemetry tests leave between messages.
-MESSAGE_GAP_CYCLES = 8
 CTRL_THRESHOLD_PENDING = CTRL_THRESHOLD_ONLY | TX_FLUSH_BM
 
-# ATB framing: beats, last-packet bit and probe ID from architecture.adoc; block i at bits
-# [9i+8:9i] and the probe ID inside block 6's data byte from index.adoc "Telemetry packet fields".
-_ATB_BEAT_BITS = 8
-_ATB_PACKET_BITS = 64
-_BEATS_PER_PACKET = _ATB_PACKET_BITS // _ATB_BEAT_BITS
-_ATB_BLOCK_BITS = 9
-_ATB_PROBE_ID_BITS = 5
-_ATB_PROBE_ID_LSB = 56
-_ATB_LAST_PACKET_BIT = 63
-_ATB_NEXT_BLOCK_LSB = 54
-_ATB_ID = 0x33
-_ALL_ONES_BLOCK = (1 << _ATB_BLOCK_BITS) - 1
-PROBE_FIRST = 0x0B
-PROBE_SECOND = 0x0C
+FIRST_BEAT = (0x33, 0x0B)
+SECOND_BEAT = (0x34, 0x0C)
+DISCARD_BEAT = (0x35, 0x0D)
 
 HOLD_CYCLES = 2048
 CTRL_SAMPLE_PERIOD = 64
 HANDSHAKE_BOUND = 64
 RX_FLUSH_QUIET_CYCLES = 64
-ATB_READY_BOUND = 64
 BUFFER_POLL_BOUND = 200
 FUSE_SENSE_MAX_CYCLES = 200_000
 
@@ -102,14 +64,6 @@ CHECKER_FOR_STEP = {
     "S5": "CHK-TELEMETRY-TX-FLUSH-THRESHOLD-KEPT",
     "S6": "CHK-TELEMETRY-FLUSH-PATH-SEPARATION",
 }
-
-
-def _frame_message(probe_id: int) -> int:
-    packet = 1 << _ATB_LAST_PACKET_BIT
-    packet |= (probe_id & ((1 << _ATB_PROBE_ID_BITS) - 1)) << _ATB_PROBE_ID_LSB
-    for block_lsb in range(0, _ATB_NEXT_BLOCK_LSB, _ATB_BLOCK_BITS):
-        packet |= _ALL_ONES_BLOCK << block_lsb
-    return packet
 
 
 def _level(signal) -> int:
@@ -206,35 +160,10 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
             f"{label}: afvalid_o stayed {_level(signal)} for {bound} clk_smc_i cycles, want {want}"
         )
 
-    async def _send_packet(self, dut, packet: int, label: str) -> None:
-        mask = (1 << _ATB_BEAT_BITS) - 1
-        atdata, atid = dut.tb_telemetry0_atdata, dut.tb_telemetry0_atid
-        atvalid, atready = dut.tb_telemetry0_atvalid, dut.tb_telemetry0_atready
-        self._note_wait("atb_beat_accept", f"{ATB_READY_BOUND}cycles fail-on-expiry=AssertionError")
-        for beat in range(_BEATS_PER_PACKET):
-            atdata.value = (packet >> (beat * _ATB_BEAT_BITS)) & mask
-            atid.value = _ATB_ID
-            atvalid.value = 1
-            await RisingEdge(dut.clk_smc_i)
-            accepted = False
-            for _ in range(ATB_READY_BOUND):
-                raw = atready.value
-                assert raw.is_resolvable, f"tb_telemetry0_atready is X/Z: {raw}"
-                if int(raw):
-                    accepted = True
-                    break
-                await RisingEdge(dut.clk_smc_i)
-            atvalid.value = 0
-            self._note_wait("atb_beat_accept", "", f"{label} beat {beat} accepted={accepted}")
-            assert accepted, (
-                f"{label}: ATB beat {beat} not accepted, tb_telemetry0_atready low for "
-                f"{ATB_READY_BOUND} clk_smc_i cycles"
-            )
-
     async def _wait_threshold(self, label: str) -> int:
         """Poll INTR_STATUS until BUFFER_THRESHOLD is set.
 
-        The bit sets once more messages are queued than CTRL's threshold.
+        The bit sets once more beats are queued than CTRL's threshold.
         """
         self._note_wait(
             f"threshold_poll_{label}", f"{BUFFER_POLL_BOUND}polls fail-on-expiry=AssertionError"
@@ -250,7 +179,7 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
             await ClockCycles(cocotb.top.clk_smc_i, 1)
         raise AssertionError(
             f"{label}: INTR_STATUS.BUFFER_THRESHOLD never set over {BUFFER_POLL_BOUND} polls "
-            f"(last INTR_STATUS=0x{intr:08x}): the second message did not reach the queue"
+            f"(last INTR_STATUS=0x{intr:08x}): the second beat did not reach the FIFO"
         )
 
     async def _wait_buffer(self, empty: bool, label: str) -> int:
@@ -392,6 +321,11 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
         await self._await_afvalid(dut, 1, "rewrite_afvalid_rise")
         await self.csr_write("TX_FLUSH_REWRITE_SECOND", CTRL, TX_FLUSH_BM)
         pending = await self.csr_read("TX_FLUSH_REWRITE_PENDING", CTRL)
+        assert pending & TX_FLUSH_BM, (
+            f"CTRL.TELEMETRY_TX_FLUSH clear after the second write with afready_i low "
+            f"(CTRL=0x{pending:08x})"
+        )
+        assert _level(afvalid) == 1, "afvalid_o low after the second write with afready_i low"
         monitor.check("rewrite")
         afready.value = 1
         rewrite_fall = await self._await_afvalid(dut, 0, "rewrite_afvalid_fall")
@@ -435,15 +369,10 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
 
         # S6: path separation
         await self.csr_write("TX_FLUSH_THRESHOLD_ONE", CTRL, CTRL_THRESHOLD_ONE)
-        await self.csr_write("TX_FLUSH_INTR_CLEAR", INTR_STATUS, INTR_THRESHOLD_BM)
         afready.value = 0
-        await self._send_packet(dut, _frame_message(PROBE_FIRST), "message_0B")
-        await ClockCycles(dut.clk_smc_i, MESSAGE_GAP_CYCLES)
-        await self._send_packet(dut, _frame_message(PROBE_SECOND), "message_0C")
-        await ClockCycles(dut.clk_smc_i, MESSAGE_GAP_CYCLES)
+        await _HeldSource(dut, [FIRST_BEAT, SECOND_BEAT]).task
         await self._wait_buffer(False, "QUEUED")
         queued_polls = await self._wait_threshold("TWO_QUEUED")
-        await self.csr_write("TX_FLUSH_INTR_CLEAR_2", INTR_STATUS, INTR_THRESHOLD_BM)
         await self.csr_write("TX_FLUSH_PATHS", CTRL, TX_FLUSH_BM)
         await self._await_afvalid(dut, 1, "paths_afvalid_rise")
         afready.value = 1
@@ -451,22 +380,20 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
         await self.csr_read("TX_FLUSH_PATHS_DONE", CTRL, expected=0)
         status = await self.csr_read("TX_FLUSH_PATHS_STATUS", STATUS)
         assert status & BUFFER_EMPTY_BM == 0, (
-            f"transmitter flush emptied the queue (STATUS=0x{status:08x})"
+            f"transmitter flush emptied the FIFO (STATUS=0x{status:08x})"
         )
-        probe = (await self.csr_read("TX_FLUSH_PATHS_PROBE", PROBE_ID)) & PROBE_ID_BM
-        assert probe == PROBE_FIRST, (
-            f"PROBE_ID after the transmitter flush is 0x{probe:02x}, want 0x{PROBE_FIRST:02x}"
+        first = await self.csr_read("TX_FLUSH_PATHS_DATA", TELEMETRY_DATA)
+        assert first == _word(FIRST_BEAT), (
+            f"TELEMETRY_DATA after the transmitter flush is 0x{first:08x}, want "
+            f"0x{_word(FIRST_BEAT):08x}"
         )
-        await self.csr_write("TX_FLUSH_PATHS_POP", CTRL, BUFFER_POP_BM)
-        popped = await self.csr_read("TX_FLUSH_PATHS_POP_STATUS", STATUS)
-        assert popped & BUFFER_EMPTY_BM == 0, (
-            f"queue empty after one pop (STATUS=0x{popped:08x}): the transmitter flush dropped "
-            f"the second message"
+        second = await self.csr_read("TX_FLUSH_PATHS_DATA_2", TELEMETRY_DATA)
+        assert second == _word(SECOND_BEAT), (
+            f"TELEMETRY_DATA after the first beat is 0x{second:08x}, want "
+            f"0x{_word(SECOND_BEAT):08x}: the transmitter flush dropped the second beat"
         )
-        second = (await self.csr_read("TX_FLUSH_PATHS_POP_PROBE", PROBE_ID)) & PROBE_ID_BM
-        assert second == PROBE_SECOND, (
-            f"PROBE_ID after one pop is 0x{second:02x}, want 0x{PROBE_SECOND:02x}"
-        )
+        await _HeldSource(dut, [DISCARD_BEAT]).task
+        await self._wait_buffer(False, "DISCARD_QUEUED")
         afready.value = 0
         monitor = _AfvalidMonitor(dut, afvalid)
         self._note_wait(
@@ -474,6 +401,7 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
         )
         await self.csr_write("RX_FLUSH_PATHS", CTRL, RX_FLUSH_BM)
         polls = await self._wait_buffer(True, "RX_FLUSH")
+        await self.csr_read("RX_FLUSH_PATHS_DATA", TELEMETRY_DATA, expected=0)
         while monitor.samples < RX_FLUSH_QUIET_CYCLES:
             await RisingEdge(dut.clk_smc_i)
         monitor.stop()
@@ -491,11 +419,12 @@ class smc_telemetry_tx_flush_test_seq(SmcCsrSeq):
         self._emit(
             "S6",
             "CHK-TELEMETRY-FLUSH-PATH-SEPARATION",
-            "two messages queued (threshold 1 interrupt after %d poll(s)); transmitter flush left "
-            "BUFFER_EMPTY 0 with PROBE_ID 0x%02X and 0x%02X behind it; receiver flush emptied the "
-            "queue in %d poll(s) with afvalid_o 0 on %d consecutive samples (rises %d)",
+            "two beats queued (threshold 1 interrupt after %d poll(s)); after a transmitter flush "
+            "TELEMETRY_DATA returned both, 0x%08x then 0x%08x; a third beat queued afterwards was "
+            "discarded by a receiver flush, which emptied the FIFO in %d poll(s) with afvalid_o "
+            "0 on %d consecutive samples (rises %d)",
             queued_polls,
-            probe,
+            first,
             second,
             polls,
             monitor.samples,

@@ -31,6 +31,7 @@ from .smc_addr_map import (
     ZEROER_CTRL_STATUS,
     _field_mask,
     generated_decoded_extent,
+    generated_hole_rresp,
     generated_past_extent_resp,
     generated_window,
     reg_reset_word,
@@ -1007,8 +1008,12 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         unit = "smc_telemetry_receiver_wrap"
         hole = self._in_window(unit, TELEMETRY_HOLE_OFF)
         assert generated_window(unit)[0] == TELEMETRY_CTRL_OFF, "receiver 0 not at window base"
-        await self._rd_exact("TELEMETRY", "TELEM_HOLE", hole, (AXI_RESP_OKAY, 0))
-        await self._wr_exact("TELEMETRY", "TELEM_HOLE", hole, AXI_RESP_OKAY)
+        assert generated_hole_rresp(unit) == {"DECERR"}, (
+            f"{unit}: generated hole response {generated_hole_rresp(unit)}"
+        )
+        self.env.axi_monitor.expected_decerr_addrs.add(hole)
+        await self._rd_exact("TELEMETRY", "TELEM_HOLE", hole, (AXI_RESP_DECERR, PAST_EXTENT_RDATA))
+        await self._wr_exact("TELEMETRY", "TELEM_HOLE", hole, AXI_RESP_DECERR)
         past = self._past_extent(unit, TELEMETRY_PAST_OFF)
         await self._rd_exact("TELEMETRY", "TELEM_PAST", past, (AXI_RESP_DECERR, PAST_EXTENT_RDATA))
         await self._wr_exact("TELEMETRY", "TELEM_PAST", past, AXI_RESP_DECERR)
@@ -1017,7 +1022,9 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 0
         ), f"telemetry CTRL at 0x{ctrl:08x}"
         ctrl_val = await self._rd_code("TELEMETRY", "TELEM_CTRL", ctrl)
-        telemetry = "hole rd OKAY 0x0 wr OKAY; past rd DECERR 0xBADCAB1E wr DECERR; CTRL OKAY"
+        telemetry = (
+            "hole rd DECERR 0xBADCAB1E wr DECERR; past rd DECERR 0xBADCAB1E wr DECERR; CTRL OKAY"
+        )
         if self.gated["TELEMETRY"]:
             telemetry = (
                 "gated: every access SLVERR 0xBADCAB1E "

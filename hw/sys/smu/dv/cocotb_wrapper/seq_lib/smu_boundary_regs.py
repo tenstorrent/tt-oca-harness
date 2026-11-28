@@ -54,12 +54,6 @@ _INDEXED1_RE = re.compile(
 )
 # One IIR.INTERRUPT_ID description line: * `0x1` - Transmitter Holding Register Empty Interrupt (priority 4)
 _IIR_ID_RE = re.compile(r"`(0x[0-9A-Fa-f]+)`\s*-\s*(.+?)\s+Interrupt\b")
-# Two-index: #define NAME(i, j) (0xBASE + (i * 0xS1) + (j * 0xS2))
-_INDEXED2_RE = re.compile(
-    r"^\s*#define\s+(SMC_TOP_\w+_BASE_ADDR)\(\w+,\s*\w+\)\s+"
-    r"\(0x([0-9A-Fa-f]+)\s+\+\s+\(\w+\s+\*\s+0x([0-9A-Fa-f]+)\)"
-    r"\s+\+\s+\(\w+\s+\*\s+0x([0-9A-Fa-f]+)\)\s*\)\s*$"
-)
 
 
 # One outbound mailbox instance: #define SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_<n>_BASE_ADDR
@@ -190,29 +184,6 @@ def cross_trigger_network_indexed_addr(symbol: str, idx: int = 0) -> int:
             f"{symbol} not a one-index macro in {_CROSS_TRIGGER_NETWORK_ADDR_H}"
         ) from exc
     return base + int(idx) * stride
-
-
-@lru_cache(maxsize=1)
-def _smc_indexed2_table() -> dict[str, tuple[int, int, int]]:
-    text = _SMC_ADDR_H.read_text(encoding="utf-8")
-    out: dict[str, tuple[int, int, int]] = {}
-    for line in text.splitlines():
-        m = _INDEXED2_RE.match(line)
-        if m:
-            out[m.group(1)] = (int(m.group(2), 16), int(m.group(3), 16), int(m.group(4), 16))
-    if not out:
-        raise RuntimeError(f"no two-index SMC_TOP_* macros parsed from {_SMC_ADDR_H}")
-    return out
-
-
-def smc_indexed2_addr(symbol: str, outer: int = 0, inner: int = 0) -> int:
-    """Return ``BASE + outer*S1 + inner*S2`` for a two-index ``SMC_TOP_*`` macro."""
-    table = _smc_indexed2_table()
-    try:
-        base, s_outer, s_inner = table[symbol]
-    except KeyError as exc:
-        raise KeyError(f"{symbol} not a two-index macro in {_SMC_ADDR_H}") from exc
-    return base + int(outer) * s_outer + int(inner) * s_inner
 
 
 # STAP secondary scan path, TDI first: I/O STAP, SMC debug STAP, SEP debug

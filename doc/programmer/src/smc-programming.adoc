@@ -2293,29 +2293,33 @@ capture or move secondary timestamps backward.
 [[smc-telemetry-buffer]]
 ===== Buffer Management
 
-. Check `STATUS.BUFFER_EMPTY` before reading.
-. Read `TELEMETRY_PROBE_ID` and `TELEMETRY_COUNTER_VLDS`, then the required valid
-  counter registers. Unused or invalid counter positions read as zero.
-. Write a one to `CTRL.BUFFER_POP` after consuming the message.
-. Repeat while the queue is nonempty.
+Each receiver stores every accepted ATB beat in a FIFO, 32 entries deep by
+default. A wrapper crossing FIFO of 8 entries per stream sits in front of it.
 
-Only one software consumer should own this sequence. Reception does not stop
-when the queue fills: a new message replaces the oldest, so incoming traffic
-can replace the head while it is being read, and these reads are not an atomic
-snapshot. Producers sharing a receiver must serialize complete messages.
+. Read `TELEMETRY_DATA`. A read returns the oldest beat as `VALID` (bit 31),
+  `ATID` (bits 14:8) and `DATA` (bits 7:0), and removes it.
+. Process the beat while `VALID` is set.
+. Stop at the first read with `VALID` clear. A read of an empty FIFO returns zero
+  and removes nothing, so no empty check is needed first. `STATUS.BUFFER_EMPTY`
+  and `STATUS.BUFFER_FULL` report the FIFO state.
+
+Writes to `TELEMETRY_DATA` are acknowledged and ignored. Only one software
+consumer should own this sequence, since each read removes a beat.
+
+When the FIFO is full, `atready_o` goes low and the source stalls. No beat is
+dropped or overwritten. Drain at a rate that keeps up with the source.
 
 Preserve `CTRL.BUFFER_THRESHOLD` and any outstanding TX-flush request when
-issuing a pop or RX-flush pulse. These fields share one register; a full-word
-write containing only the pulse bit would overwrite the other writable fields.
+issuing an RX-flush pulse. These fields share one register; a full-word write
+containing only the pulse bit would overwrite the other writable fields.
 Serialize control-register updates between software contexts.
 
-For notification on any queued message, set the threshold to zero and enable
-`INTR_ENABLE.BUFFER_THRESHOLD`. The CSR field is 12 bits, but the core compares
-only its low `$clog2(BUFFER_DEPTH)+1` bits with occupancy, so values alias modulo
-`2 * BUFFER_DEPTH`. The interrupt asserts while occupancy is strictly greater
-than the threshold and occupancy never exceeds `BUFFER_DEPTH`, so only
-thresholds 0 to `BUFFER_DEPTH - 1` can assert it. With the default depth 8,
-writing 16 acts as 0, and 8 to 15 never assert the interrupt from occupancy.
+For notification on any queued beat, set the threshold to zero and enable
+`INTR_ENABLE.BUFFER_THRESHOLD`. The interrupt asserts while occupancy is strictly
+greater than the threshold, compared at the full 12-bit field width. Occupancy
+never exceeds `BUFFER_DEPTH`, so only thresholds 0 to `BUFFER_DEPTH - 1` can
+assert it. With the default depth 32, thresholds 32 and above never assert the
+interrupt from occupancy.
 
 .Telemetry receiver example C definitions.
 [source,sourceCode,c]
@@ -2325,40 +2329,30 @@ writing 16 acts as 0, and 8 to 15 never assert the interrupt from occupancy.
 #define TELEMETRY_BASE(i)             (0xC0009000 + ((i) * 0x100))
 #define TELEMETRY_REG_CTRL(i)         (TELEMETRY_BASE(i) + 0x0)
 #define TELEMETRY_REG_STATUS(i)       (TELEMETRY_BASE(i) + 0x4)
-#define TELEMETRY_REG_PROBE_ID(i)     (TELEMETRY_BASE(i) + 0x14)
-#define TELEMETRY_REG_COUNTER_VLDS(i) (TELEMETRY_BASE(i) + 0x18)
-#define TELEMETRY_REG_COUNTER(i, n)   (TELEMETRY_BASE(i) + 0x80 + ((n) * 0x4))
+#define TELEMETRY_REG_DATA(i)         (TELEMETRY_BASE(i) + 0x14)
 
 // Register constants.
-#define TELEMETRY_CTRL_BUFFER_POP     0x1
 #define TELEMETRY_CTRL_RX_FLUSH       0x10
-#define TELEMETRY_STATUS_BUFFER_EMPTY 0x1
+#define TELEMETRY_DATA_VALID          0x80000000u
+#define TELEMETRY_DATA_ATID(d)        (((d) >> 8) & 0x7f)
+#define TELEMETRY_DATA_DATA(d)        ((d) & 0xff)
 ----
 
 .Telemetry receiver example C usage.
 [source,sourceCode,c]
 ----
-// Consume every queued message on receiver `i`.
+// Consume every queued beat on receiver `i`.
 void telemetry_drain(unsigned i) {
-    while (!(read32(TELEMETRY_REG_STATUS(i)) & TELEMETRY_STATUS_BUFFER_EMPTY)) {
-        uint32_t probe_id = read32(TELEMETRY_REG_PROBE_ID(i));
-        uint32_t valid = read32(TELEMETRY_REG_COUNTER_VLDS(i));
+    for (;;) {
+        uint32_t beat = read32(TELEMETRY_REG_DATA(i));
 
-        for (unsigned n = 0; n < 32; n++) {
-            if (valid & (1u << n)) {
-                uint32_t value = read32(TELEMETRY_REG_COUNTER(i, n));
-
-                // Handle the counter value here...
-                (void) probe_id;
-                (void) value;
-            }
+        if (!(beat & TELEMETRY_DATA_VALID)) {
+            break;
         }
 
-        // Pop the message, preserving the threshold and any
-        // outstanding TX-flush request.
-        uint32_t ctrl = read32(TELEMETRY_REG_CTRL(i))
-                          & ~(TELEMETRY_CTRL_BUFFER_POP | TELEMETRY_CTRL_RX_FLUSH);
-        write32(TELEMETRY_REG_CTRL(i), ctrl | TELEMETRY_CTRL_BUFFER_POP);
+        // Handle the beat here...
+        (void) TELEMETRY_DATA_ATID(beat);
+        (void) TELEMETRY_DATA_DATA(beat);
     }
 }
 ----
@@ -2366,25 +2360,21 @@ void telemetry_drain(unsigned i) {
 [[smc-telemetry-flush]]
 ===== Flush Operations
 
-* *Local discard:* pulse `CTRL.TELEMETRY_RX_FLUSH`. This discards queued messages
-  and resets assembly position, without erasing stored bytes or flushing the
-  wrapper crossing FIFO. New traffic can make the queue nonempty again.
+* *Local discard:* pulse `CTRL.TELEMETRY_RX_FLUSH`. This empties the FIFO without
+  flushing the wrapper crossing FIFO. New traffic can make the FIFO nonempty again.
 * *Upstream flush:* set `CTRL.TELEMETRY_TX_FLUSH` and poll until hardware clears
   it after acknowledgement. Write `CTRL` only with a read-modify-write until
-  then; a write with the bit clear withdraws the request. Choose a firmware timeout appropriate to the producer;
-  the core provides no fixed completion deadline.
-
-Neither operation makes stale trailing blocks safe: producers must still
-write the full configured message footprint and invalidate unused counters.
+  then; a write with the bit clear withdraws the request. The transmitter
+  completes the flush only while the FIFO has space, so keep calling
+  `telemetry_drain` while the bit is set. Choose a firmware timeout appropriate to
+  the producer; the core provides no fixed completion deadline.
 
 [[smc-telemetry-interrupts]]
 ===== Interrupt Handling
 
-Read `INTR_STATUS` and service the enabled sources. For `BUFFER_THRESHOLD`,
-drain until occupancy is at most the threshold; clear the threshold test bit
-if software asserted it. For `MISSING_LAST`, investigate the producer's framing
-and write one to that status bit after handling the event. A receiver flush
-alone does not acknowledge this sticky interrupt.
+Read `INTR_STATUS` and service the enabled source. For `BUFFER_THRESHOLD`, drain
+until occupancy is at most the threshold; clear the threshold test bit if
+software asserted it.
 
 [[smc-avsbus]]
 ==== AVSBus Controller

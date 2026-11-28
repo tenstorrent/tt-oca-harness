@@ -14,10 +14,10 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 Each core occupies 256 bytes with 32-bit registers at four-byte offsets.
-Control, status, interrupt and message-header registers occupy `0x00`–`0x18`;
-32 counter registers occupy `0x80`–`0xFC`. The wrapper map places each receiver
+Control, status and interrupt registers occupy `0x00`–`0x10`, and
+`TELEMETRY_DATA` is at `0x14`. The wrapper map places each receiver
 in its integration-defined aperture. Reset values and field access types are
-specified below; reset and flush storage behavior is described in Architecture.
+specified below; reset and flush behavior is described in Architecture.
 
 === Detailed Register Map
 

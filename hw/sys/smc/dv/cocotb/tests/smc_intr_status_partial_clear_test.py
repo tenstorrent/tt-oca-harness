@@ -5,12 +5,11 @@
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_R5_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 """Write-one-to-clear status registers cleared a few bits at a time.
 
-On every I2C INTR_STATE, log-engine INTR_STATUS and telemetry-receiver
-INTR_STATUS instance: raise the whole common mask through INTR_TEST, write back
-half of it and require exactly that half to clear while the other half stays
-set, then write the rest and require the register to read clear. The half the
-write carries a zero over is the side of the oneToClear contract no leaf has
-driven.
+On every I2C INTR_STATE and log-engine INTR_STATUS instance: raise the whole
+common mask through INTR_TEST, write back half of it and require exactly that
+half to clear while the other half stays set, then write the rest and require
+the register to read clear. The half the write carries a zero over is the side
+of the oneToClear contract no leaf has driven.
 
 On I2C instances 1 and 2 the leaf then runs the same leg with the halves
 swapped, so each of the 13 clearable bits is held set against a zero once and
@@ -35,12 +34,12 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses.
 #
 # Setup: the clock-gate read and write and the I2C1 / I2C2 reset reads (4).
-# 10 status registers -- 3 I2C, 4 log engines, 3 telemetry receivers -- at 7
+# 7 status registers -- 3 I2C and 4 log engines -- at 7
 # SEP_IN AXI accesses each: the idle read, the INTR_TEST write and the raised
 # read, the partial clear and its read, the rest and its read. The swapped pass
 # on I2C1 and I2C2 at 6 each, and the single-source walk on I2C1 and I2C2 at 13
 # sources x 6 accesses each.
-INTR_STATUS_PARTIAL_CLEAR_MIN_CSR_ACCESSES = 4 + 10 * 7 + 2 * 6 + 2 * 13 * 6
+INTR_STATUS_PARTIAL_CLEAR_MIN_CSR_ACCESSES = 4 + 7 * 7 + 2 * 6 + 2 * 13 * 6
 
 
 @pyuvm.test()

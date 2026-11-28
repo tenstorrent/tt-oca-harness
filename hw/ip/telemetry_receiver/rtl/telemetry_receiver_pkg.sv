@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Hold ATB telemetry widths and AXI-Lite typedefs for the receiver.
+// Hold the ATB beat types and AXI-Lite typedefs for the receiver.
 //
-// Defines packet and block sizes and the axil_req_t / axil_resp_t used by
-// telemetry_receiver.
-// A 64-bit packet holds a last_packet bit above seven 9-bit blocks, each a valid bit and a
-// data byte. The AXI-Lite address width is the register block's minimum, data is 32 bits,
-// and NumCounterRegs is 32.
+// Defines the axil_req_t / axil_resp_t used by telemetry_receiver and telemetry_entry_t, the
+// {atid, atdata} beat its FIFO stores. The AXI-Lite address width is the register block's
+// minimum and data is 32 bits.
 
 package telemetry_receiver_pkg;
 
@@ -43,37 +41,9 @@ package telemetry_receiver_pkg;
   // Telemetry Receiver Definitions //
   ////////////////////////////////////
 
-  localparam int unsigned TelemetryPacketWidth = 64;
-  localparam int unsigned TelemetryHeaderWidth = 9;
-  localparam int unsigned TelemetryCounterWidth = 32;
-  localparam int unsigned TelemetryBlockWidth = TelemetryDataWidth + 1;
-
-  localparam int unsigned TelemetryProbeIdWidth = 5;
-  typedef logic [TelemetryProbeIdWidth-1:0] telemetry_probe_id_t;
-
-  // General
-  localparam int unsigned NumBeatsPerPacket = TelemetryPacketWidth / TelemetryDataWidth;
-  localparam int unsigned NumBlocksPerPacket = TelemetryPacketWidth / TelemetryBlockWidth;
-
-  // Telemetry message decoding
   typedef struct packed {
-    logic            vld;
-    telemetry_data_t counter_val_partial;
-  } telemetry_block_t;
-
-  typedef struct packed {
-    logic                                         last_packet;
-    telemetry_block_t [NumBlocksPerPacket-1:0]    blocks;
-  } telemetry_packet_t;
-
-  typedef logic [TelemetryCounterWidth-1:0] telemetry_counter_val_t;
-
-  typedef struct packed {
-    logic                   vld;
-    telemetry_counter_val_t value;
-  } telemetry_counter_t;
-
-  // Register block
-  localparam int unsigned NumCounterRegs = 32;
+    atb_id_t         atid;
+    telemetry_data_t atdata;
+  } telemetry_entry_t;
 
 endpackage

@@ -1,26 +1,28 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Telemetry receiver 0 message queue order, empty/full status and buffer threshold.
+"""Telemetry receiver 0 beat FIFO order, empty/full status and buffer threshold.
 
-Spec: telemetry_receiver.rdl (CTRL.BUFFER_POP / BUFFER_THRESHOLD, STATUS.BUFFER_EMPTY / BUFFER_FULL,
-TELEMETRY_PROBE_ID, INTR_STATUS.BUFFER_THRESHOLD read-only, INTR_TEST.BUFFER_THRESHOLD);
-doc/architecture.adoc "Message Queue and Readout" and "Interrupts" (eight-message queue, oldest
-message exposed, empty reads zero, live threshold status); doc/index.adoc "Message Format".
+Spec: telemetry_receiver.rdl (TELEMETRY_DATA, CTRL.BUFFER_THRESHOLD, STATUS.BUFFER_EMPTY /
+BUFFER_FULL, INTR_STATUS.BUFFER_THRESHOLD read-only, INTR_TEST.BUFFER_THRESHOLD). The receiver
+stores each ATB beat as ``{atid, atdata}`` in a FIFO of ``BUFFER_DEPTH`` beats; a read of
+TELEMETRY_DATA returns the oldest beat with VALID set and removes it, a read of the empty FIFO
+returns 0 and removes nothing, and the threshold status is live while the number of beats held
+is greater than BUFFER_THRESHOLD.
 
-Each message is one last-flagged ATB packet on lane 0 whose probe id is in bits [60:56], whose
-header block is invalid and whose other blocks are all ones; the observed registers do not depend
-on the open block layout. Registers are read over JTAG2AXI. INTR_STATUS.BUFFER_THRESHOLD is
-sampled as a register readback only; interrupt delivery at the SMU boundary is not claimed.
+Each beat is driven on lane 0 and carries an ATID and data byte no other beat shares. Registers
+are read over JTAG2AXI. INTR_STATUS.BUFFER_THRESHOLD is sampled as a register readback only;
+interrupt delivery at the SMU boundary is not claimed.
 
-The queue fills to its depth of eight before the first pop in every run. The seed draws three
-thresholds (0 to 8, the queue depth) and where the second and third threshold writes fall among
-the sixteen fill and pop events; every INTR_STATUS.BUFFER_THRESHOLD compare expects
-``occupancy > threshold`` for the threshold in force and the number of messages queued. The
-first threshold and every threshold whose write precedes a fill are drawn below the depth, so the
-threshold in force at the write of 1 with eight queued is exceeded and that leg's source is live;
-only a threshold whose write precedes a pop may draw 8. The directed flip cell stays pinned beside
-the draws: with five queued after the third pop the threshold is written 3 (status 1), raised to 5
-(status 0, the queue unchanged), set back to 3 (status 1), then the drawn threshold is restored.
+The FIFO fills to its depth before the first read in every run. The seed draws three thresholds
+(0 to the depth) and where the second and third threshold writes fall among the fill and read
+events; every INTR_STATUS.BUFFER_THRESHOLD compare expects ``occupancy > threshold`` for the
+threshold in force and the number of beats held. The first threshold and every threshold whose
+write precedes a fill are drawn below the depth, so the threshold in force at the write of 1 with
+the FIFO full is exceeded and that leg's source is live; only a threshold whose write precedes a
+read may draw the depth. The directed flip cell stays pinned beside the draws: with
+``PINNED_OCCUPANCY`` beats held after ``PINNED_POP`` reads the threshold is written one below the
+occupancy (status 1), raised to the occupancy (status 0, the FIFO unchanged), set back (status 1),
+then the drawn threshold is restored.
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
+from seq_lib.smu_addr_map import smc_addr
 from seq_lib.smu_boundary_regs import smc_base_config_u32, telemetry_receiver_u32
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -44,62 +46,50 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
     require_jtag_tdo_resolved,
 )
+from seq_lib.smu_telemetry_atb_capture_seq import (
+    BUFFER_DEPTH,
+    INTR_THRESHOLD_BM,
+    STATUS_EMPTY_BM,
+    STATUS_FULL_BM,
+    THRESHOLD_BP,
+    TelemetryBeatSource,
+    beat_stream,
+    tel_addr,
+    telemetry_word,
+)
 
-_PFX = "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_"
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 CG_EN_BM = smc_base_config_u32("SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bm")
-
-STATUS_EMPTY_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
-STATUS_FULL_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__STATUS__BUFFER_FULL_bm")
-PROBE_ID_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm")
-PROBE_ID_BITS = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bw")
-BUFFER_POP_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm")
-THRESHOLD_BP = telemetry_receiver_u32("TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp")
-INTR_THRESHOLD_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_bm")
 INTR_TEST_THRESHOLD_BM = telemetry_receiver_u32(
     "TELEMETRY_RECEIVER__INTR_TEST__BUFFER_THRESHOLD_bm"
 )
 
-# hw/ip/telemetry_receiver/doc/index.adoc "Message Format": eight little-endian beats form a
-# 64-bit packet, last_packet is bit 63, probe_id is bits [60:56], a block is nine bits and seven
-# blocks fill bits [62:0].
-ATB_BEAT_BITS = 8
-ATB_BEATS_PER_PACKET = 8
-ATB_LAST_PACKET_BIT = 63
-ATB_PROBE_ID_LSB = 56
-ATB_BLOCK_BITS = 9
-ATB_BLOCK_FILL = (1 << ATB_BLOCK_BITS) - 1
-ATB_HEADER_BLOCK_LSB = ATB_LAST_PACKET_BIT - ATB_BLOCK_BITS
-ATB_BEAT_MASK = (1 << ATB_BEAT_BITS) - 1
-ATB_ID = 0x2A
-ATB_READY_BOUND = 64
-
-QUEUE_DEPTH = 8
+QUEUE_DEPTH = BUFFER_DEPTH
+BEATS = beat_stream(0x01, 0x40, QUEUE_DEPTH)
 THRESHOLD_WRITES = 3
-# The pinned flip cell: after PINNED_POP pops (PINNED_OCCUPANCY queued) the threshold is written
+# The pinned flip cell: after PINNED_POP reads (PINNED_OCCUPANCY held) the threshold is written
 # PINNED_LOW, PINNED_HIGH and PINNED_LOW again, so the status is driven 1, 0 and 1 by the threshold
-# alone with the queue unchanged.
+# alone with the FIFO unchanged.
 PINNED_POP = 3
 PINNED_OCCUPANCY = QUEUE_DEPTH - PINNED_POP
-PINNED_LOW = 3
-PINNED_HIGH = 5
+PINNED_LOW = PINNED_OCCUPANCY - 1
+PINNED_HIGH = PINNED_OCCUPANCY
 EVENTS = 2 * QUEUE_DEPTH
+# STATUS is read after the fills where BUFFER_EMPTY first drops and BUFFER_FULL is last clear
+# and first set; INTR_STATUS is read after every fill.
+STATUS_FILLS = (1, QUEUE_DEPTH - 1, QUEUE_DEPTH)
+ATB_READY_BOUND = 64
 J2A_POLL_LIMIT = 128
 
-
-def _tel(name: str) -> int:
-    return smc_indexed_addr(f"{_PFX}{name}_BASE_ADDR", 0)
-
-
-TEL_CTRL = _tel("CTRL")
-TEL_STATUS = _tel("STATUS")
-TEL_INTR_STATUS = _tel("INTR_STATUS")
-TEL_INTR_TEST = _tel("INTR_TEST")
-TEL_PROBE_ID = _tel("TELEMETRY_PROBE_ID")
+TEL_CTRL = tel_addr("CTRL")
+TEL_STATUS = tel_addr("STATUS")
+TEL_INTR_STATUS = tel_addr("INTR_STATUS")
+TEL_INTR_TEST = tel_addr("INTR_TEST")
+TEL_DATA = tel_addr("TELEMETRY_DATA")
 
 
 class smu_telemetry_queue_threshold_test_seq:
-    """Eight-message queue and threshold walk on receiver 0."""
+    """Beat FIFO fill, read order and threshold walk on receiver 0."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -121,7 +111,7 @@ class smu_telemetry_queue_threshold_test_seq:
 
         The first threshold and every threshold whose write precedes a fill (an event at or
         below QUEUE_DEPTH) are drawn below QUEUE_DEPTH, so the threshold in force at the write
-        of 1 with eight queued is exceeded; a write placed among the pops may draw QUEUE_DEPTH.
+        of 1 with the FIFO full is exceeded; a write placed among the reads may draw QUEUE_DEPTH.
         """
         self.positions = sorted(self.rng.sample(range(2, EVENTS + 1), THRESHOLD_WRITES - 1))
         tops = [QUEUE_DEPTH - 1] + [
@@ -132,7 +122,7 @@ class smu_telemetry_queue_threshold_test_seq:
         self._log(
             f"SEED: RANDOM_SEED={self.seed} drawn thresholds={self.thresholds} "
             f"positions={self.positions} (the first write precedes fill 1; an event is one of "
-            f"{QUEUE_DEPTH} fills then {QUEUE_DEPTH} pops; a threshold in force at or before "
+            f"{QUEUE_DEPTH} fills then {QUEUE_DEPTH} reads; a threshold in force at or before "
             f"fill {QUEUE_DEPTH} is drawn below {QUEUE_DEPTH})"
         )
 
@@ -204,50 +194,31 @@ class smu_telemetry_queue_threshold_test_seq:
         if status != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A WR {label} @0x{addr:08x} status={status}")
 
-    def _set_lane0(self, name: str, width: int, value: int) -> None:
-        pin = getattr(self.dut, name)
-        current = int(pin.value) if pin.value.is_resolvable else 0
-        pin.value = (current & ~((1 << width) - 1)) | (value & ((1 << width) - 1))
-
-    def _atready(self) -> int:
-        val = self.dut.tb_telemetry_atready.value
-        if not val.is_resolvable:
-            raise AssertionError(f"X/Z on tb_telemetry_atready: {val}")
-        return int(val) & 1
-
-    async def _beat(self, value: int, index: int) -> None:
+    async def _beat(self, index: int) -> None:
+        """Drive beat ``index`` on lane 0 and require ``atready`` to take it within the bound."""
         rec = self._site("atb_beat", f"{ATB_READY_BOUND} clk_telemetry_i cycles")
-        self._set_lane0("tb_telemetry_atdata", ATB_BEAT_BITS, value & ATB_BEAT_MASK)
-        self._set_lane0("tb_telemetry_atid", 7, ATB_ID)
-        self._set_lane0("tb_telemetry_atvalid", 1, 1)
-        await RisingEdge(self.dut.clk_ref_i)
-        accepted = False
+        beat = BEATS[index]
+        source = TelemetryBeatSource(self.dut, [beat])
         for _ in range(ATB_READY_BOUND):
-            if self._atready():
-                accepted = True
-                break
             await RisingEdge(self.dut.clk_ref_i)
-        self._set_lane0("tb_telemetry_atvalid", 1, 0)
-        if not accepted:
+            if source.sent:
+                break
+        if not source.sent:
+            source.task.cancel()
             rec["expired"] += 1
-            rec["last"] = f"EXPIRED beat {index} data=0x{value & ATB_BEAT_MASK:02x} atready=0"
+            rec["last"] = f"EXPIRED beat {index + 1} {beat} atready=0"
             self._log(f"TIMEOUT-PATH atb_beat: bound={rec['bound']} {rec['last']}")
-            raise AssertionError(f"ATB beat {index} never accepted within {ATB_READY_BOUND} cycles")
+            raise AssertionError(
+                f"ATB beat {index + 1} never accepted within {ATB_READY_BOUND} cycles"
+            )
+        await source.task
         rec["count"] += 1
-        rec["last"] = f"beat {index} data=0x{value & ATB_BEAT_MASK:02x} atready=1"
+        rec["last"] = f"beat {index + 1} {beat} atready=1"
 
-    async def _send_message(self, probe_id: int) -> None:
-        packet = (1 << ATB_LAST_PACKET_BIT) | (probe_id << ATB_PROBE_ID_LSB)
-        for block_lsb in range(0, ATB_HEADER_BLOCK_LSB, ATB_BLOCK_BITS):
-            packet |= ATB_BLOCK_FILL << block_lsb
-        for i in range(ATB_BEATS_PER_PACKET):
-            await self._beat((packet >> (i * ATB_BEAT_BITS)) & ATB_BEAT_MASK, i)
-
-    async def _pop_and_probe(self, label: str) -> int:
-        await self._wr(TEL_CTRL, self.ctrl | BUFFER_POP_BM, f"CTRL pop {label}")
-        probe = await self._rd(TEL_PROBE_ID, f"PROBE_ID after {label}")
-        self._cell(f"PROBE_ID after {label}", TEL_PROBE_ID, f"value=0x{probe:08x}")
-        return probe & PROBE_ID_BM
+    async def _pop(self, label: str) -> int:
+        word = await self._rd(TEL_DATA, f"TELEMETRY_DATA {label}")
+        self._cell(f"TELEMETRY_DATA {label}", TEL_DATA, f"value=0x{word:08x}")
+        return word
 
     async def _intr_threshold(self, label: str) -> int:
         value = await self._rd(TEL_INTR_STATUS, f"INTR_STATUS {label}")
@@ -256,9 +227,9 @@ class smu_telemetry_queue_threshold_test_seq:
 
     async def _set_threshold(self, threshold: int) -> None:
         self.threshold = threshold
-        self.ctrl = threshold << THRESHOLD_BP
-        await self._wr(TEL_CTRL, self.ctrl, f"CTRL BUFFER_THRESHOLD={threshold}")
-        self._cell(f"CTRL BUFFER_THRESHOLD={threshold}", TEL_CTRL, f"wrote=0x{self.ctrl:08x}")
+        ctrl = threshold << THRESHOLD_BP
+        await self._wr(TEL_CTRL, ctrl, f"CTRL BUFFER_THRESHOLD={threshold}")
+        self._cell(f"CTRL BUFFER_THRESHOLD={threshold}", TEL_CTRL, f"wrote=0x{ctrl:08x}")
 
     async def _threshold_writes_before(self, event: int, occupancy: int) -> None:
         """Write every drawn threshold whose position is this event, then compare the status."""
@@ -280,9 +251,17 @@ class smu_telemetry_queue_threshold_test_seq:
         drawn = self.threshold
         occupancy = PINNED_OCCUPANCY
         for threshold, token, label in (
-            (PINNED_LOW, "TELQ_THRESHOLD_LIVE", "threshold 3 with 5 queued"),
-            (PINNED_HIGH, "TELQ_THRESHOLD_CLEAR", "threshold raised to 5 with 5 queued"),
-            (PINNED_LOW, "TELQ_THRESHOLD_LIVE", "threshold back to 3 with 5 queued"),
+            (PINNED_LOW, "TELQ_THRESHOLD_LIVE", f"threshold {PINNED_LOW} with {occupancy} held"),
+            (
+                PINNED_HIGH,
+                "TELQ_THRESHOLD_CLEAR",
+                f"threshold raised to {PINNED_HIGH} with {occupancy} held",
+            ),
+            (
+                PINNED_LOW,
+                "TELQ_THRESHOLD_LIVE",
+                f"threshold back to {PINNED_LOW} with {occupancy} held",
+            ),
         ):
             await self._set_threshold(threshold)
             intr = await self._intr_threshold(label)
@@ -293,9 +272,9 @@ class smu_telemetry_queue_threshold_test_seq:
                 evidence=token,
             )
         await self._set_threshold(drawn)
-        intr = await self._intr_threshold("drawn threshold restored with 5 queued")
+        intr = await self._intr_threshold(f"drawn threshold restored with {occupancy} held")
         self.sb.expect_eq(
-            f"CHK-TELQ-THRESHOLD-CLEAR drawn threshold restored with 5 queued "
+            f"CHK-TELQ-THRESHOLD-CLEAR drawn threshold restored with {occupancy} held "
             f"{self._drawn(occupancy)}",
             intr,
             self._expect_intr(occupancy),
@@ -305,9 +284,7 @@ class smu_telemetry_queue_threshold_test_seq:
     async def run(self) -> None:
         sb = self.sb
         dut = self.dut
-        self.ctrl = 0
-        assert PROBE_ID_BITS == 5 and QUEUE_DEPTH < (1 << PROBE_ID_BITS)
-        assert PINNED_LOW < PINNED_OCCUPANCY <= PINNED_HIGH
+        assert 0 < PINNED_LOW < PINNED_OCCUPANCY <= PINNED_HIGH < QUEUE_DEPTH
 
         self._draw()
         self._mark("S1", "SETUP: bring-up, IDCODE, J2A gate open, telemetry clock gate")
@@ -329,58 +306,56 @@ class smu_telemetry_queue_threshold_test_seq:
         if cg_word & CG_EN_BM:
             raise AssertionError(f"telemetry clock gate closed: CLOCK_GATE_CONTROL=0x{cg_word:08x}")
 
-        self._mark("S2", "CTRL.BUFFER_POP on the empty queue")
-        await self._wr(TEL_CTRL, BUFFER_POP_BM, "CTRL pop on empty")
-        status = await self._rd(TEL_STATUS, "STATUS after pop on empty")
-        self._cell("pop on empty STATUS", TEL_STATUS, f"value=0x{status:08x}")
-        probe = await self._rd(TEL_PROBE_ID, "PROBE_ID after pop on empty")
-        self._cell("pop on empty PROBE_ID", TEL_PROBE_ID, f"value=0x{probe:08x}")
+        self._mark("S2", "TELEMETRY_DATA read on the empty FIFO")
+        word = await self._pop("on empty")
+        status = await self._rd(TEL_STATUS, "STATUS after read on empty")
+        self._cell("read on empty STATUS", TEL_STATUS, f"value=0x{status:08x}")
         sb.expect_eq(
-            "CHK-TELQ-POP-EMPTY STATUS.BUFFER_EMPTY after pop on the empty queue",
+            "CHK-TELQ-POP-EMPTY TELEMETRY_DATA read on the empty FIFO",
+            word,
+            0,
+            evidence="TELQ_POP_EMPTY",
+        )
+        sb.expect_eq(
+            "CHK-TELQ-POP-EMPTY STATUS.BUFFER_EMPTY after a read on the empty FIFO",
             status & STATUS_EMPTY_BM,
             STATUS_EMPTY_BM,
             evidence="TELQ_POP_EMPTY",
         )
-        sb.expect_eq(
-            "CHK-TELQ-POP-EMPTY PROBE_ID after pop on the empty queue",
-            probe & PROBE_ID_BM,
-            0,
-            evidence="TELQ_POP_EMPTY",
-        )
 
-        self._mark("S3", "drawn thresholds, eight messages, STATUS and INTR_STATUS after each")
+        self._mark("S3", f"drawn thresholds, {QUEUE_DEPTH} beats, INTR_STATUS after each")
         await self._set_threshold(self.thresholds[0])
         for p in range(1, QUEUE_DEPTH + 1):
             await self._threshold_writes_before(p, p - 1)
-            await self._send_message(p)
-            status = await self._rd(TEL_STATUS, f"STATUS after message {p}")
-            self._cell(f"message {p} STATUS", TEL_STATUS, f"value=0x{status:08x}")
-            intr = await self._intr_threshold(f"after message {p}")
+            await self._beat(p - 1)
+            if p in STATUS_FILLS:
+                status = await self._rd(TEL_STATUS, f"STATUS after beat {p}")
+                self._cell(f"beat {p} STATUS", TEL_STATUS, f"value=0x{status:08x}")
+                sb.expect_eq(
+                    f"CHK-TELQ-EMPTY-FULL beat {p} BUFFER_EMPTY",
+                    status & STATUS_EMPTY_BM,
+                    0,
+                    evidence="TELQ_EMPTY_FULL",
+                )
+                sb.expect_eq(
+                    f"CHK-TELQ-EMPTY-FULL beat {p} BUFFER_FULL",
+                    1 if status & STATUS_FULL_BM else 0,
+                    1 if p == QUEUE_DEPTH else 0,
+                    evidence="TELQ_EMPTY_FULL",
+                )
+            intr = await self._intr_threshold(f"after beat {p}")
             sb.expect_eq(
-                f"CHK-TELQ-EMPTY-FULL message {p} BUFFER_EMPTY",
-                status & STATUS_EMPTY_BM,
-                0,
-                evidence="TELQ_EMPTY_FULL",
-            )
-            sb.expect_eq(
-                f"CHK-TELQ-EMPTY-FULL message {p} BUFFER_FULL",
-                1 if status & STATUS_FULL_BM else 0,
-                1 if p == QUEUE_DEPTH else 0,
-                evidence="TELQ_EMPTY_FULL",
-            )
-            sb.expect_eq(
-                f"CHK-TELQ-THRESHOLD-LIVE message {p} INTR_STATUS.BUFFER_THRESHOLD "
-                f"{self._drawn(p)}",
+                f"CHK-TELQ-THRESHOLD-LIVE beat {p} INTR_STATUS.BUFFER_THRESHOLD {self._drawn(p)}",
                 intr,
                 self._expect_intr(p),
                 evidence="TELQ_THRESHOLD_LIVE",
             )
 
         self._mark(
-            "S4", "write 1 to INTR_STATUS, pop, pinned flip and re-threshold through the queue"
+            "S4", "write 1 to INTR_STATUS, read out, pinned flip and re-threshold through the FIFO"
         )
         await self._wr(TEL_INTR_STATUS, INTR_THRESHOLD_BM, "INTR_STATUS write 1")
-        intr = await self._intr_threshold("after write of 1 with eight queued")
+        intr = await self._intr_threshold("after write of 1 with the FIFO full")
         # The threshold in force here is drawn below QUEUE_DEPTH, so the source is live and the
         # status reads 1; the pinned 1 keeps this leg from passing on a cleared status.
         sb.expect_eq(
@@ -393,24 +368,31 @@ class smu_telemetry_queue_threshold_test_seq:
         for pop in range(1, QUEUE_DEPTH + 1):
             occupancy = QUEUE_DEPTH - pop
             await self._threshold_writes_before(QUEUE_DEPTH + pop, occupancy + 1)
-            probe = await self._pop_and_probe(f"pop {pop}")
-            intr = await self._intr_threshold(f"after pop {pop}")
+            word = await self._pop(f"read {pop}")
+            intr = await self._intr_threshold(f"after read {pop}")
             sb.expect_eq(
-                f"CHK-TELQ-ORDER probe id after pop {pop}",
-                probe,
-                pop + 1 if pop < QUEUE_DEPTH else 0,
+                f"CHK-TELQ-ORDER TELEMETRY_DATA read {pop}",
+                f"0x{word:08x}",
+                f"0x{telemetry_word(BEATS[pop - 1]):08x}",
                 evidence="TELQ_ORDER",
             )
             sb.expect_eq(
-                f"CHK-TELQ-THRESHOLD-LIVE after pop {pop} {self._drawn(occupancy)}",
+                f"CHK-TELQ-THRESHOLD-LIVE after read {pop} {self._drawn(occupancy)}",
                 intr,
                 self._expect_intr(occupancy),
                 evidence="TELQ_THRESHOLD_LIVE",
             )
             if pop == PINNED_POP:
                 await self._pinned_flip()
+        word = await self._pop("after the FIFO is drained")
+        sb.expect_eq(
+            "CHK-TELQ-ORDER TELEMETRY_DATA read on the drained FIFO",
+            word,
+            0,
+            evidence="TELQ_ORDER",
+        )
 
-        self._mark("S5", "INTR_TEST.BUFFER_THRESHOLD force and release on the empty queue")
+        self._mark("S5", "INTR_TEST.BUFFER_THRESHOLD force and release on the empty FIFO")
         await self._wr(TEL_INTR_TEST, INTR_TEST_THRESHOLD_BM, "INTR_TEST write 1")
         intr = await self._intr_threshold("after INTR_TEST=1")
         sb.expect_eq(
@@ -428,8 +410,6 @@ class smu_telemetry_queue_threshold_test_seq:
             evidence="TELQ_THRESHOLD_TEST",
         )
         await self._wr(TEL_CTRL, 0, "CTRL restore")
-        self._set_lane0("tb_telemetry_atdata", ATB_BEAT_BITS, 0)
-        self._set_lane0("tb_telemetry_atid", 7, 0)
 
         self._mark("S6", "TIMEOUT: bounded waits and last state")
         lines = []

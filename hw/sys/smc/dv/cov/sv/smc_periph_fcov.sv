@@ -326,14 +326,19 @@ module smc_periph_fcov #(
   // ------------------------------------------------------------------
   // Telemetry ATB. An accepted beat is valid and ready in the same cycle;
   // the per-receiver points keep the three instances separable, and the
-  // distinct-ID point needs two different IDs across the run.
+  // distinct-ID point needs two different IDs across the run. A beat held
+  // valid with ready low is a receiver whose FIFO is full holding its
+  // source off.
   // ------------------------------------------------------------------
   wire [2:0] atb_accept = telem_atvalid_i & telem_atready_i;
+  wire [2:0] atb_stall = telem_atvalid_i & ~telem_atready_i;
   wire atb_transfer_accepted_e = (atb_accept !== 3'd0) && (^atb_accept !== 1'bx);
+  wire atb_backpressure_e = (atb_stall !== 3'd0) && (^atb_stall !== 1'bx);
   wire receiver_0_decode_e = (atb_accept[0] === 1'b1);
   wire receiver_1_decode_e = (atb_accept[1] === 1'b1);
   wire receiver_2_decode_e = (atb_accept[2] === 1'b1);
   `OCAH_FCOV_COVER(c_atb_transfer_accepted, atb_transfer_accepted_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_atb_backpressure, atb_backpressure_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_receiver_0_decode, receiver_0_decode_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_receiver_1_decode, receiver_1_decode_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_receiver_2_decode, receiver_2_decode_e, clk_smc_i, in_reset)

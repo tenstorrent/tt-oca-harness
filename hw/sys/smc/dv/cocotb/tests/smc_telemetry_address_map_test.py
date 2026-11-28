@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC telemetry receiver wrapper address map: offsets, counters, past-extent, unbacked."""
+"""SMC telemetry receiver wrapper address map: offsets, data windows, past-extent, unbacked."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_telemetry_address_map_test(smc_base_test):
-    """Receivers 0 to 2 register and counter offsets; past-extent and unbacked responses."""
+    """Receivers 0 to 2 register offsets and data windows; past-extent and unbacked responses."""
 
     required_evidence = (
         "CHK-NONVAC",
         "CHK-TELEMETRY-APERTURE-REGS",
-        "CHK-TELEMETRY-COUNTER-WINDOW",
+        "CHK-TELEMETRY-DATA-WINDOW",
         "CHK-TELEMETRY-NO-FOURTH-RECEIVER",
         "CHK-TELEMETRY-PAST-EXTENT",
         "CHK-TELEMETRY-UNBACKED-OFFSETS",
@@ -33,8 +33,8 @@ class smc_telemetry_address_map_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.DIAGNOSTIC,
             type(self).__name__,
-            # 21 register reads, 6 pattern writes and reads, 3 counter-window
-            # rounds of 6 reads, 32 counter reads, past-extent and unbacked probes.
+            # 18 register reads, 12 pattern writes and 12 reads, one data read per
+            # drawn beat plus 3 empty reads per receiver, past-extent and unbacked probes.
             min_csr_accesses=80,
             csr_accesses=seq.accesses,
             proxy=False,

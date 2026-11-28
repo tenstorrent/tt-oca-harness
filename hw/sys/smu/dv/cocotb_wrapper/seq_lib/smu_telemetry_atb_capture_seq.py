@@ -2,25 +2,23 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_telemetry_atb_capture_test. No force.
 
-The ATB telemetry source interface at the SMU boundary, driven on receiver 0
-and read back through the telemetry receiver's own registers over JTAG2AXI.
+The ATB telemetry source interface at the SMU boundary, driven on the wrapper
+pins and read back through each telemetry receiver's own registers over
+JTAG2AXI. A receiver stores every accepted ATB beat as ``{atid, atdata}``; one
+read of ``TELEMETRY_DATA`` returns the oldest beat with ``VALID`` set and
+removes it, and a read of an empty FIFO returns 0 and removes nothing
+(``telemetry_receiver.rdl``, TELEMETRY_DATA).
 
-S1  Reset state. ``STATUS.BUFFER_EMPTY`` reads 1 while ``TELEMETRY_PROBE_ID``
-    and ``TELEMETRY_COUNTER_VLDS`` read 0, so the window is discriminating:
-    a dead read returning zeros fails the STATUS compare.
+S1  Reset state. Receiver 0 reads ``STATUS.BUFFER_EMPTY`` set and
+    ``TELEMETRY_DATA`` 0.
 
 S2  The telemetry clock gate. ``SMC_BASE_CONFIG.CLOCK_GATE_CONTROL``'s
     ``TELEMETRY_CG_EN`` is read, cleared and read back before any beat, so a
-    captured message cannot be credited to an accidentally gated receiver.
+    captured beat cannot be credited to an accidentally gated receiver.
 
-S3  One complete last-flagged ATB message. Every beat must be accepted --
-    ``telemetry_atready_o`` high on a ``clk_telemetry_i`` edge while
-    ``telemetry_atvalid_i`` is high -- because a dropped beat leaves a partial
-    frame that can still clear ``STATUS.BUFFER_EMPTY`` and still match the
-    probe id. The receiver then has to report the buffer non-empty, the probe
-    id that was framed, one valid bit for the one counter's worth of valid
-    blocks sent, that counter reassembled from the byte every valid block
-    carried, and ``CTRL.BUFFER_POP`` has to return it to empty.
+S3  Capture. Five beats, each with an ATID and data byte no other beat
+    shares, are driven on lane 0 and read back through ``TELEMETRY_DATA`` as
+    the exact words, in order; the FIFO then reads empty.
 
 S4  The ATB flush handshake. ``CTRL.TELEMETRY_TX_FLUSH`` requests the
     upstream flush over the ATB AF interface and clears itself when the flush
@@ -31,49 +29,35 @@ S4  The ATB flush handshake. ``CTRL.TELEMETRY_TX_FLUSH`` requests the
     raising it retires both. Lowering it again at the wrapper pin leaves the
     retired request retired.
 
-S5  Every receiver. The same message, framed with a probe id of the
-    receiver's own, is driven into each receiver on its own ATB lane with
-    every ATB ID bit high, and read back and popped through that receiver's
-    registers; each lane then returns to all-zero data and ID.
+S5  Every receiver. Each receiver takes, on its own lane, a beat with every
+    ATID and data bit high, one with every bit low and one of its own, and
+    returns exactly those words; every receiver then reads empty, so no beat
+    reached another lane's FIFO.
 
 S6  The flush handshake of S4 on receivers 1 and 2.
 
-S7  Backpressure, on every receiver. A complete message is queued first, so
-    STATUS.BUFFER_EMPTY reads 0. The leaf runs ``clk_telemetry_i`` faster than
-    the receiver clock (``clk_smu_i``), so ATB beats offered back to back on
-    every clock outrun the crossing FIFO's drain and ``telemetry_atready_o``
-    must fall after at least one beat is accepted (``doc/interface.adoc``,
-    "Back-pressure"); the beats accepted before it falls are counted and
-    recorded, since no document gives the FIFO depth. Dropping
-    ``telemetry_atvalid_i`` lets the FIFO drain and ready rises again.
-    ``CTRL.TELEMETRY_RX_FLUSH`` "discards queued messages and resets the
-    assembly write pointer" (``telemetry_receiver.rdl``), so the queued
-    message is gone, BUFFER_EMPTY reads 1, and a complete message sent after
-    the flush is captured with its own probe id, not shifted by the partial
-    beats.
+S7  Backpressure, on every receiver. ``FULL_OFFER`` beats are offered with
+    no reads. The receiver holds ``BUFFER_DEPTH`` beats and the wrapper's ATB
+    crossing FIFO ``ATB_CROSSING_DEPTH`` more, so ``STATUS.BUFFER_FULL`` sets,
+    exactly ``HELD_CAPACITY`` beats are accepted, and ``telemetry_atready_o``
+    stays low with the last beat held on the pins. Draining returns every
+    offered beat in order, the held one included. ``CTRL.TELEMETRY_RX_FLUSH``
+    then discards queued beats: the FIFO reads empty, and beats sent after it
+    read back alone.
 
-The frame this sequence drives is a DV-owned table transcribed from the
-telemetry receiver specification under ``hw/ip/telemetry_receiver/``; the
-constants below cite each entry and name the positions the specification
-leaves open.
-
-``telemetry_atid_i`` is driven because an ATB beat carries a 7-bit source ID
-(``doc/interface.adoc``), but no register in ``regs/telemetry_receiver.rdl``
-reflects it, so its capture is not claimed here.
+``TelemetryBeatSource`` holds each beat on the pins until ``atready`` takes
+it, sampling ``atready`` on the falling edge of ``clk_telemetry_i``
+(``clk_ref_i`` on this bench), so a beat is counted once however long it waits.
 """
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
-from seq_lib.smu_boundary_regs import (
-    smc_base_config_u32,
-    smc_indexed2_addr,
-    telemetry_receiver_u32,
-)
+from seq_lib.smu_boundary_regs import smc_base_config_u32, telemetry_receiver_u32
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
@@ -86,96 +70,122 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
 )
 
-TEL_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 0
-)
-TEL_STATUS = smc_indexed_addr(
-    "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR", 0
-)
-TEL_PROBE_ID = smc_indexed_addr(
-    "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR", 0
-)
-TEL_COUNTER_VLDS = smc_indexed_addr(
-    "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR", 0
-)
-TEL_COUNTER0 = smc_indexed2_addr(
-    "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR", 0, 0
-)
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 TELEMETRY_CG_EN_BM = smc_base_config_u32("SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bm")
 
 STATUS_EMPTY_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
-PROBE_ID_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm")
-BUFFER_POP_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm")
+STATUS_FULL_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__STATUS__BUFFER_FULL_bm")
 TX_FLUSH_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bm")
 RX_FLUSH_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm")
+THRESHOLD_BP = telemetry_receiver_u32("TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp")
+INTR_THRESHOLD_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_bm")
+DATA_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_bm")
+DATA_BP = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_bp")
+ATID_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_bm")
+ATID_BP = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_bp")
+VALID_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_DATA__VALID_bm")
+ATB_DATA_BITS = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_DATA__DATA_bw")
+ATB_ID_BITS = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_DATA__ATID_bw")
+
+# smc_config_pkg::TelemetryReceiverBufferDepth and the AtFifoDepth of the
+# wrapper's ATB crossing FIFO.
+BUFFER_DEPTH = 32
+ATB_CROSSING_DEPTH = 8
+HELD_CAPACITY = BUFFER_DEPTH + ATB_CROSSING_DEPTH
+FULL_OFFER = HELD_CAPACITY + 1
+
+NUM_RECEIVERS = 3
+STATUS_POLL_BOUND = 200
+ATREADY_LOW_BOUND = 64
+# clk_telemetry_i cycles the source is watched with the FIFOs full and no reads issued.
+STALL_HOLD_CYCLES = 64
+AF_SETTLE_CYCLES = 16
+
+Beat = tuple[int, int]
 
 
-def _tel(name: str, receiver: int) -> int:
+def tel_addr(register: str, receiver: int = 0) -> int:
     return smc_indexed_addr(
-        f"SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{name}_BASE_ADDR", receiver
+        f"SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{register}_BASE_ADDR", receiver
     )
 
 
-# ATB message format, transcribed from the telemetry receiver specification:
-# hw/ip/telemetry_receiver/doc/index.adoc "Message Format" (eight little-endian
-# beats form a 64-bit packet; a message ends at the packet with ``last_packet``
-# set; ``last_packet`` is bit 63 of each packet; ``probe_id`` is bits [60:56]
-# of the first packet; a block is 9 bits, one valid bit and one data byte,
-# seven per packet; a counter is four consecutive blocks, most-significant
-# byte first, valid only when all four blocks are valid), doc/interface.adoc
-# (ATB_DATA_WIDTH 8, PACKET_WIDTH 64, ``atid_i`` 7 bits) and the generated
-# regs/gen/c/telemetry_receiver.h (PROBE_ID width; COUNTER_VLDS bit i is
-# counter i).
-ATB_BEAT_BITS = 8
-ATB_PACKET_BITS = 64
-ATB_BEATS_PER_PACKET = ATB_PACKET_BITS // ATB_BEAT_BITS
-ATB_LAST_PACKET_BIT = 63
-ATB_PROBE_ID_MSB = 60
-ATB_PROBE_ID_LSB = 56
-ATB_PROBE_ID_BITS = telemetry_receiver_u32("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bw")
-ATB_PROBE_ID_MASK = (1 << ATB_PROBE_ID_BITS) - 1
-ATB_BLOCK_BITS = ATB_BEAT_BITS + 1
-ATB_BLOCKS_PER_PACKET = 7
-ATB_BLOCKS_PER_COUNTER = 4
-assert ATB_PROBE_ID_MSB - ATB_PROBE_ID_LSB + 1 == ATB_PROBE_ID_BITS
-assert ATB_BLOCKS_PER_PACKET * ATB_BLOCK_BITS + 1 == ATB_PACKET_BITS
+def telemetry_word(beat: Beat) -> int:
+    """The TELEMETRY_DATA value a read of ``beat`` returns."""
+    atid, data = beat
+    return VALID_BM | ((atid << ATID_BP) & ATID_BM) | ((data << DATA_BP) & DATA_BM)
 
-# Seven 9-bit blocks fill bits 62:0 below ``last_packet``, so block boundaries
-# sit at multiples of 9 and ``probe_id`` lies inside the top block, bits 62:54.
-# The specification does not say which of the seven positions is block 0,
-# whether a block's valid bit is its top or its bottom bit, or which block
-# begins counter 0. The frame below is DV-owned and independent of all three:
-# the header block is left invalid under either orientation, and every other
-# block is all ones, the only 9-bit pattern that reads valid with the same data
-# byte whichever bit is the valid bit. Any four consecutive valid blocks then
-# reassemble COUNTER_VALUE in either byte order, and the six valid blocks hold
-# exactly one counter's worth, so byte order and block placement are not
-# discriminated here.
-ATB_HEADER_BLOCK_LSB = ATB_LAST_PACKET_BIT - ATB_BLOCK_BITS
-ATB_BLOCK_FILL = (1 << ATB_BLOCK_BITS) - 1
-COUNTER_FILL_BYTE = ATB_BLOCK_FILL & ((1 << ATB_BEAT_BITS) - 1)
-COUNTERS_SENT = (ATB_BLOCKS_PER_PACKET - 1) // ATB_BLOCKS_PER_COUNTER
-COUNTER_VALUE = int.from_bytes(bytes([COUNTER_FILL_BYTE]) * ATB_BLOCKS_PER_COUNTER, "big")
-EXPECTED_COUNTER_VLDS = (1 << COUNTERS_SENT) - 1
-assert ATB_HEADER_BLOCK_LSB <= ATB_PROBE_ID_LSB and ATB_PROBE_ID_MSB < ATB_LAST_PACKET_BIT
-assert COUNTERS_SENT == 1
 
-PROBE_ID = 0x0B
-assert PROBE_ID <= ATB_PROBE_ID_MASK
-ATB_ID = 0x2A
-ATB_ID_ALL = 0x7F
-ATB_BEAT_MASK = (1 << ATB_BEAT_BITS) - 1
-NUM_RECEIVERS = 3
-RECEIVER_PROBE_IDS = (0x15, 0x0A, 0x1F)
-BACKPRESSURE_BEATS = 512
-ATB_READY_BOUND = 64
-STATUS_POLL_BOUND = 200
-AF_SETTLE_CYCLES = 16
+def beat_stream(first_atid: int, first_data: int, count: int) -> list[Beat]:
+    """``count`` beats, each with an ATID and a data byte no other beat in it shares."""
+    return [
+        ((first_atid + i) % (1 << ATB_ID_BITS), (first_data + 3 * i) % (1 << ATB_DATA_BITS))
+        for i in range(count)
+    ]
+
+
+def set_lane(dut, name: str, lane: int, width: int, value: int) -> None:
+    pin = getattr(dut, name)
+    mask = ((1 << width) - 1) << (lane * width)
+    current = int(pin.value) if pin.value.is_resolvable else 0
+    pin.value = (current & ~mask) | ((value << (lane * width)) & mask)
+
+
+def atready(dut, lane: int) -> int:
+    val = dut.tb_telemetry_atready.value
+    if not val.is_resolvable:
+        raise AssertionError(f"X/Z on tb_telemetry_atready: {val}")
+    return (int(val) >> lane) & 1
+
+
+class TelemetryBeatSource:
+    """An ATB source on one lane that holds each beat on the pins until ``atready`` takes it."""
+
+    def __init__(self, dut, beats: list[Beat], lane: int = 0) -> None:
+        self.dut = dut
+        self.beats = beats
+        self.lane = lane
+        self.sent = 0
+        self.task = cocotb.start_soon(self._run())
+
+    @property
+    def pending(self) -> int:
+        return len(self.beats) - self.sent
+
+    async def _run(self) -> None:
+        dut, lane = self.dut, self.lane
+        # Each beat goes on the pins just after a rising edge, so the falling edge that samples
+        # atready comes before the rising edge that can take it.
+        await RisingEdge(dut.clk_ref_i)
+        for beat_atid, beat_data in self.beats:
+            set_lane(dut, "tb_telemetry_atid", lane, ATB_ID_BITS, beat_atid)
+            set_lane(dut, "tb_telemetry_atdata", lane, ATB_DATA_BITS, beat_data)
+            set_lane(dut, "tb_telemetry_atvalid", lane, 1, 1)
+            while True:
+                await FallingEdge(dut.clk_ref_i)
+                if atready(dut, lane):
+                    break
+            await RisingEdge(dut.clk_ref_i)
+            self.sent += 1
+        set_lane(dut, "tb_telemetry_atvalid", lane, 1, 0)
+        set_lane(dut, "tb_telemetry_atid", lane, ATB_ID_BITS, 0)
+        set_lane(dut, "tb_telemetry_atdata", lane, ATB_DATA_BITS, 0)
+
+
+CAPTURE_BEATS = beat_stream(0x11, 0xA0, 5)
+RECEIVER_BEATS = [
+    [((1 << ATB_ID_BITS) - 1, (1 << ATB_DATA_BITS) - 1), (0, 0), (0x15 + rx, 0x3C + 0x11 * rx)]
+    for rx in range(NUM_RECEIVERS)
+]
+FULL_BEATS = [
+    beat_stream(0x20 + 0x10 * rx, 0x01 + 0x40 * rx, FULL_OFFER) for rx in range(NUM_RECEIVERS)
+]
+FLUSHED_BEATS = [beat_stream(0x60 + rx, 0x90 + rx, 4) for rx in range(NUM_RECEIVERS)]
+RESENT_BEATS = [beat_stream(0x68 + rx, 0xC8 + rx, 3) for rx in range(NUM_RECEIVERS)]
 
 
 class smu_telemetry_atb_capture_seq:
-    """An ATB message driven at the SMU boundary and read back from the receiver."""
+    """ATB beats driven at the SMU boundary and read back from each receiver."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -192,12 +202,6 @@ class smu_telemetry_atb_capture_seq:
         if not val.is_resolvable:
             raise AssertionError(f"X/Z on {name}: {val}")
         return (int(val) >> lane) & 1
-
-    def _set_lane(self, name: str, lane: int, width: int, value: int) -> None:
-        pin = getattr(self.dut, name)
-        mask = ((1 << width) - 1) << (lane * width)
-        current = int(pin.value) if pin.value.is_resolvable else 0
-        pin.value = (current & ~mask) | ((value << (lane * width)) & mask)
 
     async def _rd32(self, addr: int, what: str) -> int:
         status, rdata = await jtag2axi_single_read(
@@ -217,6 +221,39 @@ class smu_telemetry_atb_capture_seq:
         if status != J2A_STATUS_SUCCESS:
             raise AssertionError(f"{what} write @0x{addr:08x} status={status}")
 
+    async def _poll(self, receiver: int, register: str, mask: int, want: bool) -> int:
+        """Poll a receiver register until ``mask`` reads ``want``; raise on expiry."""
+        addr = tel_addr(register, receiver)
+        value = 0
+        for _ in range(STATUS_POLL_BOUND):
+            value = await self._rd32(addr, f"TELEMETRY{receiver} {register}")
+            if bool(value & mask) == want:
+                return value
+        raise AssertionError(
+            f"receiver {receiver} {register} mask 0x{mask:08x} never read {int(want)} over "
+            f"{STATUS_POLL_BOUND} polls (last 0x{value:08x})"
+        )
+
+    async def _drain(self, receiver: int, count: int) -> list[int]:
+        """Read ``count`` beats from ``receiver``, re-reading a 0 while a beat is crossing."""
+        addr = tel_addr("TELEMETRY_DATA", receiver)
+        words: list[int] = []
+        for _ in range(count + STATUS_POLL_BOUND):
+            if len(words) == count:
+                break
+            word = await self._rd32(addr, f"TELEMETRY{receiver} TELEMETRY_DATA")
+            if word:
+                words.append(word)
+        return words
+
+    async def _empty(self, receiver: int) -> tuple[int, int]:
+        """(STATUS.BUFFER_EMPTY, TELEMETRY_DATA) of ``receiver``."""
+        status = await self._rd32(tel_addr("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
+        data = await self._rd32(
+            tel_addr("TELEMETRY_DATA", receiver), f"TELEMETRY{receiver} TELEMETRY_DATA"
+        )
+        return status & STATUS_EMPTY_BM, data
+
     async def run(self) -> None:
         dut = self.dut
         await self.cfg.reset_done.wait()
@@ -233,7 +270,7 @@ class smu_telemetry_atb_capture_seq:
 
         await self._reset_state()
         await self._ungate()
-        await self._send_message()
+        await self._capture()
         await self._flush_handshake()
         await self._every_receiver()
         for receiver in range(1, NUM_RECEIVERS):
@@ -244,32 +281,10 @@ class smu_telemetry_atb_capture_seq:
     # S1 / S2
     # ------------------------------------------------------------------
     async def _reset_state(self) -> None:
-        status = await self._rd32(TEL_STATUS, "TELEMETRY STATUS")
         self.sb.expect_eq(
-            "receiver 0 reports its message buffer empty out of reset",
-            status & STATUS_EMPTY_BM,
-            STATUS_EMPTY_BM,
-            evidence="CHK-SMU-TEL-RESET",
-        )
-        probe = await self._rd32(TEL_PROBE_ID, "TELEMETRY_PROBE_ID")
-        self.sb.expect_eq(
-            "no probe id captured before any beat",
-            probe & PROBE_ID_BM,
-            0,
-            evidence="CHK-SMU-TEL-RESET",
-        )
-        vlds = await self._rd32(TEL_COUNTER_VLDS, "TELEMETRY_COUNTER_VLDS")
-        self.sb.expect_eq(
-            "no counter reported valid before any beat",
-            vlds,
-            0,
-            evidence="CHK-SMU-TEL-RESET",
-        )
-        counter0 = await self._rd32(TEL_COUNTER0, "TELEMETRY_COUNTER[0]")
-        self.sb.expect_eq(
-            "counter 0 reads its reset value before any beat",
-            counter0,
-            0,
+            "receiver 0 reads STATUS.BUFFER_EMPTY set and TELEMETRY_DATA 0 out of reset",
+            await self._empty(0),
+            (STATUS_EMPTY_BM, 0),
             evidence="CHK-SMU-TEL-RESET",
         )
 
@@ -288,95 +303,19 @@ class smu_telemetry_atb_capture_seq:
     # ------------------------------------------------------------------
     # S3
     # ------------------------------------------------------------------
-    async def _drive_beat(self, value: int, index: int, lane: int = 0, atid: int = ATB_ID) -> None:
-        """Drive one ATB beat and require the handshake to complete.
-
-        Expiry is a failure, not a skip: a dropped beat leaves a partial frame
-        that can still clear STATUS.BUFFER_EMPTY and still match the probe id.
-        """
-        dut = self.dut
-        self._set_lane("tb_telemetry_atdata", lane, ATB_BEAT_BITS, value & ATB_BEAT_MASK)
-        self._set_lane("tb_telemetry_atid", lane, 7, atid)
-        self._set_lane("tb_telemetry_atvalid", lane, 1, 1)
-        await RisingEdge(dut.clk_ref_i)
-        accepted = False
-        for _ in range(ATB_READY_BOUND):
-            if self._bit("tb_telemetry_atready", lane):
-                accepted = True
-                break
-            await RisingEdge(dut.clk_ref_i)
-        self._set_lane("tb_telemetry_atvalid", lane, 1, 0)
-        if not accepted:
-            raise AssertionError(
-                f"ATB beat {index} (data=0x{value & 0xFF:02x}) was never accepted: "
-                f"telemetry_atready_o stayed low for {ATB_READY_BOUND} clk_telemetry_i "
-                f"cycles, and continuing would send a truncated frame"
-            )
-
-    async def _send_packet(self, packet: int, lane: int = 0, atid: int = ATB_ID) -> None:
-        for i in range(ATB_BEATS_PER_PACKET):
-            await self._drive_beat(
-                (packet >> (i * ATB_BEAT_BITS)) & ATB_BEAT_MASK, i, lane=lane, atid=atid
-            )
-
-    def _frame_single_counter(self, probe_id: int) -> int:
-        """One last-flagged packet: ``probe_id`` in the header block, every other block valid."""
-        packet = 1 << ATB_LAST_PACKET_BIT
-        packet |= (probe_id & ATB_PROBE_ID_MASK) << ATB_PROBE_ID_LSB
-        for block_lsb in range(0, ATB_HEADER_BLOCK_LSB, ATB_BLOCK_BITS):
-            packet |= ATB_BLOCK_FILL << block_lsb
-        return packet
-
-    async def _send_message(self) -> None:
-        packet = self._frame_single_counter(PROBE_ID)
-        self.log.info("ATB packet framed as 0x%016x", packet)
-        await self._send_packet(packet)
-
-        polls = 0
-        for polls in range(1, STATUS_POLL_BOUND + 1):
-            status = await self._rd32(TEL_STATUS, "TELEMETRY STATUS")
-            if not status & STATUS_EMPTY_BM:
-                break
-        else:
-            raise AssertionError(
-                f"STATUS.BUFFER_EMPTY never cleared after a complete last-flagged "
-                f"message: {STATUS_POLL_BOUND} polls"
-            )
-        self.log.info("telemetry receiver 0 reported a message after %d status polls", polls)
+    async def _capture(self) -> None:
+        await TelemetryBeatSource(self.dut, CAPTURE_BEATS).task
+        words = await self._drain(0, len(CAPTURE_BEATS))
         self.sb.expect_eq(
-            "a complete last-flagged ATB message leaves the buffer non-empty",
-            status & STATUS_EMPTY_BM,
-            0,
+            "TELEMETRY_DATA returns each captured beat as {VALID, ATID, DATA}, in order",
+            [f"0x{w:08x}" for w in words],
+            [f"0x{telemetry_word(b):08x}" for b in CAPTURE_BEATS],
             evidence="CHK-SMU-TEL-CAPTURE",
         )
-        probe = await self._rd32(TEL_PROBE_ID, "TELEMETRY_PROBE_ID")
         self.sb.expect_eq(
-            "the receiver reports the probe id that was framed on the ATB beats",
-            probe & PROBE_ID_BM,
-            PROBE_ID,
-            evidence="CHK-SMU-TEL-CAPTURE",
-        )
-        vlds = await self._rd32(TEL_COUNTER_VLDS, "TELEMETRY_COUNTER_VLDS")
-        self.sb.expect_eq(
-            "one valid bit for the one counter's worth of valid blocks sent",
-            vlds,
-            EXPECTED_COUNTER_VLDS,
-            evidence="CHK-SMU-TEL-CAPTURE",
-        )
-        counter0 = await self._rd32(TEL_COUNTER0, "TELEMETRY_COUNTER[0]")
-        self.sb.expect_eq(
-            "counter 0 reassembles the byte that filled every valid block",
-            counter0,
-            COUNTER_VALUE,
-            evidence="CHK-SMU-TEL-CAPTURE",
-        )
-        await self._wr32(TEL_CTRL, BUFFER_POP_BM, "TELEMETRY CTRL")
-        await ClockCycles(self.dut.clk_smu_i, AF_SETTLE_CYCLES)
-        status = await self._rd32(TEL_STATUS, "TELEMETRY STATUS")
-        self.sb.expect_eq(
-            "popping the only message returns the buffer to empty",
-            status & STATUS_EMPTY_BM,
-            STATUS_EMPTY_BM,
+            "the drained FIFO reads STATUS.BUFFER_EMPTY set and TELEMETRY_DATA 0",
+            await self._empty(0),
+            (STATUS_EMPTY_BM, 0),
             evidence="CHK-SMU-TEL-CAPTURE",
         )
 
@@ -385,8 +324,8 @@ class smu_telemetry_atb_capture_seq:
     # ------------------------------------------------------------------
     async def _flush_handshake(self, receiver: int = 0) -> None:
         dut = self.dut
-        ctrl = _tel("CTRL", receiver)
-        self._set_lane("tb_telemetry_afready", receiver, 1, 0)
+        ctrl = tel_addr("CTRL", receiver)
+        set_lane(dut, "tb_telemetry_afready", receiver, 1, 0)
         await ClockCycles(dut.clk_ref_i, AF_SETTLE_CYCLES)
         self.sb.expect_eq(
             "no ATB flush is requested before software asks for one",
@@ -415,7 +354,7 @@ class smu_telemetry_atb_capture_seq:
             1,
             evidence="CHK-SMU-TEL-FLUSH",
         )
-        self._set_lane("tb_telemetry_afready", receiver, 1, 1)
+        set_lane(dut, "tb_telemetry_afready", receiver, 1, 1)
         await ClockCycles(dut.clk_ref_i, AF_SETTLE_CYCLES)
         self.sb.expect_eq(
             "telemetry_afready_i retires the request at the pin",
@@ -430,7 +369,7 @@ class smu_telemetry_atb_capture_seq:
             0,
             evidence="CHK-SMU-TEL-FLUSH",
         )
-        self._set_lane("tb_telemetry_afready", receiver, 1, 0)
+        set_lane(dut, "tb_telemetry_afready", receiver, 1, 0)
         await ClockCycles(dut.clk_ref_i, AF_SETTLE_CYCLES)
         wrapper_afready = dut.u_dut.telemetry_afready_i.value
         if not wrapper_afready.is_resolvable:
@@ -448,101 +387,83 @@ class smu_telemetry_atb_capture_seq:
     # ------------------------------------------------------------------
     async def _every_receiver(self) -> None:
         observed, want = {}, {}
-        for receiver, probe_id in zip(range(NUM_RECEIVERS), RECEIVER_PROBE_IDS):
-            await self._send_packet(
-                self._frame_single_counter(probe_id), lane=receiver, atid=ATB_ID_ALL
+        for receiver, beats in enumerate(RECEIVER_BEATS):
+            await TelemetryBeatSource(self.dut, beats, lane=receiver).task
+            words = await self._drain(receiver, len(beats))
+            empties = []
+            for rx in range(NUM_RECEIVERS):
+                empties.append(await self._empty(rx))
+            observed[receiver] = ([f"0x{w:08x}" for w in words], empties)
+            want[receiver] = (
+                [f"0x{telemetry_word(b):08x}" for b in beats],
+                [(STATUS_EMPTY_BM, 0)] * NUM_RECEIVERS,
             )
-            self._set_lane("tb_telemetry_atdata", receiver, ATB_BEAT_BITS, 0)
-            self._set_lane("tb_telemetry_atid", receiver, 7, 0)
-            status = STATUS_EMPTY_BM
-            for _ in range(STATUS_POLL_BOUND):
-                status = await self._rd32(_tel("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
-                if not status & STATUS_EMPTY_BM:
-                    break
-            probe = await self._rd32(_tel("TELEMETRY_PROBE_ID", receiver), "TELEMETRY_PROBE_ID")
-            await self._wr32(_tel("CTRL", receiver), BUFFER_POP_BM, f"TELEMETRY{receiver} CTRL")
-            await ClockCycles(self.dut.clk_smu_i, AF_SETTLE_CYCLES)
-            after = await self._rd32(_tel("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
-            observed[receiver] = (
-                status & STATUS_EMPTY_BM,
-                probe & PROBE_ID_BM,
-                after & STATUS_EMPTY_BM,
-            )
-            want[receiver] = (0, probe_id, STATUS_EMPTY_BM)
-        self.log.info("CHK-SMU-TEL-EVERY-RECEIVER %s", observed)
+        self.log.info("CHK-SMU-TEL-EVERY-RECEIVER (words read, every receiver empty) %s", observed)
         self.sb.expect_eq(
             "CHK-SMU-TEL-EVERY-RECEIVER", observed, want, evidence="CHK-SMU-TEL-EVERY-RECEIVER"
         )
 
     async def _backpressure(self) -> None:
-        observed, want, accepted = {}, {}, {}
-        for receiver, probe_id in zip(range(NUM_RECEIVERS), RECEIVER_PROBE_IDS):
-            row, accepted[receiver] = await self._backpressure_lane(receiver, probe_id)
-            observed[receiver] = row
-            want[receiver] = (0, True, True, True, STATUS_EMPTY_BM, 0, probe_id)
+        observed, want = {}, {}
+        for receiver in range(NUM_RECEIVERS):
+            observed[receiver] = await self._backpressure_lane(receiver)
+            want[receiver] = (
+                STATUS_FULL_BM,
+                HELD_CAPACITY,
+                0,
+                HELD_CAPACITY,
+                [f"0x{telemetry_word(b):08x}" for b in FULL_BEATS[receiver]],
+                (STATUS_EMPTY_BM, 0),
+                (STATUS_EMPTY_BM, 0),
+                [f"0x{telemetry_word(b):08x}" for b in RESENT_BEATS[receiver]],
+            )
         self.log.info(
-            "CHK-SMU-TEL-BACKPRESSURE (queued empty, stalled, beat before stall, resumed, "
-            "empty after flush, empty after resend, probe id) %s",
+            "CHK-SMU-TEL-BACKPRESSURE (BUFFER_FULL, accepted at stall, atready after hold, "
+            "accepted after hold, drained words, empty after drain, empty after RX flush, "
+            "words sent after the flush) %s",
             observed,
-        )
-        self.log.info(
-            "OBSERVATION CHK-SMU-TEL-BACKPRESSURE beats accepted before the stall %s", accepted
         )
         self.sb.expect_eq(
             "CHK-SMU-TEL-BACKPRESSURE", observed, want, evidence="CHK-SMU-TEL-BACKPRESSURE"
         )
 
-    async def _status_until_queued(self, receiver: int) -> int:
-        status = STATUS_EMPTY_BM
-        for _ in range(STATUS_POLL_BOUND):
-            status = await self._rd32(_tel("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
-            if not status & STATUS_EMPTY_BM:
-                break
-        return status & STATUS_EMPTY_BM
-
-    async def _backpressure_lane(self, receiver: int, probe_id: int) -> tuple[tuple, int]:
+    async def _backpressure_lane(self, receiver: int) -> tuple:
         dut = self.dut
-        await self._send_packet(
-            self._frame_single_counter(probe_id), lane=receiver, atid=ATB_ID_ALL
-        )
-        queued = await self._status_until_queued(receiver)
-        self._set_lane("tb_telemetry_atdata", receiver, ATB_BEAT_BITS, 0)
-        self._set_lane("tb_telemetry_atvalid", receiver, 1, 1)
-        stalled = False
-        beats = 0
-        for _ in range(BACKPRESSURE_BEATS):
-            await RisingEdge(dut.clk_ref_i)
-            if not self._bit("tb_telemetry_atready", receiver):
-                stalled = True
+        full_beats = FULL_BEATS[receiver]
+        source = TelemetryBeatSource(dut, full_beats, lane=receiver)
+        full = await self._poll(receiver, "STATUS", STATUS_FULL_BM, True)
+        for _ in range(ATREADY_LOW_BOUND):
+            if not atready(dut, receiver):
                 break
-            beats += 1
-        self._set_lane("tb_telemetry_atvalid", receiver, 1, 0)
-        resumed = False
-        for _ in range(ATB_READY_BOUND):
             await RisingEdge(dut.clk_ref_i)
-            if self._bit("tb_telemetry_atready", receiver):
-                resumed = True
-                break
+        await FallingEdge(dut.clk_ref_i)
+        at_stall = source.sent
+        await ClockCycles(dut.clk_ref_i, STALL_HOLD_CYCLES)
+        await FallingEdge(dut.clk_ref_i)
+        held_ready = atready(dut, receiver)
+        after_hold = source.sent
+        drained = await self._drain(receiver, len(full_beats))
+        await source.task
+        empty_after_drain = await self._empty(receiver)
+
+        flushed = FLUSHED_BEATS[receiver]
+        await TelemetryBeatSource(dut, flushed, lane=receiver).task
+        ctrl = tel_addr("CTRL", receiver)
+        await self._wr32(ctrl, (len(flushed) - 1) << THRESHOLD_BP, f"TELEMETRY{receiver} CTRL")
+        await self._poll(receiver, "INTR_STATUS", INTR_THRESHOLD_BM, True)
+        await self._wr32(ctrl, RX_FLUSH_BM, f"TELEMETRY{receiver} CTRL")
         await ClockCycles(dut.clk_smu_i, AF_SETTLE_CYCLES)
-        await self._wr32(_tel("CTRL", receiver), RX_FLUSH_BM, f"TELEMETRY{receiver} CTRL")
-        await ClockCycles(dut.clk_smu_i, AF_SETTLE_CYCLES)
-        flushed = await self._rd32(_tel("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
-        await self._send_packet(
-            self._frame_single_counter(probe_id), lane=receiver, atid=ATB_ID_ALL
+        empty_after_flush = await self._empty(receiver)
+        resent = RESENT_BEATS[receiver]
+        await TelemetryBeatSource(dut, resent, lane=receiver).task
+        resent_words = await self._drain(receiver, len(resent))
+        return (
+            full & STATUS_FULL_BM,
+            at_stall,
+            held_ready,
+            after_hold,
+            [f"0x{w:08x}" for w in drained],
+            empty_after_drain,
+            empty_after_flush,
+            [f"0x{w:08x}" for w in resent_words],
         )
-        self._set_lane("tb_telemetry_atdata", receiver, ATB_BEAT_BITS, 0)
-        self._set_lane("tb_telemetry_atid", receiver, 7, 0)
-        resent = await self._status_until_queued(receiver)
-        probe = await self._rd32(_tel("TELEMETRY_PROBE_ID", receiver), "TELEMETRY_PROBE_ID")
-        await self._wr32(_tel("CTRL", receiver), BUFFER_POP_BM, f"TELEMETRY{receiver} CTRL")
-        await ClockCycles(dut.clk_smu_i, AF_SETTLE_CYCLES)
-        row = (
-            queued,
-            stalled,
-            beats > 0,
-            resumed,
-            flushed & STATUS_EMPTY_BM,
-            resent,
-            probe & PROBE_ID_BM,
-        )
-        return row, beats

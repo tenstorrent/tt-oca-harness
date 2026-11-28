@@ -16,13 +16,10 @@ ifndef::backend-html5[]
 The parameters and ports of `telemetry_receiver` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-The core has two elaboration parameters. `BUFFER_DEPTH` (default 8) sets the
-number of decoded messages the queue holds; it must be a power of two and at
-least 2. `MAX_NUM_COUNTERS_PER_MESSAGE` (default 4) sets the number of counters
-decoded from each message.
+The core has one elaboration parameter. `BUFFER_DEPTH` (default 32) sets the
+number of ATB beats the FIFO holds.
 
-The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
-and ATB ID width (7 bits) are package constants.
+The ATB beat width (8 bits) and ATB ID width (7 bits) are package constants.
 The core register port has an 8-bit address and 32-bit data path.
 
 === Signal Interfaces
@@ -48,11 +45,11 @@ ATB protocol.
 === ATB Protocol Specifications
 
 * *Data Width*: 8 bits per beat
-* *ID Width*: 7 bits; the receiver ignores `atid_i`
+* *ID Width*: 7 bits; the receiver stores `atid_i` with each beat
 * *Flow Control*: Valid/ready handshaking for reliable data transfer
 * *Flush Support*: Bidirectional flush signaling for stream management
-* *Back-pressure*: Component can assert `atready_o` low to apply
-back-pressure
+* *Back-pressure*: `atready_o` is low while the FIFO is full or leaving reset;
+no beat is dropped
 * *Latency*: Zero-cycle latency when ready, immediate acceptance when
 `atready_o` is high
 
@@ -65,23 +62,24 @@ notification.
 
 * *Polarity*: Active high (asserted when high)
 * *Duration*: Level-sensitive, remains asserted until cleared
-* *Sources*: Buffer threshold and error condition interrupts
-* *Clearing*: `MISSING_LAST` is write-one-to-clear. The read-only
-`BUFFER_THRESHOLD` source remains asserted while occupancy exceeds the configured
-threshold or its test bit is set; it cannot be cleared by writing status.
+* *Sources*: Buffer threshold
+* *Clearing*: The read-only `BUFFER_THRESHOLD` source remains asserted while
+occupancy exceeds the configured threshold or its test bit is set; it cannot be
+cleared by writing status.
 * *Latency*: Interrupt assertion within 2 clock cycles of triggering
 condition
 
 === Subsystem Wrapper
 
-`telemetry_receiver_wrap` defaults to three receivers. It configures their queue
-depth with `TELEMETRY_RECEIVER_BUFFER_DEPTH` (default 8) and counter counts with
-`TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE` (default 4 per receiver).
-Actual subsystem values and aperture assignments come from the integration.
+`telemetry_receiver_wrap` defaults to three receivers. It configures their FIFO
+depth with `TELEMETRY_RECEIVER_BUFFER_DEPTH` (default 32). Actual subsystem
+values and aperture assignments come from the integration.
 
 The wrapper receives ATB traffic on `clk_telemetry_i` / `rst_telemetry_ni` and
 crosses it into `clk_i` / `rst_ni` through an eight-entry asynchronous FIFO per
-receiver. Its external ready signal reflects crossing-FIFO capacity. This does
-not turn the core's decoded-message queue into a lossless backpressured queue.
-The wrapper also contains flush-handshake synchronizers and returns a decode
-error for register addresses outside its configured receiver apertures.
+receiver. Its external ready signal is low while the crossing FIFO is full, and
+the crossing FIFO fills when the receiver FIFO is full, so no beat is dropped
+outside reset. Either reset clears the crossing FIFO, and beats offered while
+its write side is in reset are dropped. The wrapper also contains flush-handshake synchronizers. A register access in a
+gap inside a receiver's slot, or beyond the last slot, returns `DECERR` with read
+data `0xBADCAB1E`.

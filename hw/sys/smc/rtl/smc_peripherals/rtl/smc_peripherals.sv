@@ -1297,15 +1297,15 @@ module smc_peripherals #(
       smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0
       ) < (64'd1 << telemetry_receiver_wrap_pkg::RegAddrWidth))
   `OCAH_ASSERT_STATIC(
-      TelemetryRxSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE < (64'd1 << telemetry_receiver_wrap_pkg::RegAddrWidth))
+      TelemetryRxStrideFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STRIDE < (64'd1 << telemetry_receiver_wrap_pkg::RegAddrWidth))
 
   telemetry_receiver_wrap #(
     .NUM_TELEMETRY_RECEIVERS                            (smc_config_pkg::NumTelemetryReceivers),
     .TELEMETRY_RECEIVER_BUFFER_DEPTH                    (smc_config_pkg::TelemetryReceiverBufferDepth),
-    .TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE    (smc_config_pkg::TelemetryReceiverMaxNumCountersPerMessage),
 
     .TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0))),
+    .TELEMETRY_RECEIVER_0__REG_MAP_STRIDE               (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STRIDE)),
     .TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE))
   ) u_telemetry_receiver_wrap (
     .clk_i                      (gated_clk_smc_tel),

@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Telemetry receiver control, status, interrupt and message registers at reset.
+"""Telemetry receiver control, status, interrupt and data registers at reset.
 
-Spec: telemetry_receiver.rdl (CTRL, STATUS, INTR_*, TELEMETRY_PROBE_ID, TELEMETRY_COUNTER_VLDS,
-TELEMETRY_COUNTER reset values); telemetry_receiver_wrap.rdl and smc.rdl (three receivers at
-SMC base + 0x9000 + 0x100 * k); doc/memmap.adoc "Reset Behavior".
+Spec: telemetry_receiver.rdl (CTRL, STATUS, INTR_* reset values; TELEMETRY_DATA reads 0 while the
+beat FIFO is empty); telemetry_receiver_wrap.rdl and smc.rdl (three receivers at SMC base +
+0x9000 + 0x100 * k); doc/memmap.adoc "Reset Behavior".
 
-The JTAG2AXI bridge reads every register before any ATB beat is driven; nothing is written.
+The JTAG2AXI bridge reads every register before any ATB beat is driven; nothing is written. A
+read of TELEMETRY_DATA removes a beat only when one is held, so on the empty FIFO it is a plain
+read.
 """
 
 from __future__ import annotations
@@ -14,8 +16,8 @@ from __future__ import annotations
 import cocotb
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
-from seq_lib.smu_boundary_regs import smc_indexed2_addr, telemetry_receiver_u32
+from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_boundary_regs import telemetry_receiver_u32
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
@@ -25,24 +27,21 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
     require_jtag_tdo_resolved,
 )
+from seq_lib.smu_telemetry_atb_capture_seq import (
+    NUM_RECEIVERS,
+    STATUS_EMPTY_BM,
+    STATUS_FULL_BM,
+    tel_addr,
+)
 
-_PFX = "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_"
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
-NUM_RECEIVERS = 3
-NUM_COUNTERS = 32
-STATUS_EMPTY_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
-STATUS_FULL_BM = telemetry_receiver_u32("TELEMETRY_RECEIVER__STATUS__BUFFER_FULL_bm")
 STATUS_EMPTY_RESET = telemetry_receiver_u32("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_reset")
 STATUS_FULL_RESET = telemetry_receiver_u32("TELEMETRY_RECEIVER__STATUS__BUFFER_FULL_reset")
 STATUS_RESET = (STATUS_EMPTY_RESET * STATUS_EMPTY_BM) | (STATUS_FULL_RESET * STATUS_FULL_BM)
 STATUS_FIELD_BM = STATUS_EMPTY_BM | STATUS_FULL_BM
 
 J2A_POLL_LIMIT = 128
-
-
-def _tel(name: str, receiver: int) -> int:
-    return smc_indexed_addr(f"{_PFX}{name}_BASE_ADDR", receiver)
 
 
 class smu_telemetry_reset_state_test_seq:
@@ -115,7 +114,7 @@ class smu_telemetry_reset_state_test_seq:
 
         self._mark("S2", "read STATUS, CTRL, INTR_STATUS, INTR_ENABLE, INTR_TEST on rx0..2")
         for rx in range(NUM_RECEIVERS):
-            addr = _tel("STATUS", rx)
+            addr = tel_addr("STATUS", rx)
             value = await self._j2a_rd(addr, f"rx{rx} STATUS")
             self._cell(f"rx{rx} STATUS", addr, f"value=0x{value:08x}")
             sb.expect_eq(
@@ -125,7 +124,7 @@ class smu_telemetry_reset_state_test_seq:
                 evidence="TELR_CTRL_STATUS",
             )
             for reg in ("CTRL", "INTR_STATUS", "INTR_ENABLE", "INTR_TEST"):
-                addr = _tel(reg, rx)
+                addr = tel_addr(reg, rx)
                 value = await self._j2a_rd(addr, f"rx{rx} {reg}")
                 self._cell(f"rx{rx} {reg}", addr, f"value=0x{value:08x}")
                 sb.expect_eq(
@@ -135,28 +134,17 @@ class smu_telemetry_reset_state_test_seq:
                     evidence="TELR_CTRL_STATUS",
                 )
 
-        self._mark("S3", "read PROBE_ID, COUNTER_VLDS, COUNTER[n] on rx0..2")
+        self._mark("S3", "read TELEMETRY_DATA on rx0..2")
         for rx in range(NUM_RECEIVERS):
-            cells = [
-                (f"rx{rx} TELEMETRY_PROBE_ID", _tel("TELEMETRY_PROBE_ID", rx)),
-                (f"rx{rx} TELEMETRY_COUNTER_VLDS", _tel("TELEMETRY_COUNTER_VLDS", rx)),
-            ]
-            for n in range(NUM_COUNTERS if rx == 0 else 1):
-                cells.append(
-                    (
-                        f"rx{rx} TELEMETRY_COUNTER[{n}]",
-                        smc_indexed2_addr(f"{_PFX}TELEMETRY_COUNTER_BASE_ADDR", rx, n),
-                    )
-                )
-            for name, addr in cells:
-                value = await self._j2a_rd(addr, name)
-                self._cell(name, addr, f"value=0x{value:08x}")
-                sb.expect_eq(
-                    f"CHK-TELR-MESSAGE-ZERO {name} reset",
-                    value,
-                    0,
-                    evidence="TELR_MESSAGE_ZERO",
-                )
+            addr = tel_addr("TELEMETRY_DATA", rx)
+            value = await self._j2a_rd(addr, f"rx{rx} TELEMETRY_DATA")
+            self._cell(f"rx{rx} TELEMETRY_DATA", addr, f"value=0x{value:08x}")
+            sb.expect_eq(
+                f"CHK-TELR-DATA-ZERO rx{rx} TELEMETRY_DATA reset",
+                value,
+                0,
+                evidence="TELR_DATA_ZERO",
+            )
 
         self._mark("S4", "TIMEOUT: bounded waits and last state")
         lines = []

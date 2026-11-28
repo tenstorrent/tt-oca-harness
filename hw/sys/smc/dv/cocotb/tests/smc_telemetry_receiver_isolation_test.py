@@ -34,7 +34,7 @@ class smc_telemetry_receiver_isolation_test(smc_base_test):
             SmcProtocolVipKind.DIAGNOSTIC,
             type(self).__name__,
             # Floor: the S1 flush, enable and clock-gate accesses, the S2 snapshots of two
-            # receivers three times, the S3 and S4 reads and writes.
+            # receivers three times, and the S2, S3 and S4 TELEMETRY_DATA reads and writes.
             min_csr_accesses=120,
             csr_accesses=seq.accesses,
             proxy=False,

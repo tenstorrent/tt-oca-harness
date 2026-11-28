@@ -12,7 +12,7 @@ function automatic longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_B
     return 64'h0 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_NUM = 64'h3;
-localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE = 64'h100;
+localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE = 64'h18;
 localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STRIDE = 64'h100;
 localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TOTAL_SIZE = 64'h300;
 
@@ -36,18 +36,10 @@ function automatic longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_I
     return 64'h10 + (telemetry_receiver_idx * 64'h100);
 endfunction
 localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_TEST_NUM = 64'h3;
-function automatic longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR(input int unsigned telemetry_receiver_idx);
+function automatic longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_DATA_BASE_ADDR(input int unsigned telemetry_receiver_idx);
     return 64'h14 + (telemetry_receiver_idx * 64'h100);
 endfunction
-localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_NUM = 64'h3;
-function automatic longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR(input int unsigned telemetry_receiver_idx);
-    return 64'h18 + (telemetry_receiver_idx * 64'h100);
-endfunction
-localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_NUM = 64'h3;
-function automatic longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR(input int unsigned telemetry_receiver_idx, input int unsigned TELEMETRY_COUNTER_idx);
-    return 64'h80 + (telemetry_receiver_idx * 64'h100) + (TELEMETRY_COUNTER_idx * 64'h4);
-endfunction
-localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_NUM = 64'h20;
+localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_DATA_NUM = 64'h3;
 
 
 endpackage

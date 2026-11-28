@@ -5,75 +5,56 @@
 Spec sources: hw/ip/telemetry_receiver/doc/architecture.adoc, doc/interface.adoc,
 regs/telemetry_receiver.rdl.
 
-ATB framing from telemetry_receiver/doc/index.adoc (Telemetry packet fields) and
-architecture.adoc (Assembly and Decode): eight beats LSB first, bit 63 last packet, probe ID
-[60:56] of the first packet, block i at bits [9i+8:9i] with its valid bit at 9i+8. The message driven here is one last-flagged packet.
+Beats pushed into receiver *i* appear only at receiver *i*'s ``TELEMETRY_DATA``. Every beat
+carries an ATB ID and a data byte no other beat in the test shares, so a beat that reached
+another receiver's FIFO fails that receiver's compare. A read of an empty FIFO returns 0 and
+removes nothing, so an idle receiver's ``TELEMETRY_DATA`` can be read before and after another
+receiver's traffic without disturbing it.
 """
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import FallingEdge, RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import (
-    _REPO,
-    TELEMETRY_CG_EN,
-    _field_mask,
-    smc_addr,
-    smc_indexed_addr,
-)
+from .smc_addr_map import TELEMETRY_CG_EN, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-
-_TELEMETRY_H = (
-    _REPO / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
+from .smc_telemetry_atb_capture_test_seq import (
+    BUFFER_EMPTY_BM,
+    ENABLE_THRESHOLD_BM,
+    RX_FLUSH_BM,
+    THRESHOLD_BP,
+    Beat,
+    _HeldSource,
+    _rx_addr,
+    _stream,
+    pop_expect,
+    wait_more_than,
 )
-
-
-def _tel(symbol: str) -> int:
-    return _field_mask(_TELEMETRY_H, symbol)
-
-
-def _addr(register: str, rx: int) -> int:
-    return smc_indexed_addr(
-        f"SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{register}_BASE_ADDR", rx
-    )
-
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 RECEIVERS = (0, 1, 2)
 
-BUFFER_POP_BM = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm")
-RX_FLUSH_BM = _tel("TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm")
-THRESHOLD_BP = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp")
-THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bm")
-BUFFER_EMPTY_BM = _tel("TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bm")
-PROBE_ID_BM = _tel("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm")
-INTR_THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__INTR_STATUS__BUFFER_THRESHOLD_bm")
-ENABLE_THRESHOLD_BM = _tel("TELEMETRY_RECEIVER__INTR_ENABLE__BUFFER_THRESHOLD_bm")
+# TELEMETRY_DATA is read only on a receiver whose FIFO is empty, where the read removes nothing.
+REGS_ALL = ("STATUS", "TELEMETRY_DATA", "INTR_STATUS", "CTRL")
+REGS_OPS = ("STATUS", "INTR_STATUS", "CTRL")
 
-REGS_ALL = ("STATUS", "TELEMETRY_PROBE_ID", "TELEMETRY_COUNTER_VLDS", "INTR_STATUS", "CTRL")
-REGS_OPS = ("STATUS", "TELEMETRY_PROBE_ID", "INTR_STATUS", "CTRL")
-
-# ATB framing: see the module docstring.
-BEAT_BITS = 8
-PACKET_BITS = 64
-BEATS_PER_PACKET = PACKET_BITS // BEAT_BITS
-BLOCK_BITS = 9
-PROBE_ID_BITS = 5
-PROBE_ID_LSB = 56
-LAST_PACKET_BIT = 63
-NEXT_BLOCK_LSB = 54
-
-ATID = {0: 0x00, 1: 0x11, 2: 0x22}
-SINGLE_PROBE = {0: 0x0A, 1: 0x0B, 2: 0x0C}
-SIMULTANEOUS_PROBES = {0: (0x05, 0x06), 1: (0x0A, 0x0B), 2: (0x13, 0x14)}
-OPS_PROBES = {0: (0x05,), 1: (0x0A, 0x0B), 2: (0x13, 0x14, 0x15)}
+SINGLE_BEATS = {0: _stream(0x01, 0x10, 3), 1: _stream(0x11, 0x40, 3), 2: _stream(0x21, 0x70, 3)}
+SIMULTANEOUS_BEATS = {
+    0: _stream(0x31, 0x81, 6),
+    1: _stream(0x41, 0xA1, 6),
+    2: _stream(0x51, 0xC1, 6),
+}
+OPS_BEATS = {0: _stream(0x61, 0x02, 1), 1: _stream(0x64, 0x22, 2), 2: _stream(0x68, 0x42, 3)}
 OPS_THRESHOLD = 1
 OPS_THRESHOLD_REWRITE = 2
+_ALL_BEATS = [
+    b for table in (SINGLE_BEATS, SIMULTANEOUS_BEATS, OPS_BEATS) for v in table.values() for b in v
+]
+assert len(set(_ALL_BEATS)) == len(_ALL_BEATS), "two beats in the test share ATID and data"
 
 FUSE_SENSE_BOUND = 200_000
-ATB_ACCEPT_BOUND = 64
 STATUS_POLL_BOUND = 200
 SNAPSHOT_BOUND = 8
 
@@ -90,15 +71,6 @@ CHK_STEP = (
     ("CHK-TELEMETRY-ISOLATION-OPS", "S4"),
     ("CHK-TIMEOUT-PATHS", "S5"),
 )
-
-
-def _frame_message(probe_id: int) -> int:
-    """One last-flagged packet: probe ID in the header, every block valid with all-ones data."""
-    packet = 1 << LAST_PACKET_BIT
-    packet |= (probe_id & ((1 << PROBE_ID_BITS) - 1)) << PROBE_ID_LSB
-    for lsb in range(0, NEXT_BLOCK_LSB, BLOCK_BITS):
-        packet |= ((1 << BLOCK_BITS) - 1) << lsb
-    return packet
 
 
 def _level(signal, name: str) -> int:
@@ -136,11 +108,11 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
 
     async def _read(self, label: str, reg: str, rx: int, expected: int | None = None) -> int:
         self._last = f"read {label} {reg}[{rx}]"
-        return await self.csr_read(f"{label}_{reg}_{rx}", _addr(reg, rx), expected=expected)
+        return await self.csr_read(f"{label}_{reg}_{rx}", _rx_addr(reg, rx), expected=expected)
 
     async def _write(self, label: str, reg: str, rx: int, data: int) -> None:
         self._last = f"write {label} {reg}[{rx}]=0x{data:08x}"
-        await self.csr_write(f"{label}_{reg}_{rx}", _addr(reg, rx), data)
+        await self.csr_write(f"{label}_{reg}_{rx}", _rx_addr(reg, rx), data)
 
     async def _snapshot(self, label: str, rx: int, regs: tuple[str, ...]) -> dict[str, int]:
         return {reg: await self._read(label, reg, rx) for reg in regs}
@@ -182,40 +154,12 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
             f"{STATUS_POLL_BOUND} polls (last STATUS=0x{status:08x})"
         )
 
-    async def _beat(self, rx: int, value: int, beat: int, accepted_ps: list[int]) -> None:
-        dut = cocotb.top
-        getattr(dut, f"tb_telemetry{rx}_atdata").value = value & 0xFF
-        getattr(dut, f"tb_telemetry{rx}_atid").value = ATID[rx] & 0x7F
-        atvalid = getattr(dut, f"tb_telemetry{rx}_atvalid")
-        atready = getattr(dut, f"tb_telemetry{rx}_atready")
-        atvalid.value = 1
-        await RisingEdge(dut.clk_smc_i)
-        accepted = False
-        for _ in range(ATB_ACCEPT_BOUND):
-            if _level(atready, f"tb_telemetry{rx}_atready"):
-                accepted = True
-                accepted_ps.append(int(get_sim_time("ps")))
-                break
-            await RisingEdge(dut.clk_smc_i)
-        atvalid.value = 0
-        self._note_wait("atb_beat_accept", f"{ATB_ACCEPT_BOUND}_clk_smc_i_cycles")
-        if not accepted:
-            self._end_wait("atb_beat_accept", f"rx{rx}_beat{beat}_atready_low")
-            raise AssertionError(
-                f"ATB beat {beat} (0x{value & 0xFF:02x}) into receiver {rx} never accepted over "
-                f"{ATB_ACCEPT_BOUND} clk_smc_i cycles"
-            )
-        self._end_wait("atb_beat_accept", f"rx{rx}_beat{beat}_accepted")
-
-    async def _send_messages(
-        self, rx: int, probes: tuple[int, ...], accepted_ps: list[int]
-    ) -> None:
-        for index, probe_id in enumerate(probes):
-            if index:
-                await RisingEdge(cocotb.top.clk_smc_i)
-            packet = _frame_message(probe_id)
-            for i in range(BEATS_PER_PACKET):
-                await self._beat(rx, (packet >> (i * BEAT_BITS)) & 0xFF, i, accepted_ps)
+    async def _pop_beats(self, label: str, rx: int, beats: list[Beat]) -> list[int]:
+        """Read `beats` in order from receiver `rx`, then require its TELEMETRY_DATA empty."""
+        self._last = f"read {label} TELEMETRY_DATA[{rx}]"
+        words = [await pop_expect(self, f"{label}{i}", beat, rx) for i, beat in enumerate(beats)]
+        await self._read(f"{label}_EMPTY", "TELEMETRY_DATA", rx, expected=0)
+        return words
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -252,83 +196,70 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
             others = [r for r in RECEIVERS if r != rx]
             before = {o: await self._stable_snapshot("S2_PRE", o, REGS_ALL) for o in others}
             for o in others:
-                assert before[o]["STATUS"] & BUFFER_EMPTY_BM, (
-                    f"S2: receiver {o} not empty before the message to receiver {rx}"
+                assert before[o]["STATUS"] & BUFFER_EMPTY_BM and before[o]["TELEMETRY_DATA"] == 0, (
+                    f"S2: receiver {o} not empty before the beats to receiver {rx}"
                 )
-            await self._send_messages(rx, (SINGLE_PROBE[rx],), [])
+            await _HeldSource(cocotb.top, SINGLE_BEATS[rx], rx=rx).task
             await self._wait_empty("S2_NONEMPTY", rx, False)
-            probe = await self._read("S2_PROBE", "TELEMETRY_PROBE_ID", rx) & PROBE_ID_BM
-            assert probe == SINGLE_PROBE[rx], (
-                f"S2: receiver {rx} PROBE_ID reads 0x{probe:02x}, expected 0x{SINGLE_PROBE[rx]:02x}"
-            )
+            words = await self._pop_beats("S2_DATA", rx, SINGLE_BEATS[rx])
+            await self._wait_empty("S2_DRAINED", rx, True)
             for o in others:
                 await self._require_unchanged("S2_OTHER", o, before[o], REGS_ALL)
-            await self._write("S2_POP", "CTRL", rx, BUFFER_POP_BM)
-            await self._wait_empty("S2_DRAINED", rx, True)
-            records.append(f"rx{rx}=0x{probe:02x}")
+            records.append(f"rx{rx}=" + ",".join(f"0x{w:08x}" for w in words))
         self._stamp("S2")
         self._chk(
             "CHK-TELEMETRY-ISOLATION-TRAFFIC",
-            "one single-packet message per receiver (%s) left STATUS, PROBE_ID, COUNTER_VLDS, "
-            "INTR_STATUS and CTRL of the other two receivers at their pre-message words; the "
-            "receiver addressed read nonempty with its own probe ID, then popped to empty",
+            "three beats into one receiver at a time left STATUS, TELEMETRY_DATA (0, empty), "
+            "INTR_STATUS and CTRL of the other two at their pre-traffic words; the receiver "
+            "addressed returned exactly its own beats in order through TELEMETRY_DATA (%s) and "
+            "was empty after them",
             " ".join(records),
         )
 
     async def _simultaneous_traffic(self) -> None:
-        accepted = {rx: [] for rx in RECEIVERS}
-        tasks = [
-            cocotb.start_soon(self._send_messages(rx, SIMULTANEOUS_PROBES[rx], accepted[rx]))
-            for rx in RECEIVERS
-        ]
-        for task in tasks:
-            await task
-        shared = set(accepted[0]) & set(accepted[1]) & set(accepted[2])
-        self.same_cycle_beats = len(shared)
+        dut = cocotb.top
+        sources = [_HeldSource(dut, SIMULTANEOUS_BEATS[rx], rx=rx) for rx in RECEIVERS]
+        shared = 0
+        while not all(source.done for source in sources):
+            await FallingEdge(dut.clk_smc_i)
+            shared += all(
+                _level(getattr(dut, f"tb_telemetry{rx}_atvalid"), f"tb_telemetry{rx}_atvalid")
+                and _level(getattr(dut, f"tb_telemetry{rx}_atready"), f"tb_telemetry{rx}_atready")
+                for rx in RECEIVERS
+            )
+        for source in sources:
+            await source.task
+        self.same_cycle_beats = shared
         assert shared, "S3: no clk_smc_i cycle accepted a beat on all three receivers together"
         records = []
         for rx in RECEIVERS:
-            got = []
-            for idx, want in enumerate(SIMULTANEOUS_PROBES[rx]):
-                await self._wait_empty(f"S3_NONEMPTY{idx}", rx, False)
-                probe = await self._read(f"S3_PROBE{idx}", "TELEMETRY_PROBE_ID", rx) & PROBE_ID_BM
-                got.append(probe)
-                assert probe == want, (
-                    f"S3: receiver {rx} message {idx} reads probe ID 0x{probe:02x}, expected "
-                    f"0x{want:02x}; sent {[hex(p) for p in SIMULTANEOUS_PROBES[rx]]}"
-                )
-                await self._write(f"S3_POP{idx}", "CTRL", rx, BUFFER_POP_BM)
+            words = await self._pop_beats("S3_DATA", rx, SIMULTANEOUS_BEATS[rx])
             await self._wait_empty("S3_DRAINED", rx, True)
-            records.append(f"rx{rx}=" + ",".join(f"0x{p:02x}" for p in got))
+            records.append(f"rx{rx}=" + ",".join(f"0x{w:08x}" for w in words))
         self._stamp("S3")
         self._chk(
             "CHK-TELEMETRY-ISOLATION-SIMULTANEOUS",
             "three ATB sources accepted beats in %d common clk_smc_i cycles; each receiver "
-            "returned its own two probe IDs in order (%s) and was empty after the second pop",
+            "returned exactly its own %d beats in order (%s) and was empty after them",
             self.same_cycle_beats,
+            len(SIMULTANEOUS_BEATS[0]),
             " ".join(records),
         )
 
     async def _isolated_operations(self, dut) -> None:
-        ctrl_thr = (OPS_THRESHOLD << THRESHOLD_BP) & THRESHOLD_BM
+        ctrl_thr = OPS_THRESHOLD << THRESHOLD_BP
         for rx in RECEIVERS:
             await self._write("S4_THRESHOLD", "CTRL", rx, ctrl_thr)
             await self._read("S4_THRESHOLD_RB", "CTRL", rx, expected=ctrl_thr)
         for rx in RECEIVERS:
-            await self._send_messages(rx, OPS_PROBES[rx], [])
-            await self._wait_empty("S4_FILLED", rx, False)
-            probe = await self._read("S4_FIRST", "TELEMETRY_PROBE_ID", rx) & PROBE_ID_BM
-            assert probe == OPS_PROBES[rx][0], (
-                f"S4: receiver {rx} PROBE_ID reads 0x{probe:02x}, expected "
-                f"0x{OPS_PROBES[rx][0]:02x}"
-            )
+            await _HeldSource(dut, OPS_BEATS[rx], rx=rx).task
+            await wait_more_than(self, "S4_FILLED", len(OPS_BEATS[rx]) - 1, rx, restore=ctrl_thr)
 
         irq_any_start = _level(dut.tb_telemetry_irq_any, "tb_telemetry_irq_any")
-        intr_by_rx = {}
-        # Pop receiver 0.
+        # Read receiver 0's one beat.
         before = {o: await self._stable_snapshot("S4_POP_PRE", o, REGS_OPS) for o in (1, 2)}
         intr_by_rx = {o: before[o]["INTR_STATUS"] for o in (1, 2)}
-        await self._write("S4_POP", "CTRL", 0, BUFFER_POP_BM | ctrl_thr)
+        popped = await self._pop_beats("S4_POP", 0, OPS_BEATS[0])
         await self._wait_empty("S4_POP_EMPTY", 0, True)
         for o in (1, 2):
             await self._require_unchanged("S4_POP_OTHER", o, before[o], REGS_OPS)
@@ -336,11 +267,12 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
         before = {o: await self._stable_snapshot("S4_FLUSH_PRE", o, REGS_OPS) for o in (0, 2)}
         await self._write("S4_FLUSH", "CTRL", 1, RX_FLUSH_BM | ctrl_thr)
         await self._wait_empty("S4_FLUSH_EMPTY", 1, True)
+        await self._read("S4_FLUSH_DATA", "TELEMETRY_DATA", 1, expected=0)
         for o in (0, 2):
             await self._require_unchanged("S4_FLUSH_OTHER", o, before[o], REGS_OPS)
         # Rewrite threshold and enable of receiver 2.
         before = {o: await self._stable_snapshot("S4_CFG_PRE", o, REGS_OPS) for o in (0, 1)}
-        ctrl_new = (OPS_THRESHOLD_REWRITE << THRESHOLD_BP) & THRESHOLD_BM
+        ctrl_new = OPS_THRESHOLD_REWRITE << THRESHOLD_BP
         await self._write("S4_CFG_THRESHOLD", "CTRL", 2, ctrl_new)
         await self._read("S4_CFG_THRESHOLD_RB", "CTRL", 2, expected=ctrl_new)
         await self._write("S4_CFG_ENABLE", "INTR_ENABLE", 2, ENABLE_THRESHOLD_BM)
@@ -348,9 +280,12 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
         for o in (0, 1):
             await self._require_unchanged("S4_CFG_OTHER", o, before[o], REGS_OPS)
         irq_any_end = _level(dut.tb_telemetry_irq_any, "tb_telemetry_irq_any")
-        # Drain receiver 2 for a clean end state.
-        await self._write("S4_CLEAN_FLUSH", "CTRL", 2, RX_FLUSH_BM)
+        # Receiver 2 kept its beats through the operations on the other two.
+        kept = await self._pop_beats("S4_KEPT", 2, OPS_BEATS[2])
         await self._wait_empty("S4_CLEAN_EMPTY", 2, True)
+        for rx in RECEIVERS:
+            await self._write("S4_CLEAN_CTRL", "CTRL", rx, 0)
+        await self._write("S4_CLEAN_ENABLE", "INTR_ENABLE", 2, 0)
         self._stamp("S4")
         af_pins_present = {
             rx: hasattr(dut, f"tb_telemetry{rx}_afvalid")
@@ -359,15 +294,18 @@ class smc_telemetry_receiver_isolation_test_seq(SmcCsrSeq):
         }
         self._chk(
             "CHK-TELEMETRY-ISOLATION-OPS",
-            "with CTRL.BUFFER_THRESHOLD=%d and receivers holding 1, 2 and 3 messages, a pop on "
-            "receiver 0, a flush on receiver 1 and a threshold (%d) plus enable (0x%x) rewrite "
-            "on receiver 2 left the untouched receivers at the words taken before each "
-            "operation (STATUS, PROBE_ID, INTR_STATUS, CTRL); measured INTR_STATUS before the "
-            "pop rx1=0x%x rx2=0x%x, tb_telemetry_irq_any %d -> %d; measured: transmitter "
-            "flush pins at the bench boundary rx1=%s rx2=%s",
+            "with CTRL.BUFFER_THRESHOLD=%d and receivers holding 1, 2 and 3 beats, a "
+            "TELEMETRY_DATA read on receiver 0 (0x%08x), a flush on receiver 1 and a threshold "
+            "(%d) plus enable (0x%x) rewrite on receiver 2 left the untouched receivers at the "
+            "words taken before each operation (STATUS, INTR_STATUS, CTRL), and receiver 2 "
+            "still returned its three beats in order (%s); measured INTR_STATUS before the read "
+            "rx1=0x%x rx2=0x%x, tb_telemetry_irq_any %d -> %d; measured: transmitter flush pins "
+            "at the bench boundary rx1=%s rx2=%s",
             OPS_THRESHOLD,
+            popped[0],
             OPS_THRESHOLD_REWRITE,
             ENABLE_THRESHOLD_BM,
+            ",".join(f"0x{w:08x}" for w in kept),
             intr_by_rx[1],
             intr_by_rx[2],
             irq_any_start,

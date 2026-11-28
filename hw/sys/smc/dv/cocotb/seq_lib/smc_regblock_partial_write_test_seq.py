@@ -66,14 +66,11 @@ for _name in _I2C_EVENTS:
     I2C_EVENT_MASK |= _field_mask(_I2C_H, f"I2C__INTR_STATE__{_name}_bm")
 LOG_FETCH_ERR = _field_mask(_LOG_H, "LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm")
 assert LOG_FETCH_ERR == _field_mask(_LOG_H, "LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm")
-MISSING_LAST = _field_mask(_TEL_H, "TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_bm")
 TEL_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 0
 )
 TX_FLUSH = _field_mask(_TEL_H, "TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bm")
-CTRL_PULSES = _field_mask(_TEL_H, "TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm") | _field_mask(
-    _TEL_H, "TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm"
-)
+RX_FLUSH = _field_mask(_TEL_H, "TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm")
 CREDIT_EXPIRED = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADDR")
 
 NUM_I2C_CTRL = smc_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_NUM")
@@ -176,9 +173,9 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
     async def _flush_held(self) -> None:
         dut = cocotb.top
         lane = (TX_FLUSH.bit_length() - 1) // 8
-        assert lane != 0, "TELEMETRY_TX_FLUSH shares lane 0 with the pulse fields"
+        assert lane != 0, "TELEMETRY_TX_FLUSH shares lane 0 with TELEMETRY_RX_FLUSH"
         base = await self.csr_read("TEL_CTRL_BASE", TEL_CTRL)
-        assert not base & (TX_FLUSH | CTRL_PULSES), f"telemetry CTRL 0x{base:x} not idle"
+        assert not base & (TX_FLUSH | RX_FLUSH), f"telemetry CTRL 0x{base:x} not idle"
         dut.tb_telemetry0_afready.value = 0
         try:
             await self.csr_write("TEL_CTRL_FLUSH", TEL_CTRL, base | TX_FLUSH)
@@ -229,8 +226,6 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
 
         await self._zero("LOG_INTR_TEST", log_engine("INTR_TEST"))
         await self._zero("OCTS_TIMER_START", TIMER_START)
-        before = await self.csr_read("TEL_INTR_STATUS_PRE", TEL_INTR_STATUS)
-        assert not before & MISSING_LAST, f"telemetry INTR_STATUS 0x{before:x} has MISSING_LAST"
         await self._zero("TEL_INTR_STATUS", TEL_INTR_STATUS)
         cocotb.log.info(
             "CHK-REGBLOCK-ZERO-WRITE: full writes of zero to log-engine INTR_TEST, OCTS "

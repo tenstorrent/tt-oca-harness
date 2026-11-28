@@ -1,6 +1,6 @@
 # Telemetry Receiver
 
-Hardware decoder for telemetry streams.
+Hardware FIFO capture of raw ATB telemetry beats.
 
 ## Documentation
 

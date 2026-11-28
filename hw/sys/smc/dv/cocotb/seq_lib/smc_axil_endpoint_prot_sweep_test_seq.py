@@ -194,7 +194,7 @@ def check_set() -> tuple[Endpoint, ...]:
             "telemetry",
             "periph-ctrl",
             "smc_telemetry_receiver_wrap/telemetry_receiver[0]/INTR_ENABLE",
-            seed=0x1,
+            seed=RW,
         ),
         _probe("octs", "periph-ctrl", "smc_system_timer_octs/TIMER_PRESET_LO", seed=RW),
         _probe("i3c", "periph-ctrl", "oca_i3c_wrap/i3c_csr[0]/I3CBase/DEV_CTX_BASE_LO", seed=RW),

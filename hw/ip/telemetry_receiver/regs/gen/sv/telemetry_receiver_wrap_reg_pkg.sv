@@ -23,7 +23,7 @@ package telemetry_receiver_wrap_reg_pkg;
 
     typedef struct {
         logic req;
-        logic [7:0] addr;
+        logic [4:0] addr;
         logic req_is_wr;
         logic [31:0] wr_data;
         logic [31:0] wr_biten;

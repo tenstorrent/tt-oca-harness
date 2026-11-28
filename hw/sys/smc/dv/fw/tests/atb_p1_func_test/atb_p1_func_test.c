@@ -11,8 +11,9 @@
  * @brief ATB P1 Function Test - Telemetry Receiver Register Access
  *
  * Verifies that firmware can read the Telemetry Receiver registers of all
- * three instances and that each receiver starts with an empty, not-full
- * buffer. The other register values are logged, not checked.
+ * three instances, that each receiver starts with an empty, not-full
+ * buffer, and that TELEMETRY_DATA reads zero while the buffer is empty.
+ * CTRL is logged, not checked.
  */
 
 #define TELEMETRY_RECEIVER_NOC_O_BASE \
@@ -29,21 +30,15 @@
 #define REG_STATUS \
     (SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR(0) - \
      TELEMETRY_RECEIVER_NOC_O_BASE)
-#define REG_PROBE_ID \
-    (SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR(0) - \
-     TELEMETRY_RECEIVER_NOC_O_BASE)
-#define REG_COUNTER_VLDS \
-    (SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_VLDS_BASE_ADDR(0) - \
-     TELEMETRY_RECEIVER_NOC_O_BASE)
-#define REG_COUNTER_BASE \
-    (SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_BASE_ADDR(0, 0) - \
+#define REG_TELEMETRY_DATA \
+    (SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_DATA_BASE_ADDR(0) - \
      TELEMETRY_RECEIVER_NOC_O_BASE)
 
 /**
- * @brief Check the buffer status of one receiver and log its other registers
+ * @brief Check the buffer status and the empty TELEMETRY_DATA read of one receiver
  * @param base_addr Base address of telemetry receiver
  * @param instance_name Name of instance (for logging)
- * @return false if the buffer is not empty-and-not-full, true otherwise
+ * @return false if the buffer is not empty-and-not-full or TELEMETRY_DATA is not zero
  */
 static bool verify_telemetry_receiver(uint64_t base_addr, const char *instance_name) {
     uint32_t status = read_reg(base_addr + REG_STATUS);
@@ -61,30 +56,18 @@ static bool verify_telemetry_receiver(uint64_t base_addr, const char *instance_n
         return false;
     }
 
-    uint32_t probe_id = read_reg(base_addr + REG_PROBE_ID);
+    // A read of TELEMETRY_DATA on an empty buffer returns zero and pops nothing
+    uint32_t data = read_reg(base_addr + REG_TELEMETRY_DATA);
     simputs("  ");
     simputs(instance_name);
-    simputs(" PROBE_ID: 0x");
-    simputshex32("", probe_id);
-    simputs(" (expected 0x0 or small value)\n");
-
-    uint32_t counter_vlds = read_reg(base_addr + REG_COUNTER_VLDS);
-    simputs("  ");
-    simputs(instance_name);
-    simputs(" COUNTER_VLDS: 0x");
-    simputshex32("", counter_vlds);
-    simputs(" (expected 0x0 initially)\n");
-
-    simputs("  ");
-    simputs(instance_name);
-    simputs(" Counters:\n");
-    for (int i = 0; i < 3; i++) {
-        uint32_t counter_val = read_reg(base_addr + REG_COUNTER_BASE + (i * 4));
-        simputs("    [");
-        simputshex32("", i);
-        simputs("]: 0x");
-        simputshex32("", counter_val);
-        simputs("\n");
+    simputs(" TELEMETRY_DATA: 0x");
+    simputshex32("", data);
+    simputs("\n");
+    if (data != 0) {
+        simputs("  ERROR: ");
+        simputs(instance_name);
+        simputs(" TELEMETRY_DATA not zero on an empty buffer\n");
+        return false;
     }
 
     return true;
@@ -114,7 +97,7 @@ int main(void) {
     write_scratch(1, 0x00000021);
 
     write_scratch(1, 0x00000003);
-    simputs("Step 3: NOC_M Telemetry Receiver (0xC000D100)\n");
+    simputs("Step 3: NOC_M Telemetry Receiver\n");
     if (!verify_telemetry_receiver(TELEMETRY_RECEIVER_NOC_M_BASE, "NOC_M")) {
         write_scratch(0, 0xBAD00003);
         test_fail(hartid);
@@ -122,7 +105,7 @@ int main(void) {
     write_scratch(1, 0x00000031);
 
     write_scratch(1, 0x00000004);
-    simputs("Step 4: NOC_N Telemetry Receiver (0xC000D200)\n");
+    simputs("Step 4: NOC_N Telemetry Receiver\n");
     if (!verify_telemetry_receiver(TELEMETRY_RECEIVER_NOC_N_BASE, "NOC_N")) {
         write_scratch(0, 0xBAD00004);
         test_fail(hartid);
@@ -130,7 +113,7 @@ int main(void) {
     write_scratch(1, 0x00000041);
 
     write_scratch(1, 0x00000005);
-    simputs("Step 5: Buffer Control Operations\n");
+    simputs("Step 5: NOC_O CTRL and STATUS read\n");
 
     uint32_t noc_o_ctrl = read_reg(TELEMETRY_RECEIVER_NOC_O_BASE + REG_CTRL);
     simputs("  NOC_O CTRL: 0x");
@@ -140,9 +123,9 @@ int main(void) {
     // Report whether the buffer holds data; no entry is popped
     uint32_t noc_o_status = read_reg(TELEMETRY_RECEIVER_NOC_O_BASE + REG_STATUS);
     if ((noc_o_status & 0x1) == 0) {
-        simputs("  NOC_O buffer has data, can pop\n");
+        simputs("  NOC_O buffer has data\n");
     } else {
-        simputs("  NOC_O buffer is empty, BUFFER_POP skipped (as expected)\n");
+        simputs("  NOC_O buffer is empty\n");
     }
     write_scratch(1, 0x00000051);
 
@@ -150,7 +133,7 @@ int main(void) {
     simputs("Step 6: Test Complete\n");
     simputs("  ========================================\n");
     simputs("  All Telemetry Receiver registers accessible\n");
-    simputs("  All default values verified\n");
+    simputs("  Empty-buffer STATUS and TELEMETRY_DATA verified\n");
     simputs("  ========================================\n");
 
     // Signal test completion
